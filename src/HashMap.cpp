@@ -1,0 +1,538 @@
+/*
+* Copyright 2018 Membrane Software <author@membranesoftware.com>
+*                 https://membranesoftware.com
+*
+* Redistribution and use in source and binary forms, with or without
+* modification, are permitted provided that the following conditions are met:
+*
+* 1. Redistributions of source code must retain the above copyright notice,
+* this list of conditions and the following disclaimer.
+*
+* 2. Redistributions in binary form must reproduce the above copyright notice,
+* this list of conditions and the following disclaimer in the documentation
+* and/or other materials provided with the distribution.
+*
+* 3. Neither the name of the copyright holder nor the names of its contributors
+* may be used to endorse or promote products derived from this software without
+* specific prior written permission.
+*
+* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+* ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+* LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+* CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+* SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+* INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+* CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+* ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+* POSSIBILITY OF SUCH DAMAGE.
+*/
+#include "Config.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <map>
+#include "Result.h"
+#include "Log.h"
+#include "App.h"
+#include "Util.h"
+#include "StdString.h"
+#include "Buffer.h"
+#include "Json.h"
+#include "HashMap.h"
+
+HashMap::HashMap ()
+: isWriteDirty (false)
+, sortFunction (NULL)
+, isSorted (false)
+{
+
+}
+
+HashMap::~HashMap () {
+
+}
+
+void HashMap::clear () {
+	valueMap.clear ();
+	keyList.clear ();
+}
+
+int HashMap::size () {
+	return (valueMap.size ());
+}
+
+bool HashMap::empty () {
+	return (valueMap.empty ());
+}
+
+StdString HashMap::toString () {
+	StdString s;
+	std::map<StdString, StdString>::const_iterator i, end;
+
+	s.assign ("{");
+	i = valueMap.begin ();
+	end = valueMap.end ();
+	while (i != end) {
+		s.appendSprintf (" %s=\"%s\"", i->first.c_str (), i->second.c_str ());
+		++i;
+	}
+	s.append (" }");
+
+	return (s);
+}
+
+void HashMap::sort (HashMap::SortFunction fn) {
+	sortFunction = fn;
+	isSorted = false;
+}
+
+void HashMap::doSort () {
+	std::map<StdString, StdString>::iterator i, end;
+
+	keyList.clear ();
+	if (sortFunction) {
+		i = valueMap.begin ();
+		end = valueMap.end ();
+		while (i != end) {
+			keyList.push_back (i->first);
+			++i;
+		}
+		keyList.sort (sortFunction);
+	}
+	isSorted = true;
+}
+
+void HashMap::getKeys (StringList *destList, bool shouldClear) {
+	HashMap::Iterator i;
+
+	if (shouldClear) {
+		destList->clear ();
+	}
+	i = begin ();
+	while (hasNext (&i)) {
+		destList->push_back (next (&i));
+	}
+}
+
+bool HashMap::sortAscending (const StdString &a, const StdString &b) {
+	if (a.lowercased ().compare (b.lowercased ()) < 0) {
+		return (true);
+	}
+
+	return (false);
+}
+
+bool HashMap::sortDescending (const StdString &a, const StdString &b) {
+	if (a.lowercased ().compare (b.lowercased ()) > 0) {
+		return (true);
+	}
+
+	return (false);
+}
+
+int HashMap::read (const StdString &filename, bool shouldClear) {
+	FILE *fp;
+	char data[8192], *d, c, *key1, *key2, *val1, *val2;
+	StdString key, val;
+
+	fp = fopen (filename.c_str (), "rb");
+	if (! fp) {
+		return (Result::ERROR_FILE_OPEN_FAILED);
+	}
+
+	Log::write (Log::DEBUG, "Open config file \"%s\"", filename.c_str ());
+	if (shouldClear) {
+		clear ();
+	}
+	while (1) {
+		if (! fgets (data, sizeof (data), fp)) {
+			break;
+		}
+
+		key1 = NULL;
+		key2 = NULL;
+		val1 = NULL;
+		val2 = NULL;
+		d = data;
+		while (true) {
+			c = *d;
+			if (c == '\0') {
+				break;
+			}
+			++d;
+
+			if (! key1) {
+				if (isspace (c)) {
+					continue;
+				}
+				if (c == '#') {
+					break;
+				}
+				key1 = (d - 1);
+			}
+			else if (! key2) {
+				if (isspace (c)) {
+					key2 = (d - 2);
+				}
+			}
+			else if (! val1) {
+				if (! isspace (c)) {
+					val1 = (d - 1);
+				}
+			}
+			else {
+				if (c == '\n') {
+					val2 = (d - 2);
+					break;
+				}
+			}
+		}
+
+		key.assign ("");
+		val.assign ("");
+		if (key1 && key2) {
+			key.assign (key1, key2 - key1 + 1);
+		}
+		if (val1 && val2) {
+			val.assign (val1, val2 - val1 + 1);
+		}
+
+		if ((key.length () > 0) && (val.length () > 0)) {
+			valueMap.insert (std::pair<StdString, StdString> (key, val));
+		}
+	}
+
+	fclose (fp);
+	return (Result::SUCCESS);
+}
+
+int HashMap::read (Buffer *buffer, bool shouldClear) {
+	uint8_t *data, *end, *key1, *key2, *val1, *val2;
+	char c;
+	bool iscomment;
+	int len;
+	StdString key, val;
+
+	if (shouldClear) {
+		clear ();
+	}
+	buffer->getData (&data, &len);
+	end = data + len;
+	iscomment = false;
+	key1 = NULL;
+	key2 = NULL;
+	val1 = NULL;
+	val2 = NULL;
+	while (data < end) {
+		c = (char) *data;
+		++data;
+
+		if (iscomment) {
+			if (c == '\n') {
+				iscomment = false;
+			}
+			continue;
+		}
+
+		if (! key1) {
+			if (c == '#') {
+				iscomment = true;
+				key1 = NULL;
+				key2 = NULL;
+				val1 = NULL;
+				val2 = NULL;
+				continue;
+			}
+
+			if (! isspace (c)) {
+				key1 = (data - 1);
+			}
+		}
+		else if (! key2) {
+			if (isspace (c)) {
+				key2 = (data - 2);
+			}
+		}
+		else if (! val1) {
+			if (! isspace (c)) {
+				val1 = (data - 1);
+			}
+		}
+		else {
+			if ((c == '\r') || (c == '\n')) {
+				val2 = (data - 2);
+			}
+		}
+
+		if (key1 && key2 && val1 && val2) {
+			key.assign ((char *) key1, key2 - key1 + 1);
+			val.assign ((char *) val1, val2 - val1 + 1);
+			if ((key.length () > 0) && (val.length () > 0)) {
+				valueMap.insert (std::pair<StdString, StdString> (key, val));
+			}
+		}
+
+		if ((c == '\r') || (c == '\n')) {
+			key1 = NULL;
+			key2 = NULL;
+			val1 = NULL;
+			val2 = NULL;
+		}
+	}
+
+	return (Result::SUCCESS);
+}
+
+int HashMap::read (Json *json, bool shouldClear) {
+	StringList keys;
+	StringList::iterator i, end;
+
+	if (! json) {
+		return (Result::ERROR_INVALID_PARAM);
+	}
+
+	if (shouldClear) {
+		clear ();
+	}
+	json->getKeys (&keys);
+	i = keys.begin ();
+	end = keys.end ();
+	while (i != end) {
+		if (json->isNumber (*i)) {
+			insert (*i, json->getNumber (*i, (int64_t) 0));
+		}
+		else if (json->isBoolean (*i)) {
+			insert (*i, json->getBoolean (*i, false));
+		}
+		else if (json->isString (*i)) {
+			insert (*i, json->getString (*i, ""));
+		}
+		++i;
+	}
+
+	return (Result::SUCCESS);
+}
+
+int HashMap::write (const StdString &filename) {
+	std::map<StdString, StdString>::iterator i, end;
+	StdString out;
+	FILE *fp;
+
+	isWriteDirty = false;
+	out.assign ("");
+	i = valueMap.begin ();
+	end = valueMap.end ();
+	while (i != end) {
+		out.appendSprintf ("%s %s\n", i->first.c_str (), i->second.c_str ());
+		++i;
+	}
+
+	fp = fopen (filename.c_str (), "wb");
+	if (! fp) {
+		return (Result::ERROR_FILE_OPEN_FAILED);
+	}
+	fprintf (fp, "%s", out.c_str ());
+	fclose (fp);
+
+	return (Result::SUCCESS);
+}
+
+bool HashMap::exists (const StdString &key) {
+	std::map<StdString, StdString>::iterator i;
+
+	i = valueMap.find (key);
+	return (i != valueMap.end ());
+}
+
+bool HashMap::exists (const char *key) {
+	return (exists (StdString (key)));
+}
+
+void HashMap::insert (const StdString &key, const StdString &value) {
+	std::map<StdString, StdString>::iterator i;
+
+	i = valueMap.find (key);
+	if (i != valueMap.end ()) {
+		if (! i->second.equals (value)) {
+			i->second.assign (value);
+			isWriteDirty = true;
+		}
+	}
+	else {
+		valueMap.insert (std::pair<StdString, StdString> (key, value));
+		isWriteDirty = true;
+		isSorted = false;
+	}
+}
+
+void HashMap::insert (const char *key, const StdString &value) {
+	insert (StdString (key), value);
+}
+
+void HashMap::insert (const StdString &key, bool value) {
+	insert (key, value ? StdString ("true") : StdString ("false"));
+}
+
+void HashMap::insert (const char *key, bool value) {
+	insert (StdString (key), value ? StdString ("true") : StdString ("false"));
+}
+
+void HashMap::insert (const StdString &key, int value) {
+	insert (key, StdString::createSprintf ("%i", value));
+}
+
+void HashMap::insert (const char *key, int value) {
+	insert (StdString (key), StdString::createSprintf ("%i", value));
+}
+
+void HashMap::insert (const StdString &key, int64_t value) {
+	insert (key, StdString::createSprintf ("%lli", (long long int) value));
+}
+
+void HashMap::insert (const char *key, int64_t value) {
+	insert (StdString (key), StdString::createSprintf ("%lli", (long long int) value));
+}
+
+void HashMap::insert (const StdString &key, StringList *value) {
+	insert (key, value->toJsonString ());
+}
+
+void HashMap::insert (const char *key, StringList *value) {
+	insert (StdString (key), value);
+}
+
+void HashMap::remove (const StdString &key) {
+	std::map<StdString, StdString>::iterator i;
+
+	i = valueMap.find (key);
+	if (i != valueMap.end ()) {
+		valueMap.erase (i);
+		isWriteDirty = true;
+		isSorted = false;
+	}
+}
+
+StdString HashMap::find (const StdString &key, const StdString &defaultValue) {
+	std::map<StdString, StdString>::const_iterator i;
+
+	i = valueMap.find (key);
+	if (i == valueMap.end ()) {
+		return (defaultValue);
+	}
+
+	return (i->second);
+}
+
+StdString HashMap::find (const StdString &key, const char *defaultValue) {
+	return (find (key, StdString (defaultValue)));
+}
+
+StdString HashMap::find (const char *key, const char *defaultValue) {
+	return (find (StdString (key), StdString (defaultValue)));
+}
+
+int HashMap::find (const StdString &key, int defaultValue) {
+	std::map<StdString, StdString>::const_iterator i;
+
+	i = valueMap.find (key);
+	if (i == valueMap.end ()) {
+		return (defaultValue);
+	}
+
+	return (atoi (i->second.c_str ()));
+}
+
+int HashMap::find (const char *key, int defaultValue) {
+	return (find (StdString (key), defaultValue));
+}
+
+int64_t HashMap::find (const StdString &key, int64_t defaultValue) {
+	std::map<StdString, StdString>::const_iterator i;
+
+	i = valueMap.find (key);
+	if (i == valueMap.end ()) {
+		return (defaultValue);
+	}
+
+	return (atoll (i->second.c_str ()));
+}
+
+int64_t HashMap::find (const char *key, int64_t defaultValue) {
+	return (find (StdString (key), defaultValue));
+}
+
+bool HashMap::find (const StdString &key, bool defaultValue) {
+	std::map<StdString, StdString>::const_iterator i;
+
+	i = valueMap.find (key);
+	if (i == valueMap.end ()) {
+		return (defaultValue);
+	}
+
+	return (i->second.lowercased ().equals ("true") || i->second.lowercased ().equals ("yes"));
+}
+
+bool HashMap::find (const char *key, bool defaultValue) {
+	return (find (StdString (key), defaultValue));
+}
+
+void HashMap::find (const StdString &key, StringList *destList) {
+	std::map<StdString, StdString>::const_iterator i;
+
+	i = valueMap.find (key);
+	if (i == valueMap.end ()) {
+		destList->clear ();
+		return;
+	}
+	if (! destList->parseJsonString (i->second)) {
+		destList->clear ();
+	}
+}
+
+void HashMap::find (const char *key, StringList *destList) {
+	find (StdString (key), destList);
+}
+
+HashMap::Iterator HashMap::begin () {
+	HashMap::Iterator i;
+
+	if (sortFunction) {
+		if (! isSorted) {
+			doSort ();
+		}
+
+		i.listIterator = keyList.begin ();
+	}
+	else {
+		i.mapIterator = valueMap.begin ();
+	}
+
+	return (i);
+}
+
+bool HashMap::hasNext (HashMap::Iterator *i) {
+	if (sortFunction) {
+		return (i->listIterator != keyList.end ());
+	}
+	return (i->mapIterator != valueMap.end ());
+}
+
+StdString HashMap::next (HashMap::Iterator *i) {
+	StdString val;
+
+	if (sortFunction) {
+		if (i->listIterator != keyList.end ()) {
+			val = *(i->listIterator);
+			++(i->listIterator);
+		}
+	}
+	else {
+		if (i->mapIterator != valueMap.end ()) {
+			val = i->mapIterator->first;
+			++(i->mapIterator);
+		}
+	}
+
+	return (val);
+}
