@@ -47,14 +47,10 @@ public:
 	CardView (float viewWidth, float viewHeight);
 	~CardView ();
 
-	typedef bool (*SortFunction) (Widget *a, Widget *b);
 	typedef bool (*MatchFunction) (void *data, Widget *widget);
 
 	// Read-only data members
 	float cardAreaWidth;
-
-	// Set the sort function that should be used to order items in the view
-	void sort (CardView::SortFunction fn);
 
 	// Set the view's size
 	void setViewSize (float viewWidth, float viewHeight);
@@ -62,11 +58,11 @@ public:
 	// Set the size of margin space that should be inserted between items in the view
 	void setItemMarginSize (float marginSize);
 
-	// Set a callback function that should be invoked when an item is clicked
-	void setItemClickCallback (Widget::EventCallback callback, void *callbackData);
-
 	// Set a text string that should be shown as a header label immediately preceding items in the specified row number
 	void setRowHeader (int row, const StdString &headerText, int headerFontType = UiConfiguration::BODY, const Color &color = Color (0.0f, 0.0f, 0.0f));
+
+	// Set the margin size that should be used for items in the specified row, overriding any default item margin size that might have been set
+	void setRowItemMarginSize (int row, float marginSize);
 
 	// Return a boolean value indicating if the card view contains no items
 	bool empty ();
@@ -78,9 +74,9 @@ public:
 	// Return a string value, suitable for use as a new item ID in the view
 	StdString getAvailableItemId ();
 
-	// Add an item to the view. Returns the Widget pointer that was added. If an empty itemId value is provided, the CardView generates one of its own. If the provided row value is zero or greater, assign it for use when positioning items in the view. After adding the item, invoke resetLayout unless shouldSkipResetLayout is true.
-	Widget *addItem (Widget *itemWidget, const StdString &itemId = StdString (""), int row = -1, bool shouldSkipResetLayout = false);
-	Widget *addItem (Widget *itemWidget, const char *itemId, int row = -1, bool shouldSkipResetLayout = false);
+	// Add an item to the view. Returns the Widget pointer that was added. If an empty itemId value is provided, the CardView generates one of its own. If the provided row value is zero or greater, assign it for use when positioning items in the view. After adding the item, invoke refreshLayout unless shouldSkipRefreshLayout is true.
+	Widget *addItem (Widget *itemWidget, const StdString &itemId = StdString (""), int row = 0, bool shouldSkipRefreshLayout = false);
+	Widget *addItem (Widget *itemWidget, const char *itemId, int row = 0, bool shouldSkipRefreshLayout = false);
 
 	// Return a pointer to the item widget with the specified ID, or NULL if the item wasn't found
 	Widget *getItem (const StdString &itemId);
@@ -96,17 +92,22 @@ public:
 	void removeItem (const StdString &itemId);
 	void removeItem (const char *itemId);
 
-	// Remove all items from the view
+	// Remove all items in the specified row from the view and destroy their underlying widgets
+	void removeRowItems (int row);
+
+	// Remove all items from the view and destroy their underlying widgets
 	void removeAllItems ();
 
 	// Process all items in the view by executing the provided function, optionally resetting widget positions afterward
-	void processItems (Widget::EventCallback fn, void *fnData, bool shouldResetLayout = false);
+	void processItems (Widget::EventCallback fn, void *fnData, bool shouldRefreshLayout = false);
+
+	// Process all items in the specified row of the view by executing the provided function, optionally resetting widget positions afterward
+	void processRowItems (int row, Widget::EventCallback fn, void *fnData, bool shouldRefreshLayout = false);
 
 	// Change the view's vertical scroll position to display the specified item
 	void scrollToItem (const StdString &itemId);
 
 	// Callback functions
-	static void itemClicked (void *windowPtr, Widget *widgetPtr);
 	static void scrollBarPositionChanged (void *windowPtr, Widget *widgetPtr);
 
 protected:
@@ -117,7 +118,7 @@ protected:
 	virtual bool doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	virtual void resetLayout ();
+	virtual void refreshLayout ();
 
 private:
 	struct Item {
@@ -127,23 +128,32 @@ private:
 		Item (): widget (NULL), row (-1) { }
 	};
 
+	struct Row {
+		LabelWindow *headerLabel;
+		float itemMarginSize;
+		int itemCount;
+		Row (): headerLabel (NULL), itemMarginSize (-1.0f), itemCount (0) { }
+	};
+
 	// Sort the item list and populate secondary data structures
 	void doSort ();
 
 	// Return an iterator positioned at the specified item in the item list, or the end of the item list if the item wasn't found
 	std::list<CardView::Item>::iterator findItemPosition (const StdString &itemId);
 
+	// Return an iterator positioned at the specified item in the row map, creating the item if it doesn't already exist
+	std::map<int, CardView::Row>::iterator getRow (int rowNumber);
+
+	static bool compareItems (const CardView::Item &a, const CardView::Item &b);
+
 	float itemMarginSize;
 	std::list<CardView::Item> itemList;
-	std::map<int, LabelWindow *> rowHeaderLabelMap;
+	std::map<int, CardView::Row> rowMap;
 
 	// A map of item ID strings to numbers indicating the item's position in itemList
 	HashMap itemIdMap;
 
-	CardView::SortFunction sortFunction;
 	bool isSorted;
-	Widget::EventCallback itemClickCallback;
-	void *itemClickCallbackData;
 	ScrollBar *scrollBar;
 };
 

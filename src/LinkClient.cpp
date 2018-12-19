@@ -183,6 +183,7 @@ void LinkClient::start () {
 	SDL_Thread *thread;
 	bool shouldrun;
 
+	LinkClient::initLib ();
 	shouldrun = false;
 	SDL_LockMutex (runMutex);
 	if (! isRunning) {
@@ -204,6 +205,11 @@ void LinkClient::start () {
 		contextinfo.ws_ping_pong_interval = 0;
 		contextinfo.extensions = libwebsocketExts;
 		contextinfo.user = this;
+
+		if (App::getInstance ()->isHttpsEnabled) {
+			contextinfo.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
+		}
+
 		context = lws_create_context (&contextinfo);
 		if (! context) {
 			Log::write (Log::ERR, "Failed to create libwebsockets context; url=\"%s\"", url.c_str ());
@@ -220,13 +226,11 @@ void LinkClient::start () {
 		return;
 	}
 	SDL_DetachThread (thread);
-	Log::write (Log::DEBUG, "Connecting WebSocket client; url=\"%s\"", url.c_str ());
 }
 
 void LinkClient::stop (bool shouldWait) {
 	SDL_LockMutex (runMutex);
 	if (isRunning && (! isStopped)) {
-		Log::write (Log::DEBUG, "WebSocket client stopped");
 		isStopped = true;
 	}
 	if (shouldWait) {
@@ -246,26 +250,20 @@ void LinkClient::initLib () {
 
 	level = 0;
 	lws_set_log_level (level, LinkClient::logCallback);
-
-	Log::write (Log::DEBUG, "libwebsockets initialized; version=%s", lws_get_library_version ());
-
 	initLibDone = true;
 }
 
 void LinkClient::logCallback (int level, const char *line) {
-	Log::write (Log::DEBUG3, "libwebsockets/0x%x %s", level, line);
 }
 
 int LinkClient::runThread (void *clientPtr) {
 	LinkClient *client;
 
 	client = (LinkClient *) clientPtr;
-	Log::write (Log::DEBUG, "Thread start; name=LinkClient::runThread id=0x%lx url=\"%s\"", SDL_ThreadID (), client->url.c_str ());
 
 	client->run ();
 
 	client->clear ();
-	Log::write (Log::DEBUG, "Thread end; name=LinkClient::runThread id=0x%lx url=\"%s\"", SDL_ThreadID (), client->url.c_str ());
 
 	SDL_LockMutex (client->runMutex);
 	client->isRunning = false;
@@ -280,8 +278,6 @@ void LinkClient::run () {
 	int result, port, sz;
 	const char *protocol, *address, *path;
 	int64_t now;
-
-	LinkClient::initLib ();
 
 	if (url.empty ()) {
 		return;
@@ -302,17 +298,27 @@ void LinkClient::run () {
 		return;
 	}
 
+	urlPath.assign ("");
+	if (path[0] != '/') {
+		urlPath.append ("/");
+	}
+	urlPath.append (path);
 	memset (&clientinfo, 0, sizeof (clientinfo));
 	clientinfo.context = context;
 	clientinfo.address = address;
 	clientinfo.port = port;
-	clientinfo.path = "/socket.io/?transport=websocket";
+	clientinfo.path = urlPath.c_str ();
 	clientinfo.host = clientinfo.address;
 	clientinfo.origin = clientinfo.address;
 	clientinfo.ietf_version_or_minus_one = -1;
 
-	// TODO: Possibly enable SSL here
-	clientinfo.ssl_connection = 0;
+	if (app->isHttpsEnabled) {
+		// TODO: Possibly enable certificate validation (currently disabled to allow use of self-signed certificates)
+		clientinfo.ssl_connection = LCCSCF_USE_SSL | LCCSCF_ALLOW_SELFSIGNED | LCCSCF_SKIP_SERVER_CERT_HOSTNAME_CHECK | LCCSCF_ALLOW_EXPIRED;
+	}
+	else {
+		clientinfo.ssl_connection = 0;
+	}
 
 	lws = lws_client_connect_via_info (&clientinfo);
 	if (! lws) {
@@ -446,7 +452,6 @@ void LinkClient::receiveData (char *data, int dataLength) {
 			else {
 				sessionId = json->getString ("sid", "");
 				pingInterval = json->getNumber ("pingInterval", LinkClient::defaultPingInterval);
-				Log::write (Log::DEBUG, "WebSocket connection open; url=\"%s\" sessionId=\"%s\" pingInterval=%i", url.c_str (), sessionId.c_str (), pingInterval);
 				isConnected = true;
 				if (pingInterval <= 0) {
 					nextPingTime = 0;
@@ -462,7 +467,6 @@ void LinkClient::receiveData (char *data, int dataLength) {
 			break;
 		}
 		case '1': { // close
-			Log::write (Log::DEBUG, "WebSocket connection closed by engine.io protocol packet; url=\"%s\"", url.c_str ());
 			isClosing = true;
 			break;
 		}
@@ -497,8 +501,6 @@ void LinkClient::receiveData (char *data, int dataLength) {
 void LinkClient::processCommandMessage (char *data, int dataLength) {
 	StdString s, prefix;
 	size_t pos1, pos2;
-	uint8_t *buf;
-	int buflen;
 	Json *cmd;
 
 	if ((! data) || (dataLength <= 0)) {
@@ -507,8 +509,7 @@ void LinkClient::processCommandMessage (char *data, int dataLength) {
 
 	if (! commandBuffer.empty ()) {
 		commandBuffer.add ((uint8_t *) data, dataLength);
-		commandBuffer.getData (&buf, &buflen);
-		s.assign ((char *) buf, buflen);
+		s.assignBuffer (&commandBuffer);
 	}
 	else {
 		s.assign (data, dataLength);
@@ -526,8 +527,7 @@ void LinkClient::processCommandMessage (char *data, int dataLength) {
 		if (commandBuffer.empty ()) {
 			commandBuffer.add ((uint8_t *) data, dataLength);
 		}
-		commandBuffer.getData (&buf, &buflen);
-		if (buflen > LinkClient::maxCommandSize) {
+		if (commandBuffer.length > LinkClient::maxCommandSize) {
 			commandBuffer.reset ();
 		}
 		return;
@@ -539,8 +539,7 @@ void LinkClient::processCommandMessage (char *data, int dataLength) {
 		if (commandBuffer.empty ()) {
 			commandBuffer.add ((uint8_t *) data, dataLength);
 		}
-		commandBuffer.getData (&buf, &buflen);
-		if (buflen > LinkClient::maxCommandSize) {
+		if (commandBuffer.length > LinkClient::maxCommandSize) {
 			commandBuffer.reset ();
 		}
 		return;
@@ -564,14 +563,13 @@ int LinkClient::protocolCallback (struct lws *wsi, enum lws_callback_reasons rea
 	result = 0;
 	switch (reason) {
 		case LWS_CALLBACK_CLIENT_CONNECTION_ERROR: {
-			Log::write (Log::ERR, "WebSocket connection error; url=\"%s\" err=\"%s\"", client->url.c_str (), in ? StdString ((char *) in, len).c_str () : "unspecified connection failure");
+			Log::write (Log::DEBUG, "WebSocket connection error; url=\"%s\" err=\"%s\"", client->url.c_str (), in ? StdString ((char *) in, len).c_str () : "unspecified connection failure");
 			break;
 		}
 		case LWS_CALLBACK_CLIENT_ESTABLISHED: {
 			break;
 		}
 		case LWS_CALLBACK_CLOSED: {
-			Log::write (Log::DEBUG, "WebSocket connection closed; url=\"%s\"", client->url.c_str ());
 			client->isConnected = false;
 			client->isClosing = true;
 			if (client->disconnectCallback) {

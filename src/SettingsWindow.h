@@ -53,7 +53,6 @@ public:
 	void setWindowSize (float windowWidth, float windowHeight);
 
 	// Callback functions
-	static void headerImageLoaded (void *windowPtr, Widget *widgetPtr);
 	static StdString windowSizeSliderValueName (float sliderValue);
 	static StdString textSizeSliderValueName (float sliderValue);
 	static void closeButtonClicked (void *windowPtr, Widget *widgetPtr);
@@ -68,11 +67,15 @@ protected:
 	// Execute subclass-specific operations to refresh the widget's layout as appropriate for the current set of UiConfiguration values
 	void doRefresh ();
 
+	// Execute operations to update object state as appropriate for an elapsed millisecond time period and origin position
+	void doUpdate (int msElapsed, float originX, float originY);
+
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	void resetLayout ();
+	void refreshLayout ();
 
 private:
 	ImageWindow *headerImage;
+	bool isHeaderImageLoaded;
 	LabelWindow *titleLabel;
 	Button *closeButton;
 	Label *windowSizeLabel;

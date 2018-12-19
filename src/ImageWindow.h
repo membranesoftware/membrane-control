@@ -34,7 +34,7 @@
 #define IMAGE_WINDOW_H
 
 #include "StdString.h"
-#include "Buffer.h"
+#include "SharedBuffer.h"
 #include "Image.h"
 #include "Sprite.h"
 #include "Panel.h"
@@ -46,9 +46,6 @@ public:
 
 	// Set the amount of size padding that should be applied to the window
 	void setPadding (float widthPadding, float heightPadding);
-
-	// Set a callback that should be invoked when the image loads content successfully
-	void setLoadCallback (Widget::EventCallback callback, void *callbackData);
 
 	// Set the fixed size for the window. If the window's image does not fill the provided size, it is centered inside a larger background space.
 	void setWindowSize (float windowSizeWidth, float windowSizeHeight);
@@ -68,6 +65,9 @@ public:
 	// Return a boolean value indicating if the image window is loaded with content
 	bool isLoaded ();
 
+	// Return a boolean value indicating if the image window is configured with a source URL and holds state indicating that it should show content
+	bool shouldShowUrlImage ();
+
 	// Reload image content from the window's source URL
 	void reload ();
 
@@ -78,9 +78,9 @@ public:
 	void setScale (float scale);
 
 	// Callback functions
-	static void getImageComplete (void *windowPtr, const StdString &targetUrl, int statusCode, Buffer *responseData);
-	static void createUrlTextureComplete (void *windowPtr, const StdString &path, SDL_Surface *surface, SDL_Texture *texture);
-	static void createResourceTextureComplete (void *windowPtr, const StdString &path, SDL_Surface *surface, SDL_Texture *texture);
+	static void getImageComplete (void *windowPtr, const StdString &targetUrl, int statusCode, SharedBuffer *responseData);
+	static void createResourceDataTexture (void *windowPtr);
+	static void createResourcePathTexture (void *windowPtr);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
@@ -90,11 +90,20 @@ protected:
 	void doUpdate (int msElapsed, float originX, float originY);
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	void resetLayout ();
+	void refreshLayout ();
 
 private:
 	// Execute operations to load content using the value stored in imageUrl
 	void requestImage ();
+
+	// Execute operations appropriate after an image request completes, optionally disabling subsequent load attempts
+	void endRequestImage (bool disableLoad = false);
+
+	// Execute operations to load content using the value stored in imageResourcePath
+	void loadImageResource ();
+
+	// Execute operations appropriate after an image load from resources completes, optionally clearing the image resource path
+	void endLoadImageResource (bool clearResourcePath = false);
 
 	Image *image;
 	bool isWindowSizeEnabled;
@@ -104,12 +113,11 @@ private:
 	StdString imageResourcePath;
 	bool isImageResourceLoaded;
 	bool isLoadingImageResource;
+	SharedBuffer *imageResourceData;
 	StdString imageUrl;
 	bool isImageUrlLoaded;
 	bool isLoadingImageUrl;
 	bool isImageUrlLoadDisabled;
-	Widget::EventCallback loadCallback;
-	void *loadCallbackData;
 };
 
 #endif

@@ -66,7 +66,7 @@ protected:
 	virtual void doProcessMouseState (const Widget::MouseState &mouseState);
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	virtual void resetLayout ();
+	virtual void refreshLayout ();
 
 private:
 	// Clear the isSelected state for each item in the specified group

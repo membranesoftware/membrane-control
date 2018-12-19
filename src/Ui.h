@@ -35,6 +35,7 @@
 
 #include "SDL2/SDL.h"
 #include "StdString.h"
+#include "StringList.h"
 #include "Widget.h"
 #include "WidgetHandle.h"
 #include "Panel.h"
@@ -53,6 +54,7 @@ public:
 	Panel *rootPanel;
 	bool isLoaded;
 	bool isFirstResumeComplete;
+	bool isLinkConnected;
 
 	// Increase the object's refcount
 	void retain ();
@@ -72,8 +74,8 @@ public:
 	// Execute operations appropriate when an agent control link client becomes disconnected
 	virtual void handleLinkClientDisconnect (const StdString &agentId, const StdString &errorDescription);
 
-	// Execute actions appropriate for a command received from the agent control link client
-	virtual void handleLinkClientCommand (const StdString &agentId, Json *command);
+	// Execute actions appropriate for a command received from an agent control link client
+	virtual void handleLinkClientCommand (const StdString &agentId, int commandId, Json *command);
 
 	// Set fields in the provided HelpWindow widget as appropriate for the UI's help content
 	virtual void setHelpWindowContent (Widget *helpWindowPtr);
@@ -122,6 +124,9 @@ public:
 
 	// Return the widget matching the specified ID and type name, or NULL if no such widget was found
 	Widget *findWidget (uint64_t widgetId, const StdString &widgetTypeName);
+
+	// Return a boolean value indicating if one of the UI's side windows is open
+	bool isSideWindowOpen ();
 
 	// Callback functions
 	static void backButtonClicked (void *uiPtr, Widget *widgetPtr);
@@ -188,6 +193,12 @@ protected:
 	// Add a back button to the provided toolbar and associate it with a click handler that pops the top UI from the application
 	void addMainToolbarBackButton (Toolbar *toolbar);
 
+	// Set the link client connection state that should be maintained for agents with ID values appearing in linkAgentIds
+	void setLinkConnected (bool connected);
+
+	// Add the specified agent ID to the set that should be maintained with a link client connection
+	void addLinkAgent (const StdString &agentId);
+
 	SpriteGroup sprites;
 	WidgetHandle breadcrumbChip;
 	WidgetHandle tooltip;
@@ -199,6 +210,7 @@ protected:
 	int mouseHoverClock;
 	bool isMouseHoverActive;
 	bool isMouseHoverSuspended;
+	StringList linkAgentIds;
 
 private:
 	// Execute actions appropriate when the main menu button has been clicked

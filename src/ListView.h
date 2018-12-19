@@ -33,7 +33,7 @@
 #ifndef LIST_VIEW_H
 #define LIST_VIEW_H
 
-#include <list>
+#include <vector>
 #include "StdString.h"
 #include "StringList.h"
 #include "Button.h"
@@ -64,8 +64,11 @@ public:
 	// Return the number of items in the view's list
 	int getItemCount ();
 
+	// Return the itemData pointer associated with the specified item index, or NULL if no such data was found
+	void *getItemData (int itemIndex);
+
 	// Add an item to the view's list
-	void addItem (const StdString &itemText);
+	void addItem (const StdString &itemText, void *itemData = NULL, Widget::FreeFunction itemFree = NULL);
 
 	// Callback functions
 	static void deleteButtonClicked (void *listViewPtr, Widget *widgetPtr);
@@ -78,20 +81,22 @@ protected:
 	virtual void doRefresh ();
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	virtual void resetLayout ();
+	virtual void refreshLayout ();
 
 private:
 	struct Item {
 		StdString text;
 		Panel *panel;
 		Label *label;
-		Item (): panel (NULL), label (NULL) { }
+		void *data;
+		Widget::FreeFunction dataFree;
+		Item (): panel (NULL), label (NULL), data (NULL), dataFree (NULL) { }
 	};
 
 	float viewWidth;
 	int minItemHeight;
 	int itemFontType;
-	std::list<ListView::Item> itemList;
+	std::vector<ListView::Item> itemList;
 	LabelWindow *titleLabel;
 	Label *emptyStateLabel;
 	Button *deleteButton;

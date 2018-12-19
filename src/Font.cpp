@@ -82,27 +82,24 @@ void Font::clearGlyphMap () {
 	glyphMap.clear ();
 }
 
-int Font::load (Buffer *data, int pointSize) {
+int Font::load (Buffer *fontData, int pointSize) {
 	App *app;
 	Font::Glyph glyph;
 	FT_GlyphSlot slot;
 	SDL_Surface *surface;
 	const char *charlist = FONT_CHARACTERS;
 	char *s, c;
-	int result, charindex, x, y, w, h, pitch, maxw, buflen, maxtopbearing;
-	uint8_t *bufdata, *row, *bitmap, alpha;
+	int result, charindex, x, y, w, h, pitch, maxw, maxtopbearing;
+	uint8_t *row, *bitmap, alpha;
 	Uint32 *pixels, *dest, color, rmask, gmask, bmask, amask;
 	std::map<char, Font::Glyph>::iterator i, end;
 
 	app = App::getInstance ();
-	data->getData (&bufdata, &buflen);
-	result = FT_New_Memory_Face (freetype, (FT_Byte *) bufdata, buflen, 0, &face);
+	result = FT_New_Memory_Face (freetype, (FT_Byte *) fontData->data, fontData->length, 0, &face);
 	if (result != 0) {
 		Log::write (Log::ERR, "Failed to load font; name=\"%s\" err=\"FT_New_Memory_Face: %i\"", name.c_str (), result);
 		return (Result::ERROR_FREETYPE_OPERATION_FAILED);
 	}
-
-
 	result = FT_Set_Char_Size (face, pointSize << 6, 0, 100, 0);
 	if (result != 0) {
 		Log::write (Log::ERR, "Failed to load font; name=\"%s\" err=\"FT_Set_Char_Size: %i\"", name.c_str (), result);

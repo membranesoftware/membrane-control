@@ -199,7 +199,7 @@ void StdString::capitalize () {
 		return;
 	}
 
-	replace (0, 1, 1, toupper (c));
+	std::string::replace (0, 1, 1, toupper (c));
 }
 
 StdString StdString::capitalized () const {
@@ -235,6 +235,32 @@ StdString StdString::truncated (int maxLength, const StdString &suffix) const {
 
 	s.assign (c_str ());
 	s.truncate (maxLength, suffix);
+
+	return (s);
+}
+
+void StdString::replace (const StdString &oldText, const StdString &newText) {
+	size_t curpos, pos, oldtextlen, newtextlen;
+
+	oldtextlen = oldText.length ();
+	newtextlen = newText.length ();
+	curpos = 0;
+	while (true) {
+		pos = find (oldText, curpos);
+		if (pos == StdString::npos) {
+			break;
+		}
+
+		std::string::replace (pos, oldtextlen, newText);
+		curpos = pos + newtextlen;
+	}
+}
+
+StdString StdString::replaced (const StdString &oldText, const StdString &newText) {
+	StdString s;
+
+	s.assign (c_str ());
+	s.replace (oldText, newText);
 
 	return (s);
 }
@@ -475,7 +501,7 @@ bool StdString::parseFloat (const char *str, float *value) {
 	return (true);
 }
 
-bool StdString::parseAddress (const char *str, StdString *hostnameValue, int *portValue) {
+bool StdString::parseAddress (const char *str, StdString *hostnameValue, int *portValue, int defaultPortValue) {
 	StdString s, hostname;
 	int port;
 	size_t pos;
@@ -485,7 +511,7 @@ bool StdString::parseAddress (const char *str, StdString *hostnameValue, int *po
 		return (false);
 	}
 
-	port = 0;
+	port = defaultPortValue;
 	pos = s.find (":");
 	if (pos == StdString::npos) {
 		hostname.assign (s);
@@ -494,6 +520,10 @@ bool StdString::parseAddress (const char *str, StdString *hostnameValue, int *po
 		if (! StdString::parseInt (s.substr (pos + 1).c_str (), &port)) {
 			return (false);
 		}
+		if ((port <= 0) || (port > 65535)) {
+			return (false);
+		}
+
 		hostname.assign (s.substr (0, pos));
 	}
 
@@ -515,12 +545,8 @@ Buffer *StdString::createBuffer () {
 	return (buffer);
 }
 
-void StdString::assignFromBuffer (Buffer *buffer) {
-	uint8_t *data;
-	int len;
-
-	buffer->getData (&data, &len);
-	assign ((char *) data, len);
+void StdString::assignBuffer (Buffer *buffer) {
+	assign ((char *) buffer->data, buffer->length);
 }
 
 void StdString::split (const char *delimiter, std::list<StdString> *destList) {

@@ -65,6 +65,9 @@ public:
 	// Remove characters from the end of a string value as needed for a Label to fit in the specified maximum width, including space for an optional truncate suffix
 	static void truncateText (StdString *text, int fontType, float maxWidth, const StdString &truncateSuffix = StdString (""));
 
+	// Truncate the provided text using the truncateText method and return the resulting string
+	static StdString getTruncatedText (const StdString &text, int fontType, float maxWidth, const StdString &truncateSuffix = StdString (""));
+
 	// Set the label's text, changing its active font if a type is provided
 	void setText (const StdString &labelText, int fontType = -1, bool forceFontReload = false);
 
@@ -76,6 +79,15 @@ public:
 
 	// Return the provided y position value, adjusted as appropriate for the label's line height
 	float getLinePosition (float targetY);
+
+	// Assign the widget's position to the provided x/y values, then reset positionX as appropriate for a rightward flow. If rightExtent and bottomExtent are provided, update them with the widget's right (x plus width) and bottom (y plus height) extents if greater.
+	virtual void flowRight (float *positionX, float positionY, float *rightExtent = NULL, float *bottomExtent = NULL);
+
+	// Assign the widget's position to the provided x/y values, then reset positionY as appropriate for a downward flow. If rightExtent and bottomExtent are provided, update them with the widget's right (x plus width) and bottom (y plus height) extents if greater.
+	virtual void flowDown (float positionX, float *positionY, float *rightExtent = NULL, float *bottomExtent = NULL);
+
+	// Assign the widget's y position to a centered value within the provided vertical extents
+	virtual void centerVertical (float topExtent, float bottomExtent);
 
 protected:
 	// Execute operations to update object state as appropriate for an elapsed millisecond time period and origin position

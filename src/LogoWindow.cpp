@@ -49,7 +49,7 @@ LogoWindow::LogoWindow ()
 , logoImage (NULL)
 , dateLabel (NULL)
 , timeLabel (NULL)
-, timeLabelMaxWidth (0.0f)
+, lastDisplayTime (0)
 {
 	App *app;
 	UiConfiguration *uiconfig;
@@ -60,15 +60,14 @@ LogoWindow::LogoWindow ()
 	logoImage->setDrawColor (true, uiconfig->mediumSecondaryColor);
 
 	dateLabel = (Label *) addWidget (new Label (Util::getDateString (), UiConfiguration::CAPTION, uiconfig->inverseTextColor));
-	timeLabel = (Label *) addWidget (new Label (StdString ("99:99:99"), UiConfiguration::CAPTION, uiconfig->inverseTextColor));
-	timeLabelMaxWidth = timeLabel->width;
+	timeLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CAPTION, uiconfig->inverseTextColor));
 	timeLabel->setText (Util::getTimeString ());
 	if (! app->prefsMap.find (App::prefsShowClock, false)) {
 		dateLabel->isVisible = false;
 		timeLabel->isVisible = false;
 	}
 
-	resetLayout ();
+	refreshLayout ();
 }
 
 LogoWindow::~LogoWindow () {
@@ -97,7 +96,7 @@ void LogoWindow::doRefresh () {
 	Panel::doRefresh ();
 }
 
-void LogoWindow::resetLayout () {
+void LogoWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y;
 
@@ -111,23 +110,27 @@ void LogoWindow::resetLayout () {
 		y += (uiconfig->textLineHeightMargin * 2.0f);
 		dateLabel->position.assign (x, dateLabel->getLinePosition (y));
 		y += dateLabel->maxLineHeight + uiconfig->textLineHeightMargin;
-		x += dateLabel->width;
 	}
 	if (timeLabel->isVisible) {
-		timeLabel->position.assign (x - timeLabelMaxWidth, timeLabel->getLinePosition (y));
+		timeLabel->position.assign (x, timeLabel->getLinePosition (y));
 	}
 
 	resetSize ();
 }
 
 void LogoWindow::doUpdate (int msElapsed, float originX, float originY) {
-	if (dateLabel->isVisible) {
-		dateLabel->setText (Util::getDateString ());
-	}
-	if (timeLabel->isVisible) {
-		timeLabel->setText (Util::getTimeString ());
-	}
+	int64_t t;
+
 	Panel::doUpdate (msElapsed, originX, originY);
 
-	resetLayout ();
+	if (dateLabel->isVisible || timeLabel->isVisible) {
+		t = Util::getTime ();
+		t /= 1000;
+		if (lastDisplayTime != t) {
+			lastDisplayTime = t;
+			dateLabel->setText (Util::getDateString (t * 1000));
+			timeLabel->setText (Util::getTimeString (t * 1000));
+			refreshLayout ();
+		}
+	}
 }

@@ -51,8 +51,8 @@
 #include "HelpWindow.h"
 #include "CardView.h"
 #include "IconLabelWindow.h"
-#include "WebKioskWindow.h"
-#include "WebDisplayIntentWindow.h"
+#include "MonitorWindow.h"
+#include "WebPlaylistWindow.h"
 #include "WebKioskUi.h"
 
 const StdString WebKioskUi::serverApplicationName = StdString ("Membrane Monitor");
@@ -65,8 +65,8 @@ WebKioskUi::WebKioskUi ()
 , addUrlButton (NULL)
 , browseUrlButton (NULL)
 , showUrlButton (NULL)
-, addIntentButton (NULL)
-, writeIntentButton (NULL)
+, addPlaylistButton (NULL)
+, writePlaylistButton (NULL)
 , clearDisplayButton (NULL)
 {
 
@@ -81,7 +81,7 @@ StdString WebKioskUi::getSpritePath () {
 }
 
 StdString WebKioskUi::getBreadcrumbTitle () {
-	return (App::getInstance ()->uiText.webKiosk.capitalized ());
+	return (App::getInstance ()->uiText.getText (UiTextString::webKiosk).capitalized ());
 }
 
 Sprite *WebKioskUi::getBreadcrumbSprite () {
@@ -97,26 +97,27 @@ void WebKioskUi::setHelpWindowContent (Widget *helpWindowPtr) {
 	app = App::getInstance ();
 	uitext = &(app->uiText);
 
-	help->setHelpText (uitext->webKioskUiHelpTitle, uitext->webKioskUiHelpText);
+	help->setHelpText (uitext->getText (UiTextString::webKioskUiHelpTitle), uitext->getText (UiTextString::webKioskUiHelpText));
 	if (agentCount <= 0) {
-		help->addAction (uitext->webKioskUiHelpAction1Text);
+		help->addAction (uitext->getText (UiTextString::webKioskUiHelpAction1Text));
 	}
 	else {
-		help->addAction (uitext->webKioskUiHelpAction2Text);
+		help->addAction (uitext->getText (UiTextString::webKioskUiHelpAction2Text));
 	}
 
-	help->addTopicLink (uitext->membraneSoftwareOverview, Util::getHelpUrl ("membrane-software-overview"));
-	help->addTopicLink (uitext->searchForHelp, Util::getHelpUrl (""));
+	help->addTopicLink (uitext->getText (UiTextString::membraneSoftwareOverview), Util::getHelpUrl ("membrane-software-overview"));
+	help->addTopicLink (uitext->getText (UiTextString::searchForHelp), Util::getHelpUrl (""));
 }
 
-WebDisplayIntentWindow *WebKioskUi::createIntentWindow () {
-	WebDisplayIntentWindow *window;
+WebPlaylistWindow *WebKioskUi::createWebPlaylistWindow () {
+	WebPlaylistWindow *window;
 
-	window = new WebDisplayIntentWindow (&sprites);
-	window->setSelectStateChangeCallback (WebKioskUi::intentSelectStateChanged, this);
-	window->setNameClickCallback (WebKioskUi::intentNameClicked, this);
-	window->setMenuClickCallback (WebKioskUi::intentMenuClicked, this);
-	window->setUrlListChangeCallback (WebKioskUi::intentUrlListChanged, this);
+	window = new WebPlaylistWindow ();
+	window->setSelectStateChangeCallback (WebKioskUi::playlistSelectStateChanged, this);
+	window->setExpandStateChangeCallback (WebKioskUi::playlistExpandStateChanged, this);
+	window->setNameClickCallback (WebKioskUi::playlistNameClicked, this);
+	window->setMenuClickCallback (WebKioskUi::playlistMenuClicked, this);
+	window->setUrlListChangeCallback (WebKioskUi::playlistUrlListChanged, this);
 
 	return (window);
 }
@@ -132,10 +133,8 @@ int WebKioskUi::doLoad () {
 
 	cardView = (CardView *) addWidget (new CardView (app->windowWidth - app->rightBarWidth, app->windowHeight - app->topBarHeight - app->bottomBarHeight));
 	cardView->isKeyboardScrollEnabled = true;
-	cardView->setRowHeader (0, uitext->webKiosks.capitalized (), UiConfiguration::TITLE, uiconfig->inverseTextColor);
-	cardView->setRowHeader (1, uitext->programs.capitalized (), UiConfiguration::TITLE, uiconfig->inverseTextColor);
-// TODO: Add a card sort function
-//	cardView->sort (WebKioskUi::sortAgentCards);
+	cardView->setRowHeader (0, uitext->getText (UiTextString::webKiosks).capitalized (), UiConfiguration::TITLE, uiconfig->inverseTextColor);
+	cardView->setRowHeader (1, uitext->getText (UiTextString::programs).capitalized (), UiConfiguration::TITLE, uiconfig->inverseTextColor);
 	cardView->position.assign (0.0f, app->topBarHeight);
 
 	return (Result::SUCCESS);
@@ -143,7 +142,7 @@ int WebKioskUi::doLoad () {
 
 void WebKioskUi::doUnload () {
 	selectedAgentMap.clear ();
-	selectedIntentId.assign ("");
+	selectedPlaylistId.assign ("");
 	actionWidget.destroyAndClear ();
 	actionTarget.clear ();
 	commandPopup.destroyAndClear ();
@@ -156,8 +155,9 @@ void WebKioskUi::doResetMainToolbar (Toolbar *toolbar) {
 
 	app = App::getInstance ();
 	button = new Button (StdString (""), app->uiConfig.coreSprites.getSprite (UiConfiguration::RELOAD_BUTTON));
+	button->setInverseColor (true);
 	button->setMouseClickCallback (WebKioskUi::reloadButtonClicked, this);
-	button->setMouseHoverTooltip (app->uiText.reloadTooltip);
+	button->setMouseHoverTooltip (app->uiText.getText (UiTextString::reloadTooltip));
 	toolbar->addRightItem (button);
 
 	addMainToolbarBackButton (toolbar);
@@ -172,56 +172,66 @@ void WebKioskUi::doResetSecondaryToolbar (Toolbar *toolbar) {
 	uiconfig = &(app->uiConfig);
 	uitext = &(app->uiText);
 
-	addressField = new TextFieldWindow (app->windowWidth * 0.5f, uitext->enterUrlPrompt, uiconfig->coreSprites.getSprite (UiConfiguration::WEB_LINK_ICON));
+	addressField = new TextFieldWindow (app->windowWidth * 0.5f, uitext->getText (UiTextString::enterUrlPrompt), uiconfig->coreSprites.getSprite (UiConfiguration::WEB_LINK_ICON));
 	addressField->setPadding (uiconfig->paddingSize, 0.0f);
 	addressField->setButtonsEnabled (false, false, true, true);
 	toolbar->addLeftItem (addressField);
 
-	addUrlButton = new Button (StdString (""), sprites.getSprite (WebKioskUi::ADD_URL_BUTTON));
-	addUrlButton->shortcutKey = SDLK_F1;
-	addUrlButton->setMouseClickCallback (WebKioskUi::addUrlButtonClicked, this);
-	addUrlButton->setMouseHoverTooltip (app->uiText.webKioskUiAddUrlTooltip);
-	addUrlButton->setMouseEnterCallback (WebKioskUi::commandButtonMouseEntered, this);
-	addUrlButton->setMouseExitCallback (WebKioskUi::commandButtonMouseExited, this);
-	toolbar->addLeftItem (addUrlButton);
-
 	browseUrlButton = new Button (StdString (""), sprites.getSprite (WebKioskUi::BROWSE_URL_BUTTON));
-	browseUrlButton->shortcutKey = SDLK_F2;
+	browseUrlButton->setInverseColor (true);
+	browseUrlButton->shortcutKey = SDLK_F1;
 	browseUrlButton->setMouseClickCallback (WebKioskUi::browseUrlButtonClicked, this);
-	browseUrlButton->setMouseHoverTooltip (app->uiText.webKioskUiBrowseUrlTooltip);
+	browseUrlButton->setMouseHoverTooltip (uitext->getText (UiTextString::webKioskUiBrowseUrlTooltip));
 	browseUrlButton->setMouseEnterCallback (WebKioskUi::commandButtonMouseEntered, this);
 	browseUrlButton->setMouseExitCallback (WebKioskUi::commandButtonMouseExited, this);
 	toolbar->addLeftItem (browseUrlButton);
 
 	showUrlButton = new Button (StdString (""), sprites.getSprite (WebKioskUi::SHOW_URL_BUTTON));
-	showUrlButton->shortcutKey = SDLK_F3;
+	showUrlButton->setInverseColor (true);
+	showUrlButton->shortcutKey = SDLK_F6;
 	showUrlButton->setMouseClickCallback (WebKioskUi::showUrlButtonClicked, this);
-	showUrlButton->setMouseHoverTooltip (app->uiText.webKioskUiShowUrlTooltip);
+	showUrlButton->setMouseHoverTooltip (uitext->getText (UiTextString::webKioskUiShowUrlTooltip), Widget::LEFT);
 	showUrlButton->setMouseEnterCallback (WebKioskUi::commandButtonMouseEntered, this);
 	showUrlButton->setMouseExitCallback (WebKioskUi::commandButtonMouseExited, this);
-	toolbar->addLeftItem (showUrlButton);
+	toolbar->addRightItem (showUrlButton);
 
-	addIntentButton = new Button (StdString (""), sprites.getSprite (WebKioskUi::ADD_INTENT_BUTTON));
-	addIntentButton->shortcutKey = SDLK_F6;
-	addIntentButton->setMouseClickCallback (WebKioskUi::addIntentButtonClicked, this);
-	addIntentButton->setMouseHoverTooltip (app->uiText.webKioskUiAddIntentTooltip, Widget::LEFT);
-	toolbar->addRightItem (addIntentButton);
-
-	writeIntentButton = new Button (StdString (""), sprites.getSprite (WebKioskUi::WRITE_INTENT_BUTTON));
-	writeIntentButton->shortcutKey = SDLK_F5;
-	writeIntentButton->setMouseClickCallback (WebKioskUi::writeIntentButtonClicked, this);
-	writeIntentButton->setMouseHoverTooltip (app->uiText.webKioskUiWriteIntentTooltip, Widget::LEFT);
-	writeIntentButton->setMouseEnterCallback (WebKioskUi::commandButtonMouseEntered, this);
-	writeIntentButton->setMouseExitCallback (WebKioskUi::commandButtonMouseExited, this);
-	toolbar->addRightItem (writeIntentButton);
+	writePlaylistButton = new Button (StdString (""), sprites.getSprite (WebKioskUi::WRITE_INTENT_BUTTON));
+	writePlaylistButton->setInverseColor (true);
+	writePlaylistButton->shortcutKey = SDLK_F5;
+	writePlaylistButton->setMouseClickCallback (WebKioskUi::writePlaylistButtonClicked, this);
+	writePlaylistButton->setMouseHoverTooltip (uitext->getText (UiTextString::webKioskUiWritePlaylistTooltip), Widget::LEFT);
+	writePlaylistButton->setMouseEnterCallback (WebKioskUi::commandButtonMouseEntered, this);
+	writePlaylistButton->setMouseExitCallback (WebKioskUi::commandButtonMouseExited, this);
+	toolbar->addRightItem (writePlaylistButton);
 
 	clearDisplayButton = new Button (StdString (""), sprites.getSprite (WebKioskUi::CLEAR_DISPLAY_BUTTON));
+	clearDisplayButton->setInverseColor (true);
 	clearDisplayButton->shortcutKey = SDLK_F4;
 	clearDisplayButton->setMouseClickCallback (WebKioskUi::clearDisplayButtonClicked, this);
-	clearDisplayButton->setMouseHoverTooltip (app->uiText.webKioskUiClearDisplayTooltip, Widget::LEFT);
+	clearDisplayButton->setMouseHoverTooltip (uitext->getText (UiTextString::webKioskUiClearDisplayTooltip), Widget::LEFT);
 	clearDisplayButton->setMouseEnterCallback (WebKioskUi::commandButtonMouseEntered, this);
 	clearDisplayButton->setMouseExitCallback (WebKioskUi::commandButtonMouseExited, this);
 	toolbar->addRightItem (clearDisplayButton);
+
+	toolbar->addRightSpacer ();
+
+	addUrlButton = new Button (StdString (""), sprites.getSprite (WebKioskUi::ADD_URL_BUTTON));
+	addUrlButton->setInverseColor (true);
+	addUrlButton->shortcutKey = SDLK_F3;
+	addUrlButton->setMouseClickCallback (WebKioskUi::addUrlButtonClicked, this);
+	addUrlButton->setMouseHoverTooltip (uitext->getText (UiTextString::webKioskUiAddUrlTooltip), Widget::LEFT);
+	addUrlButton->setMouseEnterCallback (WebKioskUi::commandButtonMouseEntered, this);
+	addUrlButton->setMouseExitCallback (WebKioskUi::commandButtonMouseExited, this);
+	toolbar->addRightItem (addUrlButton);
+
+	addPlaylistButton = new Button (StdString (""), sprites.getSprite (WebKioskUi::ADD_INTENT_BUTTON));
+	addPlaylistButton->setInverseColor (true);
+	addPlaylistButton->shortcutKey = SDLK_F2;
+	addPlaylistButton->setMouseClickCallback (WebKioskUi::addPlaylistButtonClicked, this);
+	addPlaylistButton->setMouseHoverTooltip (uitext->getText (UiTextString::webKioskUiAddPlaylistTooltip), Widget::LEFT);
+	addPlaylistButton->setMouseEnterCallback (WebKioskUi::commandButtonMouseEntered, this);
+	addPlaylistButton->setMouseExitCallback (WebKioskUi::commandButtonMouseExited, this);
+	toolbar->addRightItem (addPlaylistButton);
 
 	toolbar->isVisible = true;
 }
@@ -234,8 +244,8 @@ void WebKioskUi::doClearPopupWidgets () {
 
 void WebKioskUi::doResume () {
 	App *app;
-	Json *params, *obj;
-	WebDisplayIntentWindow *window;
+	Json *obj;
+	WebPlaylistWindow *window;
 	StringList items;
 	StringList::iterator i, end;
 	StdString id;
@@ -244,31 +254,24 @@ void WebKioskUi::doResume () {
 	app = App::getInstance ();
 	app->setNextBackgroundTexturePath ("ui/WebKioskUi/bg");
 
-	params = new Json ();
-	params->set ("commandId", SystemInterface::Command_AgentStatus);
-	app->agentControl.writeLinkCommand (app->createCommandJson ("ReadEvents", SystemInterface::Constant_Link, params));
-
 	cardView->setViewSize (app->windowWidth - app->rightBarWidth, app->windowHeight - app->topBarHeight - app->bottomBarHeight);
 	cardView->position.assign (0.0f, app->topBarHeight);
 
 	if (! isFirstResumeComplete) {
-		app->prefsMap.find (App::prefsWebKioskUiIntents, &items);
+		app->prefsMap.find (App::prefsWebKioskUiPlaylists, &items);
 		count = 0;
 		i = items.begin ();
 		end = items.end ();
 		while (i != end) {
 			obj = new Json ();
 			if (obj->parse (*i) == Result::SUCCESS) {
-				window = createIntentWindow ();
+				window = createWebPlaylistWindow ();
 				window->setState (obj);
 
-				// TODO: Remove this operation (after window expand functionality is implemented)
-				window->setExpanded (true);
-
 				id = cardView->getAvailableItemId ();
-				if (selectedIntentId.empty ()) {
+				if (selectedPlaylistId.empty ()) {
 					if (window->isSelected) {
-						selectedIntentId.assign (id);
+						selectedPlaylistId.assign (id);
 					}
 				}
 				else {
@@ -277,6 +280,7 @@ void WebKioskUi::doResume () {
 					}
 				}
 				window->itemId.assign (id);
+				window->sortKey.assign (window->playlistName.lowercased ());
 				cardView->addItem (window, id, 1);
 			}
 			delete (obj);
@@ -285,7 +289,7 @@ void WebKioskUi::doResume () {
 		}
 
 		if (count <= 0) {
-			WebKioskUi::addIntentButtonClicked (this, NULL);
+			WebKioskUi::addPlaylistButtonClicked (this, NULL);
 		}
 	}
 }
@@ -304,20 +308,20 @@ void WebKioskUi::doPause () {
 	StringList items;
 
 	app = App::getInstance ();
-	cardView->processItems (WebKioskUi::appendIntentJson, &items);
+	cardView->processItems (WebKioskUi::appendPlaylistJson, &items);
 	if (items.empty ()) {
-		app->prefsMap.remove (App::prefsWebKioskUiIntents);
+		app->prefsMap.remove (App::prefsWebKioskUiPlaylists);
 	}
 	else {
-		app->prefsMap.insert (App::prefsWebKioskUiIntents, &items);
+		app->prefsMap.insert (App::prefsWebKioskUiPlaylists, &items);
 	}
 }
 
-void WebKioskUi::appendIntentJson (void *stringListPtr, Widget *widgetPtr) {
-	WebDisplayIntentWindow *window;
+void WebKioskUi::appendPlaylistJson (void *stringListPtr, Widget *widgetPtr) {
+	WebPlaylistWindow *window;
 	Json *json;
 
-	window = WebDisplayIntentWindow::castWidget (widgetPtr);
+	window = WebPlaylistWindow::castWidget (widgetPtr);
 	if (window) {
 		json = window->getState ();
 		((StringList *) stringListPtr)->push_back (json->toString ());
@@ -346,7 +350,7 @@ void WebKioskUi::doSyncRecordStore (RecordStore *store) {
 	app = App::getInstance ();
 	agentCount = store->countRecords (WebKioskUi::matchWebKioskAgentStatus, NULL, app->prefsMap.find (App::prefsServerTimeout, App::defaultServerTimeout) * 1000);
 
-	store->processRecords (SystemInterface::Command_AgentStatus, WebKioskUi::processAgentStatus, this);
+	store->processCommandRecords (SystemInterface::Command_AgentStatus, WebKioskUi::processAgentStatus, this);
 	cardView->syncRecordStore (store);
 	cardView->refresh ();
 }
@@ -367,7 +371,7 @@ bool WebKioskUi::matchWebKioskAgentStatus (void *ptr, Json *record) {
 void WebKioskUi::processAgentStatus (void *uiPtr, Json *record, const StdString &recordId) {
 	WebKioskUi *ui;
 	SystemInterface *interface;
-	WebKioskWindow *window;
+	MonitorWindow *window;
 	StdString name;
 
 	ui = (WebKioskUi *) uiPtr;
@@ -377,7 +381,8 @@ void WebKioskUi::processAgentStatus (void *uiPtr, Json *record, const StdString 
 		name = interface->getCommandStringParam (record, "applicationName", "");
 		if (name.equals (WebKioskUi::serverApplicationName)) {
 			if (interface->getCommandObjectParam (record, "monitorServerStatus", NULL)) {
-				window = new WebKioskWindow (recordId, &(ui->sprites));
+				window = new MonitorWindow (recordId);
+				window->sortKey.assign (interface->getCommandAgentName (record).lowercased ());
 				window->setSelectStateChangeCallback (WebKioskUi::agentSelectStateChanged, ui);
 				ui->cardView->addItem (window, recordId, 0);
 			}
@@ -393,49 +398,24 @@ void WebKioskUi::reloadButtonClicked (void *uiPtr, Widget *widgetPtr) {
 }
 
 void WebKioskUi::reloadAgent (void *uiPtr, Widget *widgetPtr) {
-	WebKioskUi *ui;
+	MonitorWindow *window;
 	App *app;
-	WebKioskWindow *window;
-	int result;
 
-	ui = (WebKioskUi *) uiPtr;
-	window = WebKioskWindow::castWidget (widgetPtr);
+	window = MonitorWindow::castWidget (widgetPtr);
 	if (! window) {
 		return;
 	}
 
 	app = App::getInstance ();
-	ui->retain ();
-	result = app->agentControl.invokeCommand (window->agentId, app->createCommand ("GetStatus", SystemInterface::Constant_DefaultCommandType, NULL), WebKioskUi::invokeGetStatusComplete, ui);
-	if (result != Result::SUCCESS) {
-		// TODO: Show an error message here
-		Log::write (Log::ERR, "Failed to execute GetStatus command; err=%i agentId=\"%s\"", result, window->agentId.c_str ());
-		ui->release ();
-		return;
-	}
-}
-
-void WebKioskUi::invokeGetStatusComplete (void *uiPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand) {
-	WebKioskUi *ui;
-	App *app;
-
-	ui = (WebKioskUi *) uiPtr;
-	app = App::getInstance ();
-
-	if (responseCommand) {
-		app->agentControl.storeAgentStatus (responseCommand);
-		app->shouldSyncRecordStore = true;
-	}
-
-	ui->release ();
+	app->agentControl.refreshAgentStatus (window->agentId);
 }
 
 void WebKioskUi::agentSelectStateChanged (void *uiPtr, Widget *widgetPtr) {
 	WebKioskUi *ui;
-	WebKioskWindow *window;
+	MonitorWindow *window;
 
 	ui = (WebKioskUi *) uiPtr;
-	window = (WebKioskWindow *) widgetPtr;
+	window = (MonitorWindow *) widgetPtr;
 	if (window->isSelected) {
 		ui->selectedAgentMap.insert (window->agentId, window->agentName);
 	}
@@ -444,26 +424,33 @@ void WebKioskUi::agentSelectStateChanged (void *uiPtr, Widget *widgetPtr) {
 	}
 }
 
-void WebKioskUi::intentSelectStateChanged (void *uiPtr, Widget *widgetPtr) {
+void WebKioskUi::playlistSelectStateChanged (void *uiPtr, Widget *widgetPtr) {
 	WebKioskUi *ui;
-	WebDisplayIntentWindow *window, *item;
+	WebPlaylistWindow *window, *item;
 
 	ui = (WebKioskUi *) uiPtr;
-	window = (WebDisplayIntentWindow *) widgetPtr;
+	window = (WebPlaylistWindow *) widgetPtr;
 	if (window->isSelected) {
-		if (! ui->selectedIntentId.equals (window->itemId)) {
-			if (! ui->selectedIntentId.empty ()) {
-				item = WebDisplayIntentWindow::castWidget (ui->cardView->getItem (ui->selectedIntentId));
+		if (! ui->selectedPlaylistId.equals (window->itemId)) {
+			if (! ui->selectedPlaylistId.empty ()) {
+				item = WebPlaylistWindow::castWidget (ui->cardView->getItem (ui->selectedPlaylistId));
 				if (item) {
 					item->setSelected (false, true);
 				}
 			}
-			ui->selectedIntentId.assign (window->itemId);
+			ui->selectedPlaylistId.assign (window->itemId);
 		}
 	}
 	else {
-		ui->selectedIntentId.assign ("");
+		ui->selectedPlaylistId.assign ("");
 	}
+}
+
+void WebKioskUi::playlistExpandStateChanged (void *uiPtr, Widget *widgetPtr) {
+	WebKioskUi *ui;
+
+	ui = (WebKioskUi *) uiPtr;
+	ui->cardView->refresh ();
 }
 
 void WebKioskUi::addUrlButtonClicked (void *uiPtr, Widget *widgetPtr) {
@@ -477,17 +464,20 @@ void WebKioskUi::addUrlButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	}
 
 	url = Util::getProtocolString (url);
-	ui->cardView->processItems (WebKioskUi::addIntentUrl, &url);
+	ui->cardView->processItems (WebKioskUi::addPlaylistUrl, &url);
 }
 
-void WebKioskUi::addIntentUrl (void *urlStringPtr, Widget *widgetPtr) {
-	WebDisplayIntentWindow *window;
+void WebKioskUi::addPlaylistUrl (void *urlStringPtr, Widget *widgetPtr) {
+	App *app;
+	WebPlaylistWindow *window;
 	StdString url;
 
-	window = WebDisplayIntentWindow::castWidget (widgetPtr);
+	app = App::getInstance ();
+	window = WebPlaylistWindow::castWidget (widgetPtr);
 	if (window && window->isSelected) {
 		url.assign (((StdString *) urlStringPtr)->c_str ());
 		window->addUrl (url);
+		app->showSnackbar (StdString::createSprintf ("%s: %s", app->uiText.getText (UiTextString::websiteAddedMessage).c_str (), window->playlistName.c_str ()));
 	}
 }
 
@@ -506,10 +496,10 @@ void WebKioskUi::browseUrlButtonClicked (void *uiPtr, Widget *widgetPtr) {
 
 	result = Util::openUrl (Util::getProtocolString (url));
 	if (result != Result::SUCCESS) {
-		app->showSnackbar (app->uiText.launchWebBrowserError);
+		app->showSnackbar (app->uiText.getText (UiTextString::launchWebBrowserError));
 	}
 	else {
-		app->showSnackbar (StdString::createSprintf ("%s - %s", app->uiText.launchedWebBrowser.capitalized ().c_str (), url.c_str ()));
+		app->showSnackbar (StdString::createSprintf ("%s - %s", app->uiText.getText (UiTextString::launchedWebBrowser).capitalized ().c_str (), url.c_str ()));
 	}
 }
 
@@ -519,7 +509,7 @@ void WebKioskUi::showUrlButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	StdString url, id;
 	HashMap::Iterator i;
 	Json *params;
-	int result;
+	int result, count;
 
 	ui = (WebKioskUi *) uiPtr;
 	app = App::getInstance ();
@@ -532,124 +522,129 @@ void WebKioskUi::showUrlButtonClicked (void *uiPtr, Widget *widgetPtr) {
 		return;
 	}
 
+	count = 0;
 	i = ui->selectedAgentMap.begin ();
 	while (ui->selectedAgentMap.hasNext (&i)) {
 		id = ui->selectedAgentMap.next (&i);
-
-		result = app->agentControl.invokeCommand (id, app->createCommand ("ClearDisplay", SystemInterface::Constant_Display), NULL, NULL, NULL, StdString ("WebKioskUi::showUrlButtonClicked"));
-		if (result != Result::SUCCESS) {
-			// TODO: Show an error message here
-			Log::write (Log::ERR, "Failed to execute ClearDisplay command; err=%i agentId=\"%s\"", result, id.c_str ());
-			continue;
-		}
-
 		params = new Json ();
 		params->set ("url", Util::getProtocolString (url));
-		result = app->agentControl.invokeCommand (id, app->createCommand ("ShowWebUrl", SystemInterface::Constant_Display, params), NULL, NULL, NULL, StdString ("WebKioskUi::showUrlButtonClicked"));
+		result = app->agentControl.invokeCommand (id, app->createCommand ("ShowWebUrl", SystemInterface::Constant_Monitor, params), NULL, NULL, NULL, id);
 		if (result != Result::SUCCESS) {
-			// TODO: Show an error message here
-			Log::write (Log::ERR, "Failed to execute ShowWebUrl command; err=%i agentId=\"%s\"", result, id.c_str ());
+			Log::write (Log::DEBUG, "Failed to invoke ShowWebUrl command; err=%i agentId=\"%s\"", result, id.c_str ());
 		}
+		else {
+			++count;
+			app->agentControl.refreshAgentStatus (id, id);
+		}
+	}
+
+	if (count <= 0) {
+		app->showSnackbar (app->uiText.getText (UiTextString::internalError));
+	}
+	else {
+		app->showSnackbar (app->uiText.getText (UiTextString::invokeShowWebUrlMessage));
 	}
 }
 
-void WebKioskUi::addIntentButtonClicked (void *uiPtr, Widget *widgetPtr) {
+void WebKioskUi::addPlaylistButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	WebKioskUi *ui;
-	WebDisplayIntentWindow *window;
+	App *app;
+	WebPlaylistWindow *window;
 	StdString name, id;
 
 	ui = (WebKioskUi *) uiPtr;
+	app = App::getInstance ();
 
-	name = ui->getAvailableIntentName ();
+	name = ui->getAvailablePlaylistName ();
 	id = ui->cardView->getAvailableItemId ();
-	window = ui->createIntentWindow ();
+	window = ui->createWebPlaylistWindow ();
 	window->itemId.assign (id);
-	window->setIntentName (name);
+	window->setPlaylistName (name);
 	window->setExpanded (true);
 	ui->cardView->addItem (window, id, 1);
 	window->setSelected (true);
 	ui->cardView->scrollToItem (id);
+	app->showSnackbar (StdString::createSprintf ("%s: %s", app->uiText.getText (UiTextString::webPlaylistCreatedMessage).c_str (), name.c_str ()));
 }
 
-void WebKioskUi::writeIntentButtonClicked (void *uiPtr, Widget *widgetPtr) {
+void WebKioskUi::writePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	WebKioskUi *ui;
 	App *app;
-	Json *cmd;
-	WebDisplayIntentWindow *item;
+	WebPlaylistWindow *item;
 	HashMap::Iterator i;
 	StdString id;
-	int result;
+	int result, count;
 
 	ui = (WebKioskUi *) uiPtr;
 	app = App::getInstance ();
-	if (ui->selectedAgentMap.empty () || ui->selectedIntentId.empty ()) {
+	if (ui->selectedAgentMap.empty () || ui->selectedPlaylistId.empty ()) {
 		return;
 	}
 
-	item = WebDisplayIntentWindow::castWidget (ui->cardView->getItem (ui->selectedIntentId));
+	item = WebPlaylistWindow::castWidget (ui->cardView->getItem (ui->selectedPlaylistId));
 	if (! item) {
 		return;
 	}
 
+	count = 0;
 	i = ui->selectedAgentMap.begin ();
 	while (ui->selectedAgentMap.hasNext (&i)) {
 		id = ui->selectedAgentMap.next (&i);
-		cmd = item->getCreateCommand ();
-		if (cmd) {
-			ui->retain ();
-			result = app->agentControl.invokeCommand (id, cmd, WebKioskUi::writeIntentComplete, ui);
-			if (result != Result::SUCCESS) {
-				// TODO: Show an error message here
-				Log::write (Log::ERR, "Failed to create intent; err=%i agentId=\"%s\"", result, id.c_str ());
-				ui->release ();
-			}
+		ui->retain ();
+		result = app->agentControl.invokeCommand (id, item->getCreateCommand (), WebKioskUi::writePlaylistComplete, ui, NULL, id);
+		if (result != Result::SUCCESS) {
+			Log::write (Log::DEBUG, "Failed to invoke WebPlaylistWindow create command; err=%i agentId=\"%s\"", result, id.c_str ());
+			ui->release ();
 		}
+		else {
+			++count;
+			app->agentControl.refreshAgentStatus (id, id);
+		}
+	}
+
+	if (count <= 0) {
+		app->showSnackbar (app->uiText.getText (UiTextString::internalError));
+	}
+	else {
+		app->showSnackbar (app->uiText.getText (UiTextString::invokeCreateWebPlaylistMessage));
 	}
 }
 
-void WebKioskUi::writeIntentComplete (void *uiPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand) {
+void WebKioskUi::writePlaylistComplete (void *uiPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand) {
 	WebKioskUi *ui;
 	App *app;
 	SystemInterface *interface;
-	int result;
 
 	ui = (WebKioskUi *) uiPtr;
 	app = App::getInstance ();
 	interface = &(app->systemInterface);
 
 	if (responseCommand && (interface->getCommandId (responseCommand) == SystemInterface::Command_CommandResult) && interface->getCommandBooleanParam (responseCommand, "success", false)) {
-		result = app->agentControl.invokeCommand (agentId, app->createCommand ("GetStatus", SystemInterface::Constant_DefaultCommandType, NULL), WebKioskUi::invokeGetStatusComplete, ui);
-		if (result != Result::SUCCESS) {
-			// TODO: Show an error message here
-			Log::write (Log::ERR, "Failed to execute GetStatus command; err=%i", result);
-			ui->release ();
-		}
+		app->agentControl.refreshAgentStatus (agentId);
 	}
-	else {
-		ui->release ();
-	}
+	ui->release ();
 }
 
-void WebKioskUi::intentNameClicked (void *uiPtr, Widget *widgetPtr) {
+void WebKioskUi::playlistNameClicked (void *uiPtr, Widget *widgetPtr) {
 	WebKioskUi *ui;
 	App *app;
 	UiConfiguration *uiconfig;
 	UiText *uitext;
-	WebDisplayIntentWindow *window;
+	WebPlaylistWindow *window;
 	TextFieldWindow *action;
 
 	ui = (WebKioskUi *) uiPtr;
-	window = (WebDisplayIntentWindow *) widgetPtr;
+	window = (WebPlaylistWindow *) widgetPtr;
 	app = App::getInstance ();
 	uiconfig = &(app->uiConfig);
 	uitext = &(app->uiText);
 
 	ui->clearPopupWidgets ();
-	action = (TextFieldWindow *) app->rootPanel->addWidget (new TextFieldWindow (window->width - (uiconfig->marginSize * 2.0f), uitext->enterIntentNamePrompt));
+	action = (TextFieldWindow *) app->rootPanel->addWidget (new TextFieldWindow (window->width - (uiconfig->marginSize * 2.0f), uitext->getText (UiTextString::enterWebPlaylistNamePrompt)));
 	ui->actionWidget.assign (action);
 	ui->actionTarget.assign (window);
-	action->setValue (window->intentName);
-	action->setEditCallback (WebKioskUi::intentNameEdited, ui);
+	action->setValue (window->playlistName);
+	action->setEditCallback (WebKioskUi::playlistNameEdited, ui);
 	action->setFillBg (true, uiconfig->lightPrimaryColor);
 	action->setButtonsEnabled (true, true, true, true);
 	action->setEditing (true);
@@ -657,39 +652,39 @@ void WebKioskUi::intentNameClicked (void *uiPtr, Widget *widgetPtr) {
 	action->position.assign (window->drawX + uiconfig->marginSize, window->drawY);
 }
 
-void WebKioskUi::intentNameEdited (void *uiPtr, Widget *widgetPtr) {
+void WebKioskUi::playlistNameEdited (void *uiPtr, Widget *widgetPtr) {
 	WebKioskUi *ui;
-	WebDisplayIntentWindow *target;
+	WebPlaylistWindow *target;
 	TextFieldWindow *action;
 	StdString name, id;
 
 	ui = (WebKioskUi *) uiPtr;
 	action = (TextFieldWindow *) ui->actionWidget.widget;
-	target = (WebDisplayIntentWindow *) ui->actionTarget.widget;
+	target = (WebPlaylistWindow *) ui->actionTarget.widget;
 	if ((! action) || (! target)) {
 		return;
 	}
 
 	name = action->getValue ();
 	if (name.empty ()) {
-		name.assign (ui->getAvailableIntentName ());
+		name.assign (ui->getAvailablePlaylistName ());
 	}
-	target->setIntentName (name);
+	target->setPlaylistName (name);
 	ui->clearPopupWidgets ();
 }
 
-StdString WebKioskUi::getAvailableIntentName () {
+StdString WebKioskUi::getAvailablePlaylistName () {
 	StdString basename, name, id;
 	int i;
 
-	basename.assign (App::getInstance ()->uiText.websiteList.capitalized ());
+	basename.assign (App::getInstance ()->uiText.getText (UiTextString::websiteList).capitalized ());
 	name.assign (basename);
-	cardView->processItems (WebKioskUi::matchIntentName, &name);
+	cardView->processItems (WebKioskUi::matchPlaylistName, &name);
 	if (name.empty ()) {
 		i = 2;
 		while (true) {
 			name.sprintf ("%s %i", basename.c_str (), i);
-			cardView->processItems (WebKioskUi::matchIntentName, &name);
+			cardView->processItems (WebKioskUi::matchPlaylistName, &name);
 			if (! name.empty ()) {
 				break;
 			}
@@ -701,39 +696,39 @@ StdString WebKioskUi::getAvailableIntentName () {
 }
 
 // Clear the provided string if the widget is of the correct type and matches its content by name
-void WebKioskUi::matchIntentName (void *stringPtr, Widget *widgetPtr) {
-	WebDisplayIntentWindow *window;
+void WebKioskUi::matchPlaylistName (void *stringPtr, Widget *widgetPtr) {
+	WebPlaylistWindow *window;
 	StdString *name;
 
-	window = WebDisplayIntentWindow::castWidget (widgetPtr);
+	window = WebPlaylistWindow::castWidget (widgetPtr);
 	if (! window) {
 		return;
 	}
 
 	name = (StdString *) stringPtr;
-	if (name->lowercased ().equals (window->intentName.lowercased ())) {
+	if (name->lowercased ().equals (window->playlistName.lowercased ())) {
 		name->assign ("");
 	}
 }
 
-void WebKioskUi::intentUrlListChanged (void *uiPtr, Widget *widgetPtr) {
+void WebKioskUi::playlistUrlListChanged (void *uiPtr, Widget *widgetPtr) {
 	WebKioskUi *ui;
 
 	ui = (WebKioskUi *) uiPtr;
 	ui->refresh ();
 }
 
-void WebKioskUi::intentMenuClicked (void *uiPtr, Widget *widgetPtr) {
+void WebKioskUi::playlistMenuClicked (void *uiPtr, Widget *widgetPtr) {
 	WebKioskUi *ui;
 	App *app;
 	UiConfiguration *uiconfig;
 	UiText *uitext;
-	WebDisplayIntentWindow *window;
+	WebPlaylistWindow *window;
 	Menu *action;
 	bool show;
 
 	ui = (WebKioskUi *) uiPtr;
-	window = (WebDisplayIntentWindow *) widgetPtr;
+	window = (WebPlaylistWindow *) widgetPtr;
 	app = App::getInstance ();
 	uiconfig = &(app->uiConfig);
 	uitext = &(app->uiText);
@@ -752,33 +747,33 @@ void WebKioskUi::intentMenuClicked (void *uiPtr, Widget *widgetPtr) {
 	ui->actionWidget.assign (action);
 	ui->actionTarget.assign (window);
 
-	action->addItem (uitext->rename.capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::RENAME_BUTTON), WebKioskUi::renameIntentActionClicked, ui);
-	action->addItem (uitext->remove.capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::DELETE_BUTTON), WebKioskUi::removeIntentActionClicked, ui);
+	action->addItem (uitext->getText (UiTextString::rename).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::RENAME_BUTTON), WebKioskUi::renamePlaylistActionClicked, ui);
+	action->addItem (uitext->getText (UiTextString::remove).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::DELETE_BUTTON), WebKioskUi::removePlaylistActionClicked, ui);
 
 	action->zLevel = app->rootPanel->maxWidgetZLevel + 1;
 	action->isClickDestroyEnabled = true;
-	action->position.assign (window->drawX + window->width - action->width - uiconfig->marginSize, window->drawY + window->menuPositionY);
+	action->position.assign (window->drawX + window->menuPositionX, window->drawY + window->menuPositionY);
 }
 
-void WebKioskUi::renameIntentActionClicked (void *uiPtr, Widget *widgetPtr) {
+void WebKioskUi::renamePlaylistActionClicked (void *uiPtr, Widget *widgetPtr) {
 	WebKioskUi *ui;
-	WebDisplayIntentWindow *window;
+	WebPlaylistWindow *window;
 
 	ui = (WebKioskUi *) uiPtr;
-	window = WebDisplayIntentWindow::castWidget (ui->actionTarget.widget);
+	window = WebPlaylistWindow::castWidget (ui->actionTarget.widget);
 	if (! window) {
 		return;
 	}
 
-	WebKioskUi::intentNameClicked (ui, window);
+	WebKioskUi::playlistNameClicked (ui, window);
 }
 
-void WebKioskUi::removeIntentActionClicked (void *uiPtr, Widget *widgetPtr) {
+void WebKioskUi::removePlaylistActionClicked (void *uiPtr, Widget *widgetPtr) {
 	WebKioskUi *ui;
-	WebDisplayIntentWindow *target;
+	WebPlaylistWindow *target;
 
 	ui = (WebKioskUi *) uiPtr;
-	target = WebDisplayIntentWindow::castWidget (ui->actionTarget.widget);
+	target = WebPlaylistWindow::castWidget (ui->actionTarget.widget);
 	if (target) {
 		ui->cardView->removeItem (target->itemId);
 	}
@@ -790,7 +785,7 @@ void WebKioskUi::clearDisplayButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	App *app;
 	HashMap::Iterator i;
 	StdString id;
-	int result;
+	int result, count;
 
 	ui = (WebKioskUi *) uiPtr;
 	app = App::getInstance ();
@@ -798,14 +793,25 @@ void WebKioskUi::clearDisplayButtonClicked (void *uiPtr, Widget *widgetPtr) {
 		return;
 	}
 
+	count = 0;
 	i = ui->selectedAgentMap.begin ();
 	while (ui->selectedAgentMap.hasNext (&i)) {
 		id = ui->selectedAgentMap.next (&i);
-		result = app->agentControl.invokeCommand (id, app->createCommand ("ClearDisplay", SystemInterface::Constant_Display, NULL));
+		result = app->agentControl.invokeCommand (id, app->createCommand ("ClearDisplay", SystemInterface::Constant_Monitor, NULL), NULL, NULL, NULL, id);
 		if (result != Result::SUCCESS) {
-			// TODO: Show an error message here
-			Log::write (Log::ERR, "Failed to create ClearDisplay command; err=%i agentId=\"%s\"", result, id.c_str ());
+			Log::write (Log::DEBUG, "Failed to invoke ClearDisplay command; err=%i agentId=\"%s\"", result, id.c_str ());
 		}
+		else {
+			++count;
+			app->agentControl.refreshAgentStatus (id, id);
+		}
+	}
+
+	if (count <= 0) {
+		app->showSnackbar (app->uiText.getText (UiTextString::internalError));
+	}
+	else {
+		app->showSnackbar (app->uiText.getText (UiTextString::invokeClearDisplayMessage));
 	}
 }
 
@@ -818,7 +824,7 @@ void WebKioskUi::commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr) {
 	Panel *panel;
 	LabelWindow *label;
 	IconLabelWindow *icon;
-	WebDisplayIntentWindow *item;
+	WebPlaylistWindow *item;
 	StdString text;
 	Color color;
 
@@ -839,26 +845,26 @@ void WebKioskUi::commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr) {
 	panel->setAlphaBlend (true, uiconfig->overlayWindowAlpha);
 
 	label = NULL;
-	if (button == ui->writeIntentButton) {
-		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->writeProgram.capitalized (), UiConfiguration::TITLE, uiconfig->inverseTextColor)));
+	if (button == ui->writePlaylistButton) {
+		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::runProgram).capitalized (), UiConfiguration::TITLE, uiconfig->inverseTextColor)));
 
 		text.assign (ui->getSelectedAgentNames (app->rootPanel->width * 0.25f));
 		color.assign (uiconfig->primaryTextColor);
 		if (text.empty ()) {
 			color.assign (uiconfig->errorTextColor);
-			text.assign (uitext->webKioskNoAgentsSelectedPrompt);
+			text.assign (uitext->getText (UiTextString::webKioskNoAgentsSelectedPrompt));
 		}
 		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (ui->sprites.getSprite (WebKioskUi::SMALL_DISPLAY_ICON), text, UiConfiguration::CAPTION, color));
 		icon->setFillBg (true, uiconfig->lightBackgroundColor);
 		icon->setRightAligned (true);
 
-		item = WebDisplayIntentWindow::castWidget (ui->cardView->getItem (ui->selectedIntentId));
+		item = WebPlaylistWindow::castWidget (ui->cardView->getItem (ui->selectedPlaylistId));
 		if (! item) {
-			text.assign (uitext->webKioskNoIntentsSelectedPrompt);
+			text.assign (uitext->getText (UiTextString::webKioskNoPlaylistsSelectedPrompt));
 			color.assign (uiconfig->errorTextColor);
 		}
 		else {
-			text.assign (item->intentName);
+			text.assign (item->playlistName);
 			color.assign (uiconfig->primaryTextColor);
 		}
 		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (ui->sprites.getSprite (WebKioskUi::SMALL_INTENT_ICON), text, UiConfiguration::CAPTION, color));
@@ -866,12 +872,12 @@ void WebKioskUi::commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr) {
 		icon->setRightAligned (true);
 	}
 	else if (button == ui->clearDisplayButton) {
-		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->clear.capitalized (), UiConfiguration::TITLE, uiconfig->inverseTextColor)));
+		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::clear).capitalized (), UiConfiguration::TITLE, uiconfig->inverseTextColor)));
 
 		text.assign (ui->getSelectedAgentNames (app->rootPanel->width * 0.25f));
 		color.assign (uiconfig->primaryTextColor);
 		if (text.empty ()) {
-			text.assign (uitext->webKioskNoAgentsSelectedPrompt);
+			text.assign (uitext->getText (UiTextString::webKioskNoAgentsSelectedPrompt));
 			color.assign (uiconfig->errorTextColor);
 		}
 		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (ui->sprites.getSprite (WebKioskUi::SMALL_DISPLAY_ICON), text, UiConfiguration::CAPTION, color));
@@ -879,28 +885,41 @@ void WebKioskUi::commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr) {
 		icon->setRightAligned (true);
 	}
 	else if (button == ui->addUrlButton) {
-		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->addWebsite.capitalized (), UiConfiguration::TITLE, uiconfig->inverseTextColor)));
+		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::addWebsite).capitalized (), UiConfiguration::TITLE, uiconfig->inverseTextColor)));
 
-		item = WebDisplayIntentWindow::castWidget (ui->cardView->getItem (ui->selectedIntentId));
+		item = WebPlaylistWindow::castWidget (ui->cardView->getItem (ui->selectedPlaylistId));
 		if (! item) {
-			text.assign (uitext->webKioskNoIntentsSelectedPrompt);
+			text.assign (uitext->getText (UiTextString::webKioskNoPlaylistsSelectedPrompt));
 			color.assign (uiconfig->errorTextColor);
 		}
 		else {
-			text.assign (item->intentName);
+			text.assign (item->playlistName);
 			color.assign (uiconfig->primaryTextColor);
 		}
 		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (ui->sprites.getSprite (WebKioskUi::SMALL_INTENT_ICON), text, UiConfiguration::CAPTION, color));
 		icon->setFillBg (true, uiconfig->lightBackgroundColor);
 		icon->setRightAligned (true);
+
+		text.assign (ui->addressField->getValue ());
+		if (text.empty ()) {
+			text.assign (uitext->getText (UiTextString::webKioskNoAddressEnteredPrompt));
+			color.assign (uiconfig->errorTextColor);
+		}
+		else {
+			Label::truncateText (&text, UiConfiguration::CAPTION, app->rootPanel->width * 0.20f, StdString ("..."));
+			color.assign (uiconfig->primaryTextColor);
+		}
+		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::WEB_LINK_ICON), text, UiConfiguration::CAPTION, color));
+		icon->setFillBg (true, uiconfig->lightBackgroundColor);
+		icon->setRightAligned (true);
 	}
 	else if (button == ui->showUrlButton) {
-		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->showWebsite.capitalized (), UiConfiguration::TITLE, uiconfig->inverseTextColor)));
+		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::showWebsite).capitalized (), UiConfiguration::TITLE, uiconfig->inverseTextColor)));
 
 		text.assign (ui->getSelectedAgentNames (app->rootPanel->width * 0.25f));
 		color.assign (uiconfig->primaryTextColor);
 		if (text.empty ()) {
-			text.assign (uitext->webKioskNoAgentsSelectedPrompt);
+			text.assign (uitext->getText (UiTextString::webKioskNoAgentsSelectedPrompt));
 			color.assign (uiconfig->errorTextColor);
 		}
 		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (ui->sprites.getSprite (WebKioskUi::SMALL_DISPLAY_ICON), text, UiConfiguration::CAPTION, color));
@@ -909,7 +928,7 @@ void WebKioskUi::commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr) {
 
 		text.assign (ui->addressField->getValue ());
 		if (text.empty ()) {
-			text.assign (uitext->webKioskNoAddressEnteredPrompt);
+			text.assign (uitext->getText (UiTextString::webKioskNoAddressEnteredPrompt));
 			color.assign (uiconfig->errorTextColor);
 		}
 		else {
@@ -921,11 +940,11 @@ void WebKioskUi::commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr) {
 		icon->setRightAligned (true);
 	}
 	else if (button == ui->browseUrlButton) {
-		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->browseWebsite.capitalized (), UiConfiguration::TITLE, uiconfig->inverseTextColor)));
+		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::browseWebsite).capitalized (), UiConfiguration::TITLE, uiconfig->inverseTextColor)));
 
 		text.assign (ui->addressField->getValue ());
 		if (text.empty ()) {
-			text.assign (uitext->webKioskNoAddressEnteredPrompt);
+			text.assign (uitext->getText (UiTextString::webKioskNoAddressEnteredPrompt));
 			color.assign (uiconfig->errorTextColor);
 		}
 		else {
@@ -936,12 +955,14 @@ void WebKioskUi::commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr) {
 		icon->setFillBg (true, uiconfig->lightBackgroundColor);
 		icon->setRightAligned (true);
 	}
+	else if (button == ui->addPlaylistButton) {
+		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::createProgram).capitalized (), UiConfiguration::TITLE, uiconfig->inverseTextColor)));
+	}
 
 	if (label) {
 		label->setPadding (0.0f, 0.0f);
 	}
-	panel->layout = Panel::VERTICAL_RIGHT_JUSTIFIED;
-	panel->refresh ();
+	panel->setLayout (Panel::VERTICAL_RIGHT_JUSTIFIED);
 	panel->zLevel = app->rootPanel->maxWidgetZLevel + 1;
 	panel->position.assign (app->windowWidth - panel->width - uiconfig->paddingSize, app->windowHeight - app->bottomBarHeight - panel->height - uiconfig->marginSize);
 }

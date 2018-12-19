@@ -75,7 +75,7 @@ SnackbarWindow::SnackbarWindow (float maxWidth)
 	actionButton->zLevel = 2;
 	actionButton->isVisible = false;
 
-	resetLayout ();
+	refreshLayout ();
 }
 
 SnackbarWindow::~SnackbarWindow () {
@@ -88,12 +88,12 @@ StdString SnackbarWindow::toStringDetail () {
 
 void SnackbarWindow::setMaxWidth (float maxWidthValue) {
 	maxWidth = maxWidthValue;
-	resetLayout ();
+	refreshLayout ();
 }
 
 void SnackbarWindow::setMessageText (const StdString &messageText) {
 	messageLabel->setText (messageText);
-	resetLayout ();
+	refreshLayout ();
 }
 
 void SnackbarWindow::setActionButtonEnabled (bool enable, const StdString &buttonText, Widget::EventCallback buttonClickCallback, void *buttonClickCallbackData) {
@@ -105,11 +105,11 @@ void SnackbarWindow::setActionButtonEnabled (bool enable, const StdString &butto
 	else {
 		actionButton->isVisible = false;
 	}
-	resetLayout ();
+	refreshLayout ();
 }
 
 void SnackbarWindow::startScroll (int duration) {
-	resetLayout ();
+	refreshLayout ();
 
 	scrollDuration = duration;
 	if (scrollDuration < 1) {
@@ -161,7 +161,7 @@ void SnackbarWindow::doUpdate (int msElapsed, float originX, float originY) {
 	}
 }
 
-void SnackbarWindow::resetLayout () {
+void SnackbarWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y, w;
 

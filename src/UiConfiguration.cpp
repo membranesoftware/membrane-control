@@ -44,7 +44,8 @@
 UiConfiguration::UiConfiguration ()
 : paddingSize (12.0f)
 , marginSize (12.0f)
-, colorRotateDuration (120)
+, shortColorRotateDuration (120)
+, longColorRotateDuration (768)
 , mouseHoverThreshold (1000)
 , blinkDuration (486)
 , backgroundTransitionDuration (140)
@@ -55,14 +56,15 @@ UiConfiguration::UiConfiguration ()
 , mediumSecondaryColor (Color::getByteValue (0xFF), Color::getByteValue (0xF1), Color::getByteValue (0x76))
 , darkSecondaryColor (Color::getByteValue (0xCA), Color::getByteValue (0xBF), Color::getByteValue (0x45))
 , lightBackgroundColor (Color::getByteValue (0xFF), Color::getByteValue (0xFF), Color::getByteValue (0xFF))
-, mediumBackgroundColor (Color::getByteValue (0xF5), Color::getByteValue (0xF5), Color::getByteValue (0xF5))
+, mediumBackgroundColor (Color::getByteValue (0xF0), Color::getByteValue (0xF0), Color::getByteValue (0xF0))
 , darkBackgroundColor (Color::getByteValue (0xE0), Color::getByteValue (0xE0), Color::getByteValue (0xE0))
-, lightInverseBackgroundColor (Color::getByteValue (0x42), Color::getByteValue (0x42), Color::getByteValue (0x42))
-, mediumInverseBackgroundColor (Color::getByteValue (0x21), Color::getByteValue (0x21), Color::getByteValue (0x21))
+, lightInverseBackgroundColor (Color::getByteValue (0x22), Color::getByteValue (0x22), Color::getByteValue (0x22))
+, mediumInverseBackgroundColor (Color::getByteValue (0x11), Color::getByteValue (0x11), Color::getByteValue (0x11))
 , darkInverseBackgroundColor (Color::getByteValue (0x00), Color::getByteValue (0x00), Color::getByteValue (0x00))
 , primaryTextColor (Color::getByteValue (0x00), Color::getByteValue (0x00), Color::getByteValue (0x00))
 , lightPrimaryTextColor (Color::getByteValue (0x60), Color::getByteValue (0x60), Color::getByteValue (0x60))
 , inverseTextColor (Color::getByteValue (0xFF), Color::getByteValue (0xFF), Color::getByteValue (0xFF))
+, darkInverseTextColor (Color::getByteValue (0x98), Color::getByteValue (0x98), Color::getByteValue (0x98))
 , flatButtonTextColor (Color::getByteValue (0x18), Color::getByteValue (0x22), Color::getByteValue (0x7C))
 , linkTextColor (Color::getByteValue (0x18), Color::getByteValue (0x22), Color::getByteValue (0x7C))
 , errorTextColor (Color::getByteValue (0xB0), Color::getByteValue (0x00), Color::getByteValue (0x20))
@@ -82,7 +84,7 @@ UiConfiguration::UiConfiguration ()
 , activeFocusedIconAlpha (1.0f)
 , activeUnfocusedIconAlpha (0.74f)
 , inactiveIconAlpha (0.38f)
-, imageTextScrimAlpha (0.77f)
+, scrimBackgroundAlpha (0.77f)
 , overlayWindowAlpha (0.72f)
 , waitingShadeAlpha (0.81f)
 , progressBarHeight (8.0f)
@@ -99,9 +101,11 @@ UiConfiguration::UiConfiguration ()
 , textFieldShortLineLength (16)
 , textFieldMediumLineLength (32)
 , textFieldLongLineLength (60)
+, timelineMarkerWidth (16.0f)
 , rightNavWidthPercent (0.275f)
 , snackbarTimeout (16000)
 , snackbarScrollDuration (280)
+, recordSyncDelayDuration (700)
 , coreSpritesPath ("ui/CoreSprites")
 , isLoaded (false)
 {
@@ -118,10 +122,10 @@ UiConfiguration::UiConfiguration ()
 	fontBaseSizes[UiConfiguration::BUTTON] = 12;
 
 	fontNames[UiConfiguration::TITLE].assign ("font/Roboto-Medium.ttf");
-	fontBaseSizes[UiConfiguration::TITLE] = 16;
+	fontBaseSizes[UiConfiguration::TITLE] = 14;
 
 	fontNames[UiConfiguration::HEADLINE].assign ("font/Roboto-Regular.ttf");
-	fontBaseSizes[UiConfiguration::HEADLINE] = 20;
+	fontBaseSizes[UiConfiguration::HEADLINE] = 16;
 }
 
 UiConfiguration::~UiConfiguration () {
@@ -163,7 +167,6 @@ int UiConfiguration::load (float fontScale) {
 		}
 	}
 
-	Log::write (Log::DEBUG, "Fonts loaded; fontScale=%.2f captionFontSize=%i bodyFontSize=%i buttonFontSize=%i titleFontSize=%i headlineFontSize=%i", fontScale, fontSizes[UiConfiguration::CAPTION], fontSizes[UiConfiguration::BODY], fontSizes[UiConfiguration::BUTTON], fontSizes[UiConfiguration::TITLE], fontSizes[UiConfiguration::HEADLINE]);
 
 	isLoaded = true;
 	return (Result::SUCCESS);
@@ -217,42 +220,78 @@ int UiConfiguration::reloadFonts (float fontScale) {
 	return (Result::SUCCESS);
 }
 
-void UiConfiguration::resetLayoutValues () {
+void UiConfiguration::resetScale () {
 	switch (App::getInstance ()->imageScale) {
 		case 0: {
-			paddingSize = 8.0f;
-			marginSize = 8.0f;
+			paddingSize = 6.0f;
+			marginSize = 6.0f;
 			sliderTrackWidth = 100.0f;
+			timelineMarkerWidth = 12.0f;
+			fontBaseSizes[UiConfiguration::CAPTION] = 8;
+			fontBaseSizes[UiConfiguration::BODY] = 10;
+			fontBaseSizes[UiConfiguration::BUTTON] = 10;
+			fontBaseSizes[UiConfiguration::TITLE] = 12;
+			fontBaseSizes[UiConfiguration::HEADLINE] = 14;
 			break;
 		}
 		case 1: {
 			paddingSize = 12.0f;
 			marginSize = 12.0f;
-			sliderTrackWidth = 150.0f;
+			sliderTrackWidth = 130.0f;
+			timelineMarkerWidth = 16.0f;
+			fontBaseSizes[UiConfiguration::CAPTION] = 8;
+			fontBaseSizes[UiConfiguration::BODY] = 10;
+			fontBaseSizes[UiConfiguration::BUTTON] = 10;
+			fontBaseSizes[UiConfiguration::TITLE] = 12;
+			fontBaseSizes[UiConfiguration::HEADLINE] = 14;
 			break;
 		}
 		case 2: {
 			paddingSize = 16.0f;
 			marginSize = 16.0f;
-			sliderTrackWidth = 200.0f;
+			sliderTrackWidth = 180.0f;
+			timelineMarkerWidth = 16.0f;
+			fontBaseSizes[UiConfiguration::CAPTION] = 10;
+			fontBaseSizes[UiConfiguration::BODY] = 12;
+			fontBaseSizes[UiConfiguration::BUTTON] = 12;
+			fontBaseSizes[UiConfiguration::TITLE] = 14;
+			fontBaseSizes[UiConfiguration::HEADLINE] = 16;
 			break;
 		}
 		case 3: {
 			paddingSize = 16.0f;
 			marginSize = 16.0f;
-			sliderTrackWidth = 200.0f;
+			sliderTrackWidth = 240.0f;
+			timelineMarkerWidth = 20.0f;
+			fontBaseSizes[UiConfiguration::CAPTION] = 10;
+			fontBaseSizes[UiConfiguration::BODY] = 12;
+			fontBaseSizes[UiConfiguration::BUTTON] = 12;
+			fontBaseSizes[UiConfiguration::TITLE] = 16;
+			fontBaseSizes[UiConfiguration::HEADLINE] = 20;
 			break;
 		}
 		case 4: {
 			paddingSize = 20.0f;
 			marginSize = 20.0f;
 			sliderTrackWidth = 300.0f;
+			timelineMarkerWidth = 20.0f;
+			fontBaseSizes[UiConfiguration::CAPTION] = 10;
+			fontBaseSizes[UiConfiguration::BODY] = 12;
+			fontBaseSizes[UiConfiguration::BUTTON] = 12;
+			fontBaseSizes[UiConfiguration::TITLE] = 16;
+			fontBaseSizes[UiConfiguration::HEADLINE] = 20;
 			break;
 		}
 		default: {
 			paddingSize = 16.0f;
 			marginSize = 16.0f;
 			sliderTrackWidth = 200.0f;
+			timelineMarkerWidth = 16.0f;
+			fontBaseSizes[UiConfiguration::CAPTION] = 10;
+			fontBaseSizes[UiConfiguration::BODY] = 12;
+			fontBaseSizes[UiConfiguration::BUTTON] = 12;
+			fontBaseSizes[UiConfiguration::TITLE] = 14;
+			fontBaseSizes[UiConfiguration::HEADLINE] = 16;
 			break;
 		}
 	}

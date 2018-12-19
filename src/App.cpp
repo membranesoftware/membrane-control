@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <time.h>
 #include "SDL2/SDL.h"
+#include "SDL2/SDL_image.h"
 #include "Result.h"
 #include "StdString.h"
 #include "StringList.h"
@@ -63,23 +64,23 @@ const int App::numWindowSizes = 5;
 const float App::fontScales[] = { 0.66f, 0.8f, 1.0f, 1.25f, 1.5f };
 const int App::numFontScales = 5;
 const StdString App::prefsIsFirstLaunchComplete = StdString ("IsFirstLaunchComplete");
-const StdString App::prefsAutoConnectAddresses = StdString ("AutoConnectAddresses");
-const StdString App::prefsLinkAddresses = StdString ("LinkAddresses");
+const StdString App::prefsNetworkThreads = StdString ("NetworkThreads");
 const StdString App::prefsAgentStatus = StdString ("AgentStatus");
 const StdString App::prefsWindowWidth = StdString ("WindowWidth");
 const StdString App::prefsWindowHeight = StdString ("WindowHeight");
 const StdString App::prefsFontScale = StdString ("FontScale");
 const StdString App::prefsShowClock = StdString ("ShowClock");
 const StdString App::prefsMediaImageSize = StdString ("Media_ImageSize");
-const StdString App::prefsDisplaysImageSize = StdString ("Displays_ImageSize");
+const StdString App::prefsMonitorImageSize = StdString ("Monitor_ImageSize");
 const StdString App::prefsMediaItemImageSize = StdString ("MediaItem_ImageSize");
 const StdString App::prefsStreamItemImageSize = StdString ("StreamItem_ImageSize");
 const StdString App::prefsServerTimeout = StdString ("ServerTimeout");
 const int64_t App::defaultServerTimeout = 180;
 const StdString App::prefsServerPath = StdString ("ServerPath");
 const StdString App::prefsApplicationName = StdString ("ApplicationName");
-const StdString App::prefsTcpPort = StdString ("TcpPort");
-const StdString App::prefsWebKioskUiIntents = StdString ("WebKiosk_Lists");
+const StdString App::prefsHttps = StdString ("Https");
+const StdString App::prefsWebKioskUiPlaylists = StdString ("WebKiosk_Playlists");
+const StdString App::prefsMonitorUiPlaylists = StdString ("Monitor_Playlists");
 const StdString App::prefsMainUiShowAllEnabled = StdString ("Main_ShowAllEnabled");
 
 App::App ()
@@ -95,6 +96,7 @@ App::App ()
 , isShuttingDown (false)
 , isShutdown (false)
 , startTime (0)
+, isHttpsEnabled (false)
 , window (NULL)
 , render (NULL)
 , rootPanel (NULL)
@@ -122,7 +124,7 @@ App::App ()
 , nextUniqueId (1)
 , uiMutex (NULL)
 , currentUi (NULL)
-, createResourceTextureMutex (NULL)
+, renderTaskMutex (NULL)
 , isSuspendingUpdate (false)
 , updateMutex (NULL)
 , updateCond (NULL)
@@ -137,14 +139,14 @@ App::App ()
 {
 	uniqueIdMutex = SDL_CreateMutex ();
 	uiMutex = SDL_CreateMutex ();
-	createResourceTextureMutex = SDL_CreateMutex ();
+	renderTaskMutex = SDL_CreateMutex ();
 	updateMutex = SDL_CreateMutex ();
 	updateCond = SDL_CreateCond ();
 	backgroundMutex = SDL_CreateMutex ();
 }
 
 App::~App () {
-	clearCreateResourceTextureQueue ();
+	clearRenderTaskQueue ();
 	clearUiStack ();
 
 	if (rootPanel) {
@@ -162,9 +164,9 @@ App::~App () {
 		uiMutex = NULL;
 	}
 
-	if (createResourceTextureMutex) {
-		SDL_DestroyMutex (createResourceTextureMutex);
-		createResourceTextureMutex = NULL;
+	if (renderTaskMutex) {
+		SDL_DestroyMutex (renderTaskMutex);
+		renderTaskMutex = NULL;
 	}
 
 	if (updateMutex) {
@@ -194,6 +196,7 @@ void App::freeInstance () {
 	if (appInstance) {
 		delete (appInstance);
 		appInstance = NULL;
+		IMG_Quit ();
 		SDL_Quit ();
 	}
 }
@@ -217,12 +220,12 @@ void App::clearUiStack () {
 	SDL_UnlockMutex (uiMutex);
 }
 
-void App::clearCreateResourceTextureQueue () {
-	SDL_LockMutex (createResourceTextureMutex);
-	while (! createResourceTextureQueue.empty ()) {
-		createResourceTextureQueue.pop ();
+void App::clearRenderTaskQueue () {
+	SDL_LockMutex (renderTaskMutex);
+	while (! renderTaskQueue.empty ()) {
+		renderTaskQueue.pop ();
 	}
-	SDL_UnlockMutex (createResourceTextureMutex);
+	SDL_UnlockMutex (renderTaskMutex);
 }
 
 int App::getImageScale (int w, int h) {
@@ -256,11 +259,9 @@ int App::run () {
 			Log::write (Log::DEBUG, "Failed to read preferences file; prefsPath=\"%s\" err=%i", prefsPath.c_str (), result);
 			prefsMap.clear ();
 		}
-		else {
-			Log::write (Log::DEBUG, "Preferences file read successfully; prefsPath=\"%s\" data=%s", prefsPath.c_str (), prefsMap.toString ().c_str ());
-		}
 	}
 
+	isHttpsEnabled = prefsMap.find (App::prefsHttps, true);
 	windowWidth = prefsMap.find (App::prefsWindowWidth, 0);
 	windowHeight = prefsMap.find (App::prefsWindowHeight, 0);
 	imageScale = getImageScale (windowWidth, windowHeight);
@@ -277,8 +278,13 @@ int App::run () {
 	nextWindowWidth = windowWidth;
 	nextWindowHeight = windowHeight;
 
-	if (SDL_Init (SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_TIMER) != 0) {
+	if (SDL_Init (SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
 		Log::write (Log::ERR, "Failed to start SDL: %s", SDL_GetError ());
+		return (Result::ERROR_SDL_OPERATION_FAILED);
+	}
+
+	if (IMG_Init (IMG_INIT_JPG | IMG_INIT_PNG) != (IMG_INIT_JPG | IMG_INIT_PNG)) {
+		Log::write (Log::ERR, "Failed to start SDL_image: %s", IMG_GetError ());
 		return (Result::ERROR_SDL_OPERATION_FAILED);
 	}
 
@@ -288,13 +294,20 @@ int App::run () {
 		return (result);
 	}
 
+	// TODO: Load UI text for another language if appropriate (currently defaulting to en)
+	result = uiText.load ();
+	if (result != Result::SUCCESS) {
+		Log::write (Log::ERR, "Failed to load text resources; err=%i", result);
+		return (result);
+	}
+
 	result = input.start ();
 	if (result != Result::SUCCESS) {
 		Log::write (Log::ERR, "Failed to acquire application input devices; err=%i", result);
 		return (result);
 	}
 
-	result = network.start ();
+	result = network.start (prefsMap.find (App::prefsNetworkThreads, Network::defaultRequestThreadCount));
 	if (result != Result::SUCCESS) {
 		Log::write (Log::ERR, "Failed to acquire application network resources; err=%i", result);
 		return (result);
@@ -343,15 +356,15 @@ int App::run () {
 		Log::write (Log::ERR, "Failed to create application window: %s", SDL_GetError ());
 		return (Result::ERROR_SDL_OPERATION_FAILED);
 	}
-	SDL_SetWindowTitle (window, uiText.windowTitle.c_str ());
+	SDL_SetWindowTitle (window, uiText.getText (UiTextString::windowTitle).c_str ());
 
 	startTime = Util::getTime ();
+	uiConfig.resetScale ();
 	result = uiConfig.load (fontScale);
 	if (result != Result::SUCCESS) {
 		Log::write (Log::ERR, "Failed to load application resources; err=%i", result);
 		return (result);
 	}
-	uiConfig.resetLayoutValues ();
 	populateWidgets ();
 
 	ui = new MainUi ();
@@ -401,7 +414,7 @@ int App::run () {
 			}
 		}
 
-		createResourceTextures ();
+		executeRenderTasks ();
 		draw ();
 		if ((windowWidth != nextWindowWidth) || (windowHeight != nextWindowHeight)) {
 			resizeWindow ();
@@ -511,22 +524,16 @@ void App::datagramReceived (void *callbackData, const char *messageData, int mes
 	app->agentControl.receiveMessage (messageData, messageLength);
 }
 
-void App::createResourceTextures () {
-	App::CreateResourceTextureContext ctx;
-	SDL_Texture *texture;
+void App::executeRenderTasks () {
+	App::RenderTaskContext ctx;
 
-	SDL_LockMutex (createResourceTextureMutex);
-	while (! createResourceTextureQueue.empty ()) {
-		ctx = createResourceTextureQueue.front ();
-
-		texture = resource.createTexture (ctx.path, ctx.surface);
-		if (ctx.callback) {
-			ctx.callback (ctx.callbackData, ctx.path, ctx.surface, texture);
-		}
-
-		createResourceTextureQueue.pop ();
+	SDL_LockMutex (renderTaskMutex);
+	while (! renderTaskQueue.empty ()) {
+		ctx = renderTaskQueue.front ();
+		ctx.callback (ctx.callbackData);
+		renderTaskQueue.pop ();
 	}
-	SDL_UnlockMutex (createResourceTextureMutex);
+	SDL_UnlockMutex (renderTaskMutex);
 }
 
 void App::draw () {
@@ -868,7 +875,9 @@ void App::toggleNewsWindow () {
 	shouldRefreshUi = true;
 }
 
-void App::showSnackbar (const StdString &messageText, const StdString &actionButtonText, Widget::EventCallback actionButtonClickCallback, void *actionButtonClickCallbackData, bool isTopPositioned) {
+void App::showSnackbar (const StdString &messageText, const StdString &actionButtonText, Widget::EventCallback actionButtonClickCallback, void *actionButtonClickCallbackData) {
+	float y;
+
 	snackbarWindow->setMaxWidth (windowWidth - (uiConfig.paddingSize * 2.0f) - rightBarWidth);
 	snackbarWindow->setMessageText (messageText);
 	if ((! actionButtonText.empty ()) && actionButtonClickCallback) {
@@ -878,7 +887,13 @@ void App::showSnackbar (const StdString &messageText, const StdString &actionBut
 		snackbarWindow->setActionButtonEnabled (false);
 	}
 
-	snackbarWindow->position.assign (windowWidth - rightBarWidth - snackbarWindow->width, isTopPositioned ? 0.0f : topBarHeight);
+	if (currentUi && currentUi->isSideWindowOpen ()) {
+		y = 0.0f;
+	}
+	else {
+		y = topBarHeight;
+	}
+	snackbarWindow->position.assign (windowWidth - rightBarWidth - snackbarWindow->width, y);
 	snackbarWindow->startTimeout (uiConfig.snackbarTimeout);
 	snackbarWindow->startScroll (uiConfig.snackbarScrollDuration);
 	if (snackbarWindow->zLevel < rootPanel->maxWidgetZLevel) {
@@ -893,8 +908,8 @@ void App::handleLinkClientCommand (const StdString &agentId, Json *command) {
 
 	commandid = systemInterface.getCommandId (command);
 	switch (commandid) {
-		case SystemInterface::Command_EventRecord: {
-			// TODO: Add logic to remove the need for a sync on every record
+		case SystemInterface::Command_TaskItem: {
+			agentControl.recordStore.addRecord (command);
 			shouldSyncRecordStore = true;
 			break;
 		}
@@ -902,24 +917,13 @@ void App::handleLinkClientCommand (const StdString &agentId, Json *command) {
 
 	ui = getCurrentUi ();
 	if (ui) {
-		ui->handleLinkClientCommand (agentId, command);
+		ui->handleLinkClientCommand (agentId, commandid, command);
 		ui->release ();
 	}
 }
 
 void App::handleLinkClientConnect (const StdString &agentId) {
-	Json *params;
 	std::vector<Ui *>::iterator i, end;
-
-	params = new Json ();
-	params->set ("commandId", SystemInterface::Command_AgentStatus);
-	agentControl.writeLinkCommand (createCommandJson ("ReadEvents", SystemInterface::Constant_Link, params), agentId);
-
-	params = new Json ();
-	params->set ("commandId", SystemInterface::Command_TaskItem);
-	agentControl.writeLinkCommand (createCommandJson ("ReadEvents", SystemInterface::Constant_Link, params), agentId);
-
-	newsWindow->addNewsItem (uiConfig.coreSprites.getSprite (UiConfiguration::NETWORK_CONNECT_ICON), uiText.linkServerConnectedNewsTitle, StdString::createSprintf ("%s - %s", agentControl.getAgentDisplayName (agentId).c_str (), uiText.linkServerConnectedNewsText.c_str ()));
 
 	SDL_LockMutex (uiMutex);
 	i = uiStack.begin ();
@@ -1053,16 +1057,18 @@ SystemInterface::Prefix App::createCommandPrefix () {
 	return (prefix);
 }
 
-void App::createResourceTexture (StdString path, SDL_Surface *surface, CreateResourceTextureCallback callback, void *callbackData) {
-	App::CreateResourceTextureContext ctx;
+void App::addRenderTask (RenderTaskFunction fn, void *fnData) {
+	App::RenderTaskContext ctx;
 
-	ctx.path.assign (path);
-	ctx.surface = surface;
-	ctx.callback = callback;
-	ctx.callbackData = callbackData;
-	SDL_LockMutex (createResourceTextureMutex);
-	createResourceTextureQueue.push (ctx);
-	SDL_UnlockMutex (createResourceTextureMutex);
+	if (! fn) {
+		return;
+	}
+
+	ctx.callback = fn;
+	ctx.callbackData = fnData;
+	SDL_LockMutex (renderTaskMutex);
+	renderTaskQueue.push (ctx);
+	SDL_UnlockMutex (renderTaskMutex);
 }
 
 void App::writePrefsMap () {
@@ -1082,8 +1088,8 @@ void App::writePrefsMap () {
 }
 
 void App::resizeWindow () {
-	int scale;
 	std::vector<Ui *>::iterator i, end;
+	int scale, result;
 
 	scale = getImageScale (nextWindowWidth, nextWindowHeight);
 	if (scale < 0) {
@@ -1092,7 +1098,6 @@ void App::resizeWindow () {
 		return;
 	}
 
-	Log::write (Log::DEBUG2, "Begin application window resize; oldSize=%ix%i newSize=%ix%i", windowWidth, windowHeight, nextWindowWidth, nextWindowHeight);
 	SDL_LockMutex (updateMutex);
 	isSuspendingUpdate = true;
 	SDL_CondWait (updateCond, updateMutex);
@@ -1101,7 +1106,7 @@ void App::resizeWindow () {
 	windowWidth = nextWindowWidth;
 	windowHeight = nextWindowHeight;
 	imageScale = scale;
-	uiConfig.resetLayoutValues ();
+	uiConfig.resetScale ();
 
 	clipRect.x = 0;
 	clipRect.y = 0;
@@ -1113,6 +1118,10 @@ void App::resizeWindow () {
 	newsWindow->setViewSize (windowWidth * uiConfig.rightNavWidthPercent, windowHeight - topBarHeight - bottomBarHeight);
 
 	uiConfig.coreSprites.resize ();
+	result = uiConfig.reloadFonts (fontScale);
+	if (result != Result::SUCCESS) {
+		Log::write (Log::ERR, "Failed to reload fonts; fontScale=%.2f err=%i", fontScale, result);
+	}
 	if (! backgroundTextureBasePath.empty ()) {
 		setNextBackgroundTexturePath (backgroundTextureBasePath);
 	}
@@ -1143,7 +1152,6 @@ void App::resizeWindow () {
 
 	prefsMap.insert (App::prefsWindowWidth, windowWidth);
 	prefsMap.insert (App::prefsWindowHeight, windowHeight);
-	Log::write (Log::DEBUG2, "End application window resize; size=%ix%i", windowWidth, windowHeight);
 }
 
 void App::setNextBackgroundTexturePath (const StdString &path) {
@@ -1151,7 +1159,6 @@ void App::setNextBackgroundTexturePath (const StdString &path) {
 
 	backgroundTextureBasePath.assign (path);
 	filepath = getBackgroundTexturePath (backgroundTextureBasePath);
-	Log::write (Log::DEBUG2, "App::setNextBackgroundTexturePath; backgroundTextureBasePath=\"%s\"", backgroundTextureBasePath.c_str ());
 	SDL_LockMutex (backgroundMutex);
 	if (! filepath.equals (nextBackgroundTexturePath)) {
 		if (nextBackgroundTexture) {

@@ -74,7 +74,7 @@ protected:
 	void doProcessMouseState (const Widget::MouseState &mouseState);
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	void resetLayout ();
+	void refreshLayout ();
 
 private:
 	Label *label;

@@ -46,7 +46,7 @@ public:
 
 protected:
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	virtual void resetLayout ();
+	virtual void refreshLayout ();
 
 private:
 	std::list<Widget *> itemList;

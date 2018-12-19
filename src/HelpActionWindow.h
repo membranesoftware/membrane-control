@@ -53,7 +53,7 @@ protected:
 	StdString toStringDetail ();
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	void resetLayout ();
+	void refreshLayout ();
 
 private:
 	float windowWidth;

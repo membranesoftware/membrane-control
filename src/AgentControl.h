@@ -39,9 +39,10 @@
 #include "SDL2/SDL.h"
 #include "StdString.h"
 #include "Json.h"
-#include "Buffer.h"
+#include "SharedBuffer.h"
 #include "RecordStore.h"
 #include "HashMap.h"
+#include "Agent.h"
 #include "LinkClient.h"
 #include "Ui.h"
 
@@ -81,9 +82,6 @@ public:
 	// Remove a previously requested link client connection
 	void disconnectLinkClient (const StdString &agentId);
 
-	// Request that the agent control contact an agent at the specified address and maintain a link client connection to it if available
-	void connectLinkClientToAddress (const StdString &address);
-
 	// Write a command to the specified link client. An empty agentId value causes the command to be written to all connected link clients.
 	void writeLinkCommand (Json *command, const StdString &agentId = StdString (""));
 	void writeLinkCommand (const StdString &commandJson, const StdString &agentId = StdString (""));
@@ -91,17 +89,32 @@ public:
 	// Return a boolean value indicating if the specified link client is connected
 	bool isLinkClientConnected (const StdString &agentId);
 
-	// Return a boolean value indicating if a connect attempt to the specified link address is in progress
-	bool isLinkClientConnectingToAddress (const StdString &address);
-
 	// Return the number of active link client connections
 	int getLinkClientCount ();
 
-	// Return a string value containing the specified agent's display name, or an empty string if no such agent was found
+	// Return a string containing the specified agent's display name, or an empty string if no such agent was found
 	StdString getAgentDisplayName (const StdString &agentId);
 
-	// Store record data from a received AgentStatus command
-	void storeAgentStatus (Json *agentStatusCommand);
+	// Return a string containing the specified agent's invoke URL with an optional command parameter, or an empty string if no such agent was found. If command is not NULL, this method becomes responsible for freeing the object when it's no longer needed.
+	StdString getAgentInvokeUrl (const StdString &agentId, Json *command = NULL, const StdString &path = StdString ("/"));
+
+	// Return a string containing the specified agent's secondary URL with an optional command parameter, or an empty string if no such agent was found. If command is not NULL, this method becomes responsible for freeing the object when it's no longer needed.
+	StdString getAgentSecondaryUrl (const StdString &agentId, Json *command = NULL, const StdString &path = StdString ("/"));
+
+	// Return a string containing the specified agent's link URL, or an empty string if no such agent was found
+	StdString getAgentLinkUrl (const StdString &agentId);
+
+	// Store record data from a received AgentStatus command, optionally resetting its invoke hostname and port as part of the operation
+	void storeAgentStatus (Json *agentStatusCommand, const StdString &agentInvokeHostname = StdString (""), int agentInvokeTcpPort1 = 0);
+
+	// Send a network message to attempt contact with an agent at the specified address
+	void contactAgent (const StdString &hostname, int tcpPort);
+
+	// Invoke the GetStatus command from the specified agent and update its record if successful
+	void refreshAgentStatus (const StdString &agentId, const StdString &queueId = StdString (""));
+
+	// Remove any previously stored records associated with the specified agent
+	void removeAgent (const StdString &agentId);
 
 	// Invoke a command from a remote agent, gather response data, and invoke the provided callback when complete. A non-empty queueId value indicates that the command should be executed serially with others of the same name. This class becomes responsible for freeing the submitted command object when it's no longer needed. Returns a result value indicating if the command was accepted. If successful, the method stores a jobId value in the provided pointer.
 	int invokeCommand (const StdString &agentId, Json *command, AgentControl::InvokeCommandCallback callback = NULL, void *callbackData = NULL, int64_t *jobId = NULL, const StdString &queueId = StdString (""));
@@ -110,15 +123,21 @@ public:
 	// Parse the provided message data as a command payload received from a remote agent
 	void receiveMessage (const char *messageData, int messageLength);
 
-	// Read configuration fields and an agent ID value from the locally installed system agent and store them in the provided objects. Returns a Result value.
-	static int readSystemAgentConfiguration (HashMap *destMap, StdString *agentId);
+	// Return the base invoke URL associated with the provided hostname / port pair
+	StdString getHostInvokeUrl (const StdString &hostname, int tcpPort);
+
+	// Read configuration fields from any locally installed system agent and store the gathered data in the provided objects. Returns a Result value.
+	static int readLocalAgentConfiguration (HashMap *agentConfiguration);
+
+	// Read state fields from any locally installed system agent and store the gathered data in the provided objects. Returns a Result value.
+	static int readLocalAgentState (StdString *agentId, Json *agentState);
 
 	// Callback functions
-	static void sendHttpPostComplete (void *contextPtr, const StdString &targetUrl, int statusCode, Buffer *responseData);
+	static void sendHttpPostComplete (void *contextPtr, const StdString &targetUrl, int statusCode, SharedBuffer *responseData);
 	static void linkClientConnect (void *agentControlPtr, LinkClient *client);
 	static void linkClientDisconnect (void *agentControlPtr, LinkClient *client, const StdString &errorDescription);
 	static void linkClientCommand (void *agentControlPtr, LinkClient *client, Json *command);
-	static void invokeAgentContactGetStatusComplete (void *agentControlPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand);
+	static void invokeGetStatusComplete (void *agentControlPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand);
 	static void invokeLinkServerGetStatusComplete (void *agentControlPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand);
 
 private:
@@ -144,9 +163,6 @@ private:
 	// Remove all items from the command queue map
 	void clearCommandQueues ();
 
-	// Set entries in agentInvokeUrlMap and agentLinkUrlMap as appropriate for the provided AgentStatus or AgentContact command
-	void storeAgentUrls (Json *command);
-
 	// Write an application preferences value containing cached agent status data
 	void writePrefs ();
 
@@ -166,17 +182,14 @@ private:
 	std::map<StdString, AgentControl::CommandContextQueue> commandQueueMap;
 	SDL_mutex *commandQueueMutex;
 
-	// A map of agent ID values to invoke URLs
-	HashMap agentInvokeUrlMap;
+	std::map<StdString, Agent> agentMap;
+	SDL_mutex *agentMapMutex;
 
-	// A map of agent ID values to link server URLs
+	// A map of agent ID values to link URLs
 	HashMap agentLinkUrlMap;
 
-	// A map of agent ID values to display name strings
-	HashMap agentDisplayNameMap;
-
-	// A map of connect address values to job ID values associated with a connect attempt in progress
-	HashMap linkClientConnectAddressMap;
+	// A map of network job ID values to associated hostname:port pairs
+	HashMap agentContactHostnameMap;
 };
 
 #endif

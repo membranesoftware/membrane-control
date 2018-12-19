@@ -64,7 +64,7 @@ int main (int argc, char **argv)
 	Log *log;
 	App *app;
 	StdString val;
-	int result;
+	int result, exitval;
 
 	atexit (cleanup);
 
@@ -98,13 +98,13 @@ int main (int argc, char **argv)
 		if (! val.empty ()) {
 			val = Util::getAppendPath (val, "Library");
 			val = Util::getAppendPath (val, "Application Support");
-			val = Util::getAppendPath (val, "Membrane Software");
+			val = Util::getAppendPath (val, "Membrane Control");
 		}
 #endif
 #if PLATFORM_WINDOWS
 		val = Util::getEnvValue ("LOCALAPPDATA", "");
 		if (! val.empty ()) {
-			val = Util::getAppendPath (val, "Membrane Software");
+			val = Util::getAppendPath (val, "Membrane Control");
 		}
 #endif
 		if (! val.empty ()) {
@@ -164,12 +164,14 @@ int main (int argc, char **argv)
 		app->minUpdateFrameDelay = result;
 	}
 
+	exitval = 0;
 	result = app->run ();
 	if (result != Result::SUCCESS) {
-		printf ("Failed to execute application, see log file for errors\n");
+		printf ("Failed to execute application. For errors, see log file: %s\n", log->outputFilename.c_str ());
+		exitval = 1;
 	}
 
-	exit (0);
+	exit (exitval);
 }
 
 void cleanup () {

@@ -44,16 +44,20 @@
 #include "SpriteGroup.h"
 #include "ComboBox.h"
 #include "TextField.h"
-#include "TextFieldWindow.h"
 #include "Toggle.h"
+#include "SliderWindow.h"
 #include "UiConfiguration.h"
 #include "ActionWindow.h"
 
-ActionWindow::ActionWindow (const StdString &titleText, const StdString &confirmButtonText)
+ActionWindow::ActionWindow ()
 : Panel ()
+, isOptionDataValid (false)
 , isConfirmed (false)
+, isInverseColor (false)
 , closeCallback (NULL)
 , closeCallbackData (NULL)
+, optionChangeCallback (NULL)
+, optionChangeCallbackData (NULL)
 , titleLabel (NULL)
 , confirmButton (NULL)
 , cancelButton (NULL)
@@ -62,26 +66,25 @@ ActionWindow::ActionWindow (const StdString &titleText, const StdString &confirm
 	UiText *uitext;
 
 	uiconfig = &(App::getInstance ()->uiConfig);
-	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	setFillBg (true, uiconfig->lightPrimaryColor);
-
 	uitext = &(App::getInstance ()->uiText);
-	if (! titleText.empty ()) {
-		titleLabel = (Label *) addWidget (new Label (titleText, UiConfiguration::TITLE, uiconfig->inverseTextColor));
-	}
 
-	confirmButton = (Button *) addWidget (new Button ((! confirmButtonText.empty ()) ? confirmButtonText : uitext->ok.uppercased ()));
+	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
+	setFillBg (true, uiconfig->lightBackgroundColor);
+
+	titleLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::TITLE, uiconfig->primaryTextColor));
+	titleLabel->isVisible = false;
+
+	confirmButton = (Button *) addWidget (new Button (uitext->getText (UiTextString::ok).uppercased ()));
 	confirmButton->setMouseClickCallback (ActionWindow::confirmButtonClicked, this);
-	confirmButton->setRaised (true, uiconfig->darkInverseBackgroundColor);
-	confirmButton->setTextColor (uiconfig->raisedButtonInverseTextColor);
-	confirmButton->setInverseColor (true);
-	cancelButton = (Button *) addWidget (new Button (uitext->cancel.uppercased ()));
-	cancelButton->setMouseClickCallback (ActionWindow::cancelButtonClicked, this);
-	cancelButton->setRaised (true, uiconfig->darkInverseBackgroundColor);
-	cancelButton->setTextColor (uiconfig->raisedButtonInverseTextColor);
-	cancelButton->setInverseColor (true);
+	confirmButton->setTextColor (uiconfig->raisedButtonTextColor);
+	confirmButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
 
-	resetLayout ();
+	cancelButton = (Button *) addWidget (new Button (uitext->getText (UiTextString::cancel).uppercased ()));
+	cancelButton->setMouseClickCallback (ActionWindow::cancelButtonClicked, this);
+	cancelButton->setTextColor (uiconfig->raisedButtonTextColor);
+	cancelButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
+
+	refreshLayout ();
 }
 
 ActionWindow::~ActionWindow () {
@@ -105,137 +108,159 @@ ActionWindow *ActionWindow::castWidget (Widget *widget) {
 	return (ActionWindow::isWidgetType (widget) ? (ActionWindow *) widget : NULL);
 }
 
+void ActionWindow::setButtonsVisible (bool visible) {
+	cancelButton->isVisible = visible;
+	confirmButton->isVisible = visible;
+	refreshLayout ();
+}
+
+void ActionWindow::setTitleText (const StdString &text) {
+	titleLabel->setText (text);
+	if (text.empty ()) {
+		titleLabel->isVisible = false;
+	}
+	else {
+		titleLabel->isVisible = true;
+	}
+	refreshLayout ();
+}
+
+void ActionWindow::setConfirmButtonText (const StdString &text) {
+	confirmButton->setText (text);
+	refreshLayout ();
+}
+
+void ActionWindow::setInverseColor (bool inverse) {
+	UiConfiguration *uiconfig;
+	std::list<ActionWindow::Item>::iterator i, end;
+
+	if (isInverseColor == inverse) {
+		return;
+	}
+	uiconfig = &(App::getInstance ()->uiConfig);
+	isInverseColor = inverse;
+	if (isInverseColor) {
+		if (isFilledBg) {
+			setFillBg (true, uiconfig->lightPrimaryColor);
+		}
+
+		titleLabel->textColor.assign (uiconfig->inverseTextColor);
+
+		confirmButton->setInverseColor (true);
+		confirmButton->setTextColor (uiconfig->raisedButtonInverseTextColor);
+		confirmButton->setRaised (true, uiconfig->darkInverseBackgroundColor);
+
+		cancelButton->setInverseColor (true);
+		cancelButton->setTextColor (uiconfig->raisedButtonInverseTextColor);
+		cancelButton->setRaised (true, uiconfig->darkInverseBackgroundColor);
+	}
+	else {
+		if (isFilledBg) {
+			setFillBg (true, uiconfig->lightBackgroundColor);
+		}
+
+		titleLabel->textColor.assign (uiconfig->primaryTextColor);
+
+		confirmButton->setInverseColor (false);
+		confirmButton->setTextColor (uiconfig->raisedButtonTextColor);
+		confirmButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
+
+		cancelButton->setInverseColor (false);
+		cancelButton->setTextColor (uiconfig->raisedButtonTextColor);
+		cancelButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
+	}
+
+	i = itemList.begin ();
+	end = itemList.end ();
+	while (i != end) {
+		i->nameLabel->textColor.assign (isInverseColor ? uiconfig->inverseTextColor : uiconfig->primaryTextColor);
+		switch (i->type) {
+			case ActionWindow::COMBO_BOX: {
+				((ComboBox *) i->optionWidget)->setInverseColor (isInverseColor);
+				break;
+			}
+			case ActionWindow::TEXT_FIELD: {
+				((TextField *) i->optionWidget)->setInverseColor (isInverseColor);
+				break;
+			}
+			case ActionWindow::TOGGLE: {
+				((Toggle *) i->optionWidget)->setInverseColor (isInverseColor);
+				break;
+			}
+		}
+		++i;
+	}
+}
+
+void ActionWindow::setOptionChangeCallback (Widget::EventCallback callback, void *callbackData) {
+	optionChangeCallback = callback;
+	optionChangeCallbackData = callbackData;
+}
+
 void ActionWindow::setCloseCallback (Widget::EventCallback callback, void *callbackData) {
 	closeCallback = callback;
 	closeCallbackData = callbackData;
 }
 
-void ActionWindow::addComboBoxOption (const StdString &optionName, StringList *optionItemList, const StdString &optionValue) {
-	UiConfiguration *uiconfig;
-	ComboBox *combobox;
-	ActionWindow::Item item;
-	std::list<ActionWindow::Item>::iterator curitem;
-
-	uiconfig = &(App::getInstance ()->uiConfig);
-
-	combobox = (ComboBox *) addWidget (new ComboBox ());
-	combobox->addItems (optionItemList);
-	if (! optionValue.empty ()) {
-		combobox->setValue (optionValue);
-	}
-
-	curitem = findItem (optionName);
-	if (curitem != itemList.end ()) {
-		curitem->name.assign (optionName);
-		curitem->type = ActionWindow::COMBO_BOX;
-		curitem->nameLabel->setText (curitem->name);
-		curitem->optionWidget->isDestroyed = true;
-		curitem->optionWidget = combobox;
-	}
-	else {
-		item.name.assign (optionName);
-		item.type = ActionWindow::COMBO_BOX;
-		item.nameLabel = (Label *) addWidget (new Label (item.name, UiConfiguration::CAPTION, uiconfig->inverseTextColor));
-		item.optionWidget = combobox;
-		itemList.push_back (item);
-	}
-	resetLayout ();
+void ActionWindow::addOption (const StdString &optionName, ComboBox *comboBox, const StdString &descriptionText) {
+	comboBox->setValueChangeCallback (ActionWindow::optionValueChanged, this);
+	comboBox->setInverseColor (isInverseColor);
+	doAddOption (ActionWindow::COMBO_BOX, optionName, comboBox, descriptionText);
 }
 
-void ActionWindow::addComboBoxOption (const StdString &optionName, HashMap *optionItemMap, const StdString &optionValue) {
-	UiConfiguration *uiconfig;
-	ComboBox *combobox;
-	ActionWindow::Item item;
-	std::list<ActionWindow::Item>::iterator curitem;
-
-	uiconfig = &(App::getInstance ()->uiConfig);
-
-	combobox = (ComboBox *) addWidget (new ComboBox ());
-	combobox->addItems (optionItemMap);
-	if (! optionValue.empty ()) {
-		combobox->setValue (optionValue);
-	}
-
-	curitem = findItem (optionName);
-	if (curitem != itemList.end ()) {
-		curitem->name.assign (optionName);
-		curitem->type = ActionWindow::COMBO_BOX;
-		curitem->nameLabel->setText (curitem->name);
-		curitem->optionWidget->isDestroyed = true;
-		curitem->optionWidget = combobox;
-	}
-	else {
-		item.name.assign (optionName);
-		item.type = ActionWindow::COMBO_BOX;
-		item.nameLabel = (Label *) addWidget (new Label (item.name, UiConfiguration::CAPTION, uiconfig->inverseTextColor));
-		item.optionWidget = combobox;
-		itemList.push_back (item);
-	}
-	resetLayout ();
+void ActionWindow::addOption (const StdString &optionName, TextField *textField, const StdString &descriptionText) {
+	textField->setValueChangeCallback (ActionWindow::optionValueChanged, this);
+	textField->setInverseColor (isInverseColor);
+	doAddOption (ActionWindow::TEXT_FIELD, optionName, textField, descriptionText);
 }
 
-void ActionWindow::addTextFieldOption (const StdString &optionName, const StdString &promptText, const StdString &optionValue) {
-	UiConfiguration *uiconfig;
-	TextFieldWindow *textfield;
-	ActionWindow::Item item;
-	std::list<ActionWindow::Item>::iterator curitem;
-
-	uiconfig = &(App::getInstance ()->uiConfig);
-
-	textfield = (TextFieldWindow *) addWidget (new TextFieldWindow (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CAPTION]->maxGlyphWidth, promptText));
-	textfield->setPadding (0.0f, 0.0f);
-	if (! optionValue.empty ()) {
-		textfield->setValue (optionValue);
-	}
-
-	curitem = findItem (optionName);
-	if (curitem != itemList.end ()) {
-		curitem->name.assign (optionName);
-		curitem->type = ActionWindow::TEXT_FIELD;
-		curitem->nameLabel->setText (curitem->name);
-		curitem->optionWidget->isDestroyed = true;
-		curitem->optionWidget = textfield;
-	}
-	else {
-		item.name.assign (optionName);
-		item.type = ActionWindow::TEXT_FIELD;
-		item.nameLabel = (Label *) addWidget (new Label (item.name, UiConfiguration::CAPTION, uiconfig->inverseTextColor));
-		item.optionWidget = textfield;
-		itemList.push_back (item);
-	}
-	resetLayout ();
+void ActionWindow::addOption (const StdString &optionName, Toggle *toggle, const StdString &descriptionText) {
+	toggle->setStateChangeCallback (ActionWindow::optionValueChanged, this);
+	toggle->setInverseColor (isInverseColor);
+	doAddOption (ActionWindow::TOGGLE, optionName, toggle, descriptionText);
 }
 
-void ActionWindow::addToggleOption (const StdString &optionName, bool optionValue) {
-	UiConfiguration *uiconfig;
-	Toggle *toggle;
-	ActionWindow::Item item;
-	std::list<ActionWindow::Item>::iterator curitem;
-
-	uiconfig = &(App::getInstance ()->uiConfig);
-
-	toggle = (Toggle *) addWidget (new Toggle ());
-	toggle->setChecked (optionValue);
-
-	curitem = findItem (optionName);
-	if (curitem != itemList.end ()) {
-		curitem->name.assign (optionName);
-		curitem->type = ActionWindow::TOGGLE;
-		curitem->nameLabel->setText (curitem->name);
-		curitem->optionWidget->isDestroyed = true;
-		curitem->optionWidget = toggle;
-	}
-	else {
-		item.name.assign (optionName);
-		item.type = ActionWindow::TOGGLE;
-		item.nameLabel = (Label *) addWidget (new Label (item.name, UiConfiguration::CAPTION, uiconfig->inverseTextColor));
-		item.optionWidget = toggle;
-		itemList.push_back (item);
-	}
-	resetLayout ();
+void ActionWindow::addOption (const StdString &optionName, SliderWindow *slider, const StdString &descriptionText) {
+	slider->setValueChangeCallback (ActionWindow::optionValueChanged, this);
+	slider->setInverseColor (isInverseColor);
+	doAddOption (ActionWindow::SLIDER, optionName, slider, descriptionText);
 }
 
-StdString ActionWindow::getOptionValue (const StdString &optionName, const StdString &defaultValue) {
+void ActionWindow::doAddOption (int itemType, const StdString &optionName, Widget *optionWidget, const StdString &descriptionText) {
+	UiConfiguration *uiconfig;
+	std::list<ActionWindow::Item>::iterator item;
+
+	uiconfig = &(App::getInstance ()->uiConfig);
+	addWidget (optionWidget);
+	item = findItem (optionName, true);
+	if (item != itemList.end ()) {
+		item->type = itemType;
+		if (! item->nameLabel) {
+			item->nameLabel = (Label *) addWidget (new Label (item->name, UiConfiguration::CAPTION, isInverseColor ? uiconfig->inverseTextColor : uiconfig->primaryTextColor));
+		}
+		else {
+			item->nameLabel->setText (item->name);
+		}
+
+		if (item->descriptionText) {
+			item->descriptionText->isDestroyed = true;
+			item->descriptionText = NULL;
+		}
+		if (! descriptionText.empty ()) {
+			item->descriptionText = (TextArea *) addWidget (new TextArea (UiConfiguration::CAPTION, isInverseColor ? uiconfig->darkInverseTextColor : uiconfig->lightPrimaryTextColor, 0, uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CAPTION]->maxGlyphWidth));
+			item->descriptionText->setText (descriptionText);
+		}
+
+		if (item->optionWidget) {
+			item->optionWidget->isDestroyed = true;
+		}
+		item->optionWidget = optionWidget;
+	}
+	verifyOptions ();
+	refreshLayout ();
+}
+
+StdString ActionWindow::getStringValue (const StdString &optionName, const StdString &defaultValue) {
 	std::list<ActionWindow::Item>::iterator item;
 
 	item = findItem (optionName);
@@ -248,7 +273,7 @@ StdString ActionWindow::getOptionValue (const StdString &optionName, const StdSt
 			return (((ComboBox *) item->optionWidget)->getValue ());
 		}
 		case ActionWindow::TEXT_FIELD: {
-			return (((TextFieldWindow *) item->optionWidget)->getValue ());
+			return (((TextField *) item->optionWidget)->getValue ());
 		}
 		case ActionWindow::TOGGLE: {
 			return (((Toggle *) item->optionWidget)->isChecked ? "true" : "false");
@@ -258,7 +283,77 @@ StdString ActionWindow::getOptionValue (const StdString &optionName, const StdSt
 	return (defaultValue);
 }
 
-bool ActionWindow::getOptionValue (const StdString &optionName, bool defaultValue) {
+StdString ActionWindow::getStringValue (const StdString &optionName, const char *defaultValue) {
+	return (getStringValue (optionName, StdString (defaultValue)));
+}
+
+int ActionWindow::getNumberValue (const StdString &optionName, int defaultValue) {
+	std::list<ActionWindow::Item>::iterator item;
+	StdString s;
+	float val;
+
+	item = findItem (optionName);
+	if (item == itemList.end ()) {
+		return (defaultValue);
+	}
+
+	switch (item->type) {
+		case ActionWindow::COMBO_BOX: {
+			s = ((ComboBox *) item->optionWidget)->getValue ();
+			if (StdString::parseFloat (s.c_str (), &val)) {
+				return ((int) val);
+			}
+			break;
+		}
+		case ActionWindow::TEXT_FIELD: {
+			s = ((TextField *) item->optionWidget)->getValue ();
+			if (StdString::parseFloat (s.c_str (), &val)) {
+				return ((int) val);
+			}
+			break;
+		}
+		case ActionWindow::SLIDER: {
+			return ((int) ((SliderWindow *) item->optionWidget)->value);
+		}
+	}
+
+	return (defaultValue);
+}
+
+float ActionWindow::getNumberValue (const StdString &optionName, float defaultValue) {
+	std::list<ActionWindow::Item>::iterator item;
+	StdString s;
+	float val;
+
+	item = findItem (optionName);
+	if (item == itemList.end ()) {
+		return (defaultValue);
+	}
+
+	switch (item->type) {
+		case ActionWindow::COMBO_BOX: {
+			s = ((ComboBox *) item->optionWidget)->getValue ();
+			if (StdString::parseFloat (s.c_str (), &val)) {
+				return (val);
+			}
+			break;
+		}
+		case ActionWindow::TEXT_FIELD: {
+			s = ((TextField *) item->optionWidget)->getValue ();
+			if (StdString::parseFloat (s.c_str (), &val)) {
+				return (val);
+			}
+			break;
+		}
+		case ActionWindow::SLIDER: {
+			return (((SliderWindow *) item->optionWidget)->value);
+		}
+	}
+
+	return (defaultValue);
+}
+
+bool ActionWindow::getBooleanValue (const StdString &optionName, bool defaultValue) {
 	std::list<ActionWindow::Item>::iterator item;
 
 	item = findItem (optionName);
@@ -275,13 +370,10 @@ bool ActionWindow::getOptionValue (const StdString &optionName, bool defaultValu
 	return (defaultValue);
 }
 
-StdString ActionWindow::getOptionValue (const StdString &optionName, const char *defaultValue) {
-	return (getOptionValue (optionName, StdString (defaultValue)));
-}
-
-std::list<ActionWindow::Item>::iterator ActionWindow::findItem (const StdString &optionName) {
+std::list<ActionWindow::Item>::iterator ActionWindow::findItem (const StdString &optionName, bool createNewItem) {
 	std::list<ActionWindow::Item>::iterator i, end;
 	StdString option;
+	ActionWindow::Item item;
 
 	option = optionName.lowercased ();
 	i = itemList.begin ();
@@ -293,20 +385,38 @@ std::list<ActionWindow::Item>::iterator ActionWindow::findItem (const StdString 
 		++i;
 	}
 
+	if (createNewItem) {
+		item.name.assign (optionName);
+		itemList.push_back (item);
+
+		i = itemList.begin ();
+		end = itemList.end ();
+		while (i != end) {
+			if (option.equals (i->name.lowercased ())) {
+				return (i);
+			}
+			++i;
+		}
+	}
+
 	return (end);
 }
 
-void ActionWindow::resetLayout () {
+void ActionWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	std::list<ActionWindow::Item>::iterator i, end;
-	float x, y, w, h;
+	float x, y, x0, x2, y2, w, h;
 
 	uiconfig = &(App::getInstance ()->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
-	if (titleLabel) {
-		titleLabel->position.assign (x, y);
-		y += titleLabel->height + uiconfig->marginSize;
+	x0 = x;
+	x2 = 0.0f;
+	y2 = 0.0f;
+
+	if (titleLabel->isVisible) {
+		titleLabel->flowDown (x, &y, &x2, &y2);
+		y = y2 + uiconfig->marginSize;
 	}
 
 	w = 0.0f;
@@ -332,22 +442,32 @@ void ActionWindow::resetLayout () {
 		}
 
 		y += h + uiconfig->marginSize;
+		if (i->descriptionText) {
+			i->descriptionText->position.assign (x + w + uiconfig->marginSize, y);
+			y += i->descriptionText->height + uiconfig->marginSize;
+		}
+
 		++i;
 	}
 
-	cancelButton->position.assign (x, y);
-	x += cancelButton->width + uiconfig->marginSize;
-	confirmButton->position.assign (x, y);
+	x = x0;
+	x2 = 0.0f;
+	if (cancelButton->isVisible) {
+		cancelButton->flowRight (&x, y, &x2, &y2);
+	}
+	if (confirmButton->isVisible) {
+		confirmButton->flowRight (&x, y, &x2, &y2);
+	}
 
 	resetSize ();
 
-	x = width - uiconfig->paddingSize;
-	x -= confirmButton->width;
-	confirmButton->position.assignX (x);
-	x -= uiconfig->marginSize;
-
-	x -= cancelButton->width;
-	cancelButton->position.assignX (x);
+	x = width - widthPadding;
+	if (confirmButton->isVisible) {
+		confirmButton->flowLeft (&x);
+	}
+	if (cancelButton->isVisible) {
+		cancelButton->flowLeft (&x);
+	}
 }
 
 void ActionWindow::confirmButtonClicked (void *windowPtr, Widget *widgetPtr) {
@@ -370,4 +490,79 @@ void ActionWindow::cancelButtonClicked (void *windowPtr, Widget *widgetPtr) {
 		window->closeCallback (window->closeCallbackData, window);
 	}
 	window->isDestroyed = true;
+}
+
+void ActionWindow::optionValueChanged (void *windowPtr, Widget *widgetPtr) {
+	ActionWindow *window;
+
+	window = (ActionWindow *) windowPtr;
+	window->verifyOptions ();
+	if (window->optionChangeCallback) {
+		window->optionChangeCallback (window->optionChangeCallbackData, window);
+	}
+}
+
+void ActionWindow::setOptionNotEmptyString (const StdString &optionName) {
+	std::list<ActionWindow::Item>::iterator item;
+
+	item = findItem (optionName);
+	if (item == itemList.end ()) {
+		return;
+	}
+
+	item->isNotEmptyString = true;
+	verifyOptions ();
+}
+
+void ActionWindow::verifyOptions () {
+	UiConfiguration *uiconfig;
+	std::list<ActionWindow::Item>::iterator i, end;
+	StdString s;
+	bool windowvalid, optionvalid;
+
+	uiconfig = &(App::getInstance ()->uiConfig);
+	windowvalid = true;
+	i = itemList.begin ();
+	end = itemList.end ();
+	while (i != end) {
+		optionvalid = true;
+		switch (i->type) {
+			case ActionWindow::COMBO_BOX: {
+				s = ((ComboBox *) i->optionWidget)->getValue ();
+				if (i->isNotEmptyString) {
+					if (s.empty ()) {
+						optionvalid = false;
+						break;
+					}
+				}
+
+				break;
+			}
+			case ActionWindow::TEXT_FIELD: {
+				s = ((TextField *) i->optionWidget)->getValue ();
+				if (i->isNotEmptyString) {
+					if (s.empty ()) {
+						optionvalid = false;
+						break;
+					}
+				}
+
+				break;
+			}
+			case ActionWindow::TOGGLE: {
+				break;
+			}
+		}
+
+		if (optionvalid) {
+			i->nameLabel->textColor.rotate (isInverseColor ? uiconfig->inverseTextColor : uiconfig->primaryTextColor, uiconfig->shortColorRotateDuration);
+		}
+		else {
+			windowvalid = false;
+			i->nameLabel->textColor.rotate (uiconfig->errorTextColor, uiconfig->shortColorRotateDuration);
+		}
+		++i;
+	}
+
+	isOptionDataValid = windowvalid;
 }

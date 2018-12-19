@@ -66,14 +66,14 @@ StdString LabelWindow::toStringDetail () {
 
 void LabelWindow::setPadding (float widthPadding, float heightPadding) {
 	Panel::setPadding (widthPadding, heightPadding);
-	resetLayout ();
+	refreshLayout ();
 }
 
 void LabelWindow::setWindowWidth (float fixedWidth, bool isLabelCentered) {
 	isFixedWidth = true;
 	isWidthCentered = isLabelCentered;
 	windowWidth = fixedWidth;
-	resetLayout ();
+	refreshLayout ();
 }
 
 void LabelWindow::setTextColor (const Color &color) {
@@ -90,12 +90,12 @@ StdString LabelWindow::getText () const {
 
 void LabelWindow::setText (const StdString &text) {
 	label->setText (text);
-	resetLayout ();
+	refreshLayout ();
 }
 
 void LabelWindow::setFont (int fontType) {
 	label->setFont (fontType);
-	resetLayout ();
+	refreshLayout ();
 }
 
 void LabelWindow::setMouseoverHighlight (bool enable, const Color &normalTextColor, const Color &normalBgColor, const Color &highlightTextColor, const Color &highlightBgColor, int colorRotateDuration) {
@@ -128,7 +128,7 @@ void LabelWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 	}
 }
 
-void LabelWindow::resetLayout () {
+void LabelWindow::refreshLayout () {
 	float x, w, h;
 
 	x = widthPadding;

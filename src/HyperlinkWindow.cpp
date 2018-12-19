@@ -66,9 +66,9 @@ HyperlinkWindow::HyperlinkWindow (const StdString &linkText, const StdString &li
 	setMouseClickCallback (HyperlinkWindow::windowClicked, this);
 	setMouseEnterCallback (HyperlinkWindow::windowMouseEntered, this);
 	setMouseExitCallback (HyperlinkWindow::windowMouseExited, this);
-	setMouseHoverTooltip (uitext->hyperlinkTooltip);
+	setMouseHoverTooltip (uitext->getText (UiTextString::hyperlinkTooltip));
 
-	resetLayout ();
+	refreshLayout ();
 }
 
 HyperlinkWindow::~HyperlinkWindow () {
@@ -84,19 +84,19 @@ void HyperlinkWindow::setLink (const StdString &linkText, const StdString &linkU
 	url.assign (linkUrl);
 	labelWidth = label->width;
 	labelHeight = label->height;
-	resetLayout ();
+	refreshLayout ();
 }
 
 void HyperlinkWindow::setPadding (float widthPadding, float heightPadding) {
 	Panel::setPadding (widthPadding, heightPadding);
-	resetLayout ();
+	refreshLayout ();
 }
 
 float HyperlinkWindow::getLinePosition (float targetY) {
 	return (label->getLinePosition (targetY));
 }
 
-void HyperlinkWindow::resetLayout () {
+void HyperlinkWindow::refreshLayout () {
 	float x, y;
 
 	x = widthPadding;
@@ -118,11 +118,11 @@ void HyperlinkWindow::windowClicked (void *windowPtr, Widget *widgetPtr) {
 
 	app = App::getInstance ();
 	result = Util::openUrl (window->url);
-	if (result !=  Result::SUCCESS) {
-		app->showSnackbar (app->uiText.openHelpUrlError, StdString (""), NULL, NULL, true);
+	if (result != Result::SUCCESS) {
+		app->showSnackbar (app->uiText.getText (UiTextString::openHelpUrlError));
 	}
 	else {
-		app->showSnackbar (StdString::createSprintf ("%s - %s", app->uiText.launchedWebBrowser.capitalized ().c_str (), window->url.c_str ()), StdString (""), NULL, NULL, true);
+		app->showSnackbar (StdString::createSprintf ("%s - %s", app->uiText.getText (UiTextString::launchedWebBrowser).capitalized ().c_str (), window->url.c_str ()));
 	}
 }
 
@@ -133,7 +133,7 @@ void HyperlinkWindow::windowMouseEntered (void *windowPtr, Widget *widgetPtr) {
 	window = (HyperlinkWindow *) windowPtr;
 	uiconfig = &(App::getInstance ()->uiConfig);
 	window->label->setUnderlined (false);
-	window->label->textColor.rotate (uiconfig->lightPrimaryTextColor, uiconfig->colorRotateDuration);
+	window->label->textColor.rotate (uiconfig->lightPrimaryTextColor, uiconfig->shortColorRotateDuration);
 }
 
 void HyperlinkWindow::windowMouseExited (void *windowPtr, Widget *widgetPtr) {
@@ -143,5 +143,5 @@ void HyperlinkWindow::windowMouseExited (void *windowPtr, Widget *widgetPtr) {
 	window = (HyperlinkWindow *) windowPtr;
 	uiconfig = &(App::getInstance ()->uiConfig);
 	window->label->setUnderlined (true);
-	window->label->textColor.rotate (uiconfig->linkTextColor, uiconfig->colorRotateDuration);
+	window->label->textColor.rotate (uiconfig->linkTextColor, uiconfig->shortColorRotateDuration);
 }

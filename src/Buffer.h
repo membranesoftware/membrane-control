@@ -38,12 +38,14 @@
 class Buffer {
 public:
 	Buffer ();
-	~Buffer ();
+	virtual ~Buffer ();
 
-	static const int defaultSizeIncrement;
+	// Read-only data members
+	uint8_t *data;
+	int length;
 
-	// Set the buffer to persistent mode. If enabled, the buffer's underlying data is not freed when the buffer object is destroyed.
-	void setPersistent ();
+	// Return a newly created Buffer object that has been populated with a copy of this buffer's data
+	Buffer *copy ();
 
 	// Free the buffer's underlying memory and reset its size to zero
 	void reset ();
@@ -51,13 +53,9 @@ public:
 	// Return a boolean value indicating if the buffer is empty
 	bool empty () const;
 
-	// Add data to the buffer. Returns a Result value.
+	// Add data to the buffer and return a Result value
 	int add (uint8_t *dataPtr, int dataLength);
 	int add (const char *str);
-
-	// Return the buffer's data and length using the provided pointers
-	void getData (uint8_t **dataPtr, int *dataLength);
-	void getData (char **dataPtr, int *dataLength);
 
 	// Truncate the buffer's data length to the provided value, which must be less than the buffer's current length
 	void setDataLength (int dataLength);
@@ -66,11 +64,10 @@ public:
 	void advanceRead (int advanceSize);
 
 protected:
-	uint8_t *data;
-	int length;
+	static const int defaultSizeIncrement;
+
 	int size;
 	int sizeIncrement;
-	bool isPersistent;
 };
 
 #endif

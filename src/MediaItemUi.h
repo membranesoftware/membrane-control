@@ -42,13 +42,12 @@
 #include "HashMap.h"
 #include "TimelineBar.h"
 #include "MediaWindow.h"
-#include "IconCardWindow.h"
 #include "CardView.h"
 #include "Ui.h"
 
 class MediaItemUi : public Ui {
 public:
-	MediaItemUi (MediaWindow *card);
+	MediaItemUi (MediaWindow *mediaWindow);
 	~MediaItemUi ();
 
 	// Constants to use for sprite indexes
@@ -57,30 +56,32 @@ public:
 		LARGE_THUMBNAILS_ICON = 1,
 		MEDIUM_THUMBNAILS_ICON = 2,
 		SMALL_THUMBNAILS_ICON = 3,
-		VIEW_BUTTON = 4,
+		THUMBNAIL_SIZE_BUTTON = 4,
 		TIME_ICON = 5,
-		MEDIA_ICON = 6
+		CREATE_STREAM_BUTTON = 6
 	};
 
 	// Return text that should be used to identify the UI in a set of breadcrumb actions, or an empty string if no such title exists
 	StdString getBreadcrumbTitle ();
 
-	// Return a newly created Sprite object that should be used to identify the UI in a set of breadcrumb actions, or NULL if no such Sprite exists. If a Sprite is returned by this method, the caller becomes responsible for destroying it when no longer needed.
-	Sprite *getBreadcrumbSprite ();
+	// Set fields in the provided HelpWindow widget as appropriate for the UI's help content
+	void setHelpWindowContent (Widget *helpWindowPtr);
 
 	// Callback functions
-	static void viewButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void viewSmallActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void viewMediumActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void viewLargeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void processStreamItem (void *uiPtr, Json *record, const StdString &recordId);
+	static void thumbnailSizeButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void smallThumbnailActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void mediumThumbnailActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void largeThumbnailActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void thumbnailMouseEntered (void *uiPtr, Widget *widgetPtr);
+	static void thumbnailMouseExited (void *uiPtr, Widget *widgetPtr);
 	static void resetCardLayout (void *uiPtr, Widget *widgetPtr);
-	static bool sortCards (Widget *a, Widget *b);
+	static void streamDetailMenuClicked (void *uiPtr, Widget *widgetPtr);
+	static void removeActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void createStreamButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void removeStreamButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void createStreamActionClosed (void *uiPtr, Widget *widgetPtr);
-	static void removeStreamActionClosed (void *uiPtr, Widget *widgetPtr);
 	static void createMediaStreamComplete (void *uiPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand);
-	static void removeMediaStreamComplete (void *uiPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand);
+	static void removeStreamComplete (void *uiPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand);
 
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
@@ -120,43 +121,29 @@ protected:
 	void doSyncRecordStore (RecordStore *store);
 
 private:
-	// Execute actions appropriate when the view button is clicked
-	void handleViewButtonClick (Widget *buttonWidget);
+	// Execute actions appropriate when the thumbnail size button is clicked
+	void handleThumbnailSizeButtonClick (Widget *buttonWidget);
 
-	// Send a CreateMediaStream command to a remote agent, as specified by the currently held actionWindow widget
+	// Send a CreateMediaStream command to a remote agent, as specified by the currently held action widget
 	void invokeCreateMediaStream ();
 
-	// Send a RemoveMediaStream command to a remote agent, as specified by the currently held actionWindow widget
+	// Send a RemoveMediaStream command to a remote agent, as specified by the currently held action widget
 	void invokeRemoveMediaStream ();
 
 	static const float smallImageScale;
 	static const float mediumImageScale;
 	static const float largeImageScale;
 
-	StdString mediaId;
-	StdString mediaName;
-	StdString mediaUrl;
-	StdString thumbnailUrl;
-	int thumbnailCount;
-	int mediaWidth, mediaHeight;
-	float mediaDuration;
-	float mediaFrameRate;
-	int64_t mediaSize;
-	int64_t mediaBitrate;
-	StdString streamId;
-	StdString streamAgentId;
-	StdString streamAgentName;
-
+	WidgetHandle sourceMediaWindow;
 	CardView *cardView;
 	int cardLayout;
 	float cardMaxImageWidth;
-	IconCardWindow *detailCard;
-	WidgetHandle timelineBar;
-	WidgetHandle viewMenu;
-	WidgetHandle actionWindow;
-
-	// A map of agent names to ID values
+	TimelineBar *timelineBar;
+	WidgetHandle thumbnailSizeMenu;
+	WidgetHandle actionWidget;
+	WidgetHandle actionTarget;
 	HashMap streamServerAgentMap;
+	int streamCount;
 };
 
 #endif

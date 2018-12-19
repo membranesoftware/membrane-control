@@ -50,7 +50,7 @@ Chip::Chip (const StdString &chipText, Sprite *iconSprite, bool shouldDestroySpr
 	typeName.assign ("Chip");
 
 	uiconfig = &(App::getInstance ()->uiConfig);
-	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
+	setPadding (uiconfig->paddingSize, uiconfig->paddingSize / 2.0f);
 	setFillBg (true, uiconfig->mediumPrimaryColor);
 
 	if (! chipText.empty ()) {
@@ -60,7 +60,7 @@ Chip::Chip (const StdString &chipText, Sprite *iconSprite, bool shouldDestroySpr
 		iconImage = (Image *) addWidget (new Image (iconSprite, uiconfig->chipIconFrame, shouldDestroySprite));
 	}
 
-	resetLayout ();
+	refreshLayout ();
 }
 
 Chip::~Chip () {
@@ -89,7 +89,7 @@ void Chip::setText (const StdString &text) {
 			textLabel->setText (text);
 		}
 	}
-	resetLayout ();
+	refreshLayout ();
 }
 
 void Chip::setIconSprite (Sprite *iconSprite, bool shouldDestroySprite) {
@@ -103,10 +103,10 @@ void Chip::setIconSprite (Sprite *iconSprite, bool shouldDestroySprite) {
 	if (iconSprite) {
 		iconImage = (Image *) addWidget (new Image (iconSprite, uiconfig->chipIconFrame, shouldDestroySprite));
 	}
-	resetLayout ();
+	refreshLayout ();
 }
 
-void Chip::resetLayout () {
+void Chip::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y;
 

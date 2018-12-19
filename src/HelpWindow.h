@@ -66,18 +66,21 @@ public:
 	void addTopicLink (const StdString &linkText, const StdString &linkUrl);
 
 	// Callback functions
-	static void headerImageLoaded (void *windowPtr, Widget *widgetPtr);
 	static void closeButtonClicked (void *windowPtr, Widget *widgetPtr);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
 
+	// Execute operations to update object state as appropriate for an elapsed millisecond time period and origin position
+	void doUpdate (int msElapsed, float originX, float originY);
+
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	void resetLayout ();
+	void refreshLayout ();
 
 private:
 	ImageWindow *headerImage;
+	bool isHeaderImageLoaded;
 	LabelWindow *titleLabel;
 	Button *closeButton;
 	Label *helpTitleLabel;

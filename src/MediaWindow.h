@@ -36,6 +36,7 @@
 #include "StdString.h"
 #include "StringList.h"
 #include "Sprite.h"
+#include "SpriteGroup.h"
 #include "RecordStore.h"
 #include "Json.h"
 #include "Image.h"
@@ -56,14 +57,15 @@ public:
 		HIGH_DETAIL = 2
 	};
 
-	MediaWindow (Json *mediaItem, Sprite *loadingThumbnailSprite, int cardLayout = MediaWindow::LOW_DETAIL, float maxMediaImageWidth = 64.0f);
+	MediaWindow (Json *mediaItem, SpriteGroup *mediaUiSpriteGroup, int layoutType = MediaWindow::LOW_DETAIL, float maxMediaImageWidth = 64.0f);
 	virtual ~MediaWindow ();
 
 	// Read-only data members
 	StdString mediaId;
 	StdString mediaName;
-	StdString mediaUrl;
-	StdString thumbnailUrl;
+	StdString agentId;
+	StdString mediaPath;
+	StdString thumbnailPath;
 	int thumbnailCount;
 	int mediaWidth, mediaHeight;
 	float mediaDuration;
@@ -74,11 +76,11 @@ public:
 	StdString streamAgentId;
 	StdString streamAgentName;
 
-	// Set functions that should be invoked when the card's action items are selected
-	void setActionCallbacks (void *callbackData, Widget::EventCallback viewThumbnails, Widget::EventCallback createStream, Widget::EventCallback removeStream);
-
 	// Set the card's layout type and reset widgets to show the specified content
-	void setLayout (int cardLayout, float maxImageWidth);
+	void setLayout (int layoutType, float maxImageWidth);
+
+	// Return a boolean value indicating if the window is configured to load thumbnail images
+	bool hasThumbnails ();
 
 	// Execute operations appropriate to sync widget state with records present in the provided RecordStore object, which has been locked prior to invocation
 	void syncRecordStore (RecordStore *store);
@@ -91,9 +93,6 @@ public:
 
 	// Callback functions
 	static bool matchStreamSourceId (void *idStringPtr, Json *record);
-	static void viewThumbnailsButtonClicked (void *windowPtr, Widget *widgetPtr);
-	static void createStreamButtonClicked (void *windowPtr, Widget *widgetPtr);
-	static void removeStreamButtonClicked (void *windowPtr, Widget *widgetPtr);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
@@ -103,22 +102,15 @@ protected:
 	void doProcessMouseState (const Widget::MouseState &mouseState);
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	void resetLayout ();
+	void refreshLayout ();
 
 private:
-	Sprite *loadingThumbnailSprite;
+	SpriteGroup *spriteGroup;
 	ImageWindow *mediaImage;
 	Label *nameLabel;
 	TextArea *detailText;
 	LabelWindow *mouseoverLabel;
 	LabelWindow *detailNameLabel;
-	Button *viewThumbnailsButton;
-	Button *createStreamButton;
-	Button *removeStreamButton;
-	void *actionCallbackData;
-	Widget::EventCallback viewThumbnailsCallback;
-	Widget::EventCallback createStreamCallback;
-	Widget::EventCallback removeStreamCallback;
 };
 
 #endif

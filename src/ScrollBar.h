@@ -48,7 +48,7 @@ public:
 	float scrollPosition;
 	float maxScrollPosition;
 
-	// Set the scrollbar's position and invoke any stored change callback unless shouldSkipCallback is true.
+	// Set the scrollbar's position and invoke any configured change callback unless shouldSkipCallback is true
 	void setPosition (float positionValue, bool shouldSkipCallback = false);
 
 	// Set a callback function that should be invoked when the scroll bar's position changes
@@ -74,7 +74,7 @@ protected:
 	virtual void doRefresh ();
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	virtual void resetLayout ();
+	virtual void refreshLayout ();
 
 private:
 	float maxTrackLength;

@@ -30,7 +30,7 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include <list>
+#include <vector>
 #include "App.h"
 #include "Result.h"
 #include "Log.h"
@@ -81,10 +81,10 @@ ListView::ListView (float viewWidth, int minItemHeight, int itemFontType, const 
 	deleteButton->setMouseClickCallback (ListView::deleteButtonClicked, this);
 	deleteButton->zLevel = 2;
 	deleteButton->setImageColor (uiconfig->flatButtonTextColor);
-	deleteButton->setMouseHoverTooltip (uitext->remove.capitalized ());
+	deleteButton->setMouseHoverTooltip (uitext->getText (UiTextString::remove).capitalized ());
 	deleteButton->isVisible = false;
 
-	resetLayout ();
+	refreshLayout ();
 }
 
 ListView::~ListView () {
@@ -93,7 +93,7 @@ ListView::~ListView () {
 
 void ListView::setViewWidth (float fixedWidth) {
 	viewWidth = fixedWidth;
-	resetLayout ();
+	refreshLayout ();
 }
 
 void ListView::setListChangeCallback (Widget::EventCallback callback, void *callbackData) {
@@ -102,13 +102,18 @@ void ListView::setListChangeCallback (Widget::EventCallback callback, void *call
 }
 
 void ListView::clearItems () {
-	std::list<ListView::Item>::iterator i, end;
+	std::vector<ListView::Item>::iterator i, end;
 
 	i = itemList.begin ();
 	end = itemList.end ();
 	while (i != end) {
 		if (i->panel) {
 			i->panel->isDestroyed = true;
+		}
+		if (i->data && i->dataFree) {
+			i->dataFree (i->data);
+			i->data = NULL;
+			i->dataFree = NULL;
 		}
 		++i;
 	}
@@ -141,7 +146,7 @@ void ListView::setItems (StringList *itemList) {
 }
 
 void ListView::getItems (StringList *destList) {
-	std::list<ListView::Item>::iterator i, end;
+	std::vector<ListView::Item>::iterator i, end;
 
 	destList->clear ();
 	i = itemList.begin ();
@@ -156,7 +161,15 @@ int ListView::getItemCount () {
 	return ((int) itemList.size ());
 }
 
-void ListView::addItem (const StdString &itemText) {
+void *ListView::getItemData (int itemIndex) {
+	if ((itemIndex < 0) || (itemIndex >= (int) itemList.size ())) {
+		return (NULL);
+	}
+
+	return (itemList.at (itemIndex).data);
+}
+
+void ListView::addItem (const StdString &itemText, void *itemData, Widget::FreeFunction itemFree) {
 	ListView::Item item;
 	Panel *panel;
 	UiConfiguration *uiconfig;
@@ -164,6 +177,8 @@ void ListView::addItem (const StdString &itemText) {
 	uiconfig = &(App::getInstance ()->uiConfig);
 
 	item.text.assign (itemText);
+	item.data = itemData;
+	item.dataFree = itemFree;
 
 	panel = new Panel ();
 	addWidget (panel);
@@ -174,17 +189,17 @@ void ListView::addItem (const StdString &itemText) {
 	panel->setFixedSize (true, viewWidth, uiconfig->fonts[itemFontType]->maxLineHeight + uiconfig->paddingSize);
 
 	itemList.push_back (item);
-	resetLayout ();
+	refreshLayout ();
 
 	if (listChangeCallback) {
 		listChangeCallback (listChangeCallbackData, this);
 	}
 }
 
-void ListView::resetLayout () {
+void ListView::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y, h;
-	std::list<ListView::Item>::iterator i, end;
+	std::vector<ListView::Item>::iterator i, end;
 	int sz;
 
 	uiconfig = &(App::getInstance ()->uiConfig);
@@ -239,7 +254,7 @@ void ListView::resetLayout () {
 
 void ListView::deleteButtonClicked (void *listViewPtr, Widget *widgetPtr) {
 	ListView *view;
-	std::list<ListView::Item>::iterator i, end;
+	std::vector<ListView::Item>::iterator i, end;
 
 	view = (ListView *) listViewPtr;
 	if (! view->lastFocusPanel) {
@@ -251,6 +266,11 @@ void ListView::deleteButtonClicked (void *listViewPtr, Widget *widgetPtr) {
 	while (i != end) {
 		if (i->panel == view->lastFocusPanel) {
 			i->panel->isDestroyed = true;
+			if (i->data && i->dataFree) {
+				i->dataFree (i->data);
+				i->data = NULL;
+				i->dataFree = NULL;
+			}
 			view->itemList.erase (i);
 			break;
 		}
@@ -259,22 +279,22 @@ void ListView::deleteButtonClicked (void *listViewPtr, Widget *widgetPtr) {
 
 	view->isItemFocused = false;
 	view->lastFocusPanel = NULL;
-	view->resetLayout ();
+	view->refreshLayout ();
 	if (view->listChangeCallback) {
 		view->listChangeCallback (view->listChangeCallbackData, view);
 	}
 }
 
 void ListView::doProcessMouseState (const Widget::MouseState &mouseState) {
-	bool shouldreset, found;
-	std::list<ListView::Item>::iterator i, end;
+	bool shouldrefresh, found;
+	std::vector<ListView::Item>::iterator i, end;
 
-	shouldreset = false;
+	shouldrefresh = false;
 	if (! mouseState.isEntered) {
 		if (isItemFocused) {
 			isItemFocused = false;
 			lastFocusPanel = NULL;
-			shouldreset = true;
+			shouldrefresh = true;
 		}
 	}
 	else {
@@ -285,7 +305,7 @@ void ListView::doProcessMouseState (const Widget::MouseState &mouseState) {
 			if ((mouseState.enterDeltaY >= i->panel->position.y) && (mouseState.enterDeltaY < (i->panel->position.y + i->panel->height))) {
 				found = true;
 				if ((! isItemFocused) || (i->panel != lastFocusPanel)) {
-					shouldreset = true;
+					shouldrefresh = true;
 					isItemFocused = true;
 					lastFocusPanel = i->panel;
 				}
@@ -298,12 +318,12 @@ void ListView::doProcessMouseState (const Widget::MouseState &mouseState) {
 		if ((! found) && isItemFocused) {
 			isItemFocused = false;
 			lastFocusPanel = NULL;
-			shouldreset = true;
+			shouldrefresh = true;
 		}
 	}
 
-	if (shouldreset) {
-		resetLayout ();
+	if (shouldrefresh) {
+		refreshLayout ();
 	}
 
 	Panel::doProcessMouseState (mouseState);
@@ -312,7 +332,7 @@ void ListView::doProcessMouseState (const Widget::MouseState &mouseState) {
 void ListView::doRefresh () {
 	UiConfiguration *uiconfig;
 	float h;
-	std::list<ListView::Item>::iterator i, end;
+	std::vector<ListView::Item>::iterator i, end;
 
 	uiconfig = &(App::getInstance ()->uiConfig);
 	if (titleLabel) {

@@ -54,13 +54,13 @@ protected:
 	void doRefresh ();
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	void resetLayout ();
+	void refreshLayout ();
 
 private:
 	Image *logoImage;
 	Label *dateLabel;
 	Label *timeLabel;
-	float timeLabelMaxWidth;
+	int64_t lastDisplayTime;
 };
 
 #endif

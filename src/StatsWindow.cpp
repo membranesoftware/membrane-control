@@ -102,8 +102,12 @@ void StatsWindow::setItem (const StdString &itemName, const StdString &itemValue
 			found = true;
 			label = i->valueLabel;
 			if (! label->text.equals (itemValue)) {
+				if (! label->text.empty ()) {
+					label->textColor.assign (uiconfig->primaryTextColor);
+					label->textColor.rotate (uiconfig->lightPrimaryTextColor, uiconfig->longColorRotateDuration);
+				}
 				label->setText (itemValue);
-				resetLayout ();
+				refreshLayout ();
 			}
 			break;
 		}
@@ -125,11 +129,40 @@ void StatsWindow::setItem (const StdString &itemName, const StdString &itemValue
 		item.valueLabel = label;
 
 		itemList.push_back (item);
-		resetLayout ();
+		refreshLayout ();
 	}
 }
 
-void StatsWindow::resetLayout () {
+void StatsWindow::setItemTextColor (const StdString &itemName, const Color &itemTextColor) {
+	std::list<StatsWindow::Item>::iterator i, end;
+
+	i = itemList.begin ();
+	end = itemList.end ();
+	while (i != end) {
+		if (i->nameLabel->text.equals (itemName)) {
+			i->valueLabel->textColor.assign (itemTextColor);
+			break;
+		}
+		++i;
+	}
+}
+
+void StatsWindow::doRefresh () {
+	std::list<StatsWindow::Item>::iterator i, end;
+
+	maxLineHeight = 0.0f;
+	i = itemList.begin ();
+	end = itemList.end ();
+	while (i != end) {
+		if (i->nameLabel->maxLineHeight > maxLineHeight) {
+			maxLineHeight = i->nameLabel->maxLineHeight;
+		}
+		++i;
+	}
+	Panel::doRefresh ();
+}
+
+void StatsWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	std::list<StatsWindow::Item>::iterator i, end;
 	Label *label;

@@ -48,7 +48,7 @@
 
 class StreamItemUi : public Ui {
 public:
-	StreamItemUi (StreamWindow *card, const StdString &captionText = StdString (""));
+	StreamItemUi (StreamWindow *streamWindow, const StdString &captionText = StdString (""));
 	~StreamItemUi ();
 
 	// Constants to use for sprite indexes
@@ -57,7 +57,7 @@ public:
 		LARGE_THUMBNAILS_ICON = 1,
 		MEDIUM_THUMBNAILS_ICON = 2,
 		SMALL_THUMBNAILS_ICON = 3,
-		VIEW_BUTTON = 4,
+		THUMBNAIL_SIZE_BUTTON = 4,
 		TIME_ICON = 5,
 		STREAM_ICON = 6
 	};
@@ -65,19 +65,24 @@ public:
 	// Return text that should be used to identify the UI in a set of breadcrumb actions, or an empty string if no such title exists
 	StdString getBreadcrumbTitle ();
 
-	// Return a newly created Sprite object that should be used to identify the UI in a set of breadcrumb actions, or NULL if no such Sprite exists. If a Sprite is returned by this method, the caller becomes responsible for destroying it when no longer needed.
-	Sprite *getBreadcrumbSprite ();
+	// Set fields in the provided HelpWindow widget as appropriate for the UI's help content
+	void setHelpWindowContent (Widget *helpWindowPtr);
 
 	// Set a callback that should be invoked when a ThumbnailWindow item is clicked on the UI
 	void setThumbnailClickCallback (Widget::EventCallback callback, void *callbackData);
 
 	// Callback functions
-	static void viewButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void thumbnailSizeButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void viewSmallActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void viewMediumActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void viewLargeActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void resetCardLayout (void *uiPtr, Widget *widgetPtr);
-	static void cardClicked (void *uiPtr, Widget *widgetPtr);
+	static void thumbnailClicked (void *uiPtr, Widget *widgetPtr);
+	static void thumbnailMouseEntered (void *uiPtr, Widget *widgetPtr);
+	static void thumbnailMouseExited (void *uiPtr, Widget *widgetPtr);
+	static void timelineBarPositionHovered (void *uiPtr, Widget *widgetPtr);
+	static void timelineBarPositionClicked (void *uiPtr, Widget *widgetPtr);
+	static bool matchThumbnailIndex (void *intPtr, Widget *widgetPtr);
 
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
@@ -118,33 +123,22 @@ protected:
 
 private:
 	// Execute actions appropriate when the view button is clicked
-	void handleViewButtonClick (Widget *buttonWidget);
+	void handleThumbnailSizeButtonClick (Widget *buttonWidget);
 
 	static const float smallImageScale;
 	static const float mediumImageScale;
 	static const float largeImageScale;
 
+	WidgetHandle sourceStreamWindow;
 	StdString captionText;
-	StdString streamId;
-	StdString streamName;
-	StdString thumbnailUrl;
-	int segmentCount;
-	int frameWidth;
-	int frameHeight;
-	int64_t streamBitrate;
-	int64_t streamDuration;
-	float streamFrameRate;
 
 	CardView *cardView;
 	int cardLayout;
 	float cardMaxImageWidth;
-	IconCardWindow *detailCard;
-	WidgetHandle timelineBar;
-	WidgetHandle viewMenu;
+	TimelineBar *timelineBar;
+	WidgetHandle thumbnailSizeMenu;
 	WidgetHandle actionWindow;
-
-	// A map of agent names to ID values
-	HashMap displayAgentMap;
+	int lastTimelineHoverPosition;
 
 	Widget::EventCallback thumbnailClickCallback;
 	void *thumbnailClickCallbackData;

@@ -79,23 +79,23 @@ public:
 
 	// Constants to use as key values in the prefs map
 	static const StdString prefsIsFirstLaunchComplete;
-	static const StdString prefsAutoConnectAddresses;
-	static const StdString prefsLinkAddresses;
+	static const StdString prefsNetworkThreads;
 	static const StdString prefsAgentStatus;
 	static const StdString prefsWindowWidth;
 	static const StdString prefsWindowHeight;
 	static const StdString prefsFontScale;
 	static const StdString prefsShowClock;
 	static const StdString prefsMediaImageSize;
-	static const StdString prefsDisplaysImageSize;
+	static const StdString prefsMonitorImageSize;
 	static const StdString prefsMediaItemImageSize;
 	static const StdString prefsStreamItemImageSize;
 	static const StdString prefsServerTimeout; // seconds
 	static const int64_t defaultServerTimeout;
 	static const StdString prefsServerPath;
 	static const StdString prefsApplicationName;
-	static const StdString prefsTcpPort;
-	static const StdString prefsWebKioskUiIntents;
+	static const StdString prefsHttps;
+	static const StdString prefsWebKioskUiPlaylists;
+	static const StdString prefsMonitorUiPlaylists;
 	static const StdString prefsMainUiShowAllEnabled;
 
 	// Read-write data members
@@ -123,6 +123,7 @@ public:
 	bool isShuttingDown;
 	bool isShutdown;
 	int64_t startTime;
+	bool isHttpsEnabled;
 	SDL_Window *window;
 	SDL_Renderer *render; // The renderer must be accessed only from the application's main thread
 	Panel *rootPanel;
@@ -170,8 +171,8 @@ public:
 	// Toggle the visible state of the news window, shown as a right nav
 	void toggleNewsWindow ();
 
-	// Show the specified message in the application's snackbar window, optionally including an action button as well
-	void showSnackbar (const StdString &messageText, const StdString &actionButtonText = StdString (""), Widget::EventCallback actionButtonClickCallback = NULL, void *actionButtonClickCallbackData = NULL, bool isTopPositioned = false);
+	// Show the specified message in the application's snackbar window, optionally including an action button
+	void showSnackbar (const StdString &messageText, const StdString &actionButtonText = StdString (""), Widget::EventCallback actionButtonClickCallback = NULL, void *actionButtonClickCallbackData = NULL);
 
 	// Execute actions appropriate for a command received from the agent control link client
 	void handleLinkClientCommand (const StdString &agentId, Json *command);
@@ -197,16 +198,14 @@ public:
 	// Return the JSON string for a command with the specified parameters, or an empty string if the command could not be created. commandParams can be NULL if not needed, causing the returned command to use empty parameter fields. If a commandParams object is provided, this method becomes responsible for deleting it when it's no longer needed.
 	StdString createCommandJson (const char *commandName, int commandType, Json *commandParams = NULL);
 
-	typedef void (*CreateResourceTextureCallback) (void *callbackData, const StdString &path, SDL_Surface *surface, SDL_Texture *texture);
-	struct CreateResourceTextureContext {
-		StdString path;
-		SDL_Surface *surface;
-		CreateResourceTextureCallback callback;
+	typedef void (*RenderTaskFunction) (void *fnData);
+	struct RenderTaskContext {
+		RenderTaskFunction callback;
 		void *callbackData;
-		CreateResourceTextureContext (): path (""), surface (NULL), callback (NULL), callbackData (NULL) { }
+		RenderTaskContext (): callback (NULL), callbackData (NULL) { }
 	};
-	// Schedule an operation to create a resource texture from the provided path and surface and invoke the provided callback when complete
-	void createResourceTexture (StdString path, SDL_Surface *surface, CreateResourceTextureCallback callback, void *callbackData);
+	// Schedule a task function to execute at the top of the next render loop
+	void addRenderTask (RenderTaskFunction fn, void *fnData);
 
 	// Set a resource path that should be used to load a background texture and render it during draw operations
 	void setNextBackgroundTexturePath (const StdString &path);
@@ -231,8 +230,8 @@ private:
 	// Execute draw operations to update the application window
 	void draw ();
 
-	// Execute all operations in createResourceTextureQueue
-	void createResourceTextures ();
+	// Execute all operations in renderTaskQueue
+	void executeRenderTasks ();
 
 	// Execute operations to update application state as appropriate for an elapsed millisecond time period
 	void update (int msElapsed);
@@ -258,8 +257,8 @@ private:
 	// Remove all items from uiStack
 	void clearUiStack ();
 
-	// Remove all items from createResourceTextureQueue
-	void clearCreateResourceTextureQueue ();
+	// Remove all items from renderTaskQueue
+	void clearRenderTaskQueue ();
 
 	// Return the path to the image file that should be loaded as a background texture from the specified base path, as appropriate for the current image scale
 	StdString getBackgroundTexturePath (const StdString &basePath);
@@ -274,8 +273,8 @@ private:
 	std::vector<SDL_Keycode> keyPressList;
 	std::stack<SDL_Rect> clipRectStack;
 	SDL_Rect clipRect;
-	SDL_mutex *createResourceTextureMutex;
-	std::queue<App::CreateResourceTextureContext> createResourceTextureQueue;
+	SDL_mutex *renderTaskMutex;
+	std::queue<App::RenderTaskContext> renderTaskQueue;
 	bool isSuspendingUpdate;
 	SDL_mutex *updateMutex;
 	SDL_cond *updateCond;

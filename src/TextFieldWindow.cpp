@@ -68,7 +68,7 @@ TextFieldWindow::TextFieldWindow (float windowWidth, const StdString &promptText
 
 	textField = (TextField *) addWidget (new TextField (windowWidth - uiconfig->marginSize - uiconfig->paddingSize, promptText));
 	textField->setBorder (false);
-	textField->setEnterCallback (TextFieldWindow::textFieldEntered, this);
+	textField->setValueChangeCallback (TextFieldWindow::textFieldValueChanged, this);
 	if (iconSprite) {
 		image = new Image (iconSprite);
 		iconImage = (ImageWindow *) addWidget (new ImageWindow (image));
@@ -77,30 +77,30 @@ TextFieldWindow::TextFieldWindow (float windowWidth, const StdString &promptText
 	}
 
 	enterButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::ENTER_TEXT_BUTTON)));
+	enterButton->setInverseColor (true);
 	enterButton->setMouseClickCallback (TextFieldWindow::enterButtonClicked, this);
-	enterButton->setMouseHoverTooltip (uitext->confirm.capitalized ());
+	enterButton->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldEnterTooltip).capitalized ());
 	enterButton->isVisible = false;
 
 	cancelButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::CANCEL_BUTTON)));
+	cancelButton->setInverseColor (true);
 	cancelButton->setMouseClickCallback (TextFieldWindow::cancelButtonClicked, this);
-	cancelButton->setMouseHoverTooltip (uitext->cancel.capitalized ());
+	cancelButton->setMouseHoverTooltip (uitext->getText (UiTextString::cancel).capitalized ());
 	cancelButton->isVisible = false;
 
 	pasteButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::PASTE_BUTTON)));
 	pasteButton->setMouseClickCallback (TextFieldWindow::pasteButtonClicked, this);
-	pasteButton->setInverseColor (true);
 	pasteButton->setRaised (true, uiconfig->darkBackgroundColor);
-	pasteButton->setMouseHoverTooltip (uitext->textFieldPasteTooltip);
+	pasteButton->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldPasteTooltip));
 	pasteButton->isVisible = false;
 
 	clearButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::CLEAR_BUTTON)));
 	clearButton->setMouseClickCallback (TextFieldWindow::clearButtonClicked, this);
-	clearButton->setInverseColor (true);
 	clearButton->setRaised (true, uiconfig->darkBackgroundColor);
-	clearButton->setMouseHoverTooltip (uitext->textFieldClearTooltip);
+	clearButton->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldClearTooltip));
 	clearButton->isVisible = false;
 
-	resetLayout ();
+	refreshLayout ();
 }
 
 TextFieldWindow::~TextFieldWindow () {
@@ -122,7 +122,7 @@ void TextFieldWindow::setValue (const StdString &valueText) {
 void TextFieldWindow::setWindowHeight (float fixedHeight) {
 	isFixedHeight = true;
 	windowHeight = fixedHeight;
-	resetLayout ();
+	refreshLayout ();
 }
 
 void TextFieldWindow::setEditing (bool enable) {
@@ -139,10 +139,10 @@ void TextFieldWindow::setButtonsEnabled (bool enableEnterButton, bool enableCanc
 	cancelButton->isVisible = enableCancelButton;
 	pasteButton->isVisible = enablePasteButton;
 	clearButton->isVisible = enableClearButton;
-	resetLayout ();
+	refreshLayout ();
 }
 
-void TextFieldWindow::resetLayout () {
+void TextFieldWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y, w, h;
 	bool found;
@@ -252,7 +252,7 @@ void TextFieldWindow::doUpdate (int msElapsed, float originX, float originY) {
 	}
 }
 
-void TextFieldWindow::textFieldEntered (void *windowPtr, Widget *widgetPtr) {
+void TextFieldWindow::textFieldValueChanged (void *windowPtr, Widget *widgetPtr) {
 	TextFieldWindow *window;
 
 	window = (TextFieldWindow *) windowPtr;

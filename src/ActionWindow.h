@@ -39,38 +39,62 @@
 #include "StringList.h"
 #include "HashMap.h"
 #include "Label.h"
+#include "TextArea.h"
 #include "Button.h"
+#include "ComboBox.h"
+#include "TextField.h"
+#include "Toggle.h"
+#include "SliderWindow.h"
 #include "WidgetHandle.h"
 #include "Panel.h"
 
 class ActionWindow : public Panel {
 public:
-	ActionWindow (const StdString &titleText = StdString (""), const StdString &confirmButtonText = StdString ("OK"));
+	ActionWindow ();
 	virtual ~ActionWindow ();
 
-	// Read-write data members
-	WidgetHandle sourceWidget;
-
 	// Read-only data members
+	bool isOptionDataValid;
 	bool isConfirmed;
+	bool isInverseColor;
+
+	// Set the visible state for the window's cancel and confirm buttons (visible by default)
+	void setButtonsVisible (bool visible);
+
+	// Set the window's inverse color option
+	void setInverseColor (bool inverse);
+
+	// Set the window's title text (empty by default)
+	void setTitleText (const StdString &text);
+
+	// Set the text that should be shown on the window's confirm button (defaults to "OK")
+	void setConfirmButtonText (const StdString &text);
+
+	// Set a function that should be invoked when an option on the action window changes value
+	void setOptionChangeCallback (Widget::EventCallback callback, void *callbackData);
 
 	// Set a function that should be invoked when the action window is closed
 	void setCloseCallback (Widget::EventCallback callback, void *callbackData);
 
-	// Add a combo box option to the window using the provided item list. If a HashMap is provided, it is treated as mapping item name to item data strings.
-	void addComboBoxOption (const StdString &optionName, StringList *optionItemList, const StdString &optionValue = StdString (""));
-	void addComboBoxOption (const StdString &optionName, HashMap *optionItemMap, const StdString &optionValue = StdString (""));
+	// Add the provided widget to the window as an option item
+	void addOption (const StdString &optionName, ComboBox *comboBox, const StdString &descriptionText = StdString (""));
+	void addOption (const StdString &optionName, TextField *textField, const StdString &descriptionText = StdString (""));
+	void addOption (const StdString &optionName, Toggle *toggle, const StdString &descriptionText = StdString (""));
+	void addOption (const StdString &optionName, SliderWindow *slider, const StdString &descriptionText = StdString (""));
 
-	// Add a text field option to the window
-	void addTextFieldOption (const StdString &optionName, const StdString &promptText = StdString (""), const StdString &optionValue = StdString (""));
+	// Set the named option to evaluate as invalid if its value is an empty string
+	void setOptionNotEmptyString (const StdString &optionName);
 
-	// Add a toggle option to the window
-	void addToggleOption (const StdString &optionName, bool optionValue = false);
+	// Return the string value of the named option, or the specified default value if no such option was found
+	StdString getStringValue (const StdString &optionName, const StdString &defaultValue);
+	StdString getStringValue (const StdString &optionName, const char *defaultValue);
 
-	// Return the value of the named option, or the specified default value if no such option was found
-	StdString getOptionValue (const StdString &optionName, const StdString &defaultValue);
-	StdString getOptionValue (const StdString &optionName, const char *defaultValue);
-	bool getOptionValue (const StdString &optionName, bool defaultValue);
+	// Return the number value of the named option, or the specified default value if no such option was found
+	int getNumberValue (const StdString &optionName, int defaultValue);
+	float getNumberValue (const StdString &optionName, float defaultValue);
+
+	// Return the boolean value of the named option, or the specified default value if no such option was found
+	bool getBooleanValue (const StdString &optionName, bool defaultValue);
 
 	// Return a boolean value indicating if the provided Widget is a member of this class
 	static bool isWidgetType (Widget *widget);
@@ -81,34 +105,46 @@ public:
 	// Callback functions
 	static void confirmButtonClicked (void *windowPtr, Widget *widgetPtr);
 	static void cancelButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void optionValueChanged (void *windowPtr, Widget *widgetPtr);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	void resetLayout ();
+	void refreshLayout ();
 
 private:
 	// Constants to use for item types
 	enum {
 		COMBO_BOX = 1,
 		TEXT_FIELD = 2,
-		TOGGLE = 3
+		TOGGLE = 3,
+		SLIDER = 4
 	};
 	struct Item {
 		StdString name;
 		int type;
 		Label *nameLabel;
+		TextArea *descriptionText;
 		Widget *optionWidget;
-		Item (): type (0), nameLabel (NULL), optionWidget (NULL) { }
+		bool isNotEmptyString;
+		Item (): type (0), nameLabel (NULL), descriptionText (NULL), optionWidget (NULL), isNotEmptyString (false) { }
 	};
 
 	// Return an iterator positioned at the specified item in itemList, or the end of itemList if the item wasn't found
-	std::list<ActionWindow::Item>::iterator findItem (const StdString &optionName);
+	std::list<ActionWindow::Item>::iterator findItem (const StdString &optionName, bool createNewItem = false);
+
+	// Utility method that executes item add operations as needed by addOption variants
+	void doAddOption (int itemType, const StdString &optionName, Widget *optionWidget, const StdString &descriptionText);
+
+	// Check the validity of all option values and reset isOptionDataValid
+	void verifyOptions ();
 
 	Widget::EventCallback closeCallback;
 	void *closeCallbackData;
+	Widget::EventCallback optionChangeCallback;
+	void *optionChangeCallbackData;
 	std::list<ActionWindow::Item> itemList;
 	Label *titleLabel;
 	Button *confirmButton;

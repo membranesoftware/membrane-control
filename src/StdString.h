@@ -119,6 +119,12 @@ public:
 	// Reduce the string's length to the specified value, appending a truncation suffix if needed, and return the resulting value
 	StdString truncated (int maxLength, const StdString &suffix = StdString ("...")) const;
 
+	// Remove all instances of oldText and replace them with newText
+	void replace (const StdString &oldText, const StdString &newText);
+
+	// Return a string resulting from the specified replace operation
+	StdString replaced (const StdString &oldText, const StdString &newText);
+
 	// URL decode the string's content and assign it to the resulting value. Returns a Result value.
 	int urlDecode ();
 
@@ -147,7 +153,7 @@ public:
 	Buffer *createBuffer ();
 
 	// Assign the string's value from data held in a Buffer object
-	void assignFromBuffer (Buffer *buffer);
+	void assignBuffer (Buffer *buffer);
 
 	// Split the string by the specified delimiter and store the resulting parts into the provided list, clearing the list before doing so
 	void split (const char *delimiter, std::list<StdString> *destList);
@@ -162,8 +168,8 @@ public:
 	// Parse the provided string as a float and store its value in the provided pointer. Returns a boolean value indicating if the parse was successful.
 	static bool parseFloat (const char *str, float *value);
 
-	// Parse the provided string as a network address and store its component values in the provided pointers. Returns a boolean value indicating if the parse was successful. A zero portValue result indicates that no port value was found in the address.
-	static bool parseAddress (const char *str, StdString *hostnameValue = NULL, int *portValue = NULL);
+	// Parse the provided string as a network address and store its component values in the provided pointers. Returns a boolean value indicating if the parse was successful. If no port value is found in the address, assign the specified default port value to portValue.
+	static bool parseAddress (const char *str, StdString *hostnameValue = NULL, int *portValue = NULL, int defaultPortValue = 0);
 };
 
 #endif

@@ -57,7 +57,8 @@
 #include <Iphlpapi.h>
 #include <Ipifcons.h>
 #endif
-#include "curl/curl.h"
+#include <curl/curl.h>
+#include <openssl/ssl.h>
 #include "App.h"
 #include "Result.h"
 #include "Log.h"
@@ -66,13 +67,14 @@
 #include "Ipv4Address.h"
 #include "Network.h"
 
+const int Network::defaultRequestThreadCount = 8;
 const int Network::maxDatagramSize = 1500; // bytes
 
 Network::Network ()
 : isStarted (false)
 , isStopped (false)
 , datagramPort (0)
-, httpRequestThreadCount (4)
+, httpRequestThreadCount (Network::defaultRequestThreadCount)
 , datagramSendThread (NULL)
 , datagramReceiveThread (NULL)
 , datagramSendMutex (NULL)
@@ -148,14 +150,13 @@ void Network::waitHttpRequestThreads () {
 	i = httpRequestThreadList.begin ();
 	end = httpRequestThreadList.end ();
 	while (i != end) {
-		Log::write (Log::DEBUG, "Thread wait; name=Network::runHttpRequestThread id=0x%lx", SDL_GetThreadID (*i));
 		SDL_WaitThread (*i, &result);
 		++i;
 	}
 	httpRequestThreadList.clear ();
 }
 
-int Network::start () {
+int Network::start (int requestThreadCount) {
 	struct sockaddr_in saddr;
 	int result, i;
 	socklen_t namelen;
@@ -174,10 +175,11 @@ int Network::start () {
 		return (Result::SUCCESS);
 	}
 
-	if (httpRequestThreadCount <= 0) {
-		Log::write (Log::ERR, "Network start failed; err=\"Invalid httpRequestThreadCount value %i\"", httpRequestThreadCount);
-		return (Result::ERROR_INVALID_CONFIGURATION);
+	if (requestThreadCount <= 0) {
+		Log::write (Log::WARNING, "Invalid preferences value %s %i, ignored", App::prefsNetworkThreads.c_str (), requestThreadCount);
+		requestThreadCount = Network::defaultRequestThreadCount;
 	}
+	httpRequestThreadCount = requestThreadCount;
 
 #if PLATFORM_WINDOWS
 	if (! isWsaStarted) {
@@ -192,7 +194,11 @@ int Network::start () {
 	}
 #endif
 
-	curl_global_init (CURL_GLOBAL_NOTHING);
+	SSL_library_init ();
+	result = curl_global_init (CURL_GLOBAL_ALL);
+	if (result != 0) {
+		return (Result::ERROR_LIBCURL_OPERATION_FAILED);
+	}
 
 	result = resetInterfaces ();
 	if (result != Result::SUCCESS) {
@@ -285,7 +291,6 @@ void Network::stop () {
 		return;
 	}
 
-	Log::write (Log::DEBUG, "Network stop");
 	isStopped = true;
 	if (datagramSocket >= 0) {
 		shutdown (datagramSocket, SHUT_RDWR);
@@ -298,6 +303,7 @@ void Network::stop () {
 	}
 	clearDatagramQueue ();
 	clearHttpRequestQueue ();
+	curl_global_cleanup ();
 }
 
 void Network::waitThreads () {
@@ -307,12 +313,10 @@ void Network::waitThreads () {
 	clearHttpRequestQueue ();
 	waitHttpRequestThreads ();
 	if (datagramReceiveThread) {
-		Log::write (Log::DEBUG, "Thread wait; name=Network::runDatagramReceiveThread id=0x%lx", SDL_GetThreadID (datagramReceiveThread));
 		SDL_WaitThread (datagramReceiveThread, &result);
 		datagramReceiveThread = NULL;
 	}
 	if (datagramSendThread) {
-		Log::write (Log::DEBUG, "Thread wait; name=Network::runDatagramSendThread id=0x%lx", SDL_GetThreadID (datagramSendThread));
 		SDL_WaitThread (datagramSendThread, &result);
 		datagramSendThread = NULL;
 	}
@@ -577,7 +581,6 @@ int Network::runDatagramReceiveThread (void *networkPtr) {
 	std::list<Network::DatagramCallbackContext>::iterator i, end;
 
 	network = (Network *) networkPtr;
-	Log::write (Log::DEBUG, "Thread start; name=Network::runDatagramReceiveThread id=0x%lx", SDL_ThreadID ());
 	while (true) {
 		if (network->isStopped || (network->datagramSocket < 0)) {
 			break;
@@ -600,7 +603,6 @@ int Network::runDatagramReceiveThread (void *networkPtr) {
 		}
 	}
 
-	Log::write (Log::DEBUG, "Thread end; name=Network::runDatagramReceiveThread id=0x%lx", SDL_ThreadID ());
 	return (0);
 }
 
@@ -610,7 +612,6 @@ int Network::runDatagramSendThread (void *networkPtr) {
 	int result;
 
 	network = (Network *) networkPtr;
-	Log::write (Log::DEBUG, "Thread start; name=Network::runDatagramSendThread id=0x%lx", SDL_ThreadID ());
 	SDL_LockMutex (network->datagramSendMutex);
 	while (true) {
 		if (network->isStopped || (network->datagramSocket < 0)) {
@@ -647,7 +648,6 @@ int Network::runDatagramSendThread (void *networkPtr) {
 	}
 	SDL_UnlockMutex (network->datagramSendMutex);
 
-	Log::write (Log::DEBUG, "Thread end; name=Network::runDatagramSendThread id=0x%lx", SDL_ThreadID ());
 	return (0);
 }
 
@@ -706,8 +706,7 @@ int Network::sendTo (const StdString &targetHostname, int targetPort, Buffer *me
 	StdString portstr;
 	struct addrinfo hints;
 	struct addrinfo *addr;
-	char *data;
-	int result, datalen;
+	int result;
 
 	if ((! isStarted) || (datagramSocket < 0)) {
 		return (Result::ERROR_SOCKET_NOT_CONNECTED);
@@ -730,8 +729,7 @@ int Network::sendTo (const StdString &targetHostname, int targetPort, Buffer *me
 		return (Result::ERROR_SOCKET_OPERATION_FAILED);
 	}
 
-	messageData->getData (&data, &datalen);
-	result = sendto (datagramSocket, data, datalen, 0, addr->ai_addr, addr->ai_addrlen);
+	result = sendto (datagramSocket, (char *) messageData->data, messageData->length, 0, addr->ai_addr, addr->ai_addrlen);
 	freeaddrinfo (addr);
 
 	if (result < 0) {
@@ -776,10 +774,9 @@ int Network::runHttpRequestThread (void *networkPtr) {
 	Network *network;
 	Network::HttpRequestContext item;
 	int result, statuscode;
-	Buffer *response;
+	SharedBuffer *responsebuffer;
 
 	network = (Network *) networkPtr;
-	Log::write (Log::DEBUG, "Thread start; name=Network::runHttpRequestThread id=0x%lx", SDL_ThreadID ());
 
 	SDL_LockMutex (network->httpRequestQueueMutex);
 	while (true) {
@@ -797,17 +794,17 @@ int Network::runHttpRequestThread (void *networkPtr) {
 		SDL_UnlockMutex (network->httpRequestQueueMutex);
 
 		statuscode = 0;
-		response = NULL;
-		result = network->sendHttpRequest (&item, &statuscode, &response);
+		responsebuffer = NULL;
+		result = network->sendHttpRequest (&item, &statuscode, &responsebuffer);
 		if (result != Result::SUCCESS) {
 			statuscode = 0;
 		}
 		if (item.callback) {
-			item.callback (item.callbackData, item.url, statuscode, response);
+			item.callback (item.callbackData, item.url, statuscode, responsebuffer);
 		}
-		if (response) {
-			delete (response);
-			response = NULL;
+		if (responsebuffer) {
+			responsebuffer->release ();
+			responsebuffer = NULL;
 		}
 
 		SDL_LockMutex (network->httpRequestQueueMutex);
@@ -815,14 +812,14 @@ int Network::runHttpRequestThread (void *networkPtr) {
 	++(network->httpRequestThreadStopCount);
 	SDL_UnlockMutex (network->httpRequestQueueMutex);
 
-	Log::write (Log::DEBUG, "Thread end; name=Network::runHttpRequestThread id=0x%lx", SDL_ThreadID ());
 	return (0);
 }
 
-int Network::sendHttpRequest (Network::HttpRequestContext *item, int *statusCode, Buffer **responseBuffer) {
+int Network::sendHttpRequest (Network::HttpRequestContext *item, int *statusCode, SharedBuffer **responseBuffer) {
+	App *app;
 	CURL *curl;
 	CURLcode code;
-	Buffer *buffer;
+	SharedBuffer *buffer;
 	long responsecode;
 	int result;
 
@@ -831,15 +828,27 @@ int Network::sendHttpRequest (Network::HttpRequestContext *item, int *statusCode
 		return (Result::ERROR_LIBCURL_OPERATION_FAILED);
 	}
 
+	app = App::getInstance ();
 	result = Result::SUCCESS;
 	code = CURLE_UNKNOWN_OPTION;
-	buffer = new Buffer ();
+	buffer = new SharedBuffer ();
+	buffer->retain ();
 	curl_easy_setopt (curl, CURLOPT_VERBOSE, 0);
 	curl_easy_setopt (curl, CURLOPT_NOSIGNAL, 1);
-	curl_easy_setopt (curl, CURLOPT_NOPROGRESS, 1);
 	curl_easy_setopt (curl, CURLOPT_WRITEFUNCTION, Network::curlWrite);
 	curl_easy_setopt (curl, CURLOPT_WRITEDATA, buffer);
+	curl_easy_setopt (curl, CURLOPT_NOPROGRESS, 0);
+	curl_easy_setopt (curl, CURLOPT_PROGRESSFUNCTION, Network::curlProgress);
 	curl_easy_setopt (curl, CURLOPT_URL, item->url.c_str ());
+
+	if (app->isHttpsEnabled && item->url.startsWith ("https://")) {
+		curl_easy_setopt (curl, CURLOPT_USE_SSL, CURLUSESSL_ALL);
+
+		// TODO: Possibly enable certificate validation (currently disabled to allow use of self-signed certificates)
+		curl_easy_setopt (curl, CURLOPT_SSL_VERIFYPEER, 0);
+		curl_easy_setopt (curl, CURLOPT_SSL_VERIFYHOST, 0);
+	}
+
 	if (item->method.equals ("GET")) {
 		code = curl_easy_perform (curl);
 	}
@@ -883,12 +892,23 @@ int Network::sendHttpRequest (Network::HttpRequestContext *item, int *statusCode
 }
 
 size_t Network::curlWrite (char *ptr, size_t size, size_t nmemb, void *userdata) {
-	Buffer *buffer;
+	SharedBuffer *buffer;
 	size_t total;
 
-	buffer = (Buffer *) userdata;
+	buffer = (SharedBuffer *) userdata;
 	total = size * nmemb;
 	buffer->add ((uint8_t *) ptr, (int) total);
 
 	return (total);
+}
+
+int Network::curlProgress (void *clientp, double dltotal, double dlnow, double ultotal, double ulnow) {
+	App *app;
+
+	app = App::getInstance ();
+	if (app->isShuttingDown || app->isShutdown) {
+		return (-1);
+	}
+
+	return (0);
 }

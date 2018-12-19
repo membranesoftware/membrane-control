@@ -74,7 +74,7 @@ UiLaunchWindow::UiLaunchWindow (int uiType, SpriteGroup *mainUiSpriteGroup)
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
 	populate ();
-	resetLayout ();
+	refreshLayout ();
 }
 
 UiLaunchWindow::~UiLaunchWindow () {
@@ -114,39 +114,39 @@ void UiLaunchWindow::populate () {
 	uitext = &(App::getInstance ()->uiText);
 
 	switch (uiType) {
-		case UiLaunchWindow::LINK_UI: {
-			name.assign (uitext->servers.capitalized ());
-			text.assign (uitext->linkUiDescription);
+		case UiLaunchWindow::SERVER_UI: {
+			name.assign (uitext->getText (UiTextString::servers).capitalized ());
+			text.assign (uitext->getText (UiTextString::serverUiDescription));
 
-			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (spriteGroup->getSprite (MainUi::SERVER_ICON), uitext->getCountText (UiText::SERVERS_CONNECTED, 0), UiConfiguration::CAPTION, uiconfig->primaryTextColor));
+			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (spriteGroup->getSprite (MainUi::SERVER_ICON), uitext->getCountText (0, UiTextString::serverConnected, UiTextString::serversConnected), UiConfiguration::CAPTION, uiconfig->primaryTextColor));
 			noteIcons.push_back (icon);
 			break;
 		}
 		case UiLaunchWindow::MEDIA_UI: {
-			name.assign (uitext->media.capitalized ());
-			text.assign (uitext->mediaUiDescription);
+			name.assign (uitext->getText (UiTextString::media).capitalized ());
+			text.assign (uitext->getText (UiTextString::mediaUiDescription));
 
-			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (spriteGroup->getSprite (MainUi::MEDIA_SERVER_ICON), uitext->getCountText (UiText::MEDIA_SERVERS_CONNECTED, 0), UiConfiguration::CAPTION, uiconfig->primaryTextColor));
+			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (spriteGroup->getSprite (MainUi::MEDIA_SERVER_ICON), uitext->getCountText (0, UiTextString::mediaServerConnected, UiTextString::mediaServersConnected), UiConfiguration::CAPTION, uiconfig->primaryTextColor));
 			noteIcons.push_back (icon);
-			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (spriteGroup->getSprite (MainUi::STREAM_ICON), uitext->getCountText (UiText::VIDEO_FILES_AVAILABLE, 0), UiConfiguration::CAPTION, uiconfig->primaryTextColor));
+			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (spriteGroup->getSprite (MainUi::STREAM_ICON), uitext->getCountText (0, UiTextString::videoFileAvailable, UiTextString::videoFilesAvailable), UiConfiguration::CAPTION, uiconfig->primaryTextColor));
 			noteIcons.push_back (icon);
 			break;
 		}
-		case UiLaunchWindow::DISPLAY_UI: {
-			name.assign (uitext->displays.capitalized ());
-			text.assign (uitext->displayUiDescription);
+		case UiLaunchWindow::MONITOR_UI: {
+			name.assign (uitext->getText (UiTextString::monitorUiTitle));
+			text.assign (uitext->getText (UiTextString::monitorUiDescription));
 
-			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (spriteGroup->getSprite (MainUi::DISPLAY_ICON), uitext->getCountText (UiText::DISPLAYS_CONNECTED, 0), UiConfiguration::CAPTION, uiconfig->primaryTextColor));
+			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (spriteGroup->getSprite (MainUi::DISPLAY_ICON), uitext->getCountText (0, UiTextString::monitorConnected, UiTextString::monitorsConnected), UiConfiguration::CAPTION, uiconfig->primaryTextColor));
 			noteIcons.push_back (icon);
-			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (spriteGroup->getSprite (MainUi::STREAM_ICON), uitext->getCountText (UiText::VIDEO_STREAMS_AVAILABLE, 0), UiConfiguration::CAPTION, uiconfig->primaryTextColor));
+			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (spriteGroup->getSprite (MainUi::STREAM_ICON), uitext->getCountText (0, UiTextString::videoStreamAvailable, UiTextString::videoStreamsAvailable), UiConfiguration::CAPTION, uiconfig->primaryTextColor));
 			noteIcons.push_back (icon);
 			break;
 		}
 		case UiLaunchWindow::WEB_KIOSK_UI: {
-			name.assign (uitext->webKiosk.capitalized ());
-			text.assign (uitext->webKioskUiDescription);
+			name.assign (uitext->getText (UiTextString::webKiosk).capitalized ());
+			text.assign (uitext->getText (UiTextString::webKioskUiDescription));
 
-			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (spriteGroup->getSprite (MainUi::DISPLAY_ICON), uitext->getCountText (UiText::WEB_KIOSKS_AVAILABLE, 0), UiConfiguration::CAPTION, uiconfig->primaryTextColor));
+			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (spriteGroup->getSprite (MainUi::DISPLAY_ICON), uitext->getCountText (0, UiTextString::webKioskAvailable, UiTextString::webKiosksAvailable), UiConfiguration::CAPTION, uiconfig->primaryTextColor));
 			noteIcons.push_back (icon);
 			break;
 		}
@@ -162,11 +162,11 @@ void UiLaunchWindow::populate () {
 	descriptionText = (TextArea *) addWidget (new TextArea (UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
 	descriptionText->setText (text);
 
-	openButton = (Button *) addWidget (new Button (uitext->open.uppercased ()));
+	openButton = (Button *) addWidget (new Button (uitext->getText (UiTextString::open).uppercased ()));
 	openButton->zLevel = 1;
 	openButton->setMouseClickCallback (UiLaunchWindow::openButtonClicked, this);
 	openButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
-	openButton->setMouseHoverTooltip (uitext->uiLaunchOpenButtonTooltip);
+	openButton->setMouseHoverTooltip (uitext->getText (UiTextString::uiLaunchOpenButtonTooltip));
 }
 
 void UiLaunchWindow::syncRecordStore (RecordStore *store) {
@@ -181,41 +181,81 @@ void UiLaunchWindow::syncRecordStore (RecordStore *store) {
 
 	maxage = app->prefsMap.find (App::prefsServerTimeout, App::defaultServerTimeout) * 1000;
 	switch (uiType) {
-		case UiLaunchWindow::LINK_UI: {
+		case UiLaunchWindow::SERVER_UI: {
 			icon = noteIcons.at (0);
 			count = store->countCommandRecords (SystemInterface::Command_AgentStatus, maxage);
-			icon->setText (uitext->getCountText (UiText::SERVERS_CONNECTED, count));
+			icon->setText (uitext->getCountText (count, UiTextString::serverConnected, UiTextString::serversConnected));
 			break;
 		}
 		case UiLaunchWindow::MEDIA_UI: {
 			icon = noteIcons.at (0);
 			count = store->countAgentRecords ("mediaServerStatus", maxage);
-			icon->setText (uitext->getCountText (UiText::MEDIA_SERVERS_CONNECTED, count));
+			icon->setText (uitext->getCountText (count, UiTextString::mediaServerConnected, UiTextString::mediaServersConnected));
 
 			icon = noteIcons.at (1);
-			count = store->countCommandRecords (SystemInterface::Command_MediaItem);
-			icon->setText (uitext->getCountText (UiText::VIDEO_FILES_AVAILABLE, count));
+			count = countMediaItems (store);
+			icon->setText (uitext->getCountText (count, UiTextString::videoFileAvailable, UiTextString::videoFilesAvailable));
 			break;
 		}
-		case UiLaunchWindow::DISPLAY_UI: {
+		case UiLaunchWindow::MONITOR_UI: {
 			icon = noteIcons.at (0);
-			count = store->countAgentRecords ("displayServerStatus", maxage);
-			icon->setText (uitext->getCountText (UiText::DISPLAYS_CONNECTED, count));
+			count = store->countAgentRecords ("monitorServerStatus", maxage);
+			icon->setText (uitext->getCountText (count, UiTextString::monitorConnected, UiTextString::monitorsConnected));
 
 			icon = noteIcons.at (1);
-			count = store->countCommandRecords (SystemInterface::Command_StreamItem);
-			icon->setText (uitext->getCountText (UiText::VIDEO_STREAMS_AVAILABLE, count));
+			count = countStreamItems (store);
+			icon->setText (uitext->getCountText (count, UiTextString::videoStreamAvailable, UiTextString::videoStreamsAvailable));
 			break;
 		}
 		case UiLaunchWindow::WEB_KIOSK_UI: {
 			icon = noteIcons.at (0);
 			count = store->countRecords (WebKioskUi::matchWebKioskAgentStatus, NULL, maxage);
-			icon->setText (uitext->getCountText (UiText::WEB_KIOSKS_AVAILABLE, count));
+			icon->setText (uitext->getCountText (count, UiTextString::webKioskAvailable, UiTextString::webKiosksAvailable));
 			break;
 		}
 	}
 
 	Panel::syncRecordStore (store);
+}
+
+int UiLaunchWindow::countMediaItems (RecordStore *store) {
+	int sum;
+
+	sum = 0;
+	store->processAgentRecords ("mediaServerStatus", UiLaunchWindow::addMediaCount, &sum);
+	return (sum);
+}
+
+void UiLaunchWindow::addMediaCount (void *sumPtr, Json *record, const StdString &recordId) {
+	SystemInterface *interface;
+	Json serverstatus;
+	int *sum;
+
+	sum = (int *) sumPtr;
+	interface = &(App::getInstance ()->systemInterface);
+	if (interface->getCommandObjectParam (record, "mediaServerStatus", &serverstatus)) {
+		*sum += serverstatus.getNumber ("mediaCount", 0);
+	}
+}
+
+int UiLaunchWindow::countStreamItems (RecordStore *store) {
+	int sum;
+
+	sum = 0;
+	store->processAgentRecords ("streamServerStatus", UiLaunchWindow::addStreamCount, &sum);
+	return (sum);
+}
+
+void UiLaunchWindow::addStreamCount (void *sumPtr, Json *record, const StdString &recordId) {
+	SystemInterface *interface;
+	Json serverstatus;
+	int *sum;
+
+	sum = (int *) sumPtr;
+	interface = &(App::getInstance ()->systemInterface);
+	if (interface->getCommandObjectParam (record, "streamServerStatus", &serverstatus)) {
+		*sum += serverstatus.getNumber ("streamCount", 0);
+	}
 }
 
 bool UiLaunchWindow::isReadyState (int uiType, RecordStore *store) {
@@ -226,13 +266,13 @@ bool UiLaunchWindow::isReadyState (int uiType, RecordStore *store) {
 	maxage = app->prefsMap.find (App::prefsServerTimeout, App::defaultServerTimeout) * 1000;
 	switch (uiType) {
 		case UiLaunchWindow::MEDIA_UI: {
-			if ((store->countAgentRecords ("mediaServerStatus", maxage) > 0) && (store->countCommandRecords (SystemInterface::Command_MediaItem) > 0)) {
+			if (store->countAgentRecords ("mediaServerStatus", maxage) > 0) {
 				return (true);
 			}
 			break;
 		}
-		case UiLaunchWindow::DISPLAY_UI: {
-			if ((store->countAgentRecords ("displayServerStatus", maxage) > 0) && (store->countCommandRecords (SystemInterface::Command_StreamItem) > 0)) {
+		case UiLaunchWindow::MONITOR_UI: {
+			if (store->countAgentRecords ("monitorServerStatus", maxage) > 0) {
 				return (true);
 			}
 			break;
@@ -248,7 +288,7 @@ bool UiLaunchWindow::isReadyState (int uiType, RecordStore *store) {
 	return (false);
 }
 
-void UiLaunchWindow::resetLayout () {
+void UiLaunchWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	IconLabelWindow *icon;
 	std::vector<IconLabelWindow *>::iterator i, end;

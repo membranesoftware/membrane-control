@@ -57,6 +57,7 @@ public:
 	bool isDisabled;
 	bool isRaised;
 	bool isInverseColor;
+	bool isImageColorEnabled;
 
 	// Set the amount of size padding that should be applied to the button
 	void setPadding (float widthPaddingSize, float heightPaddingSize);
@@ -73,7 +74,7 @@ public:
 	// Set the button's raised state. If enabled, the button is drawn with a raised appearance.
 	void setRaised (bool raised, const Color &normalBgColor);
 
-	// Set the button's inverse color state. If enabled, the button uses an inverse color scheme.
+	// Set the button's inverse color state. If enabled, the button renders using an inverse color scheme.
 	void setInverseColor (bool inverse);
 
 	// Set the button's pressed state, appropriate for use when the button has been activated
@@ -108,7 +109,7 @@ protected:
 	virtual void doRefresh ();
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	virtual void resetLayout ();
+	virtual void refreshLayout ();
 
 private:
 	Label *label;

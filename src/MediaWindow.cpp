@@ -39,6 +39,7 @@
 #include "Util.h"
 #include "Widget.h"
 #include "Sprite.h"
+#include "SpriteGroup.h"
 #include "Color.h"
 #include "Panel.h"
 #include "Label.h"
@@ -48,9 +49,10 @@
 #include "Json.h"
 #include "SystemInterface.h"
 #include "UiConfiguration.h"
+#include "MediaUi.h"
 #include "MediaWindow.h"
 
-MediaWindow::MediaWindow (Json *mediaItem, Sprite *loadingThumbnailSprite, int cardLayout, float maxMediaImageWidth)
+MediaWindow::MediaWindow (Json *mediaItem, SpriteGroup *mediaUiSpriteGroup, int layoutType, float maxMediaImageWidth)
 : Panel ()
 , thumbnailCount (0)
 , mediaWidth (0)
@@ -59,75 +61,49 @@ MediaWindow::MediaWindow (Json *mediaItem, Sprite *loadingThumbnailSprite, int c
 , mediaFrameRate (0.0f)
 , mediaSize (0)
 , mediaBitrate (0)
-, loadingThumbnailSprite (loadingThumbnailSprite)
+, spriteGroup (mediaUiSpriteGroup)
 , mediaImage (NULL)
 , nameLabel (NULL)
 , detailText (NULL)
 , mouseoverLabel (NULL)
 , detailNameLabel (NULL)
-, viewThumbnailsButton (NULL)
-, createStreamButton (NULL)
-, removeStreamButton (NULL)
-, actionCallbackData (NULL)
-, viewThumbnailsCallback (NULL)
-, createStreamCallback (NULL)
-, removeStreamCallback (NULL)
 {
 	SystemInterface *interface;
-	UiText *uitext;
 	UiConfiguration *uiconfig;
 
 	interface = &(App::getInstance ()->systemInterface);
-	uitext = &(App::getInstance ()->uiText);
 	uiconfig = &(App::getInstance ()->uiConfig);
 
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 	mediaId = interface->getCommandStringParam (mediaItem, "id", "");
 	mediaName = interface->getCommandStringParam (mediaItem, "name", "");
+	agentId = interface->getCommandAgentId (mediaItem);
 	mediaWidth = interface->getCommandNumberParam (mediaItem, "width", (int) 0);
 	mediaHeight = interface->getCommandNumberParam (mediaItem, "height", (int) 0);
 
-	mediaImage = (ImageWindow *) addWidget (new ImageWindow (new Image (loadingThumbnailSprite)));
+	mediaImage = (ImageWindow *) addWidget (new ImageWindow (new Image (spriteGroup->getSprite (MediaUi::LOADING_IMAGE_ICON))));
 	nameLabel = (Label *) addWidget (new Label (mediaName, UiConfiguration::BODY, uiconfig->primaryTextColor));
 
 	detailText = (TextArea *) addWidget (new TextArea (UiConfiguration::CAPTION, uiconfig->inverseTextColor));
 	detailText->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	detailText->setFillBg (true, 0.0f, 0.0f, 0.0f);
-	detailText->setAlphaBlend (true, uiconfig->imageTextScrimAlpha);
+	detailText->setAlphaBlend (true, uiconfig->scrimBackgroundAlpha);
 	detailText->isVisible = false;
 
 	mouseoverLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CAPTION, uiconfig->inverseTextColor)));
 	mouseoverLabel->zLevel = 1;
 	mouseoverLabel->setFillBg (true, 0.0f, 0.0f, 0.0f);
-	mouseoverLabel->setAlphaBlend (true, uiconfig->imageTextScrimAlpha);
+	mouseoverLabel->setAlphaBlend (true, uiconfig->scrimBackgroundAlpha);
 	mouseoverLabel->isVisible = false;
 
 	detailNameLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (mediaName, UiConfiguration::HEADLINE, uiconfig->inverseTextColor)));
 	detailNameLabel->zLevel = 1;
 	detailNameLabel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	detailNameLabel->setFillBg (true, 0.0f, 0.0f, 0.0f);
-	detailNameLabel->setAlphaBlend (true, uiconfig->imageTextScrimAlpha);
+	detailNameLabel->setAlphaBlend (true, uiconfig->scrimBackgroundAlpha);
 	detailNameLabel->isVisible = false;
 
-	viewThumbnailsButton = (Button *) addWidget (new Button (uitext->viewThumbnails.uppercased ()));
-	viewThumbnailsButton->setMouseClickCallback (MediaWindow::viewThumbnailsButtonClicked, this);
-	viewThumbnailsButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
-	viewThumbnailsButton->setTextColor (uiconfig->raisedButtonTextColor);
-	viewThumbnailsButton->isVisible = false;
-
-	createStreamButton = (Button *) addWidget (new Button (uitext->createStream.uppercased ()));
-	createStreamButton->setMouseClickCallback (MediaWindow::createStreamButtonClicked, this);
-	createStreamButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
-	createStreamButton->setTextColor (uiconfig->raisedButtonTextColor);
-	createStreamButton->isVisible = false;
-
-	removeStreamButton = (Button *) addWidget (new Button (uitext->removeStream.uppercased ()));
-	removeStreamButton->setMouseClickCallback (MediaWindow::removeStreamButtonClicked, this);
-	removeStreamButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
-	removeStreamButton->setTextColor (uiconfig->raisedButtonTextColor);
-	removeStreamButton->isVisible = false;
-
-	setLayout (cardLayout, maxMediaImageWidth);
+	setLayout (layoutType, maxMediaImageWidth);
 }
 
 MediaWindow::~MediaWindow () {
@@ -151,18 +127,15 @@ MediaWindow *MediaWindow::castWidget (Widget *widget) {
 	return (MediaWindow::isWidgetType (widget) ? (MediaWindow *) widget : NULL);
 }
 
-void MediaWindow::setActionCallbacks (void *callbackData, Widget::EventCallback viewThumbnails, Widget::EventCallback createStream, Widget::EventCallback removeStream) {
-	actionCallbackData = callbackData;
-	viewThumbnailsCallback = viewThumbnails;
-	createStreamCallback = createStream;
-	removeStreamCallback = removeStream;
+bool MediaWindow::hasThumbnails () {
+	return ((! agentId.empty ()) && (! thumbnailPath.empty ()) && (thumbnailCount > 0) && (mediaWidth > 0) && (mediaHeight > 0));
 }
 
 void MediaWindow::syncRecordStore (RecordStore *store) {
 	App *app;
 	SystemInterface *interface;
 	Json *mediaitem, *agentstatus, serverstatus, *streamitem, *params;
-	StdString agentid, recordid, agentname, cmdjson;
+	StdString agentid, recordid, agentname;
 
 	app = App::getInstance ();
 	interface = &(app->systemInterface);
@@ -180,10 +153,10 @@ void MediaWindow::syncRecordStore (RecordStore *store) {
 		return;
 	}
 
-	mediaUrl = serverstatus.getString ("mediaUrl", "");
-	thumbnailUrl = serverstatus.getString ("thumbnailUrl", "");
+	mediaPath = serverstatus.getString ("mediaPath", "");
+	thumbnailPath = serverstatus.getString ("thumbnailPath", "");
 	thumbnailCount = serverstatus.getNumber ("thumbnailCount", (int) 0);
-	if (mediaUrl.empty ()) {
+	if (mediaPath.empty ()) {
 		return;
 	}
 
@@ -220,17 +193,14 @@ void MediaWindow::syncRecordStore (RecordStore *store) {
 		}
 	}
 
-	if (mediaImage->isLoadUrlEmpty () && (thumbnailCount > 0) && (! thumbnailUrl.empty ()) && (mediaWidth > 0) && (mediaHeight > 0)) {
+	if (hasThumbnails () && mediaImage->isLoadUrlEmpty ()) {
 		params = new Json ();
 		params->set ("id", mediaId);
 		params->set ("thumbnailIndex", (thumbnailCount / 4));
-		cmdjson = app->createCommandJson ("GetThumbnailImage", SystemInterface::Constant_Media, params);
-		if (! cmdjson.empty ()) {
-			mediaImage->setLoadUrl (interface->getInvokeUrl (thumbnailUrl, cmdjson), loadingThumbnailSprite);
-		}
+		mediaImage->setLoadUrl (app->agentControl.getAgentSecondaryUrl (agentId, app->createCommand ("GetThumbnailImage", SystemInterface::Constant_Media, params), thumbnailPath), spriteGroup->getSprite (MediaUi::LOADING_IMAGE_ICON));
 	}
 
-	resetLayout ();
+	refreshLayout ();
 }
 
 bool MediaWindow::matchStreamSourceId (void *idStringPtr, Json *record) {
@@ -249,7 +219,7 @@ bool MediaWindow::matchStreamSourceId (void *idStringPtr, Json *record) {
 	return (id->equals (App::getInstance ()->systemInterface.getCommandStringParam (record, "sourceId", "")));
 }
 
-void MediaWindow::resetLayout () {
+void MediaWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 	StdString text;
@@ -267,9 +237,6 @@ void MediaWindow::resetLayout () {
 			nameLabel->isVisible = false;
 			detailNameLabel->isVisible = false;
 			detailText->isVisible = false;
-			viewThumbnailsButton->isVisible = false;
-			createStreamButton->isVisible = false;
-			removeStreamButton->isVisible = false;
 
 			mouseoverLabel->position.assign (0.0f, mediaImage->height - mouseoverLabel->height);
 			setFixedSize (true, mediaImage->width, mediaImage->height);
@@ -278,9 +245,6 @@ void MediaWindow::resetLayout () {
 		case MediaWindow::MEDIUM_DETAIL: {
 			detailNameLabel->isVisible = false;
 			detailText->isVisible = false;
-			viewThumbnailsButton->isVisible = false;
-			createStreamButton->isVisible = false;
-			removeStreamButton->isVisible = false;
 
 			x += uiconfig->paddingSize;
 			y += mediaImage->height + uiconfig->marginSize;
@@ -298,45 +262,13 @@ void MediaWindow::resetLayout () {
 
 			text.sprintf ("%ix%i  %s  %s  %s", mediaWidth, mediaHeight, Util::getBitrateDisplayString (mediaBitrate).c_str (), Util::getFileSizeDisplayString (mediaSize).c_str (), Util::getDurationDisplayString (mediaDuration).c_str ());
 			if (! streamAgentName.empty ()) {
-				text.appendSprintf ("\n%s: %s", uitext->streamServer.capitalized ().c_str (), streamAgentName.c_str ());
+				text.appendSprintf ("\n%s: %s", uitext->getText (UiTextString::streamServer).capitalized ().c_str (), streamAgentName.c_str ());
 			}
 
 			detailText->setText (text);
 			detailText->position.assign (mediaImage->position.x, mediaImage->position.y + mediaImage->height - detailText->height);
 			detailText->isVisible = true;
-
-			x += uiconfig->marginSize;
-			y += mediaImage->height + uiconfig->marginSize;
-
-			viewThumbnailsButton->position.assign (x, y);
-			viewThumbnailsButton->isVisible = true;
-			x += viewThumbnailsButton->width + uiconfig->marginSize;
-			if (streamId.empty ()) {
-				removeStreamButton->isVisible = false;
-				createStreamButton->position.assign (x, y);
-				createStreamButton->isVisible = true;
-			}
-			else {
-				createStreamButton->isVisible = false;
-				removeStreamButton->position.assign (x, y);
-				removeStreamButton->isVisible = true;
-			}
-			resetSize ();
-			setFixedSize (true, mediaImage->width, maxWidgetY + uiconfig->paddingSize);
-
-			x = width - uiconfig->paddingSize;
-			if (createStreamButton->isVisible) {
-				x -= createStreamButton->width;
-				createStreamButton->position.assignX (x);
-				x -= uiconfig->marginSize;
-			}
-			if (removeStreamButton->isVisible) {
-				x -= removeStreamButton->width;
-				removeStreamButton->position.assignX (x);
-				x -= uiconfig->marginSize;
-			}
-			x -= viewThumbnailsButton->width;
-			viewThumbnailsButton->position.assignX (x);
+			setFixedSize (true, mediaImage->width, mediaImage->height);
 			break;
 		}
 	}
@@ -354,13 +286,13 @@ void MediaWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 	}
 }
 
-void MediaWindow::setLayout (int cardLayout, float maxImageWidth) {
+void MediaWindow::setLayout (int layoutType, float maxImageWidth) {
 	float w, h;
 
-	if (cardLayout == layout) {
+	if (layoutType == layout) {
 		return;
 	}
-	layout = cardLayout;
+	layout = layoutType;
 	w = maxImageWidth;
 	h = mediaHeight;
 	h *= maxImageWidth;
@@ -380,32 +312,5 @@ void MediaWindow::setLayout (int cardLayout, float maxImageWidth) {
 	if (layout == MediaWindow::LOW_DETAIL) {
 		mouseoverLabel->setText (mediaName);
 	}
-	resetLayout ();
-}
-
-void MediaWindow::viewThumbnailsButtonClicked (void *windowPtr, Widget *widgetPtr) {
-	MediaWindow *window;
-
-	window = (MediaWindow *) windowPtr;
-	if (window->viewThumbnailsCallback) {
-		window->viewThumbnailsCallback (window->actionCallbackData, window);
-	}
-}
-
-void MediaWindow::createStreamButtonClicked (void *windowPtr, Widget *widgetPtr) {
-	MediaWindow *window;
-
-	window = (MediaWindow *) windowPtr;
-	if (window->createStreamCallback) {
-		window->createStreamCallback (window->actionCallbackData, window);
-	}
-}
-
-void MediaWindow::removeStreamButtonClicked (void *windowPtr, Widget *widgetPtr) {
-	MediaWindow *window;
-
-	window = (MediaWindow *) windowPtr;
-	if (window->removeStreamCallback) {
-		window->removeStreamCallback (window->actionCallbackData, window);
-	}
+	refreshLayout ();
 }

@@ -36,6 +36,7 @@
 #include <stdarg.h>
 #include <map>
 #include <vector>
+#include <list>
 #include "StdString.h"
 #include "StringList.h"
 #include "json-parser.h"
@@ -152,10 +153,14 @@ public:
 	void set (const char *key, const double value);
 	void set (const StdString &key, const bool value);
 	void set (const char *key, const bool value);
-	void set (const StdString &key, StringList *value);
-	void set (const char *key, StringList *value);
 	void set (const StdString &key, Json *value);
 	void set (const char *key, Json *value);
+	void set (const StdString &key, StringList *value);
+	void set (const char *key, StringList *value);
+	void set (const StdString &key, std::vector<Json *> *value);
+	void set (const char *key, std::vector<Json *> *value);
+	void set (const StdString &key, std::list<Json *> *value);
+	void set (const char *key, std::list<Json *> *value);
 
 	// Set a string value in the map using a format string
 	void setSprintf (const StdString &key, const char *str, ...) __attribute__((format(printf, 3, 4)));

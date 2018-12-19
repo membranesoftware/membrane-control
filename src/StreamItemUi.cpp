@@ -46,7 +46,8 @@
 #include "Toolbar.h"
 #include "Menu.h"
 #include "CardView.h"
-#include "IconCardWindow.h"
+#include "HelpWindow.h"
+#include "StreamDetailWindow.h"
 #include "StreamWindow.h"
 #include "ThumbnailWindow.h"
 #include "StreamItemUi.h"
@@ -55,32 +56,17 @@ const float StreamItemUi::smallImageScale = 0.123f;
 const float StreamItemUi::mediumImageScale = 0.240f;
 const float StreamItemUi::largeImageScale = 0.480f;
 
-StreamItemUi::StreamItemUi (StreamWindow *card, const StdString &captionText)
+StreamItemUi::StreamItemUi (StreamWindow *streamWindow, const StdString &captionText)
 : Ui ()
 , captionText (captionText)
-, segmentCount (0)
-, frameWidth (0)
-, frameHeight (0)
-, streamBitrate (0)
-, streamDuration (0)
-, streamFrameRate (0.0f)
 , cardView (NULL)
 , cardLayout (-1)
 , cardMaxImageWidth (0.0f)
-, detailCard (NULL)
+, lastTimelineHoverPosition (-1)
 , thumbnailClickCallback (NULL)
 , thumbnailClickCallbackData (NULL)
 {
-	displayAgentMap.sort (HashMap::sortAscending);
-	streamId.assign (card->streamId);
-	streamName.assign (card->streamName);
-	thumbnailUrl.assign (card->thumbnailUrl);
-	segmentCount = card->segmentCount;
-	frameWidth = card->frameWidth;
-	frameHeight = card->frameHeight;
-	streamBitrate = card->bitrate;
-	streamDuration = card->duration;
-	streamFrameRate = card->frameRate;
+	sourceStreamWindow.assign (streamWindow);
 }
 
 StreamItemUi::~StreamItemUi () {
@@ -97,33 +83,46 @@ StdString StreamItemUi::getSpritePath () {
 }
 
 StdString StreamItemUi::getBreadcrumbTitle () {
-	return (streamName);
+	if (! sourceStreamWindow.widget) {
+		return (StdString (""));
+	}
+
+	return (((StreamWindow *) sourceStreamWindow.widget)->streamName);
 }
 
-Sprite *StreamItemUi::getBreadcrumbSprite () {
-	// TODO: Implement this
-	return (NULL);
+void StreamItemUi::setHelpWindowContent (Widget *helpWindowPtr) {
+	App *app;
+	HelpWindow *help;
+	UiText *uitext;
+
+	help = (HelpWindow *) helpWindowPtr;
+	app = App::getInstance ();
+	uitext = &(app->uiText);
+
+	help->setHelpText (uitext->getText (UiTextString::streamItemUiHelpTitle), uitext->getText (UiTextString::streamItemUiHelpText));
+	help->addAction (uitext->getText (UiTextString::streamItemUiHelpAction1Text));
 }
 
 int StreamItemUi::doLoad () {
 	App *app;
-	SystemInterface *interface;
-	UiText *uitext;
+	AgentControl *agentcontrol;
 	UiConfiguration *uiconfig;
 	float t;
-	int i, layout;
+	int i, segmentcount, layout;
 	Json *params;
-	StdString cardid, url, cmdjson, text, rationame, framesizename;
+	StreamDetailWindow *detailwindow;
+	StreamWindow *streamwindow;
+	ThumbnailWindow *window;
+	StdString cardid, url;
 
 	app = App::getInstance ();
-	interface = &(app->systemInterface);
-	uitext = &(app->uiText);
+	agentcontrol = &(app->agentControl);
 	uiconfig = &(app->uiConfig);
+	streamwindow = (StreamWindow *) sourceStreamWindow.widget;
 
 	cardView = (CardView *) addWidget (new CardView (app->windowWidth - app->rightBarWidth, app->windowHeight - app->topBarHeight - app->bottomBarHeight));
 	cardView->isKeyboardScrollEnabled = true;
 	cardView->setItemMarginSize (uiconfig->marginSize / 2.0f);
-	cardView->setItemClickCallback (StreamItemUi::cardClicked, this);
 	cardView->position.assign (0.0f, app->topBarHeight);
 
 	layout = app->prefsMap.find (App::prefsStreamItemImageSize, (int) ThumbnailWindow::MEDIUM_DETAIL);
@@ -146,78 +145,54 @@ int StreamItemUi::doLoad () {
 		}
 	}
 
-	text.sprintf ("%s: %ix%i", uitext->frameSize.capitalized ().c_str (), frameWidth, frameHeight);
-	rationame = Util::getAspectRatioDisplayString (frameWidth, frameHeight);
-	framesizename = Util::getFrameSizeName (frameWidth, frameHeight);
-	if ((! rationame.empty ()) || (! framesizename.empty ())) {
-		text.append (" (");
-		if (! rationame.empty ()) {
-			text.append (rationame);
-		}
-		if (! framesizename.empty ()) {
-			if (! rationame.empty ()) {
-				text.append (", ");
-			}
-			text.append (framesizename);
-		}
-		text.append (")");
-	}
+	detailwindow = new StreamDetailWindow (streamwindow->streamId);
+	cardView->addItem (detailwindow, streamwindow->streamId, 0);
 
-	text.appendSprintf ("\n%s: %s (%s)", uitext->duration.capitalized ().c_str (), Util::getDurationDisplayString (streamDuration).c_str (), Util::getDurationString (streamDuration, Util::HOURS).c_str ());
-	if (streamFrameRate <= 0.0f) {
-		text.appendSprintf ("\n%s: %s", uitext->frameRate.capitalized ().c_str (), uitext->unknown.capitalized ().c_str ());
-	}
-	else {
-		text.appendSprintf ("\n%s: %.2ffps", uitext->frameRate.capitalized ().c_str (), streamFrameRate);
-	}
-
-	if (streamBitrate <= 0.0f) {
-		text.appendSprintf ("\n%s: %s", uitext->bitrate.capitalized ().c_str (), uitext->unknown.capitalized ().c_str ());
-	}
-	else {
-		text.appendSprintf ("\n%s: %s", uitext->bitrate.capitalized ().c_str (), Util::getBitrateDisplayString (streamBitrate).c_str ());
-	}
-
-	detailCard = new IconCardWindow (sprites.getSprite (StreamItemUi::STREAM_ICON), streamName, StdString (""), text);
-	cardView->addItem (detailCard, streamId, 0);
-
-	if ((segmentCount > 0) && (! thumbnailUrl.empty ())) {
-		t = 0.0f;
-		for (i = 0; i < segmentCount; ++i) {
+	segmentcount = streamwindow->segmentCount;
+	if ((segmentcount > 0) && (! streamwindow->thumbnailPath.empty ())) {
+		for (i = 0; i < segmentcount; ++i) {
 			params = new Json ();
-			params->set ("id", streamId);
+			params->set ("id", streamwindow->streamId);
 			params->set ("thumbnailIndex", i);
-			cmdjson = app->createCommandJson ("GetThumbnailImage", SystemInterface::Constant_Media, params);
-			if (cmdjson.empty ()) {
-				continue;
-			}
+			url = agentcontrol->getAgentSecondaryUrl (streamwindow->agentId, app->createCommand ("GetThumbnailImage", SystemInterface::Constant_Stream, params), streamwindow->thumbnailPath);
 
-			url = interface->getInvokeUrl (thumbnailUrl, cmdjson);
 			cardid.sprintf ("%i", i);
-			cardView->addItem (new ThumbnailWindow (t, frameWidth, frameHeight, url, sprites.getSprite (StreamItemUi::LOADING_IMAGE_ICON), cardLayout, cardMaxImageWidth), cardid, 1, true);
-
-			t += (streamDuration / (float) segmentCount);
+			if (i < (int) streamwindow->segmentPositions.size ()) {
+				t = ((float) streamwindow->segmentPositions.at (i)) * 1000.0f;
+			}
+			else {
+				t = i * (streamwindow->duration / (float) segmentcount);
+			}
+			window = new ThumbnailWindow (i, t, streamwindow->frameWidth, streamwindow->frameHeight, url, sprites.getSprite (StreamItemUi::LOADING_IMAGE_ICON), cardLayout, cardMaxImageWidth);
+			window->setMouseClickCallback (StreamItemUi::thumbnailClicked, this);
+			window->setMouseEnterCallback (StreamItemUi::thumbnailMouseEntered, this);
+			window->setMouseExitCallback (StreamItemUi::thumbnailMouseExited, this);
+			cardView->addItem (window, cardid, 1, true);
 		}
 	}
 	cardView->refresh ();
+	lastTimelineHoverPosition = -1;
 
 	return (Result::SUCCESS);
 }
 
 void StreamItemUi::doUnload () {
-	viewMenu.clear ();
+	thumbnailSizeMenu.clear ();
 	actionWindow.clear ();
-	displayAgentMap.clear ();
 }
 
 void StreamItemUi::doResetMainToolbar (Toolbar *toolbar) {
+	App *app;
+	UiText *uitext;
 	Button *button;
 
-	button = new Button (StdString (""), sprites.getSprite (StreamItemUi::VIEW_BUTTON));
-	button->setMouseClickCallback (StreamItemUi::viewButtonClicked, this);
-// TODO: Set tooltip text
-//  button->tooltipText.assign (app->uiText.mediaUiViewTooltip);
-//     button->isMouseHoverEnabled = true;
+	app = App::getInstance ();
+	uitext = &(app->uiText);
+
+	button = new Button (StdString (""), sprites.getSprite (StreamItemUi::THUMBNAIL_SIZE_BUTTON));
+	button->setInverseColor (true);
+	button->setMouseClickCallback (StreamItemUi::thumbnailSizeButtonClicked, this);
+	button->setMouseHoverTooltip (uitext->getText (UiTextString::thumbnailImageSizeTooltip));
 	toolbar->addRightItem (button);
 
 	addMainToolbarBackButton (toolbar);
@@ -227,20 +202,19 @@ void StreamItemUi::doResetSecondaryToolbar (Toolbar *toolbar) {
 	App *app;
 	UiConfiguration *uiconfig;
 	Label *label;
-	TimelineBar *bar;
 
 	app = App::getInstance ();
 	uiconfig = &(app->uiConfig);
 
 	toolbar->setLeftCorner (new Image (sprites.getSprite (StreamItemUi::TIME_ICON)));
 
-	bar = new TimelineBar (app->windowWidth * 0.5f, 0.0f, streamDuration);
-	timelineBar.destroyAndClear ();
-	timelineBar.assign (bar);
-	toolbar->addLeftItem (bar);
+	timelineBar = new TimelineBar (app->windowWidth * 0.5f, ((StreamWindow *) sourceStreamWindow.widget)->streamId);
+	timelineBar->setPositionHoverCallback (StreamItemUi::timelineBarPositionHovered, this);
+	timelineBar->setPositionClickCallback (StreamItemUi::timelineBarPositionClicked, this);
+	toolbar->addLeftItem (timelineBar);
 
 	if (! captionText.empty ()) {
-		label = new Label (captionText, UiConfiguration::CAPTION, uiconfig->inverseTextColor);
+		label = new Label (captionText, UiConfiguration::CAPTION, uiconfig->mediumSecondaryColor);
 		toolbar->addRightItem (label);
 	}
 
@@ -248,7 +222,7 @@ void StreamItemUi::doResetSecondaryToolbar (Toolbar *toolbar) {
 }
 
 void StreamItemUi::doClearPopupWidgets () {
-	viewMenu.destroyAndClear ();
+	thumbnailSizeMenu.destroyAndClear ();
 	actionWindow.destroyAndClear ();
 }
 
@@ -264,7 +238,7 @@ void StreamItemUi::doResume () {
 	App *app;
 
 	app = App::getInstance ();
-	app->setNextBackgroundTexturePath ("ui/StreamItem/bg");
+	app->setNextBackgroundTexturePath ("ui/StreamItemUi/bg");
 
 	cardView->setViewSize (app->windowWidth - app->rightBarWidth, app->windowHeight - app->topBarHeight - app->bottomBarHeight);
 	cardView->position.assign (0.0f, app->topBarHeight);
@@ -278,11 +252,13 @@ void StreamItemUi::doPause () {
 }
 
 void StreamItemUi::doUpdate (int msElapsed) {
-	viewMenu.compact ();
+	thumbnailSizeMenu.compact ();
+	actionWindow.compact ();
 }
 
 void StreamItemUi::doSyncRecordStore (RecordStore *store) {
-	store->populateAgentMap (&displayAgentMap, StdString ("displayServerStatus"));
+	timelineBar->syncRecordStore (store);
+	cardView->syncRecordStore (store);
 }
 
 void StreamItemUi::doResize () {
@@ -293,14 +269,14 @@ void StreamItemUi::doResize () {
 	cardView->position.assign (0.0f, app->topBarHeight);
 }
 
-void StreamItemUi::viewButtonClicked (void *uiPtr, Widget *widgetPtr) {
+void StreamItemUi::thumbnailSizeButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	StreamItemUi *ui;
 
 	ui = (StreamItemUi *) uiPtr;
-	ui->handleViewButtonClick (widgetPtr);
+	ui->handleThumbnailSizeButtonClick (widgetPtr);
 }
 
-void StreamItemUi::handleViewButtonClick (Widget *buttonWidget) {
+void StreamItemUi::handleThumbnailSizeButtonClick (Widget *buttonWidget) {
 	App *app;
 	UiText *uitext;
 	Menu *menu;
@@ -308,8 +284,8 @@ void StreamItemUi::handleViewButtonClick (Widget *buttonWidget) {
 	app = App::getInstance ();
 	uitext = &(app->uiText);
 
-	if (viewMenu.widget) {
-		viewMenu.destroyAndClear ();
+	if (thumbnailSizeMenu.widget) {
+		thumbnailSizeMenu.destroyAndClear ();
 		return;
 	}
 
@@ -317,11 +293,11 @@ void StreamItemUi::handleViewButtonClick (Widget *buttonWidget) {
 	menu = (Menu *) app->rootPanel->addWidget (new Menu ());
 	menu->zLevel = app->rootPanel->maxWidgetZLevel + 1;
 	menu->isClickDestroyEnabled = true;
-	menu->addItem (uitext->small.capitalized (), sprites.getSprite (StreamItemUi::SMALL_THUMBNAILS_ICON), StreamItemUi::viewSmallActionClicked, this, 0, cardLayout == ThumbnailWindow::LOW_DETAIL);
-	menu->addItem (uitext->medium.capitalized (), sprites.getSprite (StreamItemUi::MEDIUM_THUMBNAILS_ICON), StreamItemUi::viewMediumActionClicked, this, 0, cardLayout == ThumbnailWindow::MEDIUM_DETAIL);
-	menu->addItem (uitext->large.capitalized (), sprites.getSprite (StreamItemUi::LARGE_THUMBNAILS_ICON), StreamItemUi::viewLargeActionClicked, this, 0, cardLayout == ThumbnailWindow::HIGH_DETAIL);
+	menu->addItem (uitext->getText (UiTextString::small).capitalized (), sprites.getSprite (StreamItemUi::SMALL_THUMBNAILS_ICON), StreamItemUi::viewSmallActionClicked, this, 0, cardLayout == ThumbnailWindow::LOW_DETAIL);
+	menu->addItem (uitext->getText (UiTextString::medium).capitalized (), sprites.getSprite (StreamItemUi::MEDIUM_THUMBNAILS_ICON), StreamItemUi::viewMediumActionClicked, this, 0, cardLayout == ThumbnailWindow::MEDIUM_DETAIL);
+	menu->addItem (uitext->getText (UiTextString::large).capitalized (), sprites.getSprite (StreamItemUi::LARGE_THUMBNAILS_ICON), StreamItemUi::viewLargeActionClicked, this, 0, cardLayout == ThumbnailWindow::HIGH_DETAIL);
 	menu->position.assign (buttonWidget->position.x + buttonWidget->width - menu->width, buttonWidget->position.y + buttonWidget->height);
-	viewMenu.assign (menu);
+	thumbnailSizeMenu.assign (menu);
 }
 
 void StreamItemUi::viewSmallActionClicked (void *uiPtr, Widget *widgetPtr) {
@@ -342,7 +318,7 @@ void StreamItemUi::viewSmallActionClicked (void *uiPtr, Widget *widgetPtr) {
 	}
 	ui->cardView->processItems (StreamItemUi::resetCardLayout, ui);
 	ui->cardView->setItemMarginSize (0.0f);
-	ui->cardView->setVerticalScrollSpeed (ui->cardView->height * 0.12f);
+	ui->cardView->setVerticalScrollSpeed (ui->cardView->height * 0.1f);
 	if (h0 > 0.0f) {
 		ui->cardView->setViewOrigin (0.0f, (y0 * ui->cardView->maxWidgetY) / h0);
 	}
@@ -366,7 +342,7 @@ void StreamItemUi::viewMediumActionClicked (void *uiPtr, Widget *widgetPtr) {
 	}
 	ui->cardView->processItems (StreamItemUi::resetCardLayout, ui);
 	ui->cardView->setItemMarginSize (App::getInstance ()->uiConfig.marginSize / 2.0f);
-	ui->cardView->setVerticalScrollSpeed (ui->cardView->height * 0.24f);
+	ui->cardView->setVerticalScrollSpeed (ui->cardView->height * 0.2f);
 	if (h0 > 0.0f) {
 		ui->cardView->setViewOrigin (0.0f, (y0 * ui->cardView->maxWidgetY) / h0);
 	}
@@ -390,7 +366,7 @@ void StreamItemUi::viewLargeActionClicked (void *uiPtr, Widget *widgetPtr) {
 	}
 	ui->cardView->processItems (StreamItemUi::resetCardLayout, ui);
 	ui->cardView->setItemMarginSize (App::getInstance ()->uiConfig.marginSize);
-	ui->cardView->setVerticalScrollSpeed (ui->cardView->height * 0.36f);
+	ui->cardView->setVerticalScrollSpeed (ui->cardView->height * 0.3f);
 	if (h0 > 0.0f) {
 		ui->cardView->setViewOrigin (0.0f, (y0 * ui->cardView->maxWidgetY) / h0);
 	}
@@ -409,17 +385,112 @@ void StreamItemUi::resetCardLayout (void *uiPtr, Widget *widgetPtr) {
 	card->setLayout (ui->cardLayout, ui->cardMaxImageWidth);
 }
 
-void StreamItemUi::cardClicked (void *uiPtr, Widget *widgetPtr) {
+void StreamItemUi::thumbnailClicked (void *uiPtr, Widget *widgetPtr) {
 	StreamItemUi *ui;
-	ThumbnailWindow *card;
+	ThumbnailWindow *target;
 
 	ui = (StreamItemUi *) uiPtr;
-	card = ThumbnailWindow::castWidget (widgetPtr);
-	if (! card) {
+	target = ThumbnailWindow::castWidget (widgetPtr);
+	if (! target) {
 		return;
 	}
 
 	if (ui->thumbnailClickCallback) {
-		ui->thumbnailClickCallback (ui->thumbnailClickCallbackData, card);
+		ui->thumbnailClickCallback (ui->thumbnailClickCallbackData, target);
 	}
+}
+
+void StreamItemUi::thumbnailMouseEntered (void *uiPtr, Widget *widgetPtr) {
+	StreamItemUi *ui;
+	ThumbnailWindow *window;
+
+	ui = (StreamItemUi *) uiPtr;
+	window = (ThumbnailWindow *) widgetPtr;
+	ui->timelineBar->setHighlightedMarker (window->thumbnailIndex);
+	window->setHighlighted (true);
+}
+
+void StreamItemUi::thumbnailMouseExited (void *uiPtr, Widget *widgetPtr) {
+	StreamItemUi *ui;
+	ThumbnailWindow *window;
+
+	ui = (StreamItemUi *) uiPtr;
+	window = (ThumbnailWindow *) widgetPtr;
+	if (ui->timelineBar->highlightedMarkerIndex == window->thumbnailIndex) {
+		ui->timelineBar->setHighlightedMarker (-1);
+	}
+	window->setHighlighted (false);
+}
+
+void StreamItemUi::timelineBarPositionHovered (void *uiPtr, Widget *widgetPtr) {
+	StreamItemUi *ui;
+	TimelineBar *bar;
+	StreamWindow *streamwindow;
+	ThumbnailWindow *target;
+	float pos;
+	int index;
+
+	ui = (StreamItemUi *) uiPtr;
+	bar = (TimelineBar *) widgetPtr;
+	streamwindow = (StreamWindow *) ui->sourceStreamWindow.widget;
+
+	pos = bar->hoverPosition;
+	if (pos < 0.0f) {
+		index = -1;
+	}
+	else {
+		index = (int) (pos / bar->width * (float) streamwindow->segmentCount);
+	}
+
+	if (ui->lastTimelineHoverPosition != index) {
+		bar->setHighlightedMarker (index);
+
+		if (ui->lastTimelineHoverPosition >= 0) {
+			target = (ThumbnailWindow *) ui->cardView->findItem (StreamItemUi::matchThumbnailIndex, &(ui->lastTimelineHoverPosition));
+			if (target) {
+				target->setHighlighted (false);
+			}
+		}
+
+		ui->lastTimelineHoverPosition = index;
+		if (index >= 0) {
+			target = (ThumbnailWindow *) ui->cardView->findItem (StreamItemUi::matchThumbnailIndex, &index);
+			if (target) {
+				target->setHighlighted (true);
+			}
+		}
+	}
+}
+
+void StreamItemUi::timelineBarPositionClicked (void *uiPtr, Widget *widgetPtr) {
+	StreamItemUi *ui;
+	TimelineBar *bar;
+	StreamWindow *streamwindow;
+	ThumbnailWindow *target;
+	int index;
+
+	ui = (StreamItemUi *) uiPtr;
+	bar = (TimelineBar *) widgetPtr;
+	streamwindow = (StreamWindow *) ui->sourceStreamWindow.widget;
+
+	if (ui->thumbnailClickCallback) {
+		index = (int) (bar->clickPosition / bar->width * (float) streamwindow->segmentCount);
+		target = (ThumbnailWindow *) ui->cardView->findItem (StreamItemUi::matchThumbnailIndex, &index);
+		if (target) {
+			ui->thumbnailClickCallback (ui->thumbnailClickCallbackData, target);
+		}
+	}
+}
+
+bool StreamItemUi::matchThumbnailIndex (void *intPtr, Widget *widgetPtr) {
+	ThumbnailWindow *item;
+	int *index;
+
+	item = ThumbnailWindow::castWidget (widgetPtr);
+	if (! item) {
+		return (false);
+	}
+
+	index = (int *) intPtr;
+	return (*index == item->thumbnailIndex);
 }

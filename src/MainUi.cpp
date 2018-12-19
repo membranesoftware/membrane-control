@@ -52,17 +52,17 @@
 #include "IconCardWindow.h"
 #include "UiLaunchWindow.h"
 #include "HelpWindow.h"
-#include "LinkUi.h"
+#include "ServerUi.h"
 #include "MediaUi.h"
-#include "DisplayUi.h"
+#include "MonitorUi.h"
 #include "WebKioskUi.h"
 #include "MainUi.h"
 
 const int MainUi::uiLaunchWindowTypes[] = {
-	UiLaunchWindow::LINK_UI,
+	UiLaunchWindow::SERVER_UI,
 	UiLaunchWindow::WEB_KIOSK_UI,
 	UiLaunchWindow::MEDIA_UI,
-	UiLaunchWindow::DISPLAY_UI
+	UiLaunchWindow::MONITOR_UI
 };
 
 MainUi::MainUi ()
@@ -93,13 +93,13 @@ void MainUi::setHelpWindowContent (Widget *helpWindowPtr) {
 	uitext = &(app->uiText);
 	help = (HelpWindow *) helpWindowPtr;
 
-	help->setHelpText (uitext->mainUiHelpTitle, uitext->mainUiHelpText);
+	help->setHelpText (uitext->getText (UiTextString::mainUiHelpTitle), uitext->getText (UiTextString::mainUiHelpText));
 	if (readyItemCount <= 0) {
-		help->addAction (uitext->mainUiServersHelpActionText, uitext->learnMore.capitalized (), Util::getHelpUrl ("servers"));
+		help->addAction (uitext->getText (UiTextString::mainUiServersHelpActionText), uitext->getText (UiTextString::learnMore).capitalized (), Util::getHelpUrl ("servers"));
 	}
 
-	help->addTopicLink (uitext->membraneSoftwareOverview, Util::getHelpUrl ("membrane-software-overview"));
-	help->addTopicLink (uitext->searchForHelp, Util::getHelpUrl (""));
+	help->addTopicLink (uitext->getText (UiTextString::membraneSoftwareOverview), Util::getHelpUrl ("membrane-software-overview"));
+	help->addTopicLink (uitext->getText (UiTextString::searchForHelp), Util::getHelpUrl (""));
 }
 
 int MainUi::doLoad () {
@@ -113,14 +113,15 @@ int MainUi::doLoad () {
 
 	cardView = (CardView *) addWidget (new CardView (app->windowWidth - app->rightBarWidth, app->windowHeight - app->topBarHeight - app->bottomBarHeight));
 	cardView->isKeyboardScrollEnabled = true;
-	cardView->setRowHeader (0, uitext->mainMenu.capitalized (), UiConfiguration::TITLE, uiconfig->inverseTextColor);
+	cardView->setRowHeader (0, uitext->getText (UiTextString::mainMenu).capitalized (), UiConfiguration::TITLE, uiconfig->inverseTextColor);
 	cardView->position.assign (0.0f, app->topBarHeight);
 
 	showAllToggle = (Toggle *) addWidget (new Toggle (sprites.getSprite (MainUi::SHOW_ALL_DISABLED_BUTTON), sprites.getSprite (MainUi::SHOW_ALL_ENABLED_BUTTON)));
+	showAllToggle->setInverseColor (true);
 	showAllToggle->setChecked (app->prefsMap.find (App::prefsMainUiShowAllEnabled, false));
 	showAllToggle->setStateChangeCallback (MainUi::showAllToggleStateChanged, this);
 	showAllToggle->position.assign (app->windowWidth - showAllToggle->width - uiconfig->marginSize - app->rightBarWidth, app->windowHeight - showAllToggle->height - uiconfig->marginSize);
-	showAllToggle->setMouseHoverTooltip (uitext->mainUiShowAllTooltip);
+	showAllToggle->setMouseHoverTooltip (uitext->getText (UiTextString::mainUiShowAllTooltip));
 
 	if (! app->prefsMap.find (App::prefsIsFirstLaunchComplete, false)) {
 		app->prefsMap.insert (App::prefsIsFirstLaunchComplete, true);
@@ -147,28 +148,12 @@ void MainUi::doClearPopupWidgets () {
 
 void MainUi::doResume () {
 	App *app;
-	StringList addresses;
-	StringList::iterator i, end;
-
-	// TODO: Gather AgentStatus records here (for correct display of agent counts)
 
 	app = App::getInstance ();
 	app->setNextBackgroundTexturePath ("ui/MainUi/bg");
 
 	cardView->setViewSize (app->windowWidth - app->rightBarWidth, app->windowHeight - app->topBarHeight - app->bottomBarHeight);
 	cardView->position.assign (0.0f, app->topBarHeight);
-
-	if (! isFirstResumeComplete) {
-		app->prefsMap.find (App::prefsAutoConnectAddresses, &addresses);
-		i = addresses.begin ();
-		end = addresses.end ();
-		while (i != end) {
-			if (! i->empty ()) {
-				app->agentControl.connectLinkClientToAddress (*i);
-			}
-			++i;
-		}
-	}
 }
 
 void MainUi::doRefresh () {
@@ -199,7 +184,7 @@ void MainUi::doUpdate (int msElapsed) {
 		if (welcomeClock <= 0) {
 			welcomeClock = 0;
 			app = App::getInstance ();
-			app->showSnackbar (app->uiText.mainUiWelcomeSnackbarText, app->uiText.openHelp.uppercased (), Ui::helpActionClicked, this);
+			app->showSnackbar (app->uiText.getText (UiTextString::mainUiWelcomeSnackbarText), app->uiText.getText (UiTextString::openHelp).uppercased (), Ui::helpActionClicked, this);
 		}
 	}
 }
@@ -213,24 +198,6 @@ void MainUi::doResize () {
 	cardView->setViewSize (app->windowWidth - app->rightBarWidth, app->windowHeight - app->topBarHeight - app->bottomBarHeight);
 	cardView->position.assign (0.0f, app->topBarHeight);
 	showAllToggle->position.assign (app->windowWidth - showAllToggle->width - uiconfig->marginSize - app->rightBarWidth, app->windowHeight - showAllToggle->height - uiconfig->marginSize);
-}
-
-void MainUi::handleLinkClientConnect (const StdString &agentId) {
-	App *app;
-	Json *params;
-
-	app = App::getInstance ();
-	params = new Json ();
-	params->set ("commandId", SystemInterface::Command_MediaItem);
-	app->agentControl.writeLinkCommand (app->createCommandJson ("ReadEvents", SystemInterface::Constant_Link, params), agentId);
-
-	params = new Json ();
-	params->set ("commandId", SystemInterface::Command_StreamItem);
-	app->agentControl.writeLinkCommand (app->createCommandJson ("ReadEvents", SystemInterface::Constant_Link, params), agentId);
-
-	params = new Json ();
-	params->set ("commandId", SystemInterface::Command_IntentState);
-	app->agentControl.writeLinkCommand (app->createCommandJson ("ReadEvents", SystemInterface::Constant_Link, params), agentId);
 }
 
 void MainUi::doSyncRecordStore (RecordStore *store) {
@@ -259,7 +226,7 @@ void MainUi::doSyncRecordStore (RecordStore *store) {
 			type = MainUi::uiLaunchWindowTypes[i];
 			skip = false;
 			if (! showAllToggle->isChecked) {
-				if ((type != UiLaunchWindow::LINK_UI) && (! UiLaunchWindow::isReadyState (type, store))) {
+				if ((type != UiLaunchWindow::SERVER_UI) && (! UiLaunchWindow::isReadyState (type, store))) {
 					skip = true;
 				}
 			}
@@ -297,16 +264,16 @@ void MainUi::uiOpenClicked (void *uiPtr, Widget *widgetPtr) {
 	window = (UiLaunchWindow *) widgetPtr;
 	ui = NULL;
 	switch (window->uiType) {
-		case UiLaunchWindow::LINK_UI: {
-			ui = (Ui *) new LinkUi ();
+		case UiLaunchWindow::SERVER_UI: {
+			ui = (Ui *) new ServerUi ();
 			break;
 		}
 		case UiLaunchWindow::MEDIA_UI: {
 			ui = (Ui *) new MediaUi ();
 			break;
 		}
-		case UiLaunchWindow::DISPLAY_UI: {
-			ui = (Ui *) new DisplayUi ();
+		case UiLaunchWindow::MONITOR_UI: {
+			ui = (Ui *) new MonitorUi ();
 			break;
 		}
 		case UiLaunchWindow::WEB_KIOSK_UI: {

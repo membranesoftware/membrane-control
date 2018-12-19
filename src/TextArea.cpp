@@ -101,7 +101,7 @@ void TextArea::setMaxLineWidth (float maxTextLineWidth) {
 
 void TextArea::setPadding (float widthPaddingSize, float heightPaddingSize) {
 	Panel::setPadding (widthPaddingSize, heightPaddingSize);
-	resetLayout ();
+	refreshLayout ();
 }
 
 void TextArea::setTextColor (const Color &color) {
@@ -187,10 +187,10 @@ void TextArea::setText (const StdString &text) {
 		lineList.push_back (label);
 	}
 
-	resetLayout ();
+	refreshLayout ();
 }
 
-void TextArea::resetLayout () {
+void TextArea::refreshLayout () {
 	UiConfiguration *uiconfig;
 	std::list<Label *>::iterator i, end;
 	Label *label;

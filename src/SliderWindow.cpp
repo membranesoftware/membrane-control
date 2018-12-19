@@ -43,6 +43,7 @@
 
 SliderWindow::SliderWindow (Slider *slider)
 : Panel ()
+, isInverseColor (false)
 , value (0.0f)
 , isHovering (false)
 , slider (slider)
@@ -54,15 +55,17 @@ SliderWindow::SliderWindow (Slider *slider)
 	UiConfiguration *uiconfig;
 
 	uiconfig = &(App::getInstance ()->uiConfig);
+	normalValueTextColor.assign (uiconfig->lightPrimaryTextColor);
+	hoverValueTextColor.assign (uiconfig->raisedButtonTextColor);
 
 	value = slider->value;
 	addWidget (slider);
-	valueLabel = (Label *) addWidget (new Label (StdString::createSprintf ("%.2f", slider->value), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
+	valueLabel = (Label *) addWidget (new Label (StdString::createSprintf ("%.2f", slider->value), UiConfiguration::CAPTION, normalValueTextColor));
 
 	slider->setValueChangeCallback (SliderWindow::sliderValueChanged, this);
 	slider->setValueHoverCallback (SliderWindow::sliderValueHovered, this);
 
-	resetLayout ();
+	refreshLayout ();
 }
 
 SliderWindow::~SliderWindow () {
@@ -73,19 +76,44 @@ StdString SliderWindow::toStringDetail () {
 	return (StdString (" SliderWindow"));
 }
 
-void SliderWindow::resetLayout () {
+void SliderWindow::setInverseColor (bool inverse) {
+	UiConfiguration *uiconfig;
+
+	if (isInverseColor == inverse) {
+		return;
+	}
+	uiconfig = &(App::getInstance ()->uiConfig);
+	isInverseColor = inverse;
+	slider->setInverseColor (isInverseColor);
+	if (isInverseColor) {
+		normalValueTextColor.assign (uiconfig->darkInverseTextColor);
+		hoverValueTextColor.assign (uiconfig->inverseTextColor);
+	}
+	else {
+		normalValueTextColor.assign (uiconfig->lightPrimaryTextColor);
+		hoverValueTextColor.assign (uiconfig->raisedButtonTextColor);
+	}
+	refreshLayout ();
+}
+
+void SliderWindow::setPadding (float widthPadding, float heightPadding) {
+	Panel::setPadding (widthPadding, heightPadding);
+	refreshLayout ();
+}
+
+void SliderWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y;
 
 	uiconfig = &(App::getInstance ()->uiConfig);
-	x = 0.0f;
-	y = 0.0f;
+	x = widthPadding;
+	y = heightPadding;
 	valueLabel->position.assign (x, y);
 	if (isHovering) {
-		valueLabel->textColor.rotate (uiconfig->raisedButtonTextColor, uiconfig->colorRotateDuration);
+		valueLabel->textColor.rotate (hoverValueTextColor, uiconfig->shortColorRotateDuration);
 	}
 	else {
-		valueLabel->textColor.rotate (uiconfig->lightPrimaryTextColor, uiconfig->colorRotateDuration);
+		valueLabel->textColor.rotate (normalValueTextColor, uiconfig->shortColorRotateDuration);
 	}
 
 	y += valueLabel->maxLineHeight;
@@ -106,8 +134,18 @@ void SliderWindow::setValueNameFunction (SliderWindow::ValueNameFunction fn) {
 	}
 }
 
-void SliderWindow::setValue (float sliderValue) {
-	slider->setValue (sliderValue);
+void SliderWindow::setValue (float sliderValue, bool shouldSkipChangeCallback) {
+	slider->setValue (sliderValue, shouldSkipChangeCallback);
+	value = slider->value;
+}
+
+void SliderWindow::setTrackWidthScale (float scale) {
+	slider->setTrackWidthScale (scale);
+	refreshLayout ();
+}
+
+void SliderWindow::addSnapValue (float snapValue) {
+	slider->addSnapValue (snapValue);
 }
 
 void SliderWindow::sliderValueChanged (void *windowPtr, Widget *widgetPtr) {
@@ -128,6 +166,7 @@ void SliderWindow::sliderValueChanged (void *windowPtr, Widget *widgetPtr) {
 	if (window->valueChangeCallback) {
 		window->valueChangeCallback (window->valueChangeCallbackData, window);
 	}
+	window->refreshLayout ();
 }
 
 void SliderWindow::sliderValueHovered (void *windowPtr, Widget *widgetPtr) {
@@ -152,5 +191,5 @@ void SliderWindow::sliderValueHovered (void *windowPtr, Widget *widgetPtr) {
 	else {
 		window->valueLabel->setText (StdString::createSprintf ("%.2f", val));
 	}
-	window->resetLayout ();
+	window->refreshLayout ();
 }

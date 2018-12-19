@@ -87,7 +87,7 @@ void Color::normalize () {
 }
 
 StdString Color::toString () {
-	return (StdString::createSprintf ("{color: r=%.2f g=%.2f b=%.2f rByte=%i gByte=%i bByte=%i isRotating=%s deltaR=%.2f deltaG=%.2f deltaB=%.2f", r, g, b, rByte, gByte, bByte, BOOL_STRING(isRotating), deltaR, deltaG, deltaB));
+	return (StdString::createSprintf ("{color: r=%.2f g=%.2f b=%.2f rByte=%i gByte=%i bByte=%i isRotating=%s deltaR=%.2f deltaG=%.2f deltaB=%.2f}", r, g, b, rByte, gByte, bByte, BOOL_STRING (isRotating), deltaR, deltaG, deltaB));
 }
 
 void Color::assign (float r, float g, float b) {

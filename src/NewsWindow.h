@@ -42,7 +42,6 @@
 #include "LabelWindow.h"
 #include "Panel.h"
 #include "NewsItemWindow.h"
-#include "TaskItemWindow.h"
 #include "ScrollView.h"
 
 class NewsWindow : public ScrollView {
@@ -82,15 +81,15 @@ protected:
 	void doRefresh ();
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	void resetLayout ();
+	void refreshLayout ();
 
 private:
 	// Destroy any task window associated with the specified ID
 	void removeTaskItem (const StdString &taskId);
 
 	std::list<NewsItemWindow *> newsItemList;
-	std::list<TaskItemWindow *> taskItemList;
-	std::map<StdString, TaskItemWindow *> taskItemMap;
+//	std::list<TaskItemWindow *> taskItemList;
+//	std::map<StdString, TaskItemWindow *> taskItemMap;
 	LabelWindow *emptyLabel;
 };
 

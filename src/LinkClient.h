@@ -126,6 +126,7 @@ private:
 	struct lws_context *context;
 	struct lws *lws;
 	char *urlParseBuffer;
+	StdString urlPath;
 	std::queue<StdString> writeQueue;
 	SDL_mutex *writeQueueMutex;
 	bool isWriteReady;

@@ -38,6 +38,7 @@
 #include "Color.h"
 #include "Font.h"
 #include "SpriteGroup.h"
+#include "Widget.h"
 
 class UiConfiguration {
 public:
@@ -77,7 +78,16 @@ public:
 		RELOAD_BUTTON = 31,
 		RENAME_BUTTON = 32,
 		ERROR_ICON = 33,
-		ABOUT_BUTTON = 34
+		ABOUT_BUTTON = 34,
+		AGENT_ADMIN_BUTTON = 35,
+		SERVER_ICON = 36,
+		DISPLAY_ICON = 37,
+		MEDIA_ICON = 38,
+		STREAM_ICON = 39,
+		PROGRAM_ICON = 40,
+		EXPAND_LESS_BUTTON = 41,
+		EXPAND_MORE_BUTTON = 42,
+		CONFIGURATION_ICON = 43
 	};
 
 	// Constants to use for font types
@@ -99,8 +109,8 @@ public:
 	// Free resources allocated by any previous load operation
 	void unload ();
 
-	// Reset layout-related configuration values as appropriate for the current application image scale
-	void resetLayoutValues ();
+	// Reset configuration values as appropriate for the current application image scale
+	void resetScale ();
 
 	// Free any loaded font resources and replace them with new ones at the specified scale
 	int reloadFonts (float fontScale);
@@ -108,10 +118,11 @@ public:
 	// Read-only data members; read-write access is permissible by the Ui class and its subclasses
 	float paddingSize;
 	float marginSize;
-	int colorRotateDuration;
+	int shortColorRotateDuration; // ms
+	int longColorRotateDuration; // ms
 	int mouseHoverThreshold;
-	int blinkDuration;
-	int backgroundTransitionDuration;
+	int blinkDuration; // ms
+	int backgroundTransitionDuration; // ms
 	StdString fontNames[UiConfiguration::NUM_FONT_TYPES];
 	int fontBaseSizes[UiConfiguration::NUM_FONT_TYPES];
 	int fontSizes[UiConfiguration::NUM_FONT_TYPES];
@@ -131,6 +142,7 @@ public:
 	Color primaryTextColor;
 	Color lightPrimaryTextColor;
 	Color inverseTextColor;
+	Color darkInverseTextColor;
 	Color flatButtonTextColor;
 	Color linkTextColor;
 	Color errorTextColor;
@@ -150,7 +162,7 @@ public:
 	float activeFocusedIconAlpha;
 	float activeUnfocusedIconAlpha;
 	float inactiveIconAlpha;
-	float imageTextScrimAlpha;
+	float scrimBackgroundAlpha;
 	float overlayWindowAlpha;
 	float waitingShadeAlpha;
 	float progressBarHeight;
@@ -167,9 +179,11 @@ public:
 	int textFieldShortLineLength;
 	int textFieldMediumLineLength;
 	int textFieldLongLineLength;
+	float timelineMarkerWidth;
 	float rightNavWidthPercent; // percentage of total window width, expressed as a value from 0.0f to 1.0f
 	int snackbarTimeout; // ms
 	int snackbarScrollDuration; // ms
+	int recordSyncDelayDuration; // ms
 	StdString coreSpritesPath;
 	bool isLoaded;
 	SpriteGroup coreSprites;

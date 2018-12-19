@@ -50,10 +50,7 @@ CardView::CardView (float viewWidth, float viewHeight)
 : ScrollView (viewWidth, viewHeight)
 , cardAreaWidth (viewWidth)
 , itemMarginSize (0.0f)
-, sortFunction (NULL)
 , isSorted (false)
-, itemClickCallback (NULL)
-, itemClickCallbackData (NULL)
 , scrollBar (NULL)
 {
 	UiConfiguration *uiconfig;
@@ -77,20 +74,12 @@ CardView::~CardView () {
 	end = itemList.end ();
 	while (i != end) {
 		if (i->widget) {
+			i->widget->isDestroyed = true;
 			i->widget->release ();
 		}
 		++i;
 	}
 	itemList.clear ();
-}
-
-void CardView::sort (CardView::SortFunction fn) {
-	if (sortFunction == fn) {
-		return;
-	}
-	sortFunction = fn;
-	isSorted = false;
-	resetLayout ();
 }
 
 void CardView::setViewSize (float viewWidth, float viewHeight) {
@@ -100,7 +89,7 @@ void CardView::setViewSize (float viewWidth, float viewHeight) {
 	setFixedSize (true, viewWidth, viewHeight);
 	scrollBar->setMaxTrackLength (viewHeight - (uiconfig->paddingSize * 2.0f));
 	cardAreaWidth = width - scrollBar->width - uiconfig->paddingSize - (uiconfig->marginSize * 0.25f);
-	resetLayout ();
+	refreshLayout ();
 }
 
 void CardView::setItemMarginSize (float marginSize) {
@@ -108,17 +97,12 @@ void CardView::setItemMarginSize (float marginSize) {
 		return;
 	}
 	itemMarginSize = marginSize;
-	resetLayout ();
-}
-
-void CardView::setItemClickCallback (Widget::EventCallback callback, void *callbackData) {
-	itemClickCallback = callback;
-	itemClickCallbackData = callbackData;
+	refreshLayout ();
 }
 
 void CardView::setRowHeader (int row, const StdString &headerText, int headerFontType, const Color &color) {
 	UiConfiguration *uiconfig;
-	std::map<int, LabelWindow *>::iterator pos;
+	std::map<int, CardView::Row>::iterator pos;
 	LabelWindow *label;
 
 	uiconfig = &(App::getInstance ()->uiConfig);
@@ -126,18 +110,26 @@ void CardView::setRowHeader (int row, const StdString &headerText, int headerFon
 	label->isVisible = false;
 	label->zLevel = 1;
 	label->setFillBg (true, 0.0f, 0.0f, 0.0f);
-	label->setAlphaBlend (true, uiconfig->imageTextScrimAlpha);
+	label->setAlphaBlend (true, uiconfig->scrimBackgroundAlpha);
 
-	pos = rowHeaderLabelMap.find (row);
-	if (pos != rowHeaderLabelMap.end ()) {
-		pos->second->isDestroyed = true;
-		pos->second = label;
+	pos = getRow (row);
+	if (pos->second.headerLabel) {
+		pos->second.headerLabel->isDestroyed = true;
 	}
-	else {
-		rowHeaderLabelMap.insert (std::pair<int, LabelWindow *> (row, label));
-	}
+	pos->second.headerLabel = label;
 
-	resetLayout ();
+	refreshLayout ();
+}
+
+void CardView::setRowItemMarginSize (int row, float marginSize) {
+	std::map<int, CardView::Row>::iterator pos;
+
+	pos = getRow (row);
+	if (FLOAT_EQUALS (marginSize, pos->second.itemMarginSize)) {
+		return;
+	}
+	pos->second.itemMarginSize = marginSize;
+	refreshLayout ();
 }
 
 void CardView::doProcessMouseState (const Widget::MouseState &mouseState) {
@@ -192,11 +184,11 @@ StdString CardView::getAvailableItemId () {
 	return (id);
 }
 
-Widget *CardView::addItem (Widget *itemWidget, const char *itemId, int row, bool shouldSkipResetLayout) {
-	return (addItem (itemWidget, StdString (itemId ? itemId : ""), row, shouldSkipResetLayout));
+Widget *CardView::addItem (Widget *itemWidget, const char *itemId, int row, bool shouldSkipRefreshLayout) {
+	return (addItem (itemWidget, StdString (itemId ? itemId : ""), row, shouldSkipRefreshLayout));
 }
 
-Widget *CardView::addItem (Widget *itemWidget, const StdString &itemId, int row, bool shouldSkipResetLayout) {
+Widget *CardView::addItem (Widget *itemWidget, const StdString &itemId, int row, bool shouldSkipRefreshLayout) {
 	CardView::Item item;
 	StdString id;
 
@@ -207,18 +199,21 @@ Widget *CardView::addItem (Widget *itemWidget, const StdString &itemId, int row,
 		id.assign (itemId);
 	}
 
-	itemWidget->setMouseClickCallback (CardView::itemClicked, this);
 	addWidget (itemWidget);
 
 	isSorted = false;
 	item.id.assign (id);
 	item.widget = itemWidget;
 	item.widget->retain ();
+
+	if (row < 0) {
+		row = 0;
+	}
 	item.row = row;
 	itemList.push_back (item);
 
-	if (! shouldSkipResetLayout) {
-		resetLayout ();
+	if (! shouldSkipRefreshLayout) {
+		refreshLayout ();
 	}
 
 	return (itemWidget);
@@ -236,11 +231,39 @@ void CardView::removeItem (const StdString &itemId) {
 	pos->widget->release ();
 	itemList.erase (pos);
 	isSorted = false;
-	resetLayout ();
+	refreshLayout ();
 }
 
 void CardView::removeItem (const char *itemId) {
 	removeItem (StdString (itemId));
+}
+
+void CardView::removeRowItems (int row) {
+	std::list<CardView::Item>::iterator i, end;
+	bool found;
+
+	while (true) {
+		found = false;
+		i = itemList.begin ();
+		end = itemList.end ();
+		while (i != end) {
+			if (i->row == row) {
+				i->widget->isDestroyed = true;
+				i->widget->release ();
+				itemList.erase (i);
+				found = true;
+				break;
+			}
+			++i;
+		}
+
+		if (! found) {
+			break;
+		}
+	}
+
+	isSorted = false;
+	refreshLayout ();
 }
 
 void CardView::removeAllItems () {
@@ -256,10 +279,10 @@ void CardView::removeAllItems () {
 	itemList.clear ();
 	itemIdMap.clear ();
 	isSorted = true;
-	resetLayout ();
+	refreshLayout ();
 }
 
-void CardView::processItems (Widget::EventCallback fn, void *fnData, bool shouldResetLayout) {
+void CardView::processItems (Widget::EventCallback fn, void *fnData, bool shouldRefreshLayout) {
 	std::list<CardView::Item>::iterator i, end;
 
 	i = itemList.begin ();
@@ -269,8 +292,25 @@ void CardView::processItems (Widget::EventCallback fn, void *fnData, bool should
 		++i;
 	}
 
-	if (shouldResetLayout) {
-		resetLayout ();
+	if (shouldRefreshLayout) {
+		refreshLayout ();
+	}
+}
+
+void CardView::processRowItems (int row, Widget::EventCallback fn, void *fnData, bool shouldRefreshLayout) {
+	std::list<CardView::Item>::iterator i, end;
+
+	i = itemList.begin ();
+	end = itemList.end ();
+	while (i != end) {
+		if (i->row == row) {
+			fn (fnData, i->widget);
+		}
+		++i;
+	}
+
+	if (shouldRefreshLayout) {
+		refreshLayout ();
 	}
 }
 
@@ -286,18 +326,18 @@ void CardView::scrollToItem (const StdString &itemId) {
 
 	widget = pos->widget;
 	uiconfig = &(App::getInstance ()->uiConfig);
-	setViewOrigin (0.0f, widget->position.y + (height / 2.0f) - (widget->height / 2.0f));
+	setViewOrigin (0.0f, widget->position.y - (height / 2.0f) + (widget->height / 2.0f));
 	scrollBar->setPosition (viewOriginY, true);
 	scrollBar->position.assignY (viewOriginY + uiconfig->paddingSize);
 }
 
-void CardView::resetLayout () {
+void CardView::refreshLayout () {
 	UiConfiguration *uiconfig;
 	std::list<CardView::Item>::iterator i, end;
-	std::map<int, LabelWindow *>::iterator hpos;
+	std::map<int, CardView::Row>::iterator rowpos;
 	Widget *widget;
 	LabelWindow *label;
-	float x, y, x0, rowh;
+	float x, y, x0, rowh, rowmargin;
 	int row;
 
 	uiconfig = &(App::getInstance ()->uiConfig);
@@ -309,6 +349,7 @@ void CardView::resetLayout () {
 	x0 = uiconfig->paddingSize;
 	y = uiconfig->paddingSize;
 	x = x0;
+	rowmargin = itemMarginSize;
 	rowh = 0.0f;
 	i = itemList.begin ();
 	end = itemList.end ();
@@ -323,20 +364,22 @@ void CardView::resetLayout () {
 			row = i->row;
 
 			if (row >= 0) {
-				hpos = rowHeaderLabelMap.find (row);
-				if (hpos != rowHeaderLabelMap.end ()) {
-					label = hpos->second;
-					if (label->isVisible) {
-						label->position.assign (x0, y);
-						y += label->height + itemMarginSize;
-					}
+				rowpos = getRow (row);
+				label = rowpos->second.headerLabel;
+				if (label && label->isVisible) {
+					label->position.assign (x0, y);
+					y += label->height + itemMarginSize;
+				}
+				rowmargin = rowpos->second.itemMarginSize;
+				if (rowmargin < 0.0f) {
+					rowmargin = itemMarginSize;
 				}
 			}
 		}
 
 		if ((x + widget->width) >= cardAreaWidth) {
 			x = x0;
-			y += rowh + itemMarginSize;
+			y += rowh + rowmargin;
 			rowh = 0.0f;
 		}
 		if (widget->height > rowh) {
@@ -344,7 +387,7 @@ void CardView::resetLayout () {
 		}
 
 		widget->position.assign (x, y);
-		x += widget->width + itemMarginSize;
+		x += widget->width + rowmargin;
 
 		++i;
 	}
@@ -374,65 +417,62 @@ void CardView::resetLayout () {
 }
 
 void CardView::doSort () {
-	std::list<CardView::Item>::iterator i, iend, j, jend, pos;
-	std::list<CardView::Item> sortlist;
-	std::map<int, bool> rowmap;
-	std::map<int, bool>::iterator rowpos;
-	std::map<int, LabelWindow *>::iterator hi, hend;
-	int index;
+	std::map<int, CardView::Row>::iterator ri, rend;
+	std::list<CardView::Item> outlist, rowlist;
+	std::list<CardView::Item>::iterator i, iend;
+	int row, nextrow, index;
 
+	ri = rowMap.begin ();
+	rend = rowMap.end ();
+	while (ri != rend) {
+		ri->second.itemCount = 0;
+		++ri;
+	}
+
+	row = -1;
 	i = itemList.begin ();
 	iend = itemList.end ();
 	while (i != iend) {
-		if (i->row >= 0) {
-			rowpos = rowmap.find (i->row);
-			if (rowpos == rowmap.end ()) {
-				rowmap.insert (std::pair<int, bool> (i->row, true));
-			}
+		if ((row < 0) || (i->row < row)) {
+			row = i->row;
 		}
-
-		j = sortlist.begin ();
-		jend = sortlist.end ();
-		pos = jend;
-		while (j != jend) {
-			if ((i->row >= 0) && (j->row < 0)) {
-				pos = j;
-				break;
-			}
-
-			if ((i->row < 0) && (j->row >= 0)) {
-				++j;
-				continue;
-			}
-
-			if (i->row < j->row) {
-				pos = j;
-				break;
-			}
-
-			if (i->row > j->row) {
-				++j;
-				continue;
-			}
-
-			if (sortFunction && sortFunction (i->widget, j->widget)) {
-				pos = j;
-				break;
-			}
-
-			++j;
-		}
-		if (pos == jend) {
-			sortlist.push_back (*i);
-		}
-		else {
-			sortlist.insert (pos, *i);
-		}
-
+		ri = getRow (i->row);
+		++(ri->second.itemCount);
 		++i;
 	}
 
-	itemList.swap (sortlist);
+	while (true) {
+		rowlist.clear ();
+		nextrow = -1;
+		i = itemList.begin ();
+		iend = itemList.end ();
+		while (i != iend) {
+			if (i->row == row) {
+				rowlist.push_back (*i);
+			}
+			else if (i->row > row) {
+				if ((nextrow < 0) || (i->row < nextrow)) {
+					nextrow = i->row;
+				}
+			}
+			++i;
+		}
+
+		rowlist.sort (CardView::compareItems);
+		i = rowlist.begin ();
+		iend = rowlist.end ();
+		while (i != iend) {
+			outlist.push_back (*i);
+			++i;
+		}
+
+		if (nextrow < 0) {
+			break;
+		}
+		row = nextrow;
+	}
+
+	itemList.swap (outlist);
 
 	itemIdMap.clear ();
 	index = 0;
@@ -444,20 +484,24 @@ void CardView::doSort () {
 		++i;
 	}
 
-	hi = rowHeaderLabelMap.begin ();
-	hend = rowHeaderLabelMap.end ();
-	while (hi != hend) {
-		rowpos = rowmap.find (hi->first);
-		if (rowpos == rowmap.end ()) {
-			hi->second->isVisible = false;
+	ri = rowMap.begin ();
+	rend = rowMap.end ();
+	while (ri != rend) {
+		if (ri->second.headerLabel) {
+			if (ri->second.itemCount <= 0) {
+				ri->second.headerLabel->isVisible = false;
+			}
+			else {
+				ri->second.headerLabel->isVisible = true;
+			}
 		}
-		else {
-			hi->second->isVisible = true;
-		}
-		++hi;
+		++ri;
 	}
-
 	isSorted = true;
+}
+
+bool CardView::compareItems (const CardView::Item &a, const CardView::Item &b) {
+	return (a.widget->sortKey.compare (b.widget->sortKey) <= 0);
 }
 
 std::list<CardView::Item>::iterator CardView::findItemPosition (const StdString &itemId) {
@@ -481,6 +525,19 @@ std::list<CardView::Item>::iterator CardView::findItemPosition (const StdString 
 		}
 		++curindex;
 		++i;
+	}
+
+	return (pos);
+}
+
+std::map<int, CardView::Row>::iterator CardView::getRow (int rowNumber) {
+	std::map<int, CardView::Row>::iterator pos;
+	CardView::Row row;
+
+	pos = rowMap.find (rowNumber);
+	if (pos == rowMap.end ()) {
+		rowMap.insert (std::pair<int, CardView::Row> (rowNumber, row));
+		pos = rowMap.find (rowNumber);
 	}
 
 	return (pos);
@@ -519,15 +576,6 @@ Widget *CardView::findItem (CardView::MatchFunction fn, void *fnData) {
 	}
 
 	return (NULL);
-}
-
-void CardView::itemClicked (void *windowPtr, Widget *widgetPtr) {
-	CardView *window;
-
-	window = (CardView *) windowPtr;
-	if (window->itemClickCallback) {
-		window->itemClickCallback (window->itemClickCallbackData, widgetPtr);
-	}
 }
 
 void CardView::scrollBarPositionChanged (void *windowPtr, Widget *widgetPtr) {

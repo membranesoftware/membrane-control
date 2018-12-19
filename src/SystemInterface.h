@@ -33,6 +33,7 @@
 
 #include <map>
 #include <list>
+#include <vector>
 #include "Result.h"
 #include "StdString.h"
 #include "Json.h"
@@ -43,17 +44,19 @@ public:
   static const int Command_AgentConfiguration = 45;
   static const int Command_AgentContact = 33;
   static const int Command_AgentStatus = 1;
+  static const int Command_Authorize = 19;
+  static const int Command_AuthorizeResult = 13;
   static const int Command_CancelTask = 28;
   static const int Command_ClearDisplay = 31;
   static const int Command_CommandResult = 0;
+  static const int Command_CreateMediaDisplayIntent = 50;
   static const int Command_CreateMediaStream = 14;
-  static const int Command_CreateMonitorIntent = 35;
-  static const int Command_DisplayServerStatus = 7;
+  static const int Command_CreateWebDisplayIntent = 35;
   static const int Command_EndSet = 21;
   static const int Command_EventRecord = 40;
   static const int Command_FindItems = 3;
-  static const int Command_FindMediaResult = 6;
-  static const int Command_FindStreamResult = 4;
+  static const int Command_FindMediaResult = 48;
+  static const int Command_FindStreamsResult = 4;
   static const int Command_GetAgentConfiguration = 44;
   static const int Command_GetHlsHtml5Interface = 25;
   static const int Command_GetHlsManifest = 23;
@@ -62,19 +65,18 @@ public:
   static const int Command_GetStatus = 8;
   static const int Command_GetThumbnailImage = 5;
   static const int Command_IntentState = 36;
-  static const int Command_LinkServerStatus = 12;
-  static const int Command_MasterServerStatus = 11;
+  static const int Command_MediaDisplayIntentState = 51;
   static const int Command_MediaItem = 16;
   static const int Command_MediaServerStatus = 9;
-  static const int Command_MonitorServerStatus = 48;
+  static const int Command_MonitorServerStatus = 12;
   static const int Command_PlayMedia = 30;
   static const int Command_ReadEvents = 18;
+  static const int Command_ReadTasks = 6;
   static const int Command_RemoveIntent = 37;
   static const int Command_RemoveStream = 29;
   static const int Command_ReportContact = 32;
   static const int Command_ReportStatus = 2;
   static const int Command_ServerError = 20;
-  static const int Command_SetController = 13;
   static const int Command_SetIntentActive = 38;
   static const int Command_ShowWebUrl = 34;
   static const int Command_ShutdownAgent = 43;
@@ -85,9 +87,9 @@ public:
   static const int Command_TaskItem = 26;
   static const int Command_UpdateAgentConfiguration = 42;
   static const int Command_UpdateIntentState = 39;
-  static const int Command_WatchEventSet = 19;
   static const int Command_WatchEvents = 27;
-  static const int Command_WriteEvents = 17;
+  static const int Command_WatchTasks = 7;
+  static const int Command_WebDisplayIntentState = 49;
   static const int ParamFlag_Required = 1;
   static const int ParamFlag_NotEmpty = 2;
   static const int ParamFlag_Hostname = 4;
@@ -98,17 +100,31 @@ public:
   static const int ParamFlag_RangedNumber = 128;
   static const int ParamFlag_Command = 256;
   static const int Constant_MaxCommandPriority;
+  static const char *Constant_CreateTimePrefixField;
+  static const char *Constant_AgentIdPrefixField;
+  static const char *Constant_UserIdPrefixField;
+  static const char *Constant_PriorityPrefixField;
+  static const char *Constant_StartTimePrefixField;
+  static const char *Constant_DurationPrefixField;
+  static const char *Constant_AuthorizationHashPrefixField;
+  static const char *Constant_AuthorizationTokenPrefixField;
+  static const char *Constant_AuthorizationHashAlgorithm;
   static const char *Constant_WebSocketEvent;
-  static const int Constant_DefaultTcpPort;
+  static const char *Constant_UrlQueryParameter;
+  static const int Constant_DefaultTcpPort1;
+  static const int Constant_DefaultTcpPort2;
   static const int Constant_DefaultUdpPort;
+  static const char *Constant_DefaultInvokePath;
+  static const char *Constant_DefaultAuthorizePath;
+  static const char *Constant_DefaultLinkPath;
   static const int Constant_DefaultCommandType;
   static const int Constant_Stream;
   static const int Constant_Media;
-  static const int Constant_Display;
-  static const int Constant_Link;
+  static const int Constant_Monitor;
+  static const int Constant_Event;
   static const int Constant_Master;
+  static const int Constant_Admin;
   static const int Constant_CommandTypeCount;
-  static const char *Constant_WebDisplayIntent;
   void populate ();
 	SystemInterface ();
 	~SystemInterface ();
@@ -149,63 +165,54 @@ public:
 	std::map<StdString, SystemInterface::GetParamsFunction> getParamsMap;
 	std::map<StdString, SystemInterface::PopulateDefaultFieldsFunction> populateDefaultFieldsMap;
 
-	// createCommand - Return a newly created Json object containing a command item, or NULL if the command could not be created. commandParams can be NULL if not needed, causing the resulting command to contain empty parameter fields. If commandParams is not NULL, this method becomes responsible for freeing the object when it's no longer needed.
+	// Return a newly created Json object containing a command item, or NULL if the command could not be created. commandParams can be NULL if not needed, causing the resulting command to contain empty parameter fields. If commandParams is not NULL, this method becomes responsible for freeing the object when it's no longer needed.
 	Json *createCommand (const SystemInterface::Prefix &prefix, const char *commandName, int commandType, Json *commandParams);
 
-	// getCommand - Find command data for the specified name and store fields into the provided struct. Returns a boolean value indicating if the command was found.
+	// Find command data for the specified name and store fields into the provided struct. Returns a boolean value indicating if the command was found.
 	bool getCommand (const StdString &name, SystemInterface::Command *command);
 
-	// getType - Find type data for the specified name and store Param structs into the provided list. Returns a boolean value indicating if the type was found.
+	// Find type data for the specified name and store Param structs into the provided list. Returns a boolean value indicating if the type was found.
 	bool getType (const StdString &name, std::list<SystemInterface::Param> *destList);
 
-	// populateDefaultFields - Populate default fields in an object, as appropriate for the specified type name. Returns a boolean value indicating if the type was found.
+	// Populate default fields in an object, as appropriate for the specified type name. Returns a boolean value indicating if the type was found.
 	bool populateDefaultFields (const StdString &typeName, Json *destObject);
 
-	// fieldsValid - Return a boolean value indicating if the provided fields are valid according to rules appearing in a Param list. If the fields are found to be invalid, this method sets the lastError value.
+	// Return a boolean value indicating if the provided fields are valid according to rules appearing in a Param list. If the fields are found to be invalid, this method sets the lastError value.
 	bool fieldsValid (Json *fields, std::list<SystemInterface::Param> *paramList);
 
-	// parseCommand - Parse a command JSON string and store the resulting Json object using the provided pointer. Returns a boolean value indicating if the parse was successful. If the parse fails, this method sets the lastError value.
+	// Parse a command JSON string and store the resulting Json object using the provided pointer. Returns a boolean value indicating if the parse was successful. If the parse fails, this method sets the lastError value.
 	bool parseCommand (const StdString &commandString, Json **commandJson);
 
-	// getCommandId - Return the command ID value appearing in the provided command object, or -1 if no such ID was found
+	// Return the command ID value appearing in the provided command object, or -1 if no such ID was found
 	int getCommandId (Json *command);
 
-	// getCommandAgentId - Return the prefix.agentId value appearing in the provided command object, or an empty string if no such value was found
+	// Return the prefix.agentId value appearing in the provided command object, or an empty string if no such value was found
 	StdString getCommandAgentId (Json *command);
 
-	// getCommandRecordId - Return the prefix.recordId value appearing in the provided command object, or an empty string if no such value was found
+	// Return the params.id value appearing in the provided command object, or an empty string if no such value was found
 	StdString getCommandRecordId (Json *command);
 
-	// getCommandRecordTime - Return the prefix.recordTime value appearing in the provided command object, or -1 if no such value was found
-	int64_t getCommandRecordTime (Json *command);
-
-	// getCommandRecordAge - Return the record age of the provided command object in milliseconds relative to the specified reference time, or -1 if no such value was found.
-	int64_t getCommandRecordAge (Json *command, int64_t currentTime);
-
-	// getCommandAgentName - Return the agent name value appearing in the provided AgentStatus command object, or an empty string if no such value was found
+	// Return the agent name value appearing in the provided AgentStatus command object, or an empty string if no such value was found
 	StdString getCommandAgentName (Json *command);
 
-	// getCommandAgentAddress - Return the agent address value appearing in the provided AgentStatus command object, or an empty string if no such value was found
+	// Return the agent address value appearing in the provided AgentStatus command object, or an empty string if no such value was found
 	StdString getCommandAgentAddress (Json *command);
 
-	// getCommandAgentInvokeUrl - Return the invoke URL value appearing in the provided AgentStatus or AgentContact command object, or an empty string if no such value was found
-	StdString getCommandAgentInvokeUrl (Json *command);
-
-	// getInvokeUrl - Return the url that should be requested to invoke a command on a remote agent
-	StdString getInvokeUrl (const StdString &baseUrl, const StdString &commandJson);
-
-	// isRecordClosed - Return a boolean value indicating if the provided command object is a record that holds the closed state
+	// Return a boolean value indicating if the provided command object is a record that holds the closed state
 	bool isRecordClosed (Json *command);
 
-	// getCommandStringParam - Return a string value from params in the provided command, or the default value if the named field wasn't found
+	// Return a boolean value indicating if the provided string matches a Windows platform identifier
+	bool isWindowsPlatform (const StdString &platform);
+
+	// Return a string value from params in the provided command, or the default value if the named field wasn't found
 	StdString getCommandStringParam (Json *command, const StdString &paramName, const StdString &defaultValue);
 	StdString getCommandStringParam (Json *command, const char *paramName, const char *defaultValue);
 
-	// getCommandBooleanParam - Return a bool value from params in the provided command, or the default value if the named field wasn't found
+	// Return a bool value from params in the provided command, or the default value if the named field wasn't found
 	bool getCommandBooleanParam (Json *command, const StdString &paramName, bool defaultValue);
 	bool getCommandBooleanParam (Json *command, const char *paramName, bool defaultValue);
 
-	// getCommandNumberParam - Return an int number value from params in the provided command, or the default value if the named field wasn't found
+	// Return an int number value from params in the provided command, or the default value if the named field wasn't found
 	int getCommandNumberParam (Json *command, const StdString &paramName, const int defaultValue);
 	int getCommandNumberParam (Json *command, const char *paramName, const int defaultValue);
 	int64_t getCommandNumberParam (Json *command, const StdString &paramName, const int64_t defaultValue);
@@ -215,47 +222,51 @@ public:
 	float getCommandNumberParam (Json *command, const StdString &paramName, const float defaultValue);
 	float getCommandNumberParam (Json *command, const char *paramName, const float defaultValue);
 
-	// getCommandObjectParam - Find the specified object item and store it in the provided Json object. Returns a boolean value indicating if the item was found.
+	// Find the specified object item and store it in the provided Json object. Returns a boolean value indicating if the item was found.
 	bool getCommandObjectParam (Json *command, const StdString &paramName, Json *destJson);
 	bool getCommandObjectParam (Json *command, const char *paramName, Json *destJson);
 
-	// getCommandNumberArrayParam - Fill the provided int list with items from the specified number array, or do nothing if the named field wasn't found
-	void getCommandNumberArrayParam (Json *command, const StdString &paramName, std::list<int> *destList);
-	void getCommandNumberArrayParam (Json *command, const char *paramName, std::list<int> *destList);
+	// Fill the provided vector with items from the specified number array, optionally clearing the list before doing so. Returns a boolean value indicating if the array was found.
+	bool getCommandNumberArrayParam (Json *command, const StdString &paramName, std::vector<int> *destList, bool shouldClear = false);
+	bool getCommandNumberArrayParam (Json *command, const char *paramName, std::vector<int> *destList, bool shouldClear = false);
+	bool getCommandNumberArrayParam (Json *command, const StdString &paramName, std::vector<double> *destList, bool shouldClear = false);
+	bool getCommandNumberArrayParam (Json *command, const char *paramName, std::vector<double> *destList, bool shouldClear = false);
 
-	// getCommandArrayLength - Return the length of the specified array, or 0 if the array was empty or non-existent
+	// Return the length of the specified array, or 0 if the array was empty or non-existent
 	int getCommandArrayLength (Json *command, const StdString &paramName);
 	int getCommandArrayLength (Json *command, const char *paramName);
 
-	// getCommandObjectArrayItem - Find the specified object array item and store it in the provided Json object. Returns a boolean value indicating if the item was found.
+	// Find the specified object array item and store it in the provided Json object. Returns a boolean value indicating if the item was found.
 	bool getCommandObjectArrayItem (Json *command, const StdString &paramName, int index, Json *destJson);
 	bool getCommandObjectArrayItem (Json *command, const char *paramName, int index, Json *destJson);
+
   static void getParams_AgentConfiguration (std::list<SystemInterface::Param> *destList);
   static void getParams_AgentContact (std::list<SystemInterface::Param> *destList);
   static void getParams_AgentStatus (std::list<SystemInterface::Param> *destList);
+  static void getParams_Authorize (std::list<SystemInterface::Param> *destList);
+  static void getParams_AuthorizeResult (std::list<SystemInterface::Param> *destList);
   static void getParams_CancelTask (std::list<SystemInterface::Param> *destList);
   static void getParams_CommandResult (std::list<SystemInterface::Param> *destList);
+  static void getParams_CreateMediaDisplayIntent (std::list<SystemInterface::Param> *destList);
   static void getParams_CreateMediaStream (std::list<SystemInterface::Param> *destList);
-  static void getParams_CreateMonitorIntent (std::list<SystemInterface::Param> *destList);
-  static void getParams_DisplayServerConfiguration (std::list<SystemInterface::Param> *destList);
-  static void getParams_DisplayServerStatus (std::list<SystemInterface::Param> *destList);
+  static void getParams_CreateWebDisplayIntent (std::list<SystemInterface::Param> *destList);
   static void getParams_EmptyObject (std::list<SystemInterface::Param> *destList);
   static void getParams_EventRecord (std::list<SystemInterface::Param> *destList);
   static void getParams_FindItems (std::list<SystemInterface::Param> *destList);
   static void getParams_FindMediaResult (std::list<SystemInterface::Param> *destList);
-  static void getParams_FindStreamResult (std::list<SystemInterface::Param> *destList);
+  static void getParams_FindStreamsResult (std::list<SystemInterface::Param> *destList);
   static void getParams_GetHlsHtml5Interface (std::list<SystemInterface::Param> *destList);
   static void getParams_GetHlsManifest (std::list<SystemInterface::Param> *destList);
   static void getParams_GetHlsSegment (std::list<SystemInterface::Param> *destList);
   static void getParams_GetMedia (std::list<SystemInterface::Param> *destList);
   static void getParams_GetThumbnailImage (std::list<SystemInterface::Param> *destList);
   static void getParams_IntentState (std::list<SystemInterface::Param> *destList);
-  static void getParams_LinkServerConfiguration (std::list<SystemInterface::Param> *destList);
-  static void getParams_LinkServerStatus (std::list<SystemInterface::Param> *destList);
-  static void getParams_MasterServerStatus (std::list<SystemInterface::Param> *destList);
+  static void getParams_MediaDisplayIntentState (std::list<SystemInterface::Param> *destList);
+  static void getParams_MediaDisplayItem (std::list<SystemInterface::Param> *destList);
   static void getParams_MediaItem (std::list<SystemInterface::Param> *destList);
   static void getParams_MediaServerConfiguration (std::list<SystemInterface::Param> *destList);
   static void getParams_MediaServerStatus (std::list<SystemInterface::Param> *destList);
+  static void getParams_MonitorServerConfiguration (std::list<SystemInterface::Param> *destList);
   static void getParams_MonitorServerStatus (std::list<SystemInterface::Param> *destList);
   static void getParams_PlayMedia (std::list<SystemInterface::Param> *destList);
   static void getParams_ReadEvents (std::list<SystemInterface::Param> *destList);
@@ -264,7 +275,6 @@ public:
   static void getParams_ReportContact (std::list<SystemInterface::Param> *destList);
   static void getParams_ReportStatus (std::list<SystemInterface::Param> *destList);
   static void getParams_ServerError (std::list<SystemInterface::Param> *destList);
-  static void getParams_SetController (std::list<SystemInterface::Param> *destList);
   static void getParams_SetIntentActive (std::list<SystemInterface::Param> *destList);
   static void getParams_ShowWebUrl (std::list<SystemInterface::Param> *destList);
   static void getParams_StreamItem (std::list<SystemInterface::Param> *destList);
@@ -273,35 +283,36 @@ public:
   static void getParams_TaskItem (std::list<SystemInterface::Param> *destList);
   static void getParams_UpdateAgentConfiguration (std::list<SystemInterface::Param> *destList);
   static void getParams_UpdateIntentState (std::list<SystemInterface::Param> *destList);
-  static void getParams_WatchEventSet (std::list<SystemInterface::Param> *destList);
   static void getParams_WatchEvents (std::list<SystemInterface::Param> *destList);
-  static void getParams_WriteEvents (std::list<SystemInterface::Param> *destList);
+  static void getParams_WatchTasks (std::list<SystemInterface::Param> *destList);
+  static void getParams_WebDisplayIntentState (std::list<SystemInterface::Param> *destList);
   static void populateDefaultFields_AgentConfiguration (Json *destObject);
   static void populateDefaultFields_AgentContact (Json *destObject);
   static void populateDefaultFields_AgentStatus (Json *destObject);
+  static void populateDefaultFields_Authorize (Json *destObject);
+  static void populateDefaultFields_AuthorizeResult (Json *destObject);
   static void populateDefaultFields_CancelTask (Json *destObject);
   static void populateDefaultFields_CommandResult (Json *destObject);
+  static void populateDefaultFields_CreateMediaDisplayIntent (Json *destObject);
   static void populateDefaultFields_CreateMediaStream (Json *destObject);
-  static void populateDefaultFields_CreateMonitorIntent (Json *destObject);
-  static void populateDefaultFields_DisplayServerConfiguration (Json *destObject);
-  static void populateDefaultFields_DisplayServerStatus (Json *destObject);
+  static void populateDefaultFields_CreateWebDisplayIntent (Json *destObject);
   static void populateDefaultFields_EmptyObject (Json *destObject);
   static void populateDefaultFields_EventRecord (Json *destObject);
   static void populateDefaultFields_FindItems (Json *destObject);
   static void populateDefaultFields_FindMediaResult (Json *destObject);
-  static void populateDefaultFields_FindStreamResult (Json *destObject);
+  static void populateDefaultFields_FindStreamsResult (Json *destObject);
   static void populateDefaultFields_GetHlsHtml5Interface (Json *destObject);
   static void populateDefaultFields_GetHlsManifest (Json *destObject);
   static void populateDefaultFields_GetHlsSegment (Json *destObject);
   static void populateDefaultFields_GetMedia (Json *destObject);
   static void populateDefaultFields_GetThumbnailImage (Json *destObject);
   static void populateDefaultFields_IntentState (Json *destObject);
-  static void populateDefaultFields_LinkServerConfiguration (Json *destObject);
-  static void populateDefaultFields_LinkServerStatus (Json *destObject);
-  static void populateDefaultFields_MasterServerStatus (Json *destObject);
+  static void populateDefaultFields_MediaDisplayIntentState (Json *destObject);
+  static void populateDefaultFields_MediaDisplayItem (Json *destObject);
   static void populateDefaultFields_MediaItem (Json *destObject);
   static void populateDefaultFields_MediaServerConfiguration (Json *destObject);
   static void populateDefaultFields_MediaServerStatus (Json *destObject);
+  static void populateDefaultFields_MonitorServerConfiguration (Json *destObject);
   static void populateDefaultFields_MonitorServerStatus (Json *destObject);
   static void populateDefaultFields_PlayMedia (Json *destObject);
   static void populateDefaultFields_ReadEvents (Json *destObject);
@@ -310,7 +321,6 @@ public:
   static void populateDefaultFields_ReportContact (Json *destObject);
   static void populateDefaultFields_ReportStatus (Json *destObject);
   static void populateDefaultFields_ServerError (Json *destObject);
-  static void populateDefaultFields_SetController (Json *destObject);
   static void populateDefaultFields_SetIntentActive (Json *destObject);
   static void populateDefaultFields_ShowWebUrl (Json *destObject);
   static void populateDefaultFields_StreamItem (Json *destObject);
@@ -319,8 +329,8 @@ public:
   static void populateDefaultFields_TaskItem (Json *destObject);
   static void populateDefaultFields_UpdateAgentConfiguration (Json *destObject);
   static void populateDefaultFields_UpdateIntentState (Json *destObject);
-  static void populateDefaultFields_WatchEventSet (Json *destObject);
   static void populateDefaultFields_WatchEvents (Json *destObject);
-  static void populateDefaultFields_WriteEvents (Json *destObject);
+  static void populateDefaultFields_WatchTasks (Json *destObject);
+  static void populateDefaultFields_WebDisplayIntentState (Json *destObject);
 };
 #endif

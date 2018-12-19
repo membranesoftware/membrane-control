@@ -48,9 +48,9 @@ class UiLaunchWindow : public Panel {
 public:
 	// Constants to use for UI types
 	enum {
-		LINK_UI = 0,
+		SERVER_UI = 0,
 		MEDIA_UI = 1,
-		DISPLAY_UI = 2,
+		MONITOR_UI = 2,
 		WEB_KIOSK_UI = 3
 	};
 
@@ -80,17 +80,25 @@ public:
 
 	// Callback functions
 	static void openButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void addMediaCount (void *sumPtr, Json *record, const StdString &recordId);
+	static void addStreamCount (void *sumPtr, Json *record, const StdString &recordId);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	void resetLayout ();
+	void refreshLayout ();
 
 private:
 	// Populate widgets as appropriate for the configured intent type
 	void populate ();
+
+	// Return the total of all mediaCount fields on MediaServer agents
+	int countMediaItems (RecordStore *store);
+
+	// Return the total of all streamCount fields on StreamServer agents
+	int countStreamItems (RecordStore *store);
 
 	SpriteGroup *spriteGroup;
 	Image *iconImage;

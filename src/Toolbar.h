@@ -65,6 +65,9 @@ public:
 	// Add the provided widget as an item on the right side of the bar
 	void addRightItem (Widget *itemWidget);
 
+	// Add a spacer item to the right side of the bar
+	void addRightSpacer ();
+
 	// Add the provided widget as the left corner item
 	void setLeftCorner (Widget *itemWidget);
 
@@ -85,7 +88,7 @@ protected:
 	virtual void doUpdate (int msElapsed, float originX, float originY);
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	virtual void resetLayout ();
+	virtual void refreshLayout ();
 
 private:
 	float barWidth;

@@ -43,7 +43,6 @@
 #include "Label.h"
 #include "ScrollView.h"
 #include "NewsItemWindow.h"
-#include "TaskItemWindow.h"
 #include "NewsWindow.h"
 
 NewsWindow::NewsWindow (float viewWidth, float viewHeight)
@@ -56,10 +55,10 @@ NewsWindow::NewsWindow (float viewWidth, float viewHeight)
 	setFillBg (true, 0.0f, 0.0f, 0.0f);
 	setAlphaBlend (true, uiconfig->overlayWindowAlpha);
 
-	emptyLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (App::getInstance ()->uiText.emptyNotificationList, UiConfiguration::CAPTION, uiconfig->primaryTextColor)));
+	emptyLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (App::getInstance ()->uiText.getText (UiTextString::emptyNotificationList), UiConfiguration::CAPTION, uiconfig->primaryTextColor)));
 	emptyLabel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	emptyLabel->setFillBg (true, uiconfig->lightBackgroundColor);
-	resetLayout ();
+	refreshLayout ();
 }
 
 NewsWindow::~NewsWindow () {
@@ -81,10 +80,12 @@ void NewsWindow::clearNewsItemList () {
 	}
 
 	newsItemList.clear ();
-	resetLayout ();
+	refreshLayout ();
 }
 
 void NewsWindow::clearTaskItemList () {
+// TODO: Fix this
+	/*
 	std::list<TaskItemWindow *>::iterator i, end;
 
 	i = taskItemList.begin ();
@@ -95,15 +96,18 @@ void NewsWindow::clearTaskItemList () {
 	}
 	taskItemList.clear ();
 	taskItemMap.clear ();
-	resetLayout ();
+	refreshLayout ();
+	*/
 }
 
 void NewsWindow::setViewSize (float viewWidth, float viewHeight) {
 	setFixedSize (true, viewWidth, viewHeight);
-	resetLayout ();
+	refreshLayout ();
 }
 
-void NewsWindow::resetLayout () {
+void NewsWindow::refreshLayout () {
+// TODO: Fix this
+/*
 	UiConfiguration *uiconfig;
 	std::list<TaskItemWindow *>::iterator ti, tend;
 	std::list<NewsItemWindow *>::iterator ni, nend;
@@ -157,6 +161,7 @@ void NewsWindow::resetLayout () {
 		y = 0.0f;
 	}
 	setVerticalScrollBounds (0.0f, y);
+*/
 }
 
 void NewsWindow::doRefresh () {
@@ -175,11 +180,13 @@ void NewsWindow::doRefresh () {
 }
 
 void NewsWindow::syncRecordStore (RecordStore *store) {
-	store->processRecords (SystemInterface::Command_TaskItem, NewsWindow::processTaskItemRecord, this);
+	store->processCommandRecords (SystemInterface::Command_TaskItem, NewsWindow::processTaskItemRecord, this);
 	ScrollView::syncRecordStore (store);
 }
 
 void NewsWindow::processTaskItemRecord (void *windowPtr, Json *record, const StdString &recordId) {
+// TODO: Fix this
+/*
 	UiConfiguration *uiconfig;
 	SystemInterface *interface;
 	NewsWindow *window;
@@ -208,12 +215,15 @@ void NewsWindow::processTaskItemRecord (void *windowPtr, Json *record, const Std
 			taskitemwindow->setDeleteCallback (NewsWindow::taskItemDeleteClicked, window);
 			window->taskItemList.push_back (taskitemwindow);
 			window->taskItemMap.insert (std::pair<StdString, TaskItemWindow *> (recordId, taskitemwindow));
-			window->resetLayout ();
+			window->refreshLayout ();
 		}
 	}
+*/
 }
 
 void NewsWindow::taskItemDeleteClicked (void *windowPtr, Widget *widgetPtr) {
+// TODO: Fix this
+/*
 	NewsWindow *window;
 	TaskItemWindow *taskitemwindow;
 
@@ -225,10 +235,13 @@ void NewsWindow::taskItemDeleteClicked (void *windowPtr, Widget *widgetPtr) {
 	else {
 		taskitemwindow->isVisible = false;
 	}
-	window->resetLayout ();
+	window->refreshLayout ();
+*/
 }
 
 void NewsWindow::removeTaskItem (const StdString &taskId) {
+// TODO: Fix this
+/*
 	std::map<StdString, TaskItemWindow *>::iterator pos;
 	std::list<TaskItemWindow *>::iterator i, end;
 	TaskItemWindow *taskitemwindow;
@@ -251,7 +264,8 @@ void NewsWindow::removeTaskItem (const StdString &taskId) {
 		++i;
 	}
 	taskitemwindow->isDestroyed = true;
-	resetLayout ();
+	refreshLayout ();
+*/
 }
 
 void NewsWindow::addNewsItem (Sprite *iconSprite, const StdString &itemTitle, const StdString &itemText, bool shouldCopyIconSprite) {
@@ -282,7 +296,7 @@ void NewsWindow::newsItemDeleteClicked (void *windowPtr, Widget *widgetPtr) {
 	}
 
 	newsitem->isDestroyed = true;
-	window->resetLayout ();
+	window->refreshLayout ();
 }
 
 void NewsWindow::addTaskItem (const StdString &taskId, Sprite *iconSprite, const StdString &itemTitle, const StdString &itemText) {
@@ -328,6 +342,6 @@ void NewsWindow::addTaskItem (Json *taskItem) {
 	panel->resetSize ();
 	item.panel = panel;
 	newsItemList.push_back (item);
-	resetLayout ();
+	refreshLayout ();
 */
 }

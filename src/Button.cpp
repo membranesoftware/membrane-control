@@ -55,6 +55,7 @@ Button::Button (const StdString &labelText, Sprite *sprite, bool shouldDestroySp
 , isDisabled (false)
 , isRaised (false)
 , isInverseColor (false)
+, isImageColorEnabled (false)
 , label (NULL)
 , image (NULL)
 , pressClock (0)
@@ -83,7 +84,7 @@ Button::Button (const StdString &labelText, Sprite *sprite, bool shouldDestroySp
 	setMousePressCallback (Button::mousePressed, this);
 	setMouseReleaseCallback (Button::mouseReleased, this);
 
-	resetLayout ();
+	refreshLayout ();
 }
 
 Button::~Button () {
@@ -105,7 +106,7 @@ Button *Button::castWidget (Widget *widget) {
 void Button::setPadding (float widthPaddingSize, float heightPaddingSize) {
 	widthPadding = widthPaddingSize;
 	heightPadding = heightPaddingSize;
-	resetLayout ();
+	refreshLayout ();
 }
 
 void Button::setPressed (bool pressed) {
@@ -116,7 +117,7 @@ void Button::setPressed (bool pressed) {
 	if (isPressed) {
 		setFocused (false);
 	}
-	resetLayout ();
+	refreshLayout ();
 }
 
 void Button::setDisabled (bool disabled) {
@@ -131,7 +132,7 @@ void Button::setDisabled (bool disabled) {
 	else {
 		isInputSuspended = false;
 	}
-	resetLayout ();
+	refreshLayout ();
 }
 
 void Button::setText (const StdString &text) {
@@ -139,7 +140,7 @@ void Button::setText (const StdString &text) {
 		if (label) {
 			label->isDestroyed = true;
 			label = NULL;
-			resetLayout ();
+			refreshLayout ();
 		}
 	}
 	else {
@@ -147,7 +148,7 @@ void Button::setText (const StdString &text) {
 			label = (Label *) addWidget (new Label (text, UiConfiguration::BUTTON, normalTextColor));
 		}
 		label->setText (text);
-		resetLayout ();
+		refreshLayout ();
 	}
 }
 
@@ -159,14 +160,11 @@ void Button::setTextColor (const Color &textColor) {
 }
 
 void Button::setRaised (bool raised, const Color &normalBgColor) {
-	if (isRaised == raised) {
-		return;
-	}
 	isRaised = raised;
 	if (isRaised) {
 		raiseNormalBgColor = normalBgColor;
 	}
-	resetLayout ();
+	refreshLayout ();
 }
 
 void Button::setInverseColor (bool inverse) {
@@ -174,7 +172,7 @@ void Button::setInverseColor (bool inverse) {
 		return;
 	}
 	isInverseColor = inverse;
-	resetLayout ();
+	refreshLayout ();
 }
 
 void Button::setFocused (bool focused) {
@@ -182,13 +180,15 @@ void Button::setFocused (bool focused) {
 		return;
 	}
 	isFocused = focused;
-	resetLayout ();
+	refreshLayout ();
 }
 
 void Button::setImageColor (const Color &imageColor) {
+	isImageColorEnabled = true;
 	if (image) {
 		image->setDrawColor (true, imageColor);
 	}
+	refreshLayout ();
 }
 
 bool Button::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown) {
@@ -199,7 +199,7 @@ bool Button::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isCo
 	if ((shortcutKey != SDLK_UNKNOWN) && (keycode == shortcutKey)) {
 		setPressed (true);
 		pressClock = App::getInstance ()->uiConfig.blinkDuration;
-		resetLayout ();
+		refreshLayout ();
 		if (mouseClickCallback) {
 			mouseClickCallback (mouseClickCallbackData, this);
 		}
@@ -292,13 +292,13 @@ void Button::doRefresh () {
 		maxImageWidth = image->maxSpriteWidth;
 		maxImageHeight = image->maxSpriteHeight;
 	}
-	resetLayout ();
+	refreshLayout ();
 }
 
-void Button::resetLayout () {
+void Button::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y, h, spacew, paddingh, bgalpha;
-	bool shouldfillbg;
+	bool shouldfillbg, iswhiteframe;
 	Color bgcolor, bordercolor, shadecolor;
 
 	// TODO: Handle borders / shadows in this operation
@@ -319,9 +319,10 @@ void Button::resetLayout () {
 		shadecolor.assign (0.0f, 0.0f, 0.0f);
 	}
 
+	iswhiteframe = (isInverseColor || isImageColorEnabled);
 	if (isDisabled) {
 		if (image) {
-			image->setFrame (isInverseColor ? uiconfig->blackButtonFrame : uiconfig->whiteButtonFrame);
+			image->setFrame (iswhiteframe ? uiconfig->whiteButtonFrame : uiconfig->blackButtonFrame);
 			image->drawAlpha = uiconfig->activeUnfocusedIconAlpha;
 		}
 
@@ -331,7 +332,7 @@ void Button::resetLayout () {
 	}
 	else if (isPressed) {
 		if (image) {
-			image->setFrame (isInverseColor ? uiconfig->blackLargeButtonFrame : uiconfig->whiteLargeButtonFrame);
+			image->setFrame (iswhiteframe ? uiconfig->whiteLargeButtonFrame : uiconfig->blackLargeButtonFrame);
 			image->drawAlpha = uiconfig->activeFocusedIconAlpha;
 		}
 
@@ -346,7 +347,7 @@ void Button::resetLayout () {
 	}
 	else if (isFocused) {
 		if (image) {
-			image->setFrame (isInverseColor ? uiconfig->blackLargeButtonFrame : uiconfig->whiteLargeButtonFrame);
+			image->setFrame (iswhiteframe ? uiconfig->whiteLargeButtonFrame : uiconfig->blackLargeButtonFrame);
 			image->drawAlpha = uiconfig->activeFocusedIconAlpha;
 		}
 
@@ -361,7 +362,7 @@ void Button::resetLayout () {
 	}
 	else {
 		if (image) {
-			image->setFrame (isInverseColor ? uiconfig->blackButtonFrame : uiconfig->whiteButtonFrame);
+			image->setFrame (iswhiteframe ? uiconfig->whiteButtonFrame : uiconfig->blackButtonFrame);
 			image->drawAlpha = uiconfig->activeUnfocusedIconAlpha;
 		}
 	}

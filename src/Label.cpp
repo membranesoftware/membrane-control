@@ -349,3 +349,59 @@ void Label::truncateText (StdString *text, int fontType, float maxWidth, const S
 	}
 	delete (label);
 }
+
+StdString Label::getTruncatedText (const StdString &text, int fontType, float maxWidth, const StdString &truncateSuffix) {
+	StdString s;
+
+	s.assign (text);
+	Label::truncateText (&s, fontType, maxWidth, truncateSuffix);
+
+	return (s);
+}
+
+void Label::flowRight (float *positionX, float positionY, float *rightExtent, float *bottomExtent) {
+	UiConfiguration *uiconfig;
+	float pos;
+
+	uiconfig = &(App::getInstance ()->uiConfig);
+	position.assign (*positionX, getLinePosition (positionY));
+	*positionX += width + uiconfig->marginSize;
+	if (rightExtent) {
+		pos = position.x + width;
+		if (pos > *rightExtent) {
+			*rightExtent = pos;
+		}
+	}
+	if (bottomExtent) {
+		pos = positionY + maxLineHeight;
+		if (pos > *bottomExtent) {
+			*bottomExtent = pos;
+		}
+	}
+}
+
+void Label::flowDown (float positionX, float *positionY, float *rightExtent, float *bottomExtent) {
+	UiConfiguration *uiconfig;
+	float x, y;
+
+	uiconfig = &(App::getInstance ()->uiConfig);
+	y = *positionY;
+	position.assign (positionX, getLinePosition (y));
+	*positionY += maxLineHeight + uiconfig->marginSize;
+	if (rightExtent) {
+		x = position.x + width;
+		if (x > *rightExtent) {
+			*rightExtent = x;
+		}
+	}
+	if (bottomExtent) {
+		y = y + maxLineHeight;
+		if (y > *bottomExtent) {
+			*bottomExtent = y;
+		}
+	}
+}
+
+void Label::centerVertical (float topExtent, float bottomExtent) {
+	position.assignY (topExtent + ((bottomExtent - topExtent) / 2.0f) - (maxLineHeight / 2.0f));
+}

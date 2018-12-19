@@ -35,9 +35,11 @@
 
 #include <list>
 #include "StdString.h"
+#include "Color.h"
 #include "StringList.h"
 #include "HashMap.h"
 #include "LabelWindow.h"
+#include "WidgetHandle.h"
 #include "Panel.h"
 
 class ComboBox : public Panel {
@@ -48,6 +50,13 @@ public:
 	// Read-only data members
 	StdString selectedItemValue;
 	StdString selectedItemData;
+	bool isInverseColor;
+
+	// Set a callback that should be invoked when the combo box's value changes
+	void setValueChangeCallback (Widget::EventCallback callback, void *callbackData);
+
+	// Set the combo box's inverse color state. If enabled, the combo box renders using an inverse color scheme.
+	void setInverseColor (bool inverse);
 
 	// Add an item to the combo box
 	void addItem (const StdString &itemValue, const StdString &itemData = StdString (""));
@@ -56,8 +65,8 @@ public:
 	void addItems (StringList *nameList);
 	void addItems (HashMap *itemMap);
 
-	// Set the combo box's value to the item matching the specified string
-	void setValue (const StdString &value);
+	// Set the combo box's value to the item matching the specified string and invoke any configured change callback unless shouldSkipChangeCallback is true
+	void setValue (const StdString &value, bool shouldSkipChangeCallback = false);
 
 	// Return the combo box's current value, or the corresponding data string if non-empty
 	StdString getValue ();
@@ -68,11 +77,8 @@ public:
 	// Clear a previously enabled expand state, optionally setting the combo box's current value in the process
 	void unexpand (const StdString &value = StdString (""));
 
-	// Set the isDestroyed state for all child widgets, causing them to be removed during the next update cycle
-	void destroyAllChildWidgets ();
-
 	// Callback functions
-	static void expandItemClicked (void *expandPanelPtr, Widget *labelWindowPtr);
+	static void expandItemClicked (void *comboBoxPtr, Widget *labelWindowPtr);
 
 protected:
 	// Execute operations to update object state as appropriate for an elapsed millisecond time period and origin position
@@ -82,7 +88,7 @@ protected:
 	virtual void doProcessMouseState (const Widget::MouseState &mouseState);
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	virtual void resetLayout ();
+	virtual void refreshLayout ();
 
 private:
 	struct Item {
@@ -92,19 +98,24 @@ private:
 		Item (): label (NULL) { }
 	};
 
-	// Set the combo box highlight state
-	void setFocused (bool enable);
+	// Set the combo box's focus state
+	void setFocused (bool focused);
 
-	// Find the active expand panel and return its pointer, or NULL if the panel was not found
-	Panel *findExpandPanel ();
-
+	Widget::EventCallback valueChangeCallback;
+	void *valueChangeCallbackData;
 	std::list<ComboBox::Item> itemList;
+	WidgetHandle expandPanel;
 	bool isExpanded;
-	uint64_t expandPanelId;
 	float expandDrawX, expandDrawY;
 	bool isFocused;
 	LabelWindow *selectedItemLabel;
 	float maxTextWidth;
+	Color normalBgColor;
+	Color normalBorderColor;
+	Color focusBgColor;
+	Color focusBorderColor;
+	Color normalItemTextColor;
+	Color focusItemTextColor;
 };
 
 #endif

@@ -38,7 +38,7 @@
 #include "WidgetHandle.h"
 #include "CardView.h"
 #include "TextFieldWindow.h"
-#include "WebDisplayIntentWindow.h"
+#include "WebPlaylistWindow.h"
 #include "Toolbar.h"
 #include "HashMap.h"
 #include "Ui.h"
@@ -77,26 +77,26 @@ public:
 	// Callback functions
 	static void reloadButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void reloadAgent (void *uiPtr, Widget *widgetPtr);
-	static void invokeGetStatusComplete (void *uiPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand);
 	static void processAgentStatus (void *uiPtr, Json *record, const StdString &recordId);
-	static void appendIntentJson (void *stringListPtr, Widget *widgetPtr);
-	static void matchIntentName (void *stringPtr, Widget *widgetPtr);
+	static void appendPlaylistJson (void *stringListPtr, Widget *widgetPtr);
+	static void matchPlaylistName (void *stringPtr, Widget *widgetPtr);
 	static void agentSelectStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void intentSelectStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void playlistSelectStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void playlistExpandStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void addUrlButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void browseUrlButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void showUrlButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void addIntentButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void addPlaylistButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static bool matchWebKioskAgentStatus (void *ptr, Json *record);
-	static void addIntentUrl (void *urlStringPtr, Widget *widgetPtr);
-	static void writeIntentButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void writeIntentComplete (void *uiPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand);
-	static void intentNameClicked (void *uiPtr, Widget *widgetPtr);
-	static void intentNameEdited (void *uiPtr, Widget *widgetPtr);
-	static void intentUrlListChanged (void *uiPtr, Widget *widgetPtr);
-	static void intentMenuClicked (void *uiPtr, Widget *widgetPtr);
-	static void renameIntentActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void removeIntentActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void addPlaylistUrl (void *urlStringPtr, Widget *widgetPtr);
+	static void writePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void writePlaylistComplete (void *uiPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand);
+	static void playlistNameClicked (void *uiPtr, Widget *widgetPtr);
+	static void playlistNameEdited (void *uiPtr, Widget *widgetPtr);
+	static void playlistUrlListChanged (void *uiPtr, Widget *widgetPtr);
+	static void playlistMenuClicked (void *uiPtr, Widget *widgetPtr);
+	static void renamePlaylistActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void removePlaylistActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void clearDisplayButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr);
 	static void commandButtonMouseExited (void *uiPtr, Widget *widgetPtr);
@@ -139,29 +139,25 @@ protected:
 	void doSyncRecordStore (RecordStore *store);
 
 private:
-	// Return the provided base value, after appending suffixes as needed to generate an unused intent name
-	StdString getAvailableIntentName ();
+	// Return the provided base value, after appending suffixes as needed to generate an unused playlist name
+	StdString getAvailablePlaylistName ();
 
-	// Return a newly created WebDisplayIntentWindow object that has been initialized for use with the UI
-	WebDisplayIntentWindow *createIntentWindow ();
+	// Return a newly created WebPlaylistWindow object that has been initialized for use with the UI
+	WebPlaylistWindow *createWebPlaylistWindow ();
 
 	// Return a string containing the set of selected agent names, appropriate for use in a command popup and truncated to fit within the specified maximum width, or an empty string if no agents are selected
 	StdString getSelectedAgentNames (float maxWidth);
 
 	int agentCount;
-
-	// A map of agent IDs to agent names, indicating the set of agents that have been selected
 	HashMap selectedAgentMap;
-
-	StdString selectedIntentId;
-
+	StdString selectedPlaylistId;
 	CardView *cardView;
 	TextFieldWindow *addressField;
 	Button *addUrlButton;
 	Button *browseUrlButton;
 	Button *showUrlButton;
-	Button *addIntentButton;
-	Button *writeIntentButton;
+	Button *addPlaylistButton;
+	Button *writePlaylistButton;
 	Button *clearDisplayButton;
 	WidgetHandle actionWidget;
 	WidgetHandle actionTarget;

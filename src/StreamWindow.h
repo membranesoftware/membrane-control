@@ -33,6 +33,7 @@
 #ifndef STREAM_WINDOW_H
 #define STREAM_WINDOW_H
 
+#include <vector>
 #include "StdString.h"
 #include "Sprite.h"
 #include "Image.h"
@@ -53,15 +54,20 @@ public:
 		HIGH_DETAIL = 2
 	};
 
-	StreamWindow (Json *streamItem, Sprite *loadingThumbnailSprite, int cardLayout = StreamWindow::LOW_DETAIL, float maxStreamImageWidth = 64.0f);
+	StreamWindow (Json *streamItem, SpriteGroup *monitorUiSpriteGroup, int layoutType = StreamWindow::LOW_DETAIL, float maxStreamImageWidth = 64.0f);
 	virtual ~StreamWindow ();
 
 	// Read-only data members
 	StdString streamId;
+	StdString agentId;
 	StdString streamName;
-	StdString thumbnailUrl;
-	StdString hlsStreamUrl;
+	StdString thumbnailPath;
+	StdString hlsStreamPath;
+	bool isSelected;
+	float selectedTimestamp;
+	int thumbnailIndex;
 	int segmentCount;
+	std::vector<double> segmentPositions;
 	int frameWidth;
 	int frameHeight;
 	int64_t duration;
@@ -69,7 +75,16 @@ public:
 	int64_t bitrate;
 
 	// Set the card's layout type and maximum image width
-	void setLayout (int cardLayout, float maxImageWidth);
+	void setLayout (int layoutType, float maxImageWidth);
+
+	// Set a callback that should be invoked when the stream image is clicked
+	void setStreamImageClickCallback (Widget::EventCallback callback, void *callbackData);
+
+	// Set the index that should be used to load the window's thumbnail image
+	void setThumbnailIndex (int index);
+
+	// Set the window's selected state, along with the timestamp it should show if selected
+	void setSelected (bool selected, float timestamp = 0.0f);
 
 	// Execute operations appropriate to sync widget state with records present in the provided RecordStore object, which has been locked prior to invocation
 	void syncRecordStore (RecordStore *store);
@@ -80,6 +95,10 @@ public:
 	// Return a typecasted pointer to the provided widget, or NULL if the widget does not appear to be of the correct type
 	static StreamWindow *castWidget (Widget *widget);
 
+	// Callback functions
+	static void streamImageClicked (void *windowPtr, Widget *widgetPtr);
+	static void selectButtonClicked (void *windowPtr, Widget *widgetPtr);
+
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
@@ -88,15 +107,18 @@ protected:
 	void doProcessMouseState (const Widget::MouseState &mouseState);
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	void resetLayout ();
+	void refreshLayout ();
 
 private:
-	Sprite *loadingThumbnailSprite;
+	SpriteGroup *spriteGroup;
 	ImageWindow *streamImage;
 	Label *nameLabel;
 	TextArea *detailText;
 	LabelWindow *mouseoverLabel;
 	LabelWindow *detailNameLabel;
+	Panel *selectPanel;
+	Widget::EventCallback streamImageClickCallback;
+	void *streamImageClickCallbackData;
 };
 
 #endif

@@ -45,8 +45,6 @@ ToggleWindow::ToggleWindow (Toggle *toggle, const StdString &labelText)
 , isChecked (false)
 , toggle (toggle)
 , label (NULL)
-, stateCommandCallback (NULL)
-, stateCommandCallbackData (NULL)
 , stateChangeCallback (NULL)
 , stateChangeCallbackData (NULL)
 {
@@ -70,7 +68,7 @@ ToggleWindow::ToggleWindow (Toggle *toggle, const StdString &labelText)
 	setMouseReleaseCallback (ToggleWindow::mouseReleased, this);
 	setMouseClickCallback (ToggleWindow::mouseClicked, this);
 
-	resetLayout ();
+	refreshLayout ();
 }
 
 ToggleWindow::~ToggleWindow () {
@@ -83,10 +81,10 @@ StdString ToggleWindow::toStringDetail () {
 
 void ToggleWindow::setPadding (float widthPadding, float heightPadding) {
 	Panel::setPadding (widthPadding, heightPadding);
-	resetLayout ();
+	refreshLayout ();
 }
 
-void ToggleWindow::resetLayout () {
+void ToggleWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y;
 

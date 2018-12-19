@@ -84,7 +84,7 @@ NewsItemWindow::NewsItemWindow (float windowWidth, Sprite *iconSprite, const Std
 	deleteButton->setMouseClickCallback (NewsItemWindow::deleteButtonClicked, this);
 	deleteButton->setImageColor (uiconfig->flatButtonTextColor);
 
-	resetLayout ();
+	refreshLayout ();
 }
 
 NewsItemWindow::~NewsItemWindow () {
@@ -105,7 +105,7 @@ void NewsItemWindow::setWindowWidth (float windowWidthValue) {
 	uiconfig = &(App::getInstance ()->uiConfig);
 	windowWidth = windowWidthValue;
 	detailText->setMaxLineWidth (windowWidth - iconImage->width - (uiconfig->paddingSize * 2.0f));
-	resetLayout ();
+	refreshLayout ();
 }
 
 void NewsItemWindow::setDeleteCallback (Widget::EventCallback callback, void *callbackData) {
@@ -121,7 +121,7 @@ void NewsItemWindow::setDetailText (const StdString &text) {
 		if (detailText) {
 			detailText->isDestroyed = true;
 			detailText = NULL;
-			resetLayout ();
+			refreshLayout ();
 		}
 	}
 	else {
@@ -129,7 +129,7 @@ void NewsItemWindow::setDetailText (const StdString &text) {
 			detailText = (TextArea *) addWidget (new TextArea (UiConfiguration::CAPTION, uiconfig->primaryTextColor));
 		}
 		detailText->setText (text);
-		resetLayout ();
+		refreshLayout ();
 	}
 }
 
@@ -142,7 +142,7 @@ void NewsItemWindow::deleteButtonClicked (void *windowPtr, Widget *widgetPtr) {
 	}
 }
 
-void NewsItemWindow::resetLayout () {
+void NewsItemWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y, w, h;
 

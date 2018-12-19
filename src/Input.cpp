@@ -120,6 +120,10 @@ Input::Input ()
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_ESCAPE, false));
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_BACKSPACE, false));
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_RETURN, false));
+	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_PAGEUP, false));
+	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_PAGEDOWN, false));
+	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_HOME, false));
+	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_END, false));
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_F1, false));
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_F2, false));
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_F3, false));
@@ -141,8 +145,7 @@ Input::~Input () {
 }
 
 int Input::start () {
-	// TODO: Select the active controller based on saved application settings
-	selectActiveController ();
+	// TODO: Execute startup actions here (none required for now)
 
 	return (Result::SUCCESS);
 }
@@ -291,23 +294,6 @@ bool Input::isControlDown () {
 #endif
 
 	return (false);
-}
-
-int Input::getJoystickCount () {
-	return (SDL_NumJoysticks ());
-}
-
-void Input::selectActiveController () {
-	int count;
-
-	count = getJoystickCount ();
-	if (count <= 0) {
-		Log::getInstance ()->write (Log::INFO, "No controller available");
-		return;
-	}
-
-	Log::getInstance ()->write (Log::INFO, "Select active controller; joystickCount=%i", count);
-	// TODO: Implement this
 }
 
 void Input::pollKeyPressEvents (std::vector<SDL_Keycode> *destVector) {

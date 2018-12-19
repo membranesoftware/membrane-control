@@ -127,7 +127,7 @@ void Menu::addItem (const StdString &name, Sprite *sprite, Widget::EventCallback
 	}
 
 	itemList.push_back (item);
-	resetLayout ();
+	refreshLayout ();
 }
 
 void Menu::addDivider () {
@@ -146,19 +146,19 @@ void Menu::addDivider () {
 	item.panel = panel;
 
 	itemList.push_back (item);
-	resetLayout ();
+	refreshLayout ();
 }
 
 void Menu::doProcessMouseState (const Widget::MouseState &mouseState) {
 	std::list<Menu::Item>::iterator i, end;
-	bool shouldreset;
+	bool shouldrefresh;
 
-	shouldreset = false;
+	shouldrefresh = false;
 	if (! mouseState.isEntered) {
 		if (isItemFocused) {
 			isItemFocused = false;
 			lastFocusPanel = NULL;
-			shouldreset = true;
+			shouldrefresh = true;
 		}
 	}
 	else {
@@ -172,14 +172,14 @@ void Menu::doProcessMouseState (const Widget::MouseState &mouseState) {
 						lastFocusPanel = i->panel;
 						focusBackgroundPanel->position.assign (i->panel->position);
 						focusBackgroundPanel->setFixedSize (true, i->panel->width, i->panel->height);
-						shouldreset = true;
+						shouldrefresh = true;
 					}
 
 					if (mouseState.isLeftClickReleased && mouseState.isLeftClickEntered) {
 						if ((i->selectionGroup >= 0) && (! i->isSelected)) {
 							unselectItemGroup (i->selectionGroup);
 							i->isSelected = true;
-							shouldreset = true;
+							shouldrefresh = true;
 						}
 						if (i->callback) {
 							i->callback (i->callbackData, this);
@@ -198,12 +198,12 @@ void Menu::doProcessMouseState (const Widget::MouseState &mouseState) {
 		}
 	}
 
-	if (shouldreset && (! isDestroyed)) {
-		resetLayout ();
+	if (shouldrefresh && (! isDestroyed)) {
+		refreshLayout ();
 	}
 }
 
-void Menu::resetLayout () {
+void Menu::refreshLayout () {
 	UiConfiguration *uiconfig;
 	std::list<Menu::Item>::iterator i, end;
 	std::map<int, Image *>::iterator mi, mend;

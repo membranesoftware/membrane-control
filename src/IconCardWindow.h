@@ -46,6 +46,9 @@ public:
 	IconCardWindow (Sprite *iconSprite, const StdString &cardName = StdString (""), const StdString &cardSubtitle = StdString (""), const StdString &cardDetailText = StdString (""));
 	virtual ~IconCardWindow ();
 
+	// Read-write data members
+	StdString itemId;
+
 	// Set the content of the card's detail text area
 	void setDetailText (const StdString &text);
 
@@ -57,7 +60,7 @@ protected:
 	StdString toStringDetail ();
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	void resetLayout ();
+	void refreshLayout ();
 
 private:
 	Image *iconImage;

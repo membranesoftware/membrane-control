@@ -65,7 +65,7 @@ public:
 	int maxLineHeight;
 
 	// Load a font using the specified data buffer and point size. Returns a Result value.
-	int load (Buffer *data, int pointSize);
+	int load (Buffer *fontData, int pointSize);
 
 	// Return a pointer to a Font::Glyph struct for the specified character, or NULL if no such glyph was found
 	Font::Glyph *getGlyph (char glyphCharacter);

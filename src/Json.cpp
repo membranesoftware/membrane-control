@@ -35,7 +35,7 @@
 #include <stdarg.h>
 #include <map>
 #include <vector>
-#include <stack>
+#include <list>
 #include "json-parser.h"
 #include "json-builder.h"
 #include "Result.h"
@@ -899,6 +899,16 @@ void Json::set (const char *key, const bool value) {
 	set (StdString (key), value);
 }
 
+void Json::set (const StdString &key, Json *value) {
+	jsonObjectPush (key.c_str (), value->json);
+	value->json = NULL;
+	delete (value);
+}
+
+void Json::set (const char *key, Json *value) {
+	set (StdString (key), value);
+}
+
 void Json::set (const StdString &key, StringList *value) {
 	json_value *a;
 	StringList::iterator i, end;
@@ -918,13 +928,45 @@ void Json::set (const char *key, StringList *value) {
 	set (StdString (key), value);
 }
 
-void Json::set (const StdString &key, Json *value) {
-	jsonObjectPush (key.c_str (), value->json);
-	value->json = NULL;
-	delete (value);
+void Json::set (const StdString &key, std::vector<Json *> *value) {
+	json_value *a;
+	std::vector<Json *>::iterator i, end;
+
+	a = json_array_new (0);
+	i = value->begin ();
+	end = value->end ();
+	while (i != end) {
+		json_array_push (a, (*i)->json);
+		(*i)->json = NULL;
+		delete (*i);
+		++i;
+	}
+
+	jsonObjectPush (key.c_str (), a);
 }
 
-void Json::set (const char *key, Json *value) {
+void Json::set (const char *key, std::vector<Json *> *value) {
+	set (StdString (key), value);
+}
+
+void Json::set (const StdString &key, std::list<Json *> *value) {
+	json_value *a;
+	std::list<Json *>::iterator i, end;
+
+	a = json_array_new (0);
+	i = value->begin ();
+	end = value->end ();
+	while (i != end) {
+		json_array_push (a, (*i)->json);
+		(*i)->json = NULL;
+		delete (*i);
+		++i;
+	}
+
+	jsonObjectPush (key.c_str (), a);
+}
+
+void Json::set (const char *key, std::list<Json *> *value) {
 	set (StdString (key), value);
 }
 

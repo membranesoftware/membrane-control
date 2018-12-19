@@ -59,7 +59,7 @@ Toolbar::Toolbar (float toolbarWidth)
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->darkPrimaryColor);
 
-	resetLayout ();
+	refreshLayout ();
 }
 
 Toolbar::~Toolbar () {
@@ -76,7 +76,7 @@ void Toolbar::setWidth (float toolbarWidth) {
 		return;
 	}
 	barWidth = toolbarWidth;
-	resetLayout ();
+	refreshLayout ();
 }
 
 void Toolbar::clearAll () {
@@ -86,7 +86,7 @@ void Toolbar::clearAll () {
 	clearRightItems ();
 	leftCorner.destroyAndClear ();
 	rightCorner.destroyAndClear ();
-	resetLayout ();
+	refreshLayout ();
 }
 
 void Toolbar::clearLeftItems () {
@@ -121,21 +121,33 @@ void Toolbar::clearRightItems () {
 
 void Toolbar::clearLeftOverlay () {
 	leftOverlay.destroyAndClear ();
-	resetLayout ();
+	refreshLayout ();
 }
 
 void Toolbar::addLeftItem (Widget *itemWidget) {
 	addWidget (itemWidget);
 	itemWidget->retain ();
 	leftItemList.push_back (itemWidget);
-	resetLayout ();
+	refreshLayout ();
 }
 
 void Toolbar::addRightItem (Widget *itemWidget) {
 	addWidget (itemWidget);
 	itemWidget->retain ();
+	// TODO: Prevent left toolbar items from rendering into the right item area (currently increasing right item z-level as a workaround)
+	itemWidget->zLevel = 1;
 	rightItemList.push_back (itemWidget);
-	resetLayout ();
+	refreshLayout ();
+}
+
+void Toolbar::addRightSpacer () {
+	UiConfiguration *uiconfig;
+	Panel *panel;
+
+	uiconfig = &(App::getInstance ()->uiConfig);
+	panel = new Panel ();
+	panel->setFixedSize (true, uiconfig->marginSize, 2.0f);
+	addRightItem (panel);
 }
 
 void Toolbar::setLeftCorner (Widget *itemWidget) {
@@ -144,7 +156,7 @@ void Toolbar::setLeftCorner (Widget *itemWidget) {
 	}
 	addWidget (itemWidget);
 	leftCorner.assign (itemWidget);
-	resetLayout ();
+	refreshLayout ();
 }
 
 void Toolbar::setRightCorner (Widget *itemWidget) {
@@ -153,7 +165,7 @@ void Toolbar::setRightCorner (Widget *itemWidget) {
 	}
 	addWidget (itemWidget);
 	rightCorner.assign (itemWidget);
-	resetLayout ();
+	refreshLayout ();
 }
 
 void Toolbar::setLeftOverlay (Widget *itemWidget) {
@@ -162,7 +174,7 @@ void Toolbar::setLeftOverlay (Widget *itemWidget) {
 	}
 	addWidget (itemWidget);
 	leftOverlay.assign (itemWidget);
-	resetLayout ();
+	refreshLayout ();
 }
 
 void Toolbar::setRightOverlay (Widget *itemWidget) {
@@ -171,10 +183,10 @@ void Toolbar::setRightOverlay (Widget *itemWidget) {
 	}
 	addWidget (itemWidget);
 	rightOverlay.assign (itemWidget);
-	resetLayout ();
+	refreshLayout ();
 }
 
-void Toolbar::resetLayout () {
+void Toolbar::refreshLayout () {
 	UiConfiguration *uiconfig;
 	std::list<Widget *>::iterator i, end;
 	Widget *widget;
@@ -268,11 +280,11 @@ void Toolbar::resetLayout () {
 void Toolbar::doUpdate (int msElapsed, float originX, float originY) {
 	std::list<Widget *>::iterator i, end;
 	Widget *widget;
-	bool shouldreset, found;
+	bool shouldrefresh, found;
 
 	Panel::doUpdate (msElapsed, originX, originY);
 
-	shouldreset = false;
+	shouldrefresh = false;
 
 	while (true) {
 		found = false;
@@ -282,7 +294,7 @@ void Toolbar::doUpdate (int msElapsed, float originX, float originY) {
 			widget = *i;
 			if (widget->isDestroyed) {
 				found = true;
-				shouldreset = true;
+				shouldrefresh = true;
 				leftItemList.erase (i);
 				widget->release ();
 				break;
@@ -303,7 +315,7 @@ void Toolbar::doUpdate (int msElapsed, float originX, float originY) {
 			widget = *i;
 			if (widget->isDestroyed) {
 				found = true;
-				shouldreset = true;
+				shouldrefresh = true;
 				rightItemList.erase (i);
 				widget->release ();
 				break;
@@ -318,23 +330,23 @@ void Toolbar::doUpdate (int msElapsed, float originX, float originY) {
 
 	if (leftCorner.widget && leftCorner.widget->isDestroyed) {
 		leftCorner.clear ();
-		shouldreset = true;
+		shouldrefresh = true;
 	}
 	if (rightCorner.widget && rightCorner.widget->isDestroyed) {
 		rightCorner.clear ();
-		shouldreset = true;
+		shouldrefresh = true;
 	}
 	if (leftOverlay.widget && leftOverlay.widget->isDestroyed) {
 		leftOverlay.clear ();
-		shouldreset = true;
+		shouldrefresh = true;
 	}
 	if (rightOverlay.widget && rightOverlay.widget->isDestroyed) {
 		rightOverlay.clear ();
-		shouldreset = true;
+		shouldrefresh = true;
 	}
 
-	if (shouldreset) {
-		resetLayout ();
+	if (shouldrefresh) {
+		refreshLayout ();
 	}
 }
 

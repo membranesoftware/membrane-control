@@ -100,6 +100,14 @@ void ScrollView::setVerticalScrollBounds (float minY, float maxY) {
 	setViewOriginBounds (0.0f, 0.0f, minY, maxY);
 }
 
+bool ScrollView::isScrolledToBottom () {
+	if (! isViewOriginBoundEnabled) {
+		return (false);
+	}
+
+	return (viewOriginY >= maxViewOriginY);
+}
+
 bool ScrollView::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown) {
 	if (Panel::doProcessKeyEvent (keycode, isShiftDown, isControlDown)) {
 		return (true);
@@ -113,6 +121,25 @@ bool ScrollView::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool 
 			}
 			case SDLK_DOWN: {
 				setViewOrigin (0.0f, viewOriginY + verticalScrollSpeed);
+				return (true);
+			}
+			case SDLK_HOME: {
+				setViewOrigin (0.0f, 0.0f);
+				return (true);
+			}
+			case SDLK_END: {
+				if (isViewOriginBoundEnabled) {
+					setViewOrigin (0.0f, maxViewOriginY);
+					return (true);
+				}
+				break;
+			}
+			case SDLK_PAGEUP: {
+				setViewOrigin (0.0f, viewOriginY - height);
+				return (true);
+			}
+			case SDLK_PAGEDOWN: {
+				setViewOrigin (0.0f, viewOriginY + height);
 				return (true);
 			}
 		}

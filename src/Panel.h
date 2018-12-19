@@ -67,7 +67,10 @@ public:
 	void setBorder (bool enable, float r = 0.0f, float g = 0.0f, float b = 0.0f);
 	void setBorder (bool enable, const Color &color);
 
-	// Remove all widgets from the panel
+	// Set the layout type that should be used to arrange the panel's widgets
+	void setLayout (int layoutType);
+
+	// Remove all widgets from the panel and mark them as destroyed
 	void clear ();
 
 	// Set the isDestroyed state for all widgets in the panel, causing them to be removed during the next update cycle
@@ -115,7 +118,6 @@ public:
 	// Read-write data members
 	Color bgColor;
 	Color borderColor;
-	int layout;
 
 	// Read-only data members
 	float maxWidgetX, maxWidgetY;
@@ -158,11 +160,12 @@ protected:
 	void resetSize ();
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	virtual void resetLayout ();
+	virtual void refreshLayout ();
 
 	// Check if the widget list is correctly sorted for drawing by z-level, and sort the list if not. This method should only be invoked while holding a lock on widgetListMutex.
 	void sortWidgetList ();
 
+	int layout;
 	bool isMouseInputStarted;
 	int lastMouseLeftUpCount, lastMouseLeftDownCount;
 	int lastMouseRightUpCount, lastMouseRightDownCount;

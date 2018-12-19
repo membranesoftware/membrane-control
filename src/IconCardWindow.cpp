@@ -69,7 +69,7 @@ IconCardWindow::IconCardWindow (Sprite *iconSprite, const StdString &cardName, c
 		detailText->setText (cardDetailText);
 	}
 
-	resetLayout ();
+	refreshLayout ();
 }
 
 IconCardWindow::~IconCardWindow () {
@@ -88,7 +88,7 @@ void IconCardWindow::setDetailText (const StdString &text) {
 		if (detailText) {
 			detailText->isDestroyed = true;
 			detailText = NULL;
-			resetLayout ();
+			refreshLayout ();
 		}
 	}
 	else {
@@ -96,7 +96,7 @@ void IconCardWindow::setDetailText (const StdString &text) {
 			detailText = (TextArea *) addWidget (new TextArea (UiConfiguration::CAPTION, uiconfig->primaryTextColor));
 		}
 		detailText->setText (text);
-		resetLayout ();
+		refreshLayout ();
 	}
 }
 
@@ -105,10 +105,10 @@ void IconCardWindow::setLink (const StdString &text, const StdString &url) {
 		linkWindow->isDestroyed = true;
 	}
 	linkWindow = (HyperlinkWindow *) addWidget (new HyperlinkWindow (text, url));
-	resetLayout ();
+	refreshLayout ();
 }
 
-void IconCardWindow::resetLayout () {
+void IconCardWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y, ymin;
 

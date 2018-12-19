@@ -69,7 +69,7 @@ HelpActionWindow::HelpActionWindow (float windowWidth, const StdString &helpActi
 		linkWindow = (HyperlinkWindow *) addWidget (new HyperlinkWindow (helpLinkText, helpLinkUrl));
 	}
 
-	resetLayout ();
+	refreshLayout ();
 }
 
 HelpActionWindow::~HelpActionWindow () {
@@ -90,10 +90,10 @@ void HelpActionWindow::setWindowWidth (float windowWidthValue) {
 	uiconfig = &(App::getInstance ()->uiConfig);
 	windowWidth = windowWidthValue;
 	actionText->setMaxLineWidth (windowWidth - iconImage->width - (uiconfig->paddingSize * 2.0f));
-	resetLayout ();
+	refreshLayout ();
 }
 
-void HelpActionWindow::resetLayout () {
+void HelpActionWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y, h;
 

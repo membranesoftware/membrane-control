@@ -38,6 +38,8 @@
 #include "Json.h"
 #include "RecordStore.h"
 #include "CardView.h"
+#include "TextFieldWindow.h"
+#include "Button.h"
 #include "WidgetHandle.h"
 #include "Ui.h"
 
@@ -46,15 +48,14 @@ public:
 	// Constants to use for sprite indexes
 	enum {
 		LOADING_IMAGE_ICON = 0,
-		LARGE_THUMBNAILS_ICON = 1,
-		MEDIUM_THUMBNAILS_ICON = 2,
-		SMALL_THUMBNAILS_ICON = 3,
+		LARGE_THUMBNAIL_BUTTON = 1,
+		MEDIUM_THUMBNAIL_BUTTON = 2,
+		SMALL_THUMBNAIL_BUTTON = 3,
 		BREADCRUMB_ICON = 4,
 		SEARCH_BUTTON = 5,
-		VIEW_BUTTON = 6,
-		SORT_BUTTON = 7,
-		EMPTY_INTERFACE_ICON = 8,
-		CREATE_STREAM_BUTTON = 9
+		THUMBNAIL_SIZE_BUTTON = 6,
+		CREATE_STREAM_BUTTON = 7,
+		VIEW_THUMBNAILS_BUTTON = 8
 	};
 
 	MediaUi ();
@@ -66,21 +67,26 @@ public:
 	// Return a newly created Sprite object that should be used to identify the UI in a set of breadcrumb actions, or NULL if no such Sprite exists. If a Sprite is returned by this method, the caller becomes responsible for destroying it when no longer needed.
 	Sprite *getBreadcrumbSprite ();
 
+	// Set fields in the provided HelpWindow widget as appropriate for the UI's help content
+	void setHelpWindowContent (Widget *helpWindowPtr);
+
+	// Execute operations appropriate when an agent control link client becomes connected
+	void handleLinkClientConnect (const StdString &agentId);
+
+	// Execute actions appropriate for a command received from an agent control link client
+	void handleLinkClientCommand (const StdString &agentId, int commandId, Json *command);
+
 	// Callback functions
-	static void viewButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void viewSmallActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void viewMediumActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void viewLargeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void processAgentStatus (void *uiPtr, Json *record, const StdString &recordId);
+	static void processMediaItem (void *uiPtr, Json *record, const StdString &recordId);
+	static void thumbnailSizeButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void smallThumbnailActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void mediumThumbnailActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void largeThumbnailActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void resetMediaCardLayout (void *uiPtr, Widget *widgetPtr);
-	static bool sortMediaCards (Widget *a, Widget *b);
-	static void mediaCardClicked (void *uiPtr, Widget *widgetPtr);
-	static void viewThumbnailsActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void createStreamActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void removeStreamActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void createStreamActionClosed (void *uiPtr, Widget *widgetPtr);
-	static void removeStreamActionClosed (void *uiPtr, Widget *widgetPtr);
-	static void createMediaStreamComplete (void *uiPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand);
-	static void removeMediaStreamComplete (void *uiPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand);
+	static void mediaWindowClicked (void *uiPtr, Widget *widgetPtr);
+	static void searchFieldEdited (void *uiPtr, Widget *widgetPtr);
+	static void searchButtonClicked (void *uiPtr, Widget *widgetPtr);
 
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
@@ -94,6 +100,9 @@ protected:
 
 	// Add subclass-specific items to the provided main toolbar object
 	void doResetMainToolbar (Toolbar *toolbar);
+
+	// Add subclass-specific items to the provided secondary toolbar object
+	void doResetSecondaryToolbar (Toolbar *toolbar);
 
 	// Remove and destroy any subclass-specific popup widgets that have been created by the UI
 	void doClearPopupWidgets ();
@@ -117,29 +126,32 @@ protected:
 	void doSyncRecordStore (RecordStore *store);
 
 private:
-	// Execute actions appropriate when the view button is clicked
-	void handleViewButtonClick (Widget *buttonWidget);
+	// Execute actions appropriate when the thumbnail size button is clicked
+	void handleThumbnailSizeButtonClick (Widget *buttonWidget);
 
-	// Send a CreateMediaStream command to a remote agent, as specified by the currently held actionWindow widget
-	void invokeCreateMediaStream ();
-
-	// Send a RemoveMediaStream command to a remote agent, as specified by the currently held actionWindow widget
-	void invokeRemoveMediaStream ();
-
-	static const int readEventsPeriod;
 	static const float smallImageScale;
 	static const float mediumImageScale;
 	static const float largeImageScale;
+	static const int pageSize;
 
 	CardView *cardView;
-	WidgetHandle viewMenu;
+	TextFieldWindow *searchField;
+	Button *searchButton;
+	WidgetHandle thumbnailSizeMenu;
 	WidgetHandle actionWindow;
+	WidgetHandle emptyStateWindow;
 	int cardLayout;
 	float cardMaxImageWidth;
-	int64_t lastReadEventsTime;
+	int agentCount;
+	int mediaCount;
+	bool findMediaComplete;
+	StdString searchKey;
+	int recordReceiveCount;
+	int64_t nextRecordSyncTime;
 
-	// A map of agent names to ID values
-	HashMap streamServerAgentMap;
+	HashMap mediaServerResultOffsetMap;
+	HashMap mediaServerSetSizeMap;
+	HashMap mediaServerRecordCountMap;
 };
 
 #endif

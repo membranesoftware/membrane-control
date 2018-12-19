@@ -52,6 +52,7 @@
 SettingsWindow::SettingsWindow (float windowWidth, float windowHeight)
 : Panel ()
 , headerImage (NULL)
+, isHeaderImageLoaded (false)
 , titleLabel (NULL)
 , closeButton (NULL)
 , windowSizeLabel (NULL)
@@ -73,19 +74,17 @@ SettingsWindow::SettingsWindow (float windowWidth, float windowHeight)
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
 	headerImage = (ImageWindow *) addWidget (new ImageWindow ());
-	headerImage->setLoadCallback (SettingsWindow::headerImageLoaded, this);
 	headerImage->setLoadResourcePath (StdString::createSprintf ("bg/settings/%i.png", app->imageScale));
 
-	titleLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (uitext->settings.capitalized (), UiConfiguration::TITLE, uiconfig->primaryTextColor)));
+	titleLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::settings).capitalized (), UiConfiguration::TITLE, uiconfig->primaryTextColor)));
 	titleLabel->setPadding (0.0f, 0.0f);
 
 	closeButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::EXIT_BUTTON)));
 	closeButton->zLevel = 1;
 	closeButton->setMouseClickCallback (SettingsWindow::closeButtonClicked, this);
-	closeButton->setInverseColor (true);
 	closeButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
 
-	windowSizeLabel = (Label *) addWidget (new Label (uitext->windowSize.capitalized (), UiConfiguration::TITLE, uiconfig->primaryTextColor));
+	windowSizeLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::windowSize).capitalized (), UiConfiguration::TITLE, uiconfig->primaryTextColor));
 	slider = new Slider ();
 	slider->addSnapValue (0.0f);
 	slider->addSnapValue (0.25f);
@@ -93,25 +92,25 @@ SettingsWindow::SettingsWindow (float windowWidth, float windowHeight)
 	slider->addSnapValue (0.75f);
 	slider->addSnapValue (1.0f);
 	if ((app->windowWidth == App::windowWidths[0]) && (app->windowHeight == App::windowHeights[0])) {
-		slider->setValue (0.0f);
+		slider->setValue (0.0f, true);
 	}
 	else if ((app->windowWidth == App::windowWidths[1]) && (app->windowHeight == App::windowHeights[1])) {
-		slider->setValue (0.25f);
+		slider->setValue (0.25f, true);
 	}
 	else if ((app->windowWidth == App::windowWidths[2]) && (app->windowHeight == App::windowHeights[2])) {
-		slider->setValue (0.5f);
+		slider->setValue (0.5f, true);
 	}
 	else if ((app->windowWidth == App::windowWidths[3]) && (app->windowHeight == App::windowHeights[3])) {
-		slider->setValue (0.75f);
+		slider->setValue (0.75f, true);
 	}
 	else if ((app->windowWidth == App::windowWidths[4]) && (app->windowHeight == App::windowHeights[4])) {
-		slider->setValue (1.0f);
+		slider->setValue (1.0f, true);
 	}
 	windowSizeSlider = (SliderWindow *) addWidget (new SliderWindow (slider));
 	windowSizeSlider->setValueChangeCallback (SettingsWindow::windowSizeSliderChanged, this);
 	windowSizeSlider->setValueNameFunction (SettingsWindow::windowSizeSliderValueName);
 
-	textSizeLabel = (Label *) addWidget (new Label (uitext->textSize.capitalized (), UiConfiguration::TITLE, uiconfig->primaryTextColor));
+	textSizeLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::textSize).capitalized (), UiConfiguration::TITLE, uiconfig->primaryTextColor));
 	slider = new Slider ();
 	slider->addSnapValue (0.0f);
 	slider->addSnapValue (0.25f);
@@ -138,13 +137,13 @@ SettingsWindow::SettingsWindow (float windowWidth, float windowHeight)
 	textSizeSlider->setValueChangeCallback (SettingsWindow::textSizeSliderChanged, this);
 	textSizeSlider->setValueNameFunction (SettingsWindow::textSizeSliderValueName);
 
-	showClockToggle = (ToggleWindow *) addWidget (new ToggleWindow (new Toggle (), uitext->showClock.capitalized ()));
+	showClockToggle = (ToggleWindow *) addWidget (new ToggleWindow (new Toggle (), uitext->getText (UiTextString::showClock).capitalized ()));
 	showClockToggle->setPadding (0.0f, 0.0f);
 	showClockToggle->setImageColor (uiconfig->flatButtonTextColor);
 	showClockToggle->setChecked (app->prefsMap.find (App::prefsShowClock, false));
 	showClockToggle->setStateChangeCallback (SettingsWindow::showClockToggleStateChanged, this);
 
-	resetLayout ();
+	refreshLayout ();
 }
 
 SettingsWindow::~SettingsWindow () {
@@ -157,17 +156,10 @@ StdString SettingsWindow::toStringDetail () {
 
 void SettingsWindow::setWindowSize (float windowWidth, float windowHeight) {
 	setFixedSize (true, windowWidth, windowHeight);
-	resetLayout ();
+	refreshLayout ();
 }
 
-void SettingsWindow::headerImageLoaded (void *windowPtr, Widget *widgetPtr) {
-	SettingsWindow *window;
-
-	window = (SettingsWindow *) windowPtr;
-	window->resetLayout ();
-}
-
-void SettingsWindow::resetLayout () {
+void SettingsWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y;
 
@@ -196,7 +188,7 @@ void SettingsWindow::resetLayout () {
 		titleLabel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 		titleLabel->setTextColor (uiconfig->inverseTextColor);
 		titleLabel->setFillBg (true, 0.0f, 0.0f, 0.0f);
-		titleLabel->setAlphaBlend (true, uiconfig->imageTextScrimAlpha);
+		titleLabel->setAlphaBlend (true, uiconfig->scrimBackgroundAlpha);
 		titleLabel->position.assign (x, y + headerImage->height - titleLabel->height - uiconfig->paddingSize);
 		closeButton->position.assign (width - closeButton->width - uiconfig->paddingSize, y + headerImage->height - closeButton->height - uiconfig->paddingSize);
 		y += headerImage->height + uiconfig->marginSize;
@@ -222,25 +214,37 @@ void SettingsWindow::doRefresh () {
 	App *app;
 
 	app = App::getInstance ();
+	isHeaderImageLoaded = false;
 	headerImage->setLoadResourcePath (StdString::createSprintf ("bg/settings/%i.png", app->imageScale));
 	Panel::doRefresh ();
 }
 
+void SettingsWindow::doUpdate (int msElapsed, float originX, float originY) {
+	Panel::doUpdate (msElapsed, originX, originY);
+
+	if (! isHeaderImageLoaded) {
+		if (headerImage->isLoaded ()) {
+			isHeaderImageLoaded = true;
+			refreshLayout ();
+		}
+	}
+}
+
 StdString SettingsWindow::windowSizeSliderValueName (float sliderValue) {
 	if (FLOAT_EQUALS (sliderValue, 0.0f)) {
-		return (StdString::createSprintf ("%s - %ix%i", App::getInstance ()->uiText.smallest.capitalized ().c_str (), App::windowWidths[0], App::windowHeights[0]));
+		return (StdString::createSprintf ("%s - %ix%i", App::getInstance ()->uiText.getText (UiTextString::smallest).capitalized ().c_str (), App::windowWidths[0], App::windowHeights[0]));
 	}
 	if (FLOAT_EQUALS (sliderValue, 0.25f)) {
-		return (StdString::createSprintf ("%s - %ix%i", App::getInstance ()->uiText.small.capitalized ().c_str (), App::windowWidths[1], App::windowHeights[1]));
+		return (StdString::createSprintf ("%s - %ix%i", App::getInstance ()->uiText.getText (UiTextString::small).capitalized ().c_str (), App::windowWidths[1], App::windowHeights[1]));
 	}
 	if (FLOAT_EQUALS (sliderValue, 0.5f)) {
-		return (StdString::createSprintf ("%s - %ix%i", App::getInstance ()->uiText.medium.capitalized ().c_str (), App::windowWidths[2], App::windowHeights[2]));
+		return (StdString::createSprintf ("%s - %ix%i", App::getInstance ()->uiText.getText (UiTextString::medium).capitalized ().c_str (), App::windowWidths[2], App::windowHeights[2]));
 	}
 	if (FLOAT_EQUALS (sliderValue, 0.75f)) {
-		return (StdString::createSprintf ("%s - %ix%i", App::getInstance ()->uiText.large.capitalized ().c_str (), App::windowWidths[3], App::windowHeights[3]));
+		return (StdString::createSprintf ("%s - %ix%i", App::getInstance ()->uiText.getText (UiTextString::large).capitalized ().c_str (), App::windowWidths[3], App::windowHeights[3]));
 	}
 	if (FLOAT_EQUALS (sliderValue, 1.0f)) {
-		return (StdString::createSprintf ("%s - %ix%i", App::getInstance ()->uiText.largest.capitalized ().c_str (), App::windowWidths[4], App::windowHeights[4]));
+		return (StdString::createSprintf ("%s - %ix%i", App::getInstance ()->uiText.getText (UiTextString::largest).capitalized ().c_str (), App::windowWidths[4], App::windowHeights[4]));
 	}
 
 	return (StdString (""));
@@ -248,19 +252,19 @@ StdString SettingsWindow::windowSizeSliderValueName (float sliderValue) {
 
 StdString SettingsWindow::textSizeSliderValueName (float sliderValue) {
 	if (FLOAT_EQUALS (sliderValue, 0.0f)) {
-		return (App::getInstance ()->uiText.smallest.capitalized ());
+		return (App::getInstance ()->uiText.getText (UiTextString::smallest).capitalized ());
 	}
 	if (FLOAT_EQUALS (sliderValue, 0.25f)) {
-		return (App::getInstance ()->uiText.small.capitalized ());
+		return (App::getInstance ()->uiText.getText (UiTextString::small).capitalized ());
 	}
 	if (FLOAT_EQUALS (sliderValue, 0.5f)) {
-		return (App::getInstance ()->uiText.medium.capitalized ());
+		return (App::getInstance ()->uiText.getText (UiTextString::medium).capitalized ());
 	}
 	if (FLOAT_EQUALS (sliderValue, 0.75f)) {
-		return (App::getInstance ()->uiText.large.capitalized ());
+		return (App::getInstance ()->uiText.getText (UiTextString::large).capitalized ());
 	}
 	if (FLOAT_EQUALS (sliderValue, 1.0f)) {
-		return (App::getInstance ()->uiText.largest.capitalized ());
+		return (App::getInstance ()->uiText.getText (UiTextString::largest).capitalized ());
 	}
 
 	return (StdString (""));

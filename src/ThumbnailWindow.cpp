@@ -51,12 +51,14 @@
 #include "UiConfiguration.h"
 #include "ThumbnailWindow.h"
 
-ThumbnailWindow::ThumbnailWindow (float thumbnailTimestamp, int sourceWidth, int sourceHeight, const StdString &sourceUrl, Sprite *loadingThumbnailSprite, int cardLayout, float maxMediaImageWidth)
+ThumbnailWindow::ThumbnailWindow (int thumbnailIndex, float thumbnailTimestamp, int sourceWidth, int sourceHeight, const StdString &sourceUrl, Sprite *loadingThumbnailSprite, int layoutType, float maxMediaImageWidth)
 : Panel ()
+, thumbnailIndex (thumbnailIndex)
 , thumbnailTimestamp (thumbnailTimestamp)
 , sourceWidth (sourceWidth)
 , sourceHeight (sourceHeight)
 , sourceUrl (sourceUrl)
+, isHighlighted (false)
 , loadingSprite (loadingThumbnailSprite)
 , mediaImage (NULL)
 , timestampLabel (NULL)
@@ -73,13 +75,13 @@ ThumbnailWindow::ThumbnailWindow (float thumbnailTimestamp, int sourceWidth, int
 	timestampLabel->zLevel = 1;
 	timestampLabel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	timestampLabel->setFillBg (true, 0.0f, 0.0f, 0.0f);
-	timestampLabel->setAlphaBlend (true, uiconfig->imageTextScrimAlpha);
+	timestampLabel->setAlphaBlend (true, uiconfig->scrimBackgroundAlpha);
 	timestampLabel->isVisible = false;
 	if (thumbnailTimestamp >= 0.0f) {
 		timestampLabel->setText (Util::getDurationString ((int64_t) thumbnailTimestamp, Util::HOURS));
 	}
 
-	setLayout (cardLayout, maxMediaImageWidth);
+	setLayout (layoutType, maxMediaImageWidth);
 }
 
 ThumbnailWindow::~ThumbnailWindow () {
@@ -103,13 +105,13 @@ ThumbnailWindow *ThumbnailWindow::castWidget (Widget *widget) {
 	return (ThumbnailWindow::isWidgetType (widget) ? (ThumbnailWindow *) widget : NULL);
 }
 
-void ThumbnailWindow::setLayout (int cardLayout, float maxImageWidth) {
+void ThumbnailWindow::setLayout (int layoutType, float maxImageWidth) {
 	float w, h;
 
-	if (cardLayout == layout) {
+	if (layoutType == layout) {
 		return;
 	}
-	layout = cardLayout;
+	layout = layoutType;
 	w = maxImageWidth;
 	h = sourceHeight;
 	h *= maxImageWidth;
@@ -119,10 +121,10 @@ void ThumbnailWindow::setLayout (int cardLayout, float maxImageWidth) {
 	mediaImage->setWindowSize (w, h);
 	mediaImage->reload ();
 
-	resetLayout ();
+	refreshLayout ();
 }
 
-void ThumbnailWindow::resetLayout () {
+void ThumbnailWindow::refreshLayout () {
 	float x, y;
 
 	x = 0.0f;
@@ -146,6 +148,24 @@ void ThumbnailWindow::resetLayout () {
 	}
 
 	resetSize ();
+}
+
+void ThumbnailWindow::setHighlighted (bool highlighted) {
+	UiConfiguration *uiconfig;
+
+	if (isHighlighted == highlighted) {
+		return;
+	}
+
+	uiconfig = &(App::getInstance ()->uiConfig);
+	isHighlighted = highlighted;
+	if (isHighlighted) {
+		timestampLabel->rotateTextColor (uiconfig->mediumSecondaryColor, uiconfig->shortColorRotateDuration);
+	}
+	else {
+		timestampLabel->rotateTextColor (uiconfig->inverseTextColor, uiconfig->shortColorRotateDuration);
+	}
+	refreshLayout ();
 }
 
 void ThumbnailWindow::doProcessMouseState (const Widget::MouseState &mouseState) {

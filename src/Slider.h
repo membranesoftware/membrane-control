@@ -45,6 +45,8 @@ public:
 	virtual ~Slider ();
 
 	// Read-only data members
+	bool isInverseColor;
+	float trackWidthScale;
 	float value;
 	float hoverValue;
 	float minValue;
@@ -52,8 +54,14 @@ public:
 	bool isHovering;
 	bool isDragging;
 
-	// Set the slider's value
-	void setValue (float sliderValue);
+	// Set the slider's inverse color option
+	void setInverseColor (bool inverse);
+
+	// Set the slider's track width scale factor
+	void setTrackWidthScale (float scale);
+
+	// Set the slider's value, optionally skipping any configured value change callback
+	void setValue (float sliderValue, bool shouldSkipChangeCallback = false);
 
 	// Set a callback function that should be invoked when the slider's value changes
 	void setValueChangeCallback (Widget::EventCallback callback, void *callbackData);
@@ -65,7 +73,7 @@ public:
 	void addSnapValue (float snapValue);
 
 	// Callback functions
-	static void createThumbTextureComplete (void *sliderPtr, const StdString &path, SDL_Surface *surface, SDL_Texture *texture);
+	static void createThumbTexture (void *sliderPtr);
 
 protected:
 	// Execute subclass-specific operations to update object state as appropriate for an elapsed millisecond time period and origin position
@@ -85,13 +93,16 @@ protected:
 
 private:
 	// Reset layout as appropriate for current state
-	void resetLayout ();
+	void refreshLayout ();
 
 	// Return the value indicated by the specified target after applying any configured snap positions
 	float getSnappedValue (float targetValue);
 
 	// Execute operations to populate thumbSprite with a texture for use in rendering the slider's thumb element
 	void loadThumbSprite ();
+
+	// Execute operations appropriate after thumb sprite load completes
+	void endLoadThumbSprite ();
 
 	float thumbSize;
 	Color thumbColor;

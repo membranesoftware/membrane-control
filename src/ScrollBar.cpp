@@ -97,7 +97,7 @@ ScrollBar::ScrollBar (float maxScrollTrackLength)
 		maxTrackLength = arrowPanel->height;
 	}
 
-	resetLayout ();
+	refreshLayout ();
 }
 
 ScrollBar::~ScrollBar () {
@@ -119,7 +119,7 @@ void ScrollBar::setPosition (float positionValue, bool shouldSkipCallback) {
 	}
 
 	scrollPosition = pos;
-	resetLayout ();
+	refreshLayout ();
 	if (positionChangeCallback && (! shouldSkipCallback)) {
 		positionChangeCallback (positionChangeCallbackData, this);
 	}
@@ -151,7 +151,7 @@ void ScrollBar::setScrollBounds (float scrollViewHeight, float scrollAreaHeight)
 		scrollPosition = maxScrollPosition;
 	}
 
-	resetLayout ();
+	refreshLayout ();
 }
 
 void ScrollBar::setMaxTrackLength (float maxScrollTrackLength) {
@@ -166,10 +166,10 @@ void ScrollBar::setMaxTrackLength (float maxScrollTrackLength) {
 	}
 
 	maxTrackLength = len;
-	resetLayout ();
+	refreshLayout ();
 }
 
-void ScrollBar::resetLayout () {
+void ScrollBar::refreshLayout () {
 	float y;
 
 	setFixedSize (true, trackWidth, trackLength);
@@ -249,10 +249,10 @@ void ScrollBar::doProcessMouseState (const Widget::MouseState &mouseState) {
 	}
 
 	if (mouseState.isEntered || isFollowingMouse) {
-		arrowPanel->bgColor.rotate (uiconfig->lightPrimaryColor, uiconfig->colorRotateDuration);
+		arrowPanel->bgColor.rotate (uiconfig->lightPrimaryColor, uiconfig->shortColorRotateDuration);
 	}
 	else {
-		arrowPanel->bgColor.rotate (uiconfig->mediumPrimaryColor, uiconfig->colorRotateDuration);
+		arrowPanel->bgColor.rotate (uiconfig->mediumPrimaryColor, uiconfig->shortColorRotateDuration);
 	}
 }
 
@@ -274,7 +274,7 @@ void ScrollBar::doRefresh () {
 	if (maxTrackLength < arrowPanel->height) {
 		maxTrackLength = arrowPanel->height;
 	}
-	resetLayout ();
+	refreshLayout ();
 }
 
 void ScrollBar::doResetInputState () {

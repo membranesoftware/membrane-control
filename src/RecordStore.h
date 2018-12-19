@@ -48,8 +48,8 @@ public:
 	RecordStore ();
 	~RecordStore ();
 
-	// Copy the provided Json object and add the copy to the store as a record under the specified record ID
-	void addRecord (const StdString &recordId, Json *record);
+	// Copy the provided Json object and add the copy to the record store. If recordId is not provided, the command must include a params.id field for use as a record ID.
+	void addRecord (Json *record, const StdString &recordId = StdString (""));
 
 	// Remove all records from the store
 	void clear ();
@@ -72,12 +72,15 @@ public:
 	// Find records using a match predicate function and insert them into the provided list, optionally clearing the list before doing so. This method should be invoked only while the store is locked; if Json objects are returned by this method, they remain valid only as long as the store lock is held.
 	void findRecords (RecordStore::FindMatchFunction matchFn, void *matchData, std::list<Json *> *destList, bool shouldClear = false);
 
+	// Find records using a match predicate function invoke the provided process function for each one. This method should be invoked only while the store is locked.
+	void processRecords (RecordStore::FindMatchFunction matchFn, void *matchData, RecordStore::ProcessAgentRecordFunction processFn, void *processFnData = NULL);
+
 	// Find AgentStatus records containing a status field of the specified name and invoke the provided function for each one. This method should be invoked only while the store is locked.
 	void processAgentRecords (const char *agentStatusFieldName, RecordStore::ProcessAgentRecordFunction processFn, void *processFnData = NULL);
 	void processAgentRecords (const StdString &agentStatusFieldName, RecordStore::ProcessAgentRecordFunction processFn, void *processFnData = NULL);
 
 	// Find records with the specified command ID and a non-empty record ID value, and invoke the provided function for each one. This method should be invoked only while the store is locked.
-	void processRecords (int commandId, RecordStore::ProcessRecordFunction processFn, void *processFnData = NULL);
+	void processCommandRecords (int commandId, RecordStore::ProcessRecordFunction processFn, void *processFnData = NULL);
 
 	// Clear a HashMap and populate it with name / ID pairs for AgentStatus records containing the specified status object. This method should be invoked only while the store is locked.
 	void populateAgentMap (HashMap *destMap, const char *statusFieldName);
@@ -85,6 +88,9 @@ public:
 
 	// Remove the record with the specified ID
 	void removeRecord (const StdString &recordId);
+
+	// Remove all records with the specified command ID
+	void removeRecords (int commandId);
 
 	// Return the number of AgentStatus records matching the provided function, with an optional maxRecordAge value specified in milliseconds. This method should be invoked only while the store is locked.
 	int countRecords (RecordStore::FindMatchFunction matchFn, void *matchData, int64_t maxRecordAge = 0);

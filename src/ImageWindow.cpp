@@ -54,11 +54,10 @@ ImageWindow::ImageWindow (Image *image)
 , imageLoadingSprite (NULL)
 , isImageResourceLoaded (false)
 , isLoadingImageResource (false)
+, imageResourceData (NULL)
 , isImageUrlLoaded (false)
 , isLoadingImageUrl (false)
 , isImageUrlLoadDisabled (false)
-, loadCallback (NULL)
-, loadCallbackData (NULL)
 {
 	if (image) {
 		addWidget (image);
@@ -66,7 +65,10 @@ ImageWindow::ImageWindow (Image *image)
 }
 
 ImageWindow::~ImageWindow () {
-
+	if (imageResourceData) {
+		imageResourceData->release ();
+		imageResourceData = NULL;
+	}
 }
 
 StdString ImageWindow::toStringDetail () {
@@ -85,7 +87,7 @@ StdString ImageWindow::toStringDetail () {
 
 void ImageWindow::setPadding (float widthPadding, float heightPadding) {
 	Panel::setPadding (widthPadding, heightPadding);
-	resetLayout ();
+	refreshLayout ();
 }
 
 bool ImageWindow::isLoaded () {
@@ -96,9 +98,26 @@ bool ImageWindow::isLoaded () {
 	return (isImageResourceLoaded || isImageUrlLoaded);
 }
 
-void ImageWindow::setLoadCallback (Widget::EventCallback callback, void *callbackData) {
-	loadCallback = callback;
-	loadCallbackData = callbackData;
+bool ImageWindow::shouldShowUrlImage () {
+	App *app;
+	float w, h;
+
+	if (imageUrl.empty () || isImageUrlLoadDisabled || (! isVisible)) {
+		return (false);
+	}
+
+	app = App::getInstance ();
+
+	// TODO: Possibly use a different draw boundary here (currently using 2x the app window dimensions)
+	w = ((float) app->windowWidth) * 2.0f;
+	h = ((float) app->windowHeight) * 2.0f;
+	if ((drawX >= -w) && (drawX <= w)) {
+		if ((drawY >= -h) && (drawY <= h)) {
+			return (true);
+		}
+	}
+
+	return (false);
 }
 
 void ImageWindow::setWindowSize (float windowSizeWidth, float windowSizeHeight) {
@@ -106,7 +125,7 @@ void ImageWindow::setWindowSize (float windowSizeWidth, float windowSizeHeight) 
 	windowWidth = windowSizeWidth;
 	windowHeight = windowSizeHeight;
 	setFixedSize (true, windowWidth, windowHeight);
-	resetLayout ();
+	refreshLayout ();
 }
 
 void ImageWindow::setImage (Image *nextImage) {
@@ -117,7 +136,7 @@ void ImageWindow::setImage (Image *nextImage) {
 	if (image) {
 		addWidget (image);
 	}
-	resetLayout ();
+	refreshLayout ();
 }
 
 void ImageWindow::setFrame (int frame) {
@@ -126,7 +145,7 @@ void ImageWindow::setFrame (int frame) {
 	}
 
 	image->setFrame (frame);
-	resetLayout ();
+	refreshLayout ();
 }
 
 void ImageWindow::setScale (float scale) {
@@ -135,7 +154,7 @@ void ImageWindow::setScale (float scale) {
 	}
 
 	image->setScale (scale);
-	resetLayout ();
+	refreshLayout ();
 }
 
 void ImageWindow::setLoadUrl (const StdString &loadUrl, Sprite *loadingSprite) {
@@ -176,7 +195,7 @@ void ImageWindow::reload () {
 	}
 }
 
-void ImageWindow::resetLayout () {
+void ImageWindow::refreshLayout () {
 	if (isWindowSizeEnabled) {
 		if (image) {
 			image->position.assign ((windowWidth / 2.0f) - (image->width / 2.0f), (windowHeight / 2.0f) - (image->height / 2.0f));
@@ -191,14 +210,10 @@ void ImageWindow::resetLayout () {
 }
 
 void ImageWindow::doUpdate (int msElapsed, float originX, float originY) {
-	App *app;
-	SDL_Surface *surface;
-	float w, h;
 	bool shouldload;
 
 	Panel::doUpdate (msElapsed, originX, originY);
 
-	app = App::getInstance ();
 	if (! imageResourcePath.empty ()) {
 		shouldload = false;
 		if ((! isImageResourceLoaded) && (! isLoadingImageResource)) {
@@ -206,37 +221,18 @@ void ImageWindow::doUpdate (int msElapsed, float originX, float originY) {
 		}
 
 		if (shouldload) {
-			surface = app->resource.loadSurface (imageResourcePath);
-			if (! surface) {
-				imageResourcePath.assign ("");
-			}
-			else {
-				isLoadingImageResource = true;
-				retain ();
-				app->createResourceTexture (imageResourcePath, surface, ImageWindow::createResourceTextureComplete, this);
-			}
+			loadImageResource ();
 		}
 	}
 	else if (! imageUrl.empty ()) {
-		shouldload = false;
-		if (isVisible && (! isImageUrlLoadDisabled)) {
-			// TODO: Possibly use a different draw boundary here (currently using 2x the app window dimensions)
-			w = ((float) app->windowWidth) * 2.0f;
-			h = ((float) app->windowHeight) * 2.0f;
-			if ((drawX >= -w) && (drawX <= w)) {
-				if ((drawY >= -h) && (drawY <= h)) {
-					shouldload = true;
-				}
-			}
-		}
-
+		shouldload = shouldShowUrlImage ();
 		if (shouldload) {
 			if ((! isImageUrlLoaded) && (! isLoadingImageUrl)) {
 				requestImage ();
 			}
 		}
 		else {
-			if (isImageUrlLoaded) {
+			if (isImageUrlLoaded && (! isLoadingImageUrl)) {
 				if (imageLoadingSprite) {
 					setImage (new Image (imageLoadingSprite));
 				}
@@ -246,32 +242,60 @@ void ImageWindow::doUpdate (int msElapsed, float originX, float originY) {
 	}
 }
 
-void ImageWindow::createResourceTextureComplete (void *windowPtr, const StdString &path, SDL_Surface *surface, SDL_Texture *texture) {
+void ImageWindow::loadImageResource () {
+	App *app;
+
+	if (isLoadingImageResource || imageResourcePath.empty ()) {
+		return;
+	}
+	app = App::getInstance ();
+	isLoadingImageResource = true;
+	retain ();
+
+	app->addRenderTask (ImageWindow::createResourcePathTexture, this);
+}
+
+void ImageWindow::endLoadImageResource (bool clearResourcePath) {
+	if (clearResourcePath) {
+		imageResourcePath.assign ("");
+	}
+	isLoadingImageResource = false;
+	release ();
+}
+
+void ImageWindow::createResourcePathTexture (void *windowPtr) {
 	ImageWindow *window;
+	App *app;
+	SDL_Surface *surface;
+	SDL_Texture *texture;
 	Sprite *sprite;
 
 	window = (ImageWindow *) windowPtr;
+	app = App::getInstance ();
 	if (window->isDestroyed) {
-		window->isLoadingImageResource = false;
-		window->release ();
+		window->endLoadImageResource ();
 		return;
 	}
-	if (texture) {
-		sprite = new Sprite ();
-		sprite->addTexture (texture, path);
-		window->setImage (new Image (sprite, 0, true));
-		window->isImageResourceLoaded = true;
-		window->resetLayout ();
-		if (window->loadCallback) {
-			window->loadCallback (window->loadCallbackData, window);
-		}
-	}
-	if (surface) {
-		SDL_FreeSurface (surface);
+
+	surface = app->resource.loadSurface (window->imageResourcePath);
+	if (! surface) {
+		window->endLoadImageResource (true);
+		return;
 	}
 
-	window->isLoadingImageResource = false;
-	window->release ();
+	texture = app->resource.createTexture (window->imageResourcePath, surface);
+	SDL_FreeSurface (surface);
+	if (! texture) {
+		window->endLoadImageResource (true);
+		return;
+	}
+
+	sprite = new Sprite ();
+	sprite->addTexture (texture, window->imageResourcePath);
+	window->setImage (new Image (sprite, 0, true));
+	window->isImageResourceLoaded = true;
+	window->refreshLayout ();
+	window->endLoadImageResource ();
 }
 
 void ImageWindow::requestImage () {
@@ -283,54 +307,72 @@ void ImageWindow::requestImage () {
 
 	app = App::getInstance ();
 	isLoadingImageUrl = true;
+
 	retain ();
 	app->network.sendHttpGet (imageUrl, ImageWindow::getImageComplete, this);
 }
 
-void ImageWindow::getImageComplete (void *windowPtr, const StdString &targetUrl, int statusCode, Buffer *responseData) {
+void ImageWindow::endRequestImage (bool disableLoad) {
+	isImageUrlLoadDisabled = disableLoad;
+	if (imageResourceData) {
+		imageResourceData->release ();
+		imageResourceData = NULL;
+	}
+	isLoadingImageUrl = false;
+	release ();
+}
+
+void ImageWindow::getImageComplete (void *windowPtr, const StdString &targetUrl, int statusCode, SharedBuffer *responseData) {
+	App *app;
+	ImageWindow *window;
+
+	app = App::getInstance ();
+	window = (ImageWindow *) windowPtr;
+	if (window->isDestroyed || (! window->shouldShowUrlImage ())) {
+		window->endRequestImage ();
+		return;
+	}
+
+	if ((! responseData) || responseData->empty ()) {
+		Log::write (Log::WARNING, "Failed to get thumbnail image; targetUrl=\"%s\" statusCode=%i err=\"No response data\"", targetUrl.c_str (), statusCode);
+		window->endRequestImage (true);
+		return;
+	}
+
+	if (window->imageResourceData) {
+		window->imageResourceData->release ();
+	}
+	window->imageResourceData = responseData;
+	window->imageResourceData->retain ();
+	app->addRenderTask (ImageWindow::createResourceDataTexture, window);
+}
+
+void ImageWindow::createResourceDataTexture (void *windowPtr) {
 	App *app;
 	ImageWindow *window;
 	SDL_RWops *rw;
 	SDL_Surface *surface, *scaledsurface;
-	uint8_t *data;
-	int datalen;
-
-	window = (ImageWindow *) windowPtr;
-	if (window->isDestroyed) {
-		window->isLoadingImageUrl = false;
-		window->release ();
-		return;
-	}
+	SDL_Texture *texture;
+	Sprite *sprite;
+	StdString path;
 
 	app = App::getInstance ();
-	data = NULL;
-	datalen = -1;
-	if (responseData) {
-		responseData->getData (&data, &datalen);
-	}
-
-	if ((! data) || (datalen <= 0)) {
-		Log::write (Log::WARNING, "Failed to get thumbnail image; targetUrl=\"%s\" statusCode=%i err=\"No response data\"", targetUrl.c_str (), statusCode);
-		window->isImageUrlLoadDisabled = true;
-		window->isLoadingImageUrl = false;
-		window->release ();
+	window = (ImageWindow *) windowPtr;
+	if (window->isDestroyed || (! window->shouldShowUrlImage ()) || (! window->imageResourceData)) {
+		window->endRequestImage ();
 		return;
 	}
 
-	rw = SDL_RWFromConstMem (data, datalen);
+	rw = SDL_RWFromConstMem (window->imageResourceData->data, window->imageResourceData->length);
 	if (! rw) {
-		Log::write (Log::WARNING, "Failed to get thumbnail image; targetUrl=\"%s\" statusCode=%i err=\"SDL_RWFromConstMem: %s\"", targetUrl.c_str (), statusCode, SDL_GetError ());
-		window->isImageUrlLoadDisabled = true;
-		window->isLoadingImageUrl = false;
-		window->release ();
+		Log::write (Log::WARNING, "Failed to create image window texture; err=\"SDL_RWFromConstMem: %s\"", SDL_GetError ());
+		window->endRequestImage (true);
 		return;
 	}
 	surface = IMG_Load_RW (rw, 1);
 	if (! surface) {
-		Log::write (Log::WARNING, "Failed to get thumbnail image; targetUrl=\"%s\" statusCode=%i err=\"IMG_Load_RW: %s\"", targetUrl.c_str (), statusCode, IMG_GetError ());
-		window->isImageUrlLoadDisabled = true;
-		window->isLoadingImageUrl = false;
-		window->release ();
+		Log::write (Log::WARNING, "Failed to create image window texture; err=\"IMG_Load_RW: %s\"", IMG_GetError ());
+		window->endRequestImage (true);
 		return;
 	}
 
@@ -340,40 +382,24 @@ void ImageWindow::getImageComplete (void *windowPtr, const StdString &targetUrl,
 	}
 	SDL_FreeSurface (surface);
 	if (! scaledsurface) {
-		Log::write (Log::WARNING, "Failed to get thumbnail image; targetUrl=\"%s\" statusCode=%i err=\"Failed to resize surface: %s\"", targetUrl.c_str (), statusCode, SDL_GetError ());
-		window->isImageUrlLoadDisabled = true;
-		window->isLoadingImageUrl = false;
-		window->release ();
+		Log::write (Log::WARNING, "Failed to create image window texture; err=\"SDL_BlitScaled: %s\"", SDL_GetError ());
+		window->endRequestImage (true);
 		return;
 	}
 
-	app->createResourceTexture (StdString::createSprintf ("*_ImageWindow_%llx_%llx", (long long int) window->id, (long long int) app->getUniqueId ()), scaledsurface, ImageWindow::createUrlTextureComplete, window);
-}
-
-void ImageWindow::createUrlTextureComplete (void *windowPtr, const StdString &path, SDL_Surface *surface, SDL_Texture *texture) {
-	ImageWindow *window;
-	Sprite *sprite;
-
-	window = (ImageWindow *) windowPtr;
-	if (window->isDestroyed) {
-		window->isLoadingImageUrl = false;
-		window->release ();
+	path.sprintf ("*_ImageWindow_%llx_%llx", (long long int) window->id, (long long int) app->getUniqueId ());
+	texture = app->resource.createTexture (path, scaledsurface);
+	SDL_FreeSurface (scaledsurface);
+	if (! texture) {
+		window->endRequestImage (true);
 		return;
 	}
-	if (texture) {
-		sprite = new Sprite ();
-		sprite->addTexture (texture, path);
-		window->setImage (new Image (sprite, 0, true));
-		window->isImageUrlLoaded = true;
-		window->resetLayout ();
-		if (window->loadCallback) {
-			window->loadCallback (window->loadCallbackData, window);
-		}
-	}
-	if (surface) {
-		SDL_FreeSurface (surface);
-	}
 
-	window->isLoadingImageUrl = false;
-	window->release ();
+	sprite = new Sprite ();
+	sprite->addTexture (texture, path);
+	window->setImage (new Image (sprite, 0, true));
+	window->isImageUrlLoaded = true;
+
+	window->refreshLayout ();
+	window->endRequestImage ();
 }

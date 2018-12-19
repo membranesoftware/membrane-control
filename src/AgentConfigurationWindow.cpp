@@ -30,7 +30,6 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include <vector>
 #include "Result.h"
 #include "Log.h"
 #include "StdString.h"
@@ -44,36 +43,26 @@
 #include "UiConfiguration.h"
 #include "Panel.h"
 #include "Label.h"
-#include "HashMap.h"
 #include "Button.h"
-#include "TextArea.h"
+#include "TextField.h"
 #include "Toggle.h"
 #include "ToggleWindow.h"
+#include "Slider.h"
+#include "SliderWindow.h"
 #include "Image.h"
 #include "Json.h"
 #include "SystemInterface.h"
-#include "IconLabelWindow.h"
-#include "ActionWindow.h"
-#include "HyperlinkWindow.h"
-#include "LinkUi.h"
 #include "AgentConfigurationWindow.h"
 
-AgentConfigurationWindow::AgentConfigurationWindow (const StdString &serverHostname, SpriteGroup *linkUiSpriteGroup)
+const int AgentConfigurationWindow::mediaScanPeriods[] = { 0, 24 * 3600, 4 * 3600, 3600, 900, 60 };
+
+AgentConfigurationWindow::AgentConfigurationWindow (const StdString &agentId)
 : Panel ()
-, serverHostname (serverHostname)
-, serverTcpPort (SystemInterface::Constant_DefaultTcpPort)
-, spriteGroup (linkUiSpriteGroup)
+, agentId (agentId)
 , iconImage (NULL)
-, nameLabel (NULL)
-, descriptionText (NULL)
-, helpLinkWindow (NULL)
-, updateLinkWindow (NULL)
-, statsWindow (NULL)
-, configureButton (NULL)
-, configureCallback (NULL)
-, configureCallbackData (NULL)
-, configureSuccessCallback (NULL)
-, configureSuccessCallbackData (NULL)
+, titleLabel (NULL)
+, actionWindow (NULL)
+, applyButton (NULL)
 {
 	UiConfiguration *uiconfig;
 
@@ -82,7 +71,7 @@ AgentConfigurationWindow::AgentConfigurationWindow (const StdString &serverHostn
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
 	populate ();
-	resetLayout ();
+	refreshLayout ();
 }
 
 AgentConfigurationWindow::~AgentConfigurationWindow () {
@@ -90,20 +79,7 @@ AgentConfigurationWindow::~AgentConfigurationWindow () {
 }
 
 StdString AgentConfigurationWindow::toStringDetail () {
-  return (StdString (" AgentConfigurationWindow"));
-}
-
-bool AgentConfigurationWindow::isWidgetType (Widget *widget) {
-	if (! widget) {
-		return (false);
-	}
-
-	// This operation references output from the toStringDetail method, above
-	return (widget->toString ().contains (" AgentConfigurationWindow"));
-}
-
-AgentConfigurationWindow *AgentConfigurationWindow::castWidget (Widget *widget) {
-	return (AgentConfigurationWindow::isWidgetType (widget) ? (AgentConfigurationWindow *) widget : NULL);
+	return (StdString (" AgentConfigurationWindow"));
 }
 
 void AgentConfigurationWindow::populate () {
@@ -113,429 +89,341 @@ void AgentConfigurationWindow::populate () {
 	uiconfig = &(App::getInstance ()->uiConfig);
 	uitext = &(App::getInstance ()->uiText);
 
-	iconImage = (Image *) addWidget (new Image (spriteGroup->getSprite (LinkUi::SERVER_CONFIGURE_ICON)));
-	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::HEADLINE, uiconfig->primaryTextColor));
+	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::CONFIGURATION_ICON)));
+	titleLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::configuration).capitalized (), UiConfiguration::HEADLINE, uiconfig->primaryTextColor));
 
-	descriptionText = (TextArea *) addWidget (new TextArea (UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
-	descriptionText->setPadding (uiconfig->paddingSize, 0.0f);
-	descriptionText->isVisible = false;
-
-	helpLinkWindow = (HyperlinkWindow *) addWidget (new HyperlinkWindow ());
-	helpLinkWindow->isVisible = false;
-
-	updateLinkWindow = (HyperlinkWindow *) addWidget (new HyperlinkWindow ());
-	updateLinkWindow->isVisible = false;
-
-	statsWindow = (StatsWindow *) addWidget (new StatsWindow ());
-	statsWindow->setPadding (uiconfig->paddingSize, 0.0f);
-	statsWindow->setItem (uitext->version.capitalized (), "");
-	statsWindow->isVisible = false;
-
-	configureButton = (Button *) addWidget (new Button (uitext->configure.uppercased ()));
-	configureButton->setMouseClickCallback (AgentConfigurationWindow::configureButtonClicked, this);
-	configureButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
-	configureButton->setMouseHoverTooltip (uitext->configureTooltip);
-	configureButton->isVisible = false;
+	applyButton = (Button *) addWidget (new Button (uitext->getText (UiTextString::apply).uppercased ()));
+	applyButton->setMouseClickCallback (AgentConfigurationWindow::applyButtonClicked, this);
+	applyButton->setTextColor (uiconfig->raisedButtonTextColor);
+	applyButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
+	applyButton->isVisible = false;
 }
 
-void AgentConfigurationWindow::setConfigureCallback (Widget::EventCallback callback, void *callbackData) {
-	configureCallback = callback;
-	configureCallbackData = callbackData;
-}
-
-void AgentConfigurationWindow::setConfigureSuccessCallback (Widget::EventCallback callback, void *callbackData) {
-	configureSuccessCallback = callback;
-	configureSuccessCallbackData = callbackData;
-}
-
-void AgentConfigurationWindow::setUninstalled () {
+void AgentConfigurationWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
-	UiText *uitext;
-
-	uiconfig = &(App::getInstance ()->uiConfig);
-	uitext = &(App::getInstance ()->uiText);
-	configureButton->isVisible = false;
-	statsWindow->isVisible = false;
-	updateLinkWindow->isVisible = false;
-
-	nameLabel->setText (uitext->agentConfigurationUninstalledTitle.capitalized ());
-
-	helpLinkWindow->setLink (uitext->learnMore.capitalized (), Util::getApplicationUrl ("membrane-server"));
-	helpLinkWindow->isVisible = true;
-
-	descriptionText->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	descriptionText->setText (uitext->agentConfigurationUninstalledDescription);
-	descriptionText->isVisible = true;
-
-	resetLayout ();
-}
-
-void AgentConfigurationWindow::setTitle (const StdString &titleText) {
-	nameLabel->setText (titleText);
-	resetLayout ();
-}
-
-void AgentConfigurationWindow::setStopped () {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
-	StdString url;
-
-	uiconfig = &(App::getInstance ()->uiConfig);
-	uitext = &(App::getInstance ()->uiText);
-	configureButton->isVisible = false;
-	statsWindow->isVisible = false;
-	updateLinkWindow->isVisible = false;
-
-	nameLabel->setText (uitext->agentConfigurationStoppedTitle.capitalized ());
-
-	url.assign (Util::getHelpUrl ("start-membrane-server-raspberry-pi"));
-#if PLATFORM_WINDOWS
-	url.assign (Util::getHelpUrl ("start-membrane-server-windows"));
-#endif
-#if PLATFORM_MACOS
-	url.assign (Util::getHelpUrl ("start-membrane-server-macos"));
-#endif
-	helpLinkWindow->setLink (uitext->agentConfigurationStoppedLinkText, url);
-	helpLinkWindow->isVisible = true;
-
-	descriptionText->setPadding (uiconfig->paddingSize, 0.0f);
-	descriptionText->setText (uitext->agentConfigurationStoppedDescription);
-	descriptionText->isVisible = true;
-
-	resetLayout ();
-}
-
-void AgentConfigurationWindow::setSystemAgentConfiguration (HashMap *agentConfig, const StdString &agentId) {
-	UiText *uitext;
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::getInstance ()->uiConfig);
-	uitext = &(App::getInstance ()->uiText);
-
-	serverTcpPort = agentConfig->find (App::prefsTcpPort, SystemInterface::Constant_DefaultTcpPort);
-	nameLabel->setText (agentConfig->find (App::prefsApplicationName, "Membrane Server"));
-	descriptionText->setPadding (uiconfig->paddingSize, 0.0f);
-	descriptionText->setText (uitext->agentConfigurationActiveDescription);
-	descriptionText->isVisible = true;
-
-	resetLayout ();
-}
-
-void AgentConfigurationWindow::setAgentStatus (Json *agentStatusCommand) {
-	SystemInterface *interface;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
-	StdString version, platform, updateurl;
-
-	interface = &(App::getInstance ()->systemInterface);
-	uiconfig = &(App::getInstance ()->uiConfig);
-	uitext = &(App::getInstance ()->uiText);
-	agentId.assign (interface->getCommandAgentId (agentStatusCommand));
-
-	helpLinkWindow->isVisible = false;
-
-	nameLabel->setText (interface->getCommandStringParam (agentStatusCommand, "displayName", ""));
-
-	descriptionText->setPadding (uiconfig->paddingSize, 0.0f);
-	descriptionText->setText (interface->getCommandStringParam (agentStatusCommand, "applicationName", ""));
-	descriptionText->isVisible = true;
-
-	version = interface->getCommandStringParam (agentStatusCommand, "version", "");
-	if (! version.empty ()) {
-		platform = interface->getCommandStringParam (agentStatusCommand, "platform", "");
-		if (! platform.empty ()) {
-			version.appendSprintf ("_%s", platform.c_str ());
-			updateurl = Util::getUpdateUrl (version);
-		}
-		statsWindow->setItem (uitext->version.capitalized (), version);
-	}
-	statsWindow->isVisible = true;
-
-	if (updateurl.empty ()) {
-		updateLinkWindow->isVisible = false;
-	}
-	else {
-		updateLinkWindow->setLink (uitext->checkForUpdates.capitalized (), updateurl);
-		updateLinkWindow->isVisible = true;
-	}
-
-	resetLayout ();
-}
-
-void AgentConfigurationWindow::setAgentConfiguration (Json *agentConfigurationCommand) {
-	SystemInterface *interface;
-	UiText *uitext;
-	Json cfg;
-
-	interface = &(App::getInstance ()->systemInterface);
-	uitext = &(App::getInstance ()->uiText);
-
-	helpLinkWindow->isVisible = false;
-
-	if (agentConfiguration.copy (agentConfigurationCommand) != Result::SUCCESS) {
-		statsWindow->isVisible = false;
-		descriptionText->isVisible = false;
-	}
-	else {
-		nameLabel->setText (interface->getCommandStringParam (&agentConfiguration, "displayName", ""));
-
-		statsWindow->setItem (uitext->enabled.capitalized (), interface->getCommandBooleanParam (&agentConfiguration, "isEnabled", true) ? uitext->yes.capitalized () : uitext->no.capitalized ());
-		// TODO: Show description text for each stats item
-		if (interface->getCommandObjectParam (&agentConfiguration, "mediaServerConfiguration", &cfg)) {
-			statsWindow->setItem (uitext->sourceMediaPath.capitalized (), cfg.getString ("mediaPath", ""));
-			statsWindow->setItem (uitext->mediaDataPath.capitalized (), cfg.getString ("dataPath", ""));
-			statsWindow->setItem (uitext->mediaScanPeriod.capitalized (), StdString::createSprintf ("%i", cfg.getNumber ("scanPeriod", (int) 0)));
-		}
-		if (interface->getCommandObjectParam (&agentConfiguration, "streamServerConfiguration", &cfg)) {
-			statsWindow->setItem (uitext->streamDataPath.capitalized (), cfg.getString ("dataPath", ""));
-		}
-
-		statsWindow->isVisible = true;
-	}
-
-	configureButton->isVisible = true;
-	resetLayout ();
-}
-
-void AgentConfigurationWindow::resetLayout () {
-	UiConfiguration *uiconfig;
-	float x, y;
+	float x, y, x0, x2, y2;
 
 	uiconfig = &(App::getInstance ()->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
+	x0 = x;
+	x2 = 0.0f;
+	y2 = 0.0f;
 
-	iconImage->position.assign (x, y);
-	x += iconImage->width + uiconfig->marginSize;
-	nameLabel->position.assign (x, y + (iconImage->height / 2.0f) - (nameLabel->height / 2.0f));
+	iconImage->flowRight (&x, y, &x2, &y2);
+	titleLabel->flowDown (x, &y, &x2, &y2);
 
-	x = widthPadding;
-	y += iconImage->height;
-
-	if (descriptionText->isVisible) {
-		descriptionText->position.assign (x, y);
-		y += descriptionText->height + uiconfig->marginSize;
+	x2 = 0.0f;
+	x = x0;
+	y = y2 + uiconfig->marginSize;
+	if (actionWindow) {
+		actionWindow->flowDown (x, &y, &x2, &y2);
+		y = y2 + uiconfig->marginSize;
 	}
-	if (statsWindow->isVisible) {
-		statsWindow->position.assign (x, y);
-		y += statsWindow->height + uiconfig->marginSize;
-	}
-	if (helpLinkWindow->isVisible) {
-		helpLinkWindow->position.assign (x, helpLinkWindow->getLinePosition (y));
-		y += helpLinkWindow->height + uiconfig->marginSize;
-	}
-	if (updateLinkWindow->isVisible) {
-		updateLinkWindow->position.assign (x, updateLinkWindow->getLinePosition (y));
-		y += updateLinkWindow->height + uiconfig->marginSize;
-	}
-	if (configureButton->isVisible) {
-		configureButton->position.assign (x, y);
-		y += configureButton->height + uiconfig->marginSize;
+	if (applyButton->isVisible) {
+		applyButton->flowDown (x, &y, &x2, &y2);
 	}
 
 	resetSize ();
 
 	x = width - widthPadding;
-	if (helpLinkWindow->isVisible) {
-		x -= helpLinkWindow->width;
-		helpLinkWindow->position.assignX (x);
-		x -= uiconfig->marginSize;
-	}
-
-	x = width - widthPadding;
-	if (updateLinkWindow->isVisible) {
-		x -= updateLinkWindow->width;
-		updateLinkWindow->position.assignX (x);
-		x -= uiconfig->marginSize;
-	}
-
-	x = width - widthPadding;
-	if (configureButton->isVisible) {
-		x -= configureButton->width;
-		configureButton->position.assignX (x);
-		x -= uiconfig->marginSize;
+	if (applyButton->isVisible) {
+		applyButton->flowLeft (&x);
 	}
 }
 
-void AgentConfigurationWindow::configureButtonClicked (void *windowPtr, Widget *widgetPtr) {
-	AgentConfigurationWindow *window;
-
-	window = (AgentConfigurationWindow *) windowPtr;
-	if (window->configureCallback) {
-		window->configureCallback (window->configureCallbackData, window);
-	}
-}
-
-ActionWindow *AgentConfigurationWindow::createConfigureActionWindow () {
-	UiText *uitext;
+void AgentConfigurationWindow::syncRecordStore (RecordStore *store) {
 	SystemInterface *interface;
-	ActionWindow *action;
-	Json cfg;
+	Json *record;
 
-	uitext = &(App::getInstance ()->uiText);
 	interface = &(App::getInstance ()->systemInterface);
-	action = new ActionWindow (StdString::createSprintf ("%s: %s", uitext->configure.capitalized ().c_str (), nameLabel->text.c_str ()), uitext->save.uppercased ());
-	action->sourceWidget.assign (this);
-
-	action->addToggleOption (uitext->enabled.capitalized (), interface->getCommandBooleanParam (&agentConfiguration, "isEnabled", true));
-	action->addTextFieldOption (uitext->displayName.capitalized (), StdString (""), interface->getCommandStringParam (&agentConfiguration, "displayName", ""));
-
-	// TODO: Show description text for each option
-	if (interface->getCommandObjectParam (&agentConfiguration, "mediaServerConfiguration", &cfg)) {
-		action->addTextFieldOption (uitext->sourceMediaPath.capitalized (), StdString (""), cfg.getString ("mediaPath", ""));
-		action->addTextFieldOption (uitext->mediaDataPath.capitalized (), StdString (""), cfg.getString ("dataPath", ""));
-		action->addTextFieldOption (uitext->mediaScanPeriod.capitalized (), StdString (""), StdString::createSprintf ("%i", cfg.getNumber ("scanPeriod", (int) 0)));
-	}
-	if (interface->getCommandObjectParam (&agentConfiguration, "streamServerConfiguration", &cfg)) {
-		action->addTextFieldOption (uitext->streamDataPath.capitalized (), StdString (""), cfg.getString ("dataPath", ""));
+	record = store->findRecord (agentId, SystemInterface::Command_AgentStatus);
+	if (! record) {
+		return;
 	}
 
-	return (action);
+	agentPlatform = interface->getCommandStringParam (record, "platform", "");
+	Panel::syncRecordStore (store);
 }
 
-void AgentConfigurationWindow::invokeUpdateAgentConfiguration (ActionWindow *action) {
+void AgentConfigurationWindow::loadConfiguration () {
 	App *app;
-	UiText *uitext;
-	SystemInterface *interface;
-	Json *params, *agentconfig, *cfg, *cmd;
+	int result;
+
+	if (isWaiting) {
+		return;
+	}
+
+	app = App::getInstance ();
+	retain ();
+	result = app->agentControl.invokeCommand (agentId, app->createCommand ("GetAgentConfiguration", SystemInterface::Constant_DefaultCommandType), AgentConfigurationWindow::invokeGetAgentConfigurationComplete, this);
+	if (result != Result::SUCCESS) {
+		release ();
+		Log::write (Log::DEBUG, "Failed to invoke GetAgentConfiguration command; err=%i agentId=\"%s\"", result, agentId.c_str ());
+		app->showSnackbar (app->uiText.getText (UiTextString::internalError));
+		return;
+	}
+	setWaiting (true);
+}
+
+void AgentConfigurationWindow::invokeGetAgentConfigurationComplete (void *windowPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand) {
+	App *app;
+	AgentConfigurationWindow *window;
 	int result;
 
 	app = App::getInstance ();
-	uitext = &(app->uiText);
-	interface = &(app->systemInterface);
-	params = new Json ();
+	window = (AgentConfigurationWindow *) windowPtr;
+	if (window->isDestroyed) {
+		window->release ();
+		return;
+	}
 
+	if (jobResult != Result::SUCCESS) {
+		Log::write (Log::DEBUG, "Failed to invoke GetAgentConfiguration command; err=%i agentId=\"%s\"", jobResult, agentId.c_str ());
+		app->showSnackbar (app->uiText.getText (UiTextString::getAgentConfigurationServerContactError));
+	}
+	else {
+		result = window->populateConfiguration (responseCommand);
+		if (result != Result::SUCCESS) {
+			Log::write (Log::DEBUG, "Failed to invoke GetAgentConfiguration command; err=%i agentId=\"%s\"", result, agentId.c_str ());
+			app->showSnackbar (app->uiText.getText (UiTextString::internalError));
+		}
+	}
+
+	window->setWaiting (false);
+	window->release ();
+	app->shouldRefreshUi = true;
+}
+
+int AgentConfigurationWindow::populateConfiguration (Json *command) {
+	App *app;
+	SystemInterface *interface;
+	UiConfiguration *uiconfig;
+	UiText *uitext;
+	TextField *textfield;
+	Toggle *toggle;
+	SliderWindow *slider;
+	Json cfg;
+	StdString prompt;
+	int result, i, numperiods, period;
+
+	app = App::getInstance ();
+	interface = &(app->systemInterface);
+	uiconfig = &(app->uiConfig);
+	uitext = &(app->uiText);
+
+	if ((! command) || (interface->getCommandId (command) != SystemInterface::Command_AgentConfiguration)) {
+		return (Result::ERROR_INVALID_PARAM);
+	}
+
+	result = agentConfiguration.copy (command);
+	if (result != Result::SUCCESS) {
+		return (result);
+	}
+
+	if (actionWindow) {
+		actionWindow->isDestroyed = true;
+	}
+	actionWindow = (ActionWindow *) addWidget (new ActionWindow ());
+	actionWindow->setPadding (0.0f, 0.0f);
+	actionWindow->setFillBg (false);
+	actionWindow->setButtonsVisible (false);
+	actionWindow->setOptionChangeCallback (AgentConfigurationWindow::actionOptionChanged, this);
+
+	toggle = new Toggle ();
+	toggle->setChecked (interface->getCommandBooleanParam (&agentConfiguration, "isEnabled", true));
+	actionWindow->addOption (uitext->getText (UiTextString::enabled).capitalized (), toggle, uitext->getText (UiTextString::agentEnabledDescription));
+
+	textfield = new TextField (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CAPTION]->maxGlyphWidth, uitext->getText (UiTextString::agentDisplayNamePrompt));
+	textfield->setValue (interface->getCommandStringParam (&agentConfiguration, "displayName", ""));
+	actionWindow->addOption (uitext->getText (UiTextString::displayName).capitalized (), textfield, uitext->getText (UiTextString::agentDisplayNameDescription));
+	actionWindow->setOptionNotEmptyString (uitext->getText (UiTextString::displayName).capitalized ());
+
+	if (interface->getCommandObjectParam (&agentConfiguration, "mediaServerConfiguration", &cfg)) {
+		if (interface->isWindowsPlatform (agentPlatform)) {
+			prompt = uitext->getText (UiTextString::sourceMediaPathPromptWindows);
+		}
+		else {
+			prompt = uitext->getText (UiTextString::sourceMediaPathPrompt);
+		}
+		textfield = new TextField (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CAPTION]->maxGlyphWidth, prompt);
+		textfield->setValue (cfg.getString ("mediaPath", ""));
+		actionWindow->addOption (uitext->getText (UiTextString::sourceMediaPath).capitalized (), textfield, uitext->getText (UiTextString::sourceMediaPathDescription));
+		actionWindow->setOptionNotEmptyString (uitext->getText (UiTextString::sourceMediaPath).capitalized ());
+
+		if (interface->isWindowsPlatform (agentPlatform)) {
+			prompt = uitext->getText (UiTextString::mediaDataPathPromptWindows);
+		}
+		else {
+			prompt = uitext->getText (UiTextString::mediaDataPathPrompt);
+		}
+		textfield = new TextField (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CAPTION]->maxGlyphWidth, prompt);
+		textfield->setValue (cfg.getString ("dataPath", ""));
+		actionWindow->addOption (uitext->getText (UiTextString::mediaDataPath).capitalized (), textfield, uitext->getText (UiTextString::mediaDataPathDescription));
+		actionWindow->setOptionNotEmptyString (uitext->getText (UiTextString::mediaDataPath).capitalized ());
+
+		slider = new SliderWindow (new Slider (0.0f, 5.0f));
+		slider->setPadding (0.0f, 0.0f);
+		slider->setValueNameFunction (AgentConfigurationWindow::mediaScanPeriodSliderValueName);
+		numperiods = sizeof (AgentConfigurationWindow::mediaScanPeriods) / sizeof (AgentConfigurationWindow::mediaScanPeriods[0]);
+		for (i = 0; i < numperiods; ++i) {
+			slider->addSnapValue ((float) i);
+		}
+
+		period = cfg.getNumber ("scanPeriod", (int) 0);
+		for (i = 0; i < numperiods; ++i) {
+			if (period == AgentConfigurationWindow::mediaScanPeriods[i]) {
+				slider->setValue ((float) i);
+				break;
+			}
+		}
+		actionWindow->addOption (uitext->getText (UiTextString::mediaScanPeriod).capitalized (), slider, uitext->getText (UiTextString::mediaScanPeriodDescription));
+	}
+	if (interface->getCommandObjectParam (&agentConfiguration, "streamServerConfiguration", &cfg)) {
+		if (interface->isWindowsPlatform (agentPlatform)) {
+			prompt = uitext->getText (UiTextString::streamDataPathPromptWindows);
+		}
+		else {
+			prompt = uitext->getText (UiTextString::streamDataPathPrompt);
+		}
+		textfield = new TextField (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CAPTION]->maxGlyphWidth, prompt);
+		textfield->setValue (cfg.getString ("dataPath", ""));
+		actionWindow->addOption (uitext->getText (UiTextString::streamDataPath).capitalized (), textfield, uitext->getText (UiTextString::streamDataPathDescription));
+		actionWindow->setOptionNotEmptyString (uitext->getText (UiTextString::streamDataPath).capitalized ());
+	}
+
+	if (! actionWindow->isOptionDataValid) {
+		applyButton->setDisabled (true);
+	}
+	applyButton->isVisible = true;
+	refreshLayout ();
+	return (Result::SUCCESS);
+}
+
+StdString AgentConfigurationWindow::mediaScanPeriodSliderValueName (float sliderValue) {
+	UiText *uitext;
+
+	uitext = &(App::getInstance ()->uiText);
+	if (FLOAT_EQUALS (sliderValue, 0.0f)) {
+		return (uitext->getText (UiTextString::never).capitalized ());
+	}
+	if (FLOAT_EQUALS (sliderValue, 1.0f)) {
+		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::slowest).capitalized ().c_str (), Util::getDurationDisplayString (AgentConfigurationWindow::mediaScanPeriods[(int) sliderValue] * 1000).c_str ()));
+	}
+	if (FLOAT_EQUALS (sliderValue, 2.0f)) {
+		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::slow).capitalized ().c_str (), Util::getDurationDisplayString (AgentConfigurationWindow::mediaScanPeriods[(int) sliderValue] * 1000).c_str ()));
+	}
+	if (FLOAT_EQUALS (sliderValue, 3.0f)) {
+		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::medium).capitalized ().c_str (), Util::getDurationDisplayString (AgentConfigurationWindow::mediaScanPeriods[(int) sliderValue] * 1000).c_str ()));
+	}
+	if (FLOAT_EQUALS (sliderValue, 4.0f)) {
+		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::fast).capitalized ().c_str (), Util::getDurationDisplayString (AgentConfigurationWindow::mediaScanPeriods[(int) sliderValue] * 1000).c_str ()));
+	}
+	if (FLOAT_EQUALS (sliderValue, 5.0f)) {
+		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::fastest).capitalized ().c_str (), Util::getDurationDisplayString (AgentConfigurationWindow::mediaScanPeriods[(int) sliderValue] * 1000).c_str ()));
+	}
+
+	return (StdString (""));
+}
+
+void AgentConfigurationWindow::actionOptionChanged (void *windowPtr, Widget *widgetPtr) {
+	AgentConfigurationWindow *window;
+	ActionWindow *action;
+
+	window = (AgentConfigurationWindow *) windowPtr;
+	action = (ActionWindow *) widgetPtr;
+
+	if (! action->isOptionDataValid) {
+		window->applyButton->setDisabled (true);
+	}
+	else {
+		window->applyButton->setDisabled (false);
+	}
+}
+
+void AgentConfigurationWindow::applyButtonClicked (void *windowPtr, Widget *widgetPtr) {
+	AgentConfigurationWindow *window;
+	ActionWindow *action;
+	App *app;
+	SystemInterface *interface;
+	UiText *uitext;
+	Json *params, *agentconfig, *cfg;
+	int result, numperiods, period, index;
+
+	window = (AgentConfigurationWindow *) windowPtr;
+	app = App::getInstance ();
+	interface = &(app->systemInterface);
+	uitext = &(app->uiText);
+	action = window->actionWindow;
+
+	if (window->isWaiting) {
+		return;
+	}
+
+	params = new Json ();
 	agentconfig = new Json ();
-	agentconfig->set ("isEnabled", action->getOptionValue (uitext->enabled, true));
-	agentconfig->set ("displayName", action->getOptionValue (uitext->displayName, ""));
-	if (interface->getCommandObjectParam (&agentConfiguration, "mediaServerConfiguration", NULL)) {
+	agentconfig->set ("isEnabled", action->getBooleanValue (uitext->getText (UiTextString::enabled), true));
+	agentconfig->set ("displayName", action->getStringValue (uitext->getText (UiTextString::displayName), ""));
+	if (interface->getCommandObjectParam (&(window->agentConfiguration), "mediaServerConfiguration", NULL)) {
 		cfg = new Json ();
-		cfg->set ("mediaPath", action->getOptionValue (uitext->sourceMediaPath, ""));
-		cfg->set ("dataPath", action->getOptionValue (uitext->mediaDataPath, ""));
+		cfg->set ("mediaPath", action->getStringValue (uitext->getText (UiTextString::sourceMediaPath), ""));
+		cfg->set ("dataPath", action->getStringValue (uitext->getText (UiTextString::mediaDataPath), ""));
+
+		period = 0;
+		numperiods = sizeof (AgentConfigurationWindow::mediaScanPeriods) / sizeof (AgentConfigurationWindow::mediaScanPeriods[0]);
+		index = action->getNumberValue (uitext->getText (UiTextString::mediaScanPeriod), (int) -1);
+		if ((index >= 0) && (index < numperiods)) {
+			period = AgentConfigurationWindow::mediaScanPeriods[index];
+		}
+		cfg->set ("scanPeriod", period);
 		agentconfig->set ("mediaServerConfiguration", cfg);
 	}
-	if (interface->getCommandObjectParam (&agentConfiguration, "streamServerConfiguration", NULL)) {
+	if (interface->getCommandObjectParam (&(window->agentConfiguration), "streamServerConfiguration", NULL)) {
 		cfg = new Json ();
-		cfg->set ("dataPath", action->getOptionValue (uitext->streamDataPath, ""));
+		cfg->set ("dataPath", action->getStringValue (uitext->getText (UiTextString::streamDataPath), ""));
 		agentconfig->set ("streamServerConfiguration", cfg);
 	}
 	params->set ("agentConfiguration", agentconfig);
 
-	cmd = app->createCommand ("UpdateAgentConfiguration", SystemInterface::Constant_DefaultCommandType, params);
-	if (! cmd) {
-		return;
-	}
-
-	retain ();
-	if (agentId.empty ()) {
-		result = app->agentControl.invokeCommand (serverHostname, serverTcpPort, cmd, AgentConfigurationWindow::invokeUpdateAgentConfigurationComplete, this);
-	}
-	else {
-		result = app->agentControl.invokeCommand (agentId, cmd, AgentConfigurationWindow::invokeUpdateAgentConfigurationComplete, this);
-	}
+	window->retain ();
+	result = app->agentControl.invokeCommand (window->agentId, app->createCommand ("UpdateAgentConfiguration", SystemInterface::Constant_DefaultCommandType, params), AgentConfigurationWindow::invokeUpdateAgentConfigurationComplete, window);
 	if (result != Result::SUCCESS) {
-		// TODO: Show an error message here
-		Log::write (Log::ERR, "Failed to execute UpdateAgentConfiguration command; err=%i", result);
-		release ();
+		window->release ();
+		Log::write (Log::DEBUG, "Failed to invoke UpdateAgentConfiguration command; err=%i agentId=\"%s\"", result, window->agentId.c_str ());
+		app->showSnackbar (app->uiText.getText (UiTextString::internalError));
 		return;
 	}
-
-	setWaiting (true);
+	window->setWaiting (true);
 }
 
 void AgentConfigurationWindow::invokeUpdateAgentConfigurationComplete (void *windowPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand) {
 	AgentConfigurationWindow *window;
-	SystemInterface *interface;
-
-	window = (AgentConfigurationWindow *) windowPtr;
-	interface = &(App::getInstance ()->systemInterface);
-	if (responseCommand && (interface->getCommandId (responseCommand) == SystemInterface::Command_AgentConfiguration)) {
-		window->setAgentConfiguration (responseCommand);
-		if (window->configureSuccessCallback) {
-			window->configureSuccessCallback (window->configureSuccessCallbackData, window);
-		}
-	}
-	window->setWaiting (false);
-	window->release ();
-}
-
-void AgentConfigurationWindow::invokeGetAgentConfiguration () {
-	App *app;
-	Json *cmd;
-	int result;
-
-	app = App::getInstance ();
-	cmd = app->createCommand ("GetAgentConfiguration", SystemInterface::Constant_DefaultCommandType, NULL);
-	if (cmd) {
-		retain ();
-		if (agentId.empty ()) {
-			result = app->agentControl.invokeCommand (serverHostname, serverTcpPort, cmd, AgentConfigurationWindow::invokeGetAgentConfigurationComplete, this);
-		}
-		else {
-			result = app->agentControl.invokeCommand (agentId, cmd, AgentConfigurationWindow::invokeGetAgentConfigurationComplete, this);
-		}
-		if (result != Result::SUCCESS) {
-			// TODO: Show an error message here
-			Log::write (Log::ERR, "Failed to execute GetAgentConfiguration command; err=%i", result);
-			release ();
-		}
-	}
-}
-
-void AgentConfigurationWindow::invokeGetAgentConfigurationComplete (void *windowPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand) {
-	AgentConfigurationWindow *window;
 	App *app;
 	SystemInterface *interface;
 
 	window = (AgentConfigurationWindow *) windowPtr;
-	app = App::getInstance ();
-	interface = &(App::getInstance ()->systemInterface);
-	if (responseCommand && (interface->getCommandId (responseCommand) == SystemInterface::Command_AgentConfiguration)) {
-		window->setAgentConfiguration (responseCommand);
-		app->shouldRefreshUi = true;
+	if (window->isDestroyed) {
+		window->release ();
+		return;
 	}
-	window->release ();
-}
-
-void AgentConfigurationWindow::invokeGetStatus () {
-	App *app;
-	Json *cmd;
-	int result;
 
 	app = App::getInstance ();
-	cmd = app->createCommand ("GetStatus", SystemInterface::Constant_DefaultCommandType, NULL);
-	if (cmd) {
-		retain ();
-		if (agentId.empty ()) {
-			result = app->agentControl.invokeCommand (serverHostname, serverTcpPort, cmd, AgentConfigurationWindow::invokeGetStatusComplete, this);
-		}
-		else {
-			result = app->agentControl.invokeCommand (agentId, cmd, AgentConfigurationWindow::invokeGetStatusComplete, this);
-		}
-		if (result != Result::SUCCESS) {
-			// TODO: Show an error message here
-			Log::write (Log::ERR, "Failed to execute GetStatus command; err=%i", result);
-			release ();
-		}
-	}
-}
-
-void AgentConfigurationWindow::invokeGetStatusComplete (void *windowPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand) {
-	AgentConfigurationWindow *window;
-	App *app;
-	SystemInterface *interface;
-
-	window = (AgentConfigurationWindow *) windowPtr;
-	app = App::getInstance ();
-	interface = &(App::getInstance ()->systemInterface);
-	if (responseCommand && (interface->getCommandId (responseCommand) == SystemInterface::Command_AgentStatus)) {
-		window->setAgentStatus (responseCommand);
-		app->shouldRefreshUi = true;
+	interface = &(app->systemInterface);
+	if (jobResult != Result::SUCCESS) {
+		Log::write (Log::DEBUG, "Failed to invoke UpdateAgentConfiguration command; err=%i agentId=\"%s\"", jobResult, agentId.c_str ());
+		app->showSnackbar (app->uiText.getText (UiTextString::serverContactError));
 	}
 	else {
-		if (window->serverHostname.equals (AgentControl::localHostname)) {
-			window->setStopped ();
+		if ((! responseCommand) || (interface->getCommandId (responseCommand) != SystemInterface::Command_AgentConfiguration)) {
+			Log::write (Log::DEBUG, "Failed to invoke UpdateAgentConfiguration command; err=\"Invalid response data\" agentId=\"%s\"", agentId.c_str ());
+			app->showSnackbar (app->uiText.getText (UiTextString::internalError));
+		}
+		else {
+			app->showSnackbar (app->uiText.getText (UiTextString::updateAgentConfigurationMessage));
+			app->agentControl.refreshAgentStatus (window->agentId);
 		}
 	}
+
+	window->setWaiting (false);
 	window->release ();
 }

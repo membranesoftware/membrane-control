@@ -41,10 +41,6 @@
 #define BUILD_DATE __DATE__
 #endif
 
-#ifndef ENABLE_VERBOSE_LOGGING
-#define ENABLE_VERBOSE_LOGGING 0
-#endif
-
 #ifndef PLATFORM_LINUX
 #define PLATFORM_LINUX 0
 #endif
@@ -73,6 +69,7 @@
 #include <Windows.h>
 #include "SDL2/SDL_config_windows.h"
 #define __attribute__(X)
+#define __PRETTY_FUNCTION__ ""
 #define OPEN_READONLY_FLAGS (O_RDONLY | O_BINARY)
 #define OPEN_CREATE_FLAGS (O_WRONLY | O_CREAT | O_BINARY)
 #define S_ISDIR(X) ((X) && _S_IFDIR)

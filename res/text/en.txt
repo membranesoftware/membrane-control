@@ -1,0 +1,262 @@
+windowTitle Membrane Control
+shuttingDownApp Shutting down Membrane Control
+ok ok
+yes yes
+no no
+cancel cancel
+confirm confirm
+edit edit
+help help
+remove remove
+rename rename
+address address
+version version
+uptime uptime
+status status
+active active
+inactive inactive
+playing playing
+showing showing
+exit exit
+select select
+clear clear
+settings settings
+about about
+checkForUpdates check for updates
+sendFeedback send feedback
+windowSize window size
+textSize text size
+showClock show clock
+media media
+mediaFile media file
+mediaItems media items
+videoStream video stream
+videoStreams video streams
+totalStorage total storage
+freeStorage free storage
+webKiosk web kiosk
+webKiosks web kiosks
+runProgram run program
+createPlaylist create playlist
+createProgram create program
+runPlaylist run playlist
+addPlaylistItem add playlist item
+shuffle shuffle
+startPosition start position
+playDuration play duration
+display display
+displayName display name
+displayStatus display status
+monitors monitors
+server server
+servers servers
+tasks tasks
+program program
+programs programs
+playlist playlist
+playlists playlists
+speed speed
+smallest smallest
+small small
+medium medium
+large large
+largest largest
+slowest slowest
+slow slow
+fast fast
+fastest fastest
+never never
+play play
+stop stop
+unknown unknown
+enabled enabled
+disabled disabled
+ready ready
+learnMore learn more
+searchForHelp Search for help
+membraneSoftwareOverview Membrane Software overview
+startedCreatingStream started creating stream
+removedStream removed stream
+create create
+open open
+openHelp open help
+adminConsole admin console
+mainMenu main menu
+bitrate bitrate
+frameSize frame size
+fileSize file size
+duration duration
+frameRate frame rate
+createStream create stream
+createStreamTooltip Create a playback stream for this media item
+streamServer stream server
+configure configure
+configuration configuration
+save save
+apply apply
+websiteList website list
+addWebsite add website
+showWebsite show website
+browseWebsite browse website
+serverUiDescription Connect to Membrane Server applications running on this computer or on the network.
+mediaUiDescription Browse video items from a media server.
+monitorUiTitle Video monitors
+monitorUiDescription Command monitors to play video streams.
+webKioskUiDescription Track your favorite websites by launching browser applications on other computers.
+selectPlayPosition select play position
+enterAddressPrompt (Enter server address)
+enterUrlPrompt (Enter website address)
+enterWebPlaylistNamePrompt (Enter program name)
+enterPlaylistNamePrompt (Enter playlist name)
+enterSearchKeyPrompt (Enter search filter)
+emptyNotificationList (Notification list is empty)
+emptyWebPlaylistAddressList (Addresses in this list are shown on the kiosk display)
+selectToggleTooltip Select or unselect this item
+expandToggleTooltip Expand or unexpand this item
+mainMenuTooltip View the main menu
+moreActionsTooltip View more actions
+textFieldEnterTooltip <Enter> Confirm field text
+textFieldPasteTooltip Paste text from the clipboard into this field
+textFieldClearTooltip Remove all text from this field
+newsButtonTooltip View the notification list
+serverConnected server connected
+serversConnected servers connected
+mediaServerConnected media server connected
+mediaServersConnected media servers connected
+videoFileAvailable video file available
+videoFilesAvailable video files available
+monitorConnected monitor connected
+monitorsConnected monitors connected
+videoStreamAvailable video stream available
+videoStreamsAvailable video streams available
+webKioskAvailable web kiosk available
+webKiosksAvailable web kiosks available
+webPlaylistItem site in this program
+webPlaylistItems sites in this program
+streamPlaylistItem clip in this playlist
+streamPlaylistItems clips in this playlist
+uiLaunchOpenButtonTooltip Open this interface
+serverUiHelpTitle Servers
+serverUiHelpText This interface finds and displays Membrane Server applications running on this computer or other computers. Connecting to a server here makes it available for use in other interfaces, as launched from the main menu.
+serverUiHelpAction1Text No Membrane Servers are in contact.\n\n- Check if Membrane Server is installed and running, and that its computer is connected to the network.\n\n- Click the broadcast button in the bottom right corner to discover any servers available on the local network.\n\n- Click the address button to directly contact a server by name.
+serverUiHelpAction2Text - Click the broadcast button in the bottom right corner to discover any servers available on the local network.\n\n- Click the address button to directly contact a server by name.
+serverUiNetworkAgentsTitle Servers on the network
+serverUiEmptyAgentStatusTitle No servers contacted
+serverUiEmptyAgentStatusText To find Membrane Servers on the network:\n\n- Click the broadcast button in the bottom right corner to discover any servers available on the local network.\n- Click the address button to directly contact a server by name.
+serverUiAddressTooltip <F1> Enter an address to contact a Membrane Server on the network
+serverUiBroadcastTooltip <F2> Scan for Membrane Servers on the local network
+serverUiUninstalledAgentTitle No server installed
+serverUiUninstalledAgentDescription Install Membrane Server to enable this computer for access by other Membrane systems.
+serverUiUncontactedAgentTitle Server installed
+serverUiUncontactedAgentDescription Membrane Server is installed on this computer but is not running.
+serverUiContactedAgentTitle Server installed
+serverUiContactedAgentDescription Membrane Server is installed on this computer.
+serverUiStartLinkText How to start and stop the server
+serverUiContactingAgentMessage Attempting contact. If the server responds, it will be shown in the top row.
+sourceMediaPath source media path
+sourceMediaPathDescription The directory path where the server finds media files.
+sourceMediaPathPrompt (example: /media)
+sourceMediaPathPromptWindows (example: C:\media)
+mediaDataPath media data path
+mediaDataPathDescription The directory path where the server writes data required for processing media files.
+mediaDataPathPrompt (example: /media_data)
+mediaDataPathPromptWindows (example: C:\media_data)
+mediaScanPeriod media scan period
+mediaScanPeriodDescription How often the server scans the source media path for new files.
+streamDataPath stream data path
+streamDataPathDescription The directory path where the server writes data required for streaming media functions.
+streamDataPathPrompt (example: /stream_data)
+streamDataPathPromptWindows (example: C:\stream_data)
+agentEnabledDescription The server does not respond to commands unless enabled.
+agentDisplayNameDescription The name to show for this server in control interfaces.
+agentDisplayNamePrompt (Enter a name)
+mediaUiThumbnailSizeTooltip Set the display size for media items
+mediaUiSearchTooltip Show only media items matching this search filter
+mediaUiEmptyAgentStatusTitle No media library available
+mediaUiEmptyAgentStatusText Return to the main menu and open "Servers" to contact a computer running Membrane Media Library.
+mediaUiEmptyMediaStatusTitle No media files available
+mediaUiEmptyMediaStatusText Media files from Membrane Media Library appear in this list.
+mediaUiHelpTitle Media
+mediaUiHelpText This interface shows media files available from Membrane Media Server applications running on this computer or other computers.
+mediaUiHelpAction1Text No Membrane Media Library applications have been contacted. Return to the main menu and open "Servers" to find a media library.
+mediaUiHelpAction2Text Select a media item to view more thumbnail images.
+mediaUiHelpAction3Text Process media items into streams for playback on screens running the Membrane Monitor application.
+mediaItemUiHelpTitle Media file
+mediaItemUiHelpText This interface shows thumbnail images from a media file's timeline.
+mediaItemUiHelpAction1Text Use the bottom toolbar to create a stream from this media item. When ready, the stream can be played on screens running the Membrane Monitor application.
+thumbnailImageSizeTooltip Set the display size for thumbnail images
+uiBackTooltip Return to the previous screen
+exitTooltip Close this application
+moreHelpTopics more help topics
+configureTooltip Set configuration parameters for this server
+reloadTooltip Refresh server state
+mainUiWelcomeSnackbarText Welcome to Membrane Control. Need information to get started?
+mainUiHelpTitle Membrane Control
+mainUiHelpText This application connects to other computers running Membrane Server, allowing you to access and control any resources they offer. The main menu shows Membrane Control's primary functions, each of which can be launched using its "OPEN" button.
+mainUiServersHelpActionText No Membrane Servers have been contacted. Open the "Servers" interface to locate other computers offering this service on the network.
+mainUiShowAllTooltip If enabled: Show all functions, even those that haven't yet established required server connections.
+openHelpUrlError An error occurred in launching the web browser. For help, see: https://membranesoftware.com/
+openAboutUrlError An error occurred in launching the web browser. For information, see: https://membranesoftware.com/i/about-membrane-control
+openFeedbackUrlError An error occurred in launching the web browser. To send feedback, see: https://membranesoftware.com/contact
+openUpdateUrlError An error occurred in launching the web browser. For software updates, see: https://membranesoftware.com/
+launchedWebBrowser launched web browser
+launchWebBrowserError An error occurred in launching the web browser.
+sentBroadcast Network broadcast sent. Any server that responds will be shown in the top row.
+invokeGetStatusAddressEmptyError Enter a server address in the bottom toolbar to attempt contact.
+invokeGetStatusAddressParseError The provided server address doesn't use the correct format.
+internalError An unexpected internal error prevented this operation from succeeding. Our apologies.
+serverContactError Unable to contact the remote server. Check if network connections are available and try again.
+invokeClearDisplayMessage Command sent: <Clear>
+invokeCreateWebPlaylistMessage Command sent: <Run program>
+invokeShowWebUrlMessage Command sent: <Show website>
+webKioskUiHelpTitle Web kiosk
+webKioskUiHelpText This interface commands Membrane Monitor applications to behave as web kiosks. Select servers or programs using the star icons in their upper right corners, then use the bottom toolbar to execute commands.
+webKioskUiHelpAction1Text No Membrane Monitor applications are connected. To find one, return to the main menu and open the "Servers" interface.
+webKioskUiHelpAction2Text - Create and edit programs capable of running on web kiosks to show a set of sites.\n\n- Enter a website address and add it to a program, launch a web browser to view it, or command a web kiosk to display it.\n\n- Write a program to one or more web kiosks, causing them to cycle through the listed sites with an optional shuffle.
+webKioskUiAddUrlTooltip <F3> Add this website to the selected program
+webKioskUiBrowseUrlTooltip <F1> Launch a browser viewing this website
+webKioskUiShowUrlTooltip <F6> Show this website on all selected web kiosks
+webKioskUiAddPlaylistTooltip <F2> Create a new website list that can run on web kiosks as a program
+webKioskUiClearDisplayTooltip <F4> Clear all selected web kiosks
+webKioskUiWritePlaylistTooltip <F5> Run the selected program on all selected web kiosks
+webKioskNoAgentsSelectedPrompt (Select a web kiosk)
+webKioskNoPlaylistsSelectedPrompt (Select a program)
+webKioskNoAddressEnteredPrompt (Enter a website address)
+websiteAddedMessage Website added to program
+webPlaylistCreatedMessage Created program
+shuffleTooltip If enabled: Show items from the list in randomized order
+clickRenameTooltip (Click to rename)
+hyperlinkTooltip Open this site using the system's web browser
+serverAdminUiEmptyTaskListTitle No tasks
+serverAdminUiEmptyTaskListText Jobs from the server's task queue appear in this list.
+serverAdminUiHelpTitle Server console
+serverAdminUiHelpText This interface shows details about a Membrane Server application and any long-running tasks in its run queue.
+monitorUiHelpTitle Video monitors
+monitorUiHelpText This interface commands Membrane Monitor applications to play video streams. Select monitors using the star icons in their upper right corners, then use the bottom toolbar to execute commands.
+monitorUiHelpAction1Text No Membrane Monitor applications are connected. To find one, return to the main menu and open the "Servers" interface.
+monitorUiHelpAction2Text No Membrane Media Library applications are connected. To find one, return to the main menu and open the "Servers" interface.
+monitorUiHelpAction3Text No video streams are available. To create one, return to the main menu and open the "Media" interface.
+monitorUiHelpAction4Text Click a video stream's thumbnail to view more details and select a play position.
+monitorUiHelpAction5Text Create a stream playlist to keep monitors on loop showing randomly selected clips.
+monitorUiEmptyAgentStatusTitle No servers available
+monitorUiEmptyAgentStatusText Return to the main menu and open "Servers" to contact computers running Membrane Media Library and Membrane Monitor.
+monitorUiEmptyStreamStatusTitle No video streams available
+monitorUiEmptyStreamStatusText Streams from Membrane Media Library appear in this list.
+monitorUiNoAgentsSelectedPrompt (Select a monitor)
+monitorUiNoStreamSelectedPrompt (Select a stream)
+monitorUiNoPlaylistSelectedPrompt (Select a playlist)
+emptyStreamPlaylistText (Items in this list are played on monitors)
+monitorUiPlayTooltip <F5> Play the selected clip on all selected monitors
+monitorUiWritePlaylistTooltip <F4> Run the selected playlist on all selected monitors
+monitorUiStopTooltip <F3> Clear all selected monitors
+monitorUiAddPlaylistItemTooltip <F2> Add the selected clip to the selected playlist
+monitorUiCreatePlaylistTooltip <F1> Create a new playlist
+streamPlaylistCreatedMessage Created playlist
+streamItemAddedMessage Added video stream to playlist
+invokePlayMediaMessage Command sent: <Play video stream>
+invokeCreateStreamPlaylistMessage Command sent: <Run playlist>
+streamItemUiHelpTitle Video stream
+streamItemUiHelpText This interface shows thumbnail images from a video stream's timeline.
+streamItemUiHelpAction1Text Click a thumbnail image or the timeline bar to select a stream position and return to the previous screen.
+getAgentConfigurationServerContactError Unable to read configuration values from the remote server. Check if network connections are available and try again.
+updateAgentConfigurationMessage Server configuration updated.

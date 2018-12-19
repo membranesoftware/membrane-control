@@ -53,6 +53,7 @@
 HelpWindow::HelpWindow (float windowWidth, float windowHeight)
 : Panel ()
 , headerImage (NULL)
+, isHeaderImageLoaded (false)
 , titleLabel (NULL)
 , closeButton (NULL)
 , helpTitleLabel (NULL)
@@ -73,26 +74,24 @@ HelpWindow::HelpWindow (float windowWidth, float windowHeight)
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
 	headerImage = (ImageWindow *) addWidget (new ImageWindow ());
-	headerImage->setLoadCallback (HelpWindow::headerImageLoaded, this);
 	headerImage->setLoadResourcePath (StdString::createSprintf ("bg/help/%i.png", app->imageScale));
 
-	titleLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (uitext->help.capitalized (), UiConfiguration::TITLE, uiconfig->primaryTextColor)));
+	titleLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::help).capitalized (), UiConfiguration::TITLE, uiconfig->primaryTextColor)));
 	titleLabel->setPadding (0.0f, 0.0f);
 
 	closeButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::EXIT_BUTTON)));
 	closeButton->zLevel = 1;
 	closeButton->setMouseClickCallback (HelpWindow::closeButtonClicked, this);
-	closeButton->setInverseColor (true);
 	closeButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
 
 	helpTitleLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::TITLE, uiconfig->primaryTextColor));
 	helpText = (TextArea *) addWidget (new TextArea (UiConfiguration::CAPTION, uiconfig->primaryTextColor, uiconfig->textAreaLongLineLength, windowWidth - (uiconfig->paddingSize * 2.0f)));
-	linkTitleLabel = (Label *) addWidget (new Label (uitext->moreHelpTopics.capitalized (), UiConfiguration::TITLE, uiconfig->primaryTextColor));
+	linkTitleLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::moreHelpTopics).capitalized (), UiConfiguration::TITLE, uiconfig->primaryTextColor));
 	linkIconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::WEB_LINK_ICON)));
 
 	versionLabel = (Label *) addWidget (new Label (StdString::createSprintf ("%s %s", BUILD_ID, BUILD_DATE), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
 
-	resetLayout ();
+	refreshLayout ();
 }
 
 HelpWindow::~HelpWindow () {
@@ -109,7 +108,7 @@ void HelpWindow::setWindowSize (float windowWidth, float windowHeight) {
 	uiconfig = &(App::getInstance ()->uiConfig);
 	helpText->setMaxLineWidth (windowWidth - (uiconfig->paddingSize * 2.0f));
 	setFixedSize (true, windowWidth, windowHeight);
-	resetLayout ();
+	refreshLayout ();
 }
 
 void HelpWindow::setHelpText (const StdString &title, const StdString &text) {
@@ -119,7 +118,7 @@ void HelpWindow::setHelpText (const StdString &title, const StdString &text) {
 	helpTitleLabel->setText (title);
 	helpText->setMaxLineWidth (width - (uiconfig->paddingSize * 2.0f));
 	helpText->setText (text);
-	resetLayout ();
+	refreshLayout ();
 }
 
 void HelpWindow::addAction (const StdString &actionText, const StdString &linkText, const StdString &linkUrl) {
@@ -131,7 +130,7 @@ void HelpWindow::addAction (const StdString &actionText, const StdString &linkTe
 
 	addWidget (action);
 	actionList.push_back (action);
-	resetLayout ();
+	refreshLayout ();
 }
 
 void HelpWindow::addTopicLink (const StdString &linkText, const StdString &linkUrl) {
@@ -139,10 +138,21 @@ void HelpWindow::addTopicLink (const StdString &linkText, const StdString &linkU
 
 	linkwindow = (HyperlinkWindow *) addWidget (new HyperlinkWindow (linkText, linkUrl));
 	linkList.push_back (linkwindow);
-	resetLayout ();
+	refreshLayout ();
 }
 
-void HelpWindow::resetLayout () {
+void HelpWindow::doUpdate (int msElapsed, float originX, float originY) {
+	Panel::doUpdate (msElapsed, originX, originY);
+
+	if (! isHeaderImageLoaded) {
+		if (headerImage->isLoaded ()) {
+			isHeaderImageLoaded = true;
+			refreshLayout ();
+		}
+	}
+}
+
+void HelpWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	std::list<HelpActionWindow *>::iterator hi, hend;
 	std::list<HyperlinkWindow *>::iterator li, lend;
@@ -175,7 +185,7 @@ void HelpWindow::resetLayout () {
 		titleLabel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 		titleLabel->setTextColor (uiconfig->inverseTextColor);
 		titleLabel->setFillBg (true, 0.0f, 0.0f, 0.0f);
-		titleLabel->setAlphaBlend (true, uiconfig->imageTextScrimAlpha);
+		titleLabel->setAlphaBlend (true, uiconfig->scrimBackgroundAlpha);
 		titleLabel->position.assign (x, y + headerImage->height - titleLabel->height - uiconfig->paddingSize);
 		closeButton->position.assign (width - closeButton->width - uiconfig->paddingSize, y + headerImage->height - closeButton->height - uiconfig->paddingSize);
 		y += headerImage->height + uiconfig->marginSize;
@@ -227,11 +237,4 @@ void HelpWindow::closeButtonClicked (void *windowPtr, Widget *widgetPtr) {
 
 	window = (HelpWindow *) windowPtr;
 	window->isDestroyed = true;
-}
-
-void HelpWindow::headerImageLoaded (void *windowPtr, Widget *widgetPtr) {
-	HelpWindow *window;
-
-	window = (HelpWindow *) windowPtr;
-	window->resetLayout ();
 }

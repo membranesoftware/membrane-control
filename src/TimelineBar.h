@@ -33,26 +33,65 @@
 #ifndef TIMELINE_BAR_H
 #define TIMELINE_BAR_H
 
+#include <list>
 #include "StdString.h"
+#include "LabelWindow.h"
 #include "Panel.h"
 
 class TimelineBar : public Panel {
 public:
-	// Time values are specified in seconds
-	TimelineBar (float barWidth, float startTime, float endTime);
+	// recordId must reference a MediaItem or StreamItem record
+	TimelineBar (float barWidth, const StdString &recordId);
 	virtual ~TimelineBar ();
+
+	// Read-only data members
+	StdString recordId;
+	StdString agentId;
+	int recordType;
+	int highlightedMarkerIndex;
+	float hoverPosition;
+	float clickPosition;
+
+	// Set a callback that should be invoked when the mouse hovers on a timeline position. The hoverPosition field stores the hovered value, with a negative value indicating that the mouse is outside the timeline bar.
+	void setPositionHoverCallback (Widget::EventCallback callback, void *callbackData);
+
+	// Set a callback that should be invoked when the mouse clicks on a timeline position, with the clickPosition field storing the clicked value
+	void setPositionClickCallback (Widget::EventCallback callback, void *callbackData);
+
+	// Set the bar to highlight the marker at the specified index. A negative index value indicates that any existing highlight should be cleared.
+	void setHighlightedMarker (int markerIndex);
+
+	// Execute operations appropriate to sync widget state with records present in the provided RecordStore object, which has been locked prior to invocation
+	void syncRecordStore (RecordStore *store);
 
 protected:
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	virtual void resetLayout ();
+	virtual void refreshLayout ();
+
+	// Execute operations appropriate when the widget receives new mouse state
+	virtual void doProcessMouseState (const Widget::MouseState &mouseState);
 
 private:
-	static const int segmentCount;
+	static const int guideSegmentCount;
 
+	// If markerList is empty, populate it with a set of Panel widgets meant to highlight positions on the timeline
+	void populateMarkers ();
+
+	std::list<Panel *> markerList;
+	std::vector<double> segmentPositionList;
+	Panel *streamHighlightMarker;
+	LabelWindow *startTimeLabel;
+	LabelWindow *endTimeLabel;
+	LabelWindow *highlightTimeLabel;
 	float barWidth;
-	float startTime;
-	float endTime;
+	float barHeight;
+	float duration;
 	int minDurationUnitType;
+	int thumbnailCount;
+	Widget::EventCallback positionHoverCallback;
+	void *positionHoverCallbackData;
+	Widget::EventCallback positionClickCallback;
+	void *positionClickCallbackData;
 };
 
 #endif

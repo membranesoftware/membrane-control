@@ -58,6 +58,7 @@ Ui::Ui ()
 : rootPanel (NULL)
 , isLoaded (false)
 , isFirstResumeComplete (false)
+, isLinkConnected (false)
 , mouseHoverClock (0)
 , isMouseHoverActive (false)
 , isMouseHoverSuspended (false)
@@ -67,7 +68,6 @@ Ui::Ui ()
 	refcountMutex = SDL_CreateMutex ();
 
 	rootPanel = new Panel ();
-	rootPanel->setParentUi (this);
 	rootPanel->setKeyEventCallback (Ui::keyEvent, this);
 	rootPanel->retain ();
 }
@@ -176,7 +176,7 @@ void Ui::handleLinkClientDisconnect (const StdString &agentId, const StdString &
 	// Default implementation does nothing
 }
 
-void Ui::handleLinkClientCommand (const StdString &agentId, Json *command) {
+void Ui::handleLinkClientCommand (const StdString &agentId, int commandId, Json *command) {
 	// Default implementation does nothing
 }
 
@@ -218,12 +218,12 @@ void Ui::handleMainMenuButtonClick (Widget *buttonWidget) {
 	menu = (Menu *) app->rootPanel->addWidget (new Menu ());
 	menu->zLevel = app->rootPanel->maxWidgetZLevel + 1;
 	menu->isClickDestroyEnabled = true;
-	menu->addItem (uitext->settings.capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::SETTINGS_BUTTON), Ui::settingsActionClicked, this);
-	menu->addItem (uitext->about.capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::ABOUT_BUTTON), Ui::aboutActionClicked, this);
-	menu->addItem (uitext->checkForUpdates.capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::UPDATE_BUTTON), Ui::updateActionClicked, this);
-	menu->addItem (uitext->sendFeedback.capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::FEEDBACK_BUTTON), Ui::feedbackActionClicked, this);
-	menu->addItem (uitext->help.capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::HELP_BUTTON), Ui::helpActionClicked, this);
-	menu->addItem (uitext->exit.capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::EXIT_BUTTON), Ui::exitActionClicked, this);
+	menu->addItem (uitext->getText (UiTextString::settings).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::SETTINGS_BUTTON), Ui::settingsActionClicked, this);
+	menu->addItem (uitext->getText (UiTextString::about).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::ABOUT_BUTTON), Ui::aboutActionClicked, this);
+	menu->addItem (uitext->getText (UiTextString::checkForUpdates).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::UPDATE_BUTTON), Ui::updateActionClicked, this);
+	menu->addItem (uitext->getText (UiTextString::sendFeedback).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::FEEDBACK_BUTTON), Ui::feedbackActionClicked, this);
+	menu->addItem (uitext->getText (UiTextString::help).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::HELP_BUTTON), Ui::helpActionClicked, this);
+	menu->addItem (uitext->getText (UiTextString::exit).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::EXIT_BUTTON), Ui::exitActionClicked, this);
 	menu->position.assign (buttonWidget->position.x + buttonWidget->width - menu->width, buttonWidget->position.y + buttonWidget->height);
 	mainMenu.assign (menu);
 }
@@ -290,12 +290,7 @@ void Ui::toggleHelpWindow () {
 }
 
 void Ui::setHelpWindowContent (Widget *helpWindowPtr) {
-// TODO: Add default help content
-/*
-	HelpWindow *help;
-
-	help = (HelpWindow *) helpWindowPtr;
-*/
+	// Default implementation adds no help content
 }
 
 void Ui::showShutdownWindow () {
@@ -318,7 +313,7 @@ void Ui::showShutdownWindow () {
 	panel->transitionAlphaBlend (0.0f, uiconfig->overlayWindowAlpha, uiconfig->backgroundTransitionDuration);
 	panel->setFixedSize (true, app->rootPanel->width, app->rootPanel->height);
 
-	label = new LabelWindow (new Label (uitext->shuttingDownApp, UiConfiguration::CAPTION, uiconfig->primaryTextColor));
+	label = new LabelWindow (new Label (uitext->getText (UiTextString::shuttingDownApp), UiConfiguration::CAPTION, uiconfig->primaryTextColor));
 	label->setFillBg (true, uiconfig->lightBackgroundColor);
 
 	bar = new ProgressBar (label->width, uiconfig->progressBarHeight);
@@ -357,10 +352,10 @@ void Ui::aboutActionClicked (void *uiPtr, Widget *widgetPtr) {
 	url.assign (Util::getHelpUrl ("about-membrane-control"));
 	result = Util::openUrl (url);
 	if (result != Result::SUCCESS) {
-		app->showSnackbar (app->uiText.openAboutUrlError);
+		app->showSnackbar (app->uiText.getText (UiTextString::openAboutUrlError));
 	}
 	else {
-		app->showSnackbar (StdString::createSprintf ("%s - %s", app->uiText.launchedWebBrowser.capitalized ().c_str (), url.c_str ()));
+		app->showSnackbar (StdString::createSprintf ("%s - %s", app->uiText.getText (UiTextString::launchedWebBrowser).capitalized ().c_str (), url.c_str ()));
 	}
 }
 
@@ -402,10 +397,10 @@ void Ui::updateActionClicked (void *uiPtr, Widget *widgetPtr) {
 	app = App::getInstance ();
 	result = Util::openUrl (Util::getUpdateUrl ());
 	if (result != Result::SUCCESS) {
-		app->showSnackbar (app->uiText.openFeedbackUrlError);
+		app->showSnackbar (app->uiText.getText (UiTextString::openFeedbackUrlError));
 	}
 	else {
-		app->showSnackbar (StdString::createSprintf ("%s - %s", app->uiText.launchedWebBrowser.capitalized ().c_str (), Util::serverUrl.c_str ()));
+		app->showSnackbar (StdString::createSprintf ("%s - %s", app->uiText.getText (UiTextString::launchedWebBrowser).capitalized ().c_str (), Util::serverUrl.c_str ()));
 	}
 }
 
@@ -416,10 +411,10 @@ void Ui::feedbackActionClicked (void *uiPtr, Widget *widgetPtr) {
 	app = App::getInstance ();
 	result = Util::openUrl (Util::getFeedbackUrl (true));
 	if (result != Result::SUCCESS) {
-		app->showSnackbar (app->uiText.openFeedbackUrlError);
+		app->showSnackbar (app->uiText.getText (UiTextString::openFeedbackUrlError));
 	}
 	else {
-		app->showSnackbar (StdString::createSprintf ("%s - %s", app->uiText.launchedWebBrowser.capitalized ().c_str (), Util::getFeedbackUrl ().c_str ()));
+		app->showSnackbar (StdString::createSprintf ("%s - %s", app->uiText.getText (UiTextString::launchedWebBrowser).capitalized ().c_str (), Util::getFeedbackUrl ().c_str ()));
 	}
 }
 
@@ -459,14 +454,19 @@ void Ui::resetMainToolbar (Toolbar *toolbar) {
 	toolbar->clearRightItems ();
 
 	button = new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::MAIN_MENU_BUTTON));
+	button->setInverseColor (true);
 	button->setMouseClickCallback (Ui::mainMenuButtonClicked, this);
-	button->setMouseHoverTooltip (uitext->mainMenuTooltip);
+	button->setMouseHoverTooltip (uitext->getText (UiTextString::mainMenuTooltip));
 	toolbar->addRightItem (button);
+
+	/*
+	TODO: Fix and restore the news button (when news item functionality is implemented)
 
 	button = new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::NEWS_BUTTON));
 	button->setMouseClickCallback (Ui::newsButtonClicked, this);
 	button->setMouseHoverTooltip (uitext->newsButtonTooltip);
 	toolbar->addRightItem (button);
+	*/
 
 	doResetMainToolbar (toolbar);
 }
@@ -512,6 +512,7 @@ void Ui::resume () {
 		}
 	}
 
+	setLinkConnected (true);
 	doResume ();
 	isFirstResumeComplete = true;
 }
@@ -532,6 +533,7 @@ void Ui::pause () {
 	clearPopupWidgets ();
 	mouseHoverWidget.clear ();
 
+	setLinkConnected (false);
 	doPause ();
 }
 
@@ -648,8 +650,9 @@ void Ui::addMainToolbarBackButton (Toolbar *toolbar) {
 	app = App::getInstance ();
 
 	button = new Button (StdString (""), App::getInstance ()->uiConfig.coreSprites.getSprite (UiConfiguration::BACK_BUTTON));
+	button->setInverseColor (true);
 	button->setMouseClickCallback (Ui::backButtonClicked, this);
-	button->setMouseHoverTooltip (app->uiText.uiBackTooltip);
+	button->setMouseHoverTooltip (app->uiText.getText (UiTextString::uiBackTooltip));
 	toolbar->addRightItem (button);
 }
 
@@ -806,4 +809,52 @@ Widget *Ui::addWidget (Widget *widget, float positionX, float positionY, int zLe
 
 Widget *Ui::findWidget (uint64_t widgetId, const StdString &widgetTypeName) {
 	return (rootPanel->findChildWidget (widgetId, widgetTypeName, true));
+}
+
+bool Ui::isSideWindowOpen () {
+	if (settingsWindow.widget && settingsWindow.widget->isVisible) {
+		return (true);
+	}
+	if (helpWindow.widget && helpWindow.widget->isVisible) {
+		return (true);
+	}
+
+	return (false);
+}
+
+void Ui::setLinkConnected (bool connected) {
+	App *app;
+	StringList::iterator i, end;
+
+	if (connected == isLinkConnected) {
+		return;
+	}
+
+	app = App::getInstance ();
+	isLinkConnected = connected;
+	i = linkAgentIds.begin ();
+	end = linkAgentIds.end ();
+	while (i != end) {
+		if (isLinkConnected) {
+			app->agentControl.connectLinkClient (*i);
+		}
+		else {
+			app->agentControl.disconnectLinkClient (*i);
+		}
+		++i;
+	}
+}
+
+void Ui::addLinkAgent (const StdString &agentId) {
+	App *app;
+
+	if (linkAgentIds.contains (agentId)) {
+		return;
+	}
+
+	app = App::getInstance ();
+	linkAgentIds.push_back (agentId);
+	if (isLinkConnected) {
+		app->agentControl.connectLinkClient (agentId);
+	}
 }

@@ -42,7 +42,7 @@
 class TextArea : public Panel {
 public:
 	// maxTextLineLength specifies the maximum number of characters per text line, with a value of zero or less indicating that a default line length should be chosen from UiConfiguration. maxTextLineWidth specifies the maximum width in pixels per text line, with a value of zero or less indicating that no such maximum should apply.
-	TextArea (int fontType = UiConfiguration::BODY, const Color &textColor = Color (0.0f, 0.0f, 0.0f), int maxTextLineLength = 0, float maxTextLineWidth = 0.0f);
+	TextArea (int fontType, const Color &textColor = Color (0.0f, 0.0f, 0.0f), int maxTextLineLength = 0, float maxTextLineWidth = 0.0f);
 	~TextArea ();
 
 	// Clear the text area's content
@@ -62,7 +62,7 @@ public:
 
 protected:
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	virtual void resetLayout ();
+	virtual void refreshLayout ();
 
 private:
 	int textFontType;

@@ -47,8 +47,9 @@ TextField::TextField (float fieldWidth, const StdString &promptText)
 : Panel ()
 , fieldWidth (fieldWidth)
 , isEditing (false)
-, enterCallback (NULL)
-, enterCallbackData (NULL)
+, isInverseColor (false)
+, valueChangeCallback (NULL)
+, valueChangeCallbackData (NULL)
 , promptLabel (NULL)
 , valueLabel (NULL)
 , cursorPanel (NULL)
@@ -61,28 +62,81 @@ TextField::TextField (float fieldWidth, const StdString &promptText)
 
 	uiconfig = &(App::getInstance ()->uiConfig);
 
-	setFillBg (true, uiconfig->darkBackgroundColor);
-	setBorder (true, uiconfig->mediumBackgroundColor);
-	setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
+	normalBgColor.assign (uiconfig->lightBackgroundColor);
+	normalBorderColor.assign (uiconfig->mediumBackgroundColor);
+	focusBgColor.assign (uiconfig->darkBackgroundColor);
+	focusBorderColor.assign (uiconfig->lightBackgroundColor);
+	editBgColor.assign (uiconfig->lightBackgroundColor);
+	editBorderColor.assign (uiconfig->darkBackgroundColor);
+	normalValueTextColor.assign (uiconfig->lightPrimaryTextColor);
+	editValueTextColor.assign (uiconfig->primaryTextColor);
+	promptTextColor.assign (uiconfig->lightPrimaryColor);
+
+	setPadding (uiconfig->paddingSize, uiconfig->paddingSize / 2.0f);
+	setFillBg (true, normalBgColor);
+	setBorder (true, normalBorderColor);
 
 	if (! promptText.empty ()) {
-		promptLabel = (Label *) addWidget (new Label (promptText, UiConfiguration::CAPTION, uiconfig->lightPrimaryColor), widthPadding, heightPadding);
+		promptLabel = (Label *) addWidget (new Label (promptText, UiConfiguration::CAPTION, promptTextColor), widthPadding, heightPadding);
 	}
 
-	valueLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CAPTION, uiconfig->primaryTextColor), widthPadding, heightPadding);
+	valueLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CAPTION, normalValueTextColor), widthPadding, heightPadding);
+
 	cursorPanel = (Panel *) addWidget (new Panel ());
 	cursorPanel->setFixedSize (true, valueLabel->maxGlyphWidth * 0.9f, valueLabel->maxLineHeight);
-	cursorPanel->setFillBg (true, uiconfig->primaryTextColor);
+	cursorPanel->setFillBg (true, normalValueTextColor);
 	cursorPanel->zLevel = 1;
 	cursorPanel->isVisible = false;
 
 	setFixedSize (true, fieldWidth, valueLabel->maxLineHeight + (heightPadding * 2.0f));
 
-	resetLayout ();
+	refreshLayout ();
 }
 
 TextField::~TextField () {
 
+}
+
+void TextField::setInverseColor (bool inverse) {
+	UiConfiguration *uiconfig;
+
+	if (isInverseColor == inverse) {
+		return;
+	}
+
+	uiconfig = &(App::getInstance ()->uiConfig);
+	isInverseColor = inverse;
+	if (isInverseColor) {
+		normalBgColor.assign (uiconfig->darkInverseBackgroundColor);
+		normalBorderColor.assign (uiconfig->mediumInverseBackgroundColor);
+		focusBgColor.assign (uiconfig->lightInverseBackgroundColor);
+		focusBorderColor.assign (uiconfig->darkInverseBackgroundColor);
+		editBgColor.assign (uiconfig->lightInverseBackgroundColor);
+		editBorderColor.assign (uiconfig->darkInverseBackgroundColor);
+		normalValueTextColor.assign (uiconfig->darkInverseTextColor);
+		editValueTextColor.assign (uiconfig->inverseTextColor);
+		promptTextColor.assign (uiconfig->lightPrimaryColor);
+	}
+	else {
+		normalBgColor.assign (uiconfig->lightBackgroundColor);
+		normalBorderColor.assign (uiconfig->mediumBackgroundColor);
+		focusBgColor.assign (uiconfig->darkBackgroundColor);
+		focusBorderColor.assign (uiconfig->lightBackgroundColor);
+		editBgColor.assign (uiconfig->lightBackgroundColor);
+		editBorderColor.assign (uiconfig->darkBackgroundColor);
+		normalValueTextColor.assign (uiconfig->lightPrimaryTextColor);
+		editValueTextColor.assign (uiconfig->primaryTextColor);
+		promptTextColor.assign (uiconfig->lightPrimaryColor);
+	}
+
+	setFillBg (true, normalBgColor);
+	setBorder (true, normalBorderColor);
+	if (promptLabel) {
+		promptLabel->textColor.assign (promptTextColor);
+	}
+	valueLabel->textColor.assign (normalValueTextColor);
+	cursorPanel->setFillBg (true, normalValueTextColor);
+	refreshLayout ();
 }
 
 StdString TextField::getValue () {
@@ -91,16 +145,19 @@ StdString TextField::getValue () {
 
 void TextField::clearValue () {
 	valueLabel->setText (StdString (""));
-	resetLayout ();
+	refreshLayout ();
 }
 
-void TextField::setValue (const StdString &valueText) {
+void TextField::setValue (const StdString &valueText, bool shouldSkipChangeCallback) {
 	if (valueText.equals (valueLabel->text)) {
 		return;
 	}
 
 	valueLabel->setText (valueText);
-	resetLayout ();
+	refreshLayout ();
+	if (valueChangeCallback && (! shouldSkipChangeCallback)) {
+		valueChangeCallback (valueChangeCallbackData, this);
+	}
 }
 
 void TextField::appendClipboardText () {
@@ -113,7 +170,7 @@ void TextField::appendClipboardText () {
 			val = valueLabel->text;
 			val.append (text);
 			SDL_free (text);
-			setValue (val);
+			setValue (val, isEditing);
 		}
 	}
 }
@@ -128,20 +185,21 @@ void TextField::setLineWidth (int lineLength) {
 	setFixedSize (true, fieldWidth, valueLabel->maxLineHeight + (heightPadding * 2.0f));
 }
 
-void TextField::setEnterCallback (Widget::EventCallback callback, void *callbackData) {
-	enterCallback = callback;
-	enterCallbackData = callbackData;
+void TextField::setValueChangeCallback (Widget::EventCallback callback, void *callbackData) {
+	valueChangeCallback = callback;
+	valueChangeCallbackData = callbackData;
 }
 
-void TextField::resetLayout () {
+void TextField::refreshLayout () {
 	UiConfiguration *uiconfig;
-	float x, w;
+	float x, y, w;
 
 	uiconfig = &(App::getInstance ()->uiConfig);
 	x = widthPadding;
-	valueLabel->position.assign (x, height - (heightPadding * 1.5f) - valueLabel->height + valueLabel->descenderHeight);
+	y = heightPadding;
+	valueLabel->position.assign (x, valueLabel->getLinePosition (y - (heightPadding / 2.0f)));
 	if (promptLabel) {
-		promptLabel->position.assign (x, height - (heightPadding * 1.5f) - promptLabel->height + promptLabel->descenderHeight);
+		promptLabel->position.assign (x + (promptLabel->spaceWidth * 2.0f), promptLabel->getLinePosition (y - (heightPadding / 2.0f)));
 	}
 
 	if (! valueLabel->text.empty ()) {
@@ -159,8 +217,8 @@ void TextField::resetLayout () {
 	cursorPanel->position.assign (x, (height / 2.0f) - (cursorPanel->height / 2.0f));
 
 	if (isEditing) {
-		bgColor.rotate (uiconfig->lightBackgroundColor, uiconfig->colorRotateDuration);
-		borderColor.rotate (uiconfig->darkBackgroundColor, uiconfig->colorRotateDuration);
+		bgColor.rotate (editBgColor, uiconfig->shortColorRotateDuration);
+		borderColor.rotate (editBorderColor, uiconfig->shortColorRotateDuration);
 		if (valueLabel->text.empty ()) {
 			if (promptLabel) {
 				promptLabel->isVisible = true;
@@ -171,18 +229,18 @@ void TextField::resetLayout () {
 			if (promptLabel) {
 				promptLabel->isVisible = false;
 			}
-			valueLabel->textColor.rotate (uiconfig->primaryTextColor, uiconfig->colorRotateDuration);
+			valueLabel->textColor.rotate (editValueTextColor, uiconfig->shortColorRotateDuration);
 			valueLabel->isVisible = true;
 		}
 	}
 	else {
 		if (isFocused) {
-			bgColor.rotate (uiconfig->lightBackgroundColor, uiconfig->colorRotateDuration);
-			borderColor.rotate (uiconfig->darkBackgroundColor, uiconfig->colorRotateDuration);
+			bgColor.rotate (focusBgColor, uiconfig->shortColorRotateDuration);
+			borderColor.rotate (focusBorderColor, uiconfig->shortColorRotateDuration);
 		}
 		else {
-			bgColor.rotate (uiconfig->darkBackgroundColor, uiconfig->colorRotateDuration);
-			borderColor.rotate (uiconfig->mediumBackgroundColor, uiconfig->colorRotateDuration);
+			bgColor.rotate (normalBgColor, uiconfig->shortColorRotateDuration);
+			borderColor.rotate (normalBorderColor, uiconfig->shortColorRotateDuration);
 		}
 
 		if (valueLabel->text.empty ()) {
@@ -196,7 +254,7 @@ void TextField::resetLayout () {
 				promptLabel->isVisible = false;
 			}
 
-			valueLabel->textColor.rotate (uiconfig->lightPrimaryColor, uiconfig->colorRotateDuration);
+			valueLabel->textColor.rotate (normalValueTextColor, uiconfig->shortColorRotateDuration);
 			valueLabel->isVisible = true;
 		}
 	}
@@ -216,7 +274,7 @@ bool TextField::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool i
 		len = val.length ();
 		if (len > 0) {
 			val.erase (len - 1, 1);
-			setValue (val);
+			setValue (val, true);
 		}
 		return (true);
 	}
@@ -227,16 +285,13 @@ bool TextField::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool i
 	}
 
 	if (keycode == SDLK_ESCAPE) {
-		setValue (lastValue);
+		setValue (lastValue, true);
 		setEditing (false);
 		return (true);
 	}
 
 	if (keycode == SDLK_RETURN) {
 		setEditing (false);
-		if (enterCallback) {
-			enterCallback (enterCallbackData, this);
-		}
 		return (true);
 	}
 
@@ -244,7 +299,7 @@ bool TextField::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool i
 	if (c > 0) {
 		val = valueLabel->text;
 		val.append (1, c);
-		setValue (val);
+		setValue (val, true);
 		return (true);
 	}
 
@@ -291,7 +346,7 @@ void TextField::setFocused (bool enable) {
 		return;
 	}
 	isFocused = enable;
-	resetLayout ();
+	refreshLayout ();
 }
 
 void TextField::setEditing (bool enable) {
@@ -304,6 +359,11 @@ void TextField::setEditing (bool enable) {
 	}
 	else {
 		isEditing = false;
+		if (! lastValue.equals (valueLabel->text)) {
+			if (valueChangeCallback) {
+				valueChangeCallback (valueChangeCallbackData, this);
+			}
+		}
 	}
-	resetLayout ();
+	refreshLayout ();
 }

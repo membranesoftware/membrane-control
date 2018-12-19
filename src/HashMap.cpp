@@ -74,7 +74,11 @@ StdString HashMap::toString () {
 	i = valueMap.begin ();
 	end = valueMap.end ();
 	while (i != end) {
-		s.appendSprintf (" %s=\"%s\"", i->first.c_str (), i->second.c_str ());
+		s.append (" ");
+		s.append (i->first);
+		s.append ("=\"");
+		s.append (i->second);
+		s.append ("\"");
 		++i;
 	}
 	s.append (" }");
@@ -133,92 +137,41 @@ bool HashMap::sortDescending (const StdString &a, const StdString &b) {
 
 int HashMap::read (const StdString &filename, bool shouldClear) {
 	FILE *fp;
-	char data[8192], *d, c, *key1, *key2, *val1, *val2;
-	StdString key, val;
+	char data[8192];
+	Buffer *buffer;
+	int result;
 
 	fp = fopen (filename.c_str (), "rb");
 	if (! fp) {
 		return (Result::ERROR_FILE_OPEN_FAILED);
 	}
 
-	Log::write (Log::DEBUG, "Open config file \"%s\"", filename.c_str ());
-	if (shouldClear) {
-		clear ();
-	}
+	buffer = new Buffer ();
 	while (1) {
 		if (! fgets (data, sizeof (data), fp)) {
 			break;
 		}
-
-		key1 = NULL;
-		key2 = NULL;
-		val1 = NULL;
-		val2 = NULL;
-		d = data;
-		while (true) {
-			c = *d;
-			if (c == '\0') {
-				break;
-			}
-			++d;
-
-			if (! key1) {
-				if (isspace (c)) {
-					continue;
-				}
-				if (c == '#') {
-					break;
-				}
-				key1 = (d - 1);
-			}
-			else if (! key2) {
-				if (isspace (c)) {
-					key2 = (d - 2);
-				}
-			}
-			else if (! val1) {
-				if (! isspace (c)) {
-					val1 = (d - 1);
-				}
-			}
-			else {
-				if (c == '\n') {
-					val2 = (d - 2);
-					break;
-				}
-			}
-		}
-
-		key.assign ("");
-		val.assign ("");
-		if (key1 && key2) {
-			key.assign (key1, key2 - key1 + 1);
-		}
-		if (val1 && val2) {
-			val.assign (val1, val2 - val1 + 1);
-		}
-
-		if ((key.length () > 0) && (val.length () > 0)) {
-			valueMap.insert (std::pair<StdString, StdString> (key, val));
-		}
+		buffer->add (data);
 	}
-
 	fclose (fp);
-	return (Result::SUCCESS);
+
+	result = read (buffer, shouldClear);
+	delete (buffer);
+
+	return (result);
 }
 
 int HashMap::read (Buffer *buffer, bool shouldClear) {
 	uint8_t *data, *end, *key1, *key2, *val1, *val2;
 	char c;
 	bool iscomment;
-	int len;
 	StdString key, val;
 
 	if (shouldClear) {
 		clear ();
 	}
-	buffer->getData (&data, &len);
-	end = data + len;
+	data = buffer->data;
+	end = data + buffer->length;
 	iscomment = false;
 	key1 = NULL;
 	key2 = NULL;
@@ -324,7 +277,10 @@ int HashMap::write (const StdString &filename) {
 	i = valueMap.begin ();
 	end = valueMap.end ();
 	while (i != end) {
-		out.appendSprintf ("%s %s\n", i->first.c_str (), i->second.c_str ());
+		out.append (i->first);
+		out.append (" ");
+		out.append (i->second);
+		out.append ("\n");
 		++i;
 	}
 

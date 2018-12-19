@@ -56,12 +56,15 @@ public:
 	// Set the window's right-aligned option. If enabled, the window places the icon on the right side instead of the left side.
 	void setRightAligned (bool enable);
 
+	// Set the scale value that should be applied to the window's icon image
+	void setIconImageScale (float scale);
+
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	void resetLayout ();
+	void refreshLayout ();
 
 private:
 	Label *label;

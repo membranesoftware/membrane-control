@@ -77,7 +77,7 @@ void ProgressBar::setSize (float barWidth, float barHeight) {
 	}
 	width = barWidth;
 	height = barHeight;
-	resetLayout ();
+	refreshLayout ();
 }
 
 void ProgressBar::setProgress (float value) {
@@ -89,7 +89,7 @@ void ProgressBar::setProgress (float value) {
 		value = 0.0f;
 	}
 	progressValue = value;
-	resetLayout ();
+	refreshLayout ();
 }
 
 void ProgressBar::setProgress (float value, float targetValue) {
@@ -105,7 +105,7 @@ void ProgressBar::setProgress (float value, float targetValue) {
 	}
 	progressValue = value;
 	targetProgressValue = targetValue;
-	resetLayout ();
+	refreshLayout ();
 }
 
 void ProgressBar::setIndeterminate (bool indeterminate) {
@@ -116,7 +116,7 @@ void ProgressBar::setIndeterminate (bool indeterminate) {
 	if (isIndeterminate) {
 		fillStage = 0;
 	}
-	resetLayout ();
+	refreshLayout ();
 }
 
 void ProgressBar::doUpdate (int msElapsed, float originX, float originY) {
@@ -211,7 +211,7 @@ void ProgressBar::doDraw () {
 	}
 }
 
-void ProgressBar::resetLayout () {
+void ProgressBar::refreshLayout () {
 	if ((! isIndeterminate) && (targetProgressValue > 0.0f)) {
 		fillStart = 0.0f;
 		fillEnd = (width * progressValue) / targetProgressValue;
@@ -222,5 +222,5 @@ void ProgressBar::resetLayout () {
 }
 
 void ProgressBar::doRefresh () {
-	resetLayout ();
+	refreshLayout ();
 }

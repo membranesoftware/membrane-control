@@ -36,15 +36,17 @@
 #include <map>
 #include <queue>
 #include <list>
-#include "SDL2/SDL.h"
+#include <SDL2/SDL.h>
 #include "StdString.h"
 #include "Buffer.h"
+#include "SharedBuffer.h"
 
 class Network {
 public:
 	Network ();
 	~Network ();
 
+	static const int defaultRequestThreadCount;
 	static const int maxDatagramSize;
 
 	// Constants to use for HTTP status codes
@@ -53,7 +55,7 @@ public:
 	};
 
 	typedef void (*DatagramCallback) (void *callbackData, const char *messageData, int messageLength);
-	typedef void (*HttpRequestCallback) (void *callbackData, const StdString &targetUrl, int statusCode, Buffer *responseData);
+	typedef void (*HttpRequestCallback) (void *callbackData, const StdString &targetUrl, int statusCode, SharedBuffer *responseData);
 
 	// Read-only data members
 	bool isStarted;
@@ -62,7 +64,7 @@ public:
 	int httpRequestThreadCount;
 
 	// Initialize networking functionality and acquire resources as needed. Returns a Result value.
-	int start ();
+	int start (int requestThreadCount = Network::defaultRequestThreadCount);
 
 	// Stop the networking engine and release acquired resources
 	void stop ();
@@ -152,11 +154,12 @@ private:
 	// Execute sendto calls to transmit a datagram packet to each available broadcast address
 	int broadcastSendTo (int targetPort, Buffer *messageData);
 
-	// Execute operations to send an HTTP request and gather the response data. Returns a Result value. If successful, this method stores values in the provided pointers, and the caller is responsible for freeing any created Buffer object.
-	int sendHttpRequest (Network::HttpRequestContext *item, int *statusCode, Buffer **responseBuffer);
+	// Execute operations to send an HTTP request and gather the response data. Returns a Result value. If successful, this method stores values in the provided pointers, and the caller is responsible for releasing any created SharedBuffer object.
+	int sendHttpRequest (Network::HttpRequestContext *item, int *statusCode, SharedBuffer **responseBuffer);
 
 	// Callback functions for use with libcurl
 	static size_t curlWrite (char *ptr, size_t size, size_t nmemb, void *userdata);
+	static int curlProgress (void *clientp, double dltotal, double dlnow, double ultotal, double ulnow);
 
 	std::map<StdString, Network::Interface> interfaceMap;
 	SDL_Thread *datagramSendThread;

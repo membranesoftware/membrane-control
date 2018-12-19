@@ -45,7 +45,6 @@ Panel::Panel ()
 : Widget ()
 , bgColor (0.0f, 0.0f, 0.0f)
 , borderColor (0.0f, 0.0f, 0.0f)
-, layout (-1)
 , maxWidgetX (0.0f)
 , maxWidgetY (0.0f)
 , maxWidgetZLevel (0)
@@ -67,6 +66,7 @@ Panel::Panel ()
 , isFixedSize (false)
 , isMouseDragScrollEnabled (false)
 , isWaiting (false)
+, layout (-1)
 , isMouseInputStarted (false)
 , lastMouseLeftUpCount (0)
 , lastMouseLeftDownCount (0)
@@ -107,7 +107,7 @@ void Panel::clear () {
 	end = widgetAddList.end ();
 	while (i != end) {
 		widget = *i;
-		widget->parentWidget = NULL;
+		widget->isDestroyed = true;
 		widget->release ();
 		++i;
 	}
@@ -119,7 +119,7 @@ void Panel::clear () {
 	end = widgetList.end ();
 	while (i != end) {
 		widget = *i;
-		widget->parentWidget = NULL;
+		widget->isDestroyed = true;
 		widget->release ();
 		++i;
 	}
@@ -162,13 +162,12 @@ Widget *Panel::addWidget (Widget *widget, float positionX, float positionY, int 
 	if (widget->id <= 0) {
 		widget->id = App::getInstance ()->getUniqueId ();
 	}
+	if (widget->sortKey.empty ()) {
+		widget->sortKey.sprintf ("%016llx", (unsigned long long) widget->id);
+	}
 
 	widget->position.assign (positionX, positionY);
 	widget->zLevel = zLevel;
-	widget->parentWidget = this;
-	if (parentUi) {
-		widget->setParentUi (parentUi);
-	}
 	widget->retain ();
 	SDL_LockMutex (widgetAddListMutex);
 	widgetAddList.push_back (widget);
@@ -444,7 +443,6 @@ void Panel::doUpdate (int msElapsed, float originX, float originY) {
 				found = true;
 				widgetList.erase (i);
 				widget->destroyAllChildWidgets ();
-				widget->parentWidget = NULL;
 				widget->release ();
 				break;
 			}
@@ -821,7 +819,7 @@ void Panel::doRefresh () {
 	}
 	SDL_UnlockMutex (widgetListMutex);
 
-	resetLayout ();
+	refreshLayout ();
 }
 
 void Panel::resetSize () {
@@ -884,7 +882,7 @@ void Panel::resetSize () {
 	}
 }
 
-void Panel::resetLayout () {
+void Panel::refreshLayout () {
 	UiConfiguration *uiconfig;
 	std::list<Widget *>::iterator i, end;
 	Widget *widget;
@@ -1045,6 +1043,14 @@ void Panel::sortWidgetList () {
 	}
 
 	widgetList.sort (Widget::compareZLevel);
+}
+
+void Panel::setLayout (int layoutType) {
+	if (layout == layoutType) {
+		return;
+	}
+	layout = layoutType;
+	refresh ();
 }
 
 void Panel::setAlphaBlend (bool enable, float blendAlpha) {

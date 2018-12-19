@@ -65,7 +65,7 @@ protected:
 
 private:
 	// Reset layout as appropriate for current state
-	void resetLayout ();
+	void refreshLayout ();
 
 	Color bgColor;
 	Color fillColor;

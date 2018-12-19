@@ -81,7 +81,7 @@ Toggle::Toggle (Sprite *uncheckedButtonSprite, Sprite *checkedButtonSprite)
 	setMouseReleaseCallback (Toggle::mouseReleased, this);
 	setMouseClickCallback (Toggle::mouseClicked, this);
 
-	resetLayout ();
+	refreshLayout ();
 }
 
 Toggle::~Toggle () {
@@ -100,11 +100,11 @@ Toggle *Toggle::castWidget (Widget *widget) {
 	return (Toggle::isWidgetType (widget) ? (Toggle *) widget : NULL);
 }
 
-void Toggle::resetLayout () {
+void Toggle::refreshLayout () {
 	resetSize ();
 }
 
-void Toggle::setChecked (bool checked) {
+void Toggle::setChecked (bool checked, bool shouldSkipChangeCallback) {
 	if (checked == isChecked) {
 		return;
 	}
@@ -122,8 +122,8 @@ void Toggle::setChecked (bool checked) {
 		uncheckedButton->setFocused (isFocused);
 		uncheckedButton->isVisible = true;
 	}
-	resetLayout ();
-	if (stateChangeCallback) {
+	refreshLayout ();
+	if (stateChangeCallback && (! shouldSkipChangeCallback)) {
 		stateChangeCallback (stateChangeCallbackData, this);
 	}
 }

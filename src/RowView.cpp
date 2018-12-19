@@ -49,7 +49,7 @@ RowView::RowView ()
 	uiconfig = &(App::getInstance ()->uiConfig);
 
 	setPadding (uiconfig->paddingSize, 0.0f);
-	resetLayout ();
+	refreshLayout ();
 }
 
 RowView::~RowView () {
@@ -59,10 +59,10 @@ RowView::~RowView () {
 void RowView::addItem (Widget *itemWidget) {
 	addWidget (itemWidget);
 	itemList.push_back (itemWidget);
-	resetLayout ();
+	refreshLayout ();
 }
 
-void RowView::resetLayout () {
+void RowView::refreshLayout () {
 	UiConfiguration *uiconfig;
 	std::list<Widget *>::iterator i, end;
 	Widget *item;

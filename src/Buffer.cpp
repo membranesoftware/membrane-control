@@ -42,33 +42,34 @@ Buffer::Buffer ()
 , length (0)
 , size (0)
 , sizeIncrement (Buffer::defaultSizeIncrement)
-, isPersistent (false)
 {
 
 }
 
-Buffer::~Buffer () {
-	if (data) {
-		if (! isPersistent) {
-			free (data);
-		}
-		data = NULL;
+Buffer *Buffer::copy () {
+	Buffer *buffer;
+
+	buffer = new Buffer ();
+	if (! empty ()) {
+		buffer->add (data, length);
 	}
+
+	return (buffer);
 }
 
-void Buffer::setPersistent () {
-	isPersistent = true;
+Buffer::~Buffer () {
+	if (data) {
+		free (data);
+		data = NULL;
+	}
 }
 
 void Buffer::reset () {
 	if (data) {
-		if (! isPersistent) {
-			free (data);
-		}
+		free (data);
 		data = NULL;
 	}
 
-	isPersistent = false;
 	length = 0;
 	size = 0;
 }
@@ -109,26 +110,6 @@ int Buffer::add (uint8_t *dataPtr, int dataLength) {
 
 int Buffer::add (const char *str) {
 	return (add ((uint8_t *) str, (int) strlen (str)));
-}
-
-void Buffer::getData (uint8_t **dataPtr, int *dataLength) {
-	if (dataPtr) {
-		*dataPtr = data;
-	}
-
-	if (dataLength) {
-		*dataLength = length;
-	}
-}
-
-void Buffer::getData (char **dataPtr, int *dataLength) {
-	if (dataPtr) {
-		*dataPtr = (char *) data;
-	}
-
-	if (dataLength) {
-		*dataLength = length;
-	}
 }
 
 void Buffer::setDataLength (int dataLength) {

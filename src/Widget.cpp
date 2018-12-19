@@ -47,7 +47,6 @@ const int Widget::minZLevel = -10;
 Widget::Widget ()
 : typeName ("")
 , id (0)
-, parentId (0)
 , isDestroyed (false)
 , isVisible (true)
 , isInputSuspended (false)
@@ -58,13 +57,9 @@ Widget::Widget ()
 , drawX (0.0f)
 , drawY (0.0f)
 , tooltipAlignment (Widget::BOTTOM)
-, extraData (NULL)
-, parentWidget (NULL)
 , width (0.0f)
 , height (0.0f)
-, parentUi (NULL)
 , destroyClock (0)
-, isFreeingExtraData (false)
 , isFixedCenter (false)
 , isMouseEntered (false)
 , isMousePressed (false)
@@ -88,13 +83,6 @@ Widget::Widget ()
 }
 
 Widget::~Widget () {
-	if (extraData) {
-		if (isFreeingExtraData) {
-			free (extraData);
-		}
-		extraData = NULL;
-	}
-
 	if (refcountMutex) {
 		SDL_DestroyMutex (refcountMutex);
 		refcountMutex = NULL;
@@ -109,7 +97,6 @@ void Widget::retain () {
 		refcount = 1;
 	}
 	SDL_UnlockMutex (refcountMutex);
-
 }
 
 void Widget::release () {
@@ -123,7 +110,6 @@ void Widget::release () {
 		isdestroyed = true;
 	}
 	SDL_UnlockMutex (refcountMutex);
-
 	if (isdestroyed) {
 		delete (this);
 	}
@@ -138,44 +124,6 @@ void Widget::resetInputState () {
 
 void Widget::doResetInputState () {
 	// Default implementation does nothing
-}
-
-void Widget::setParentUi (Ui *ui) {
-	parentUi = ui;
-}
-
-Ui *Widget::getParentUi () {
-	Widget *curwidget;
-
-	if (parentUi) {
-		return (parentUi);
-	}
-
-	curwidget = parentWidget;
-	while (true) {
-		if (! curwidget) {
-			break;
-		}
-
-		if (curwidget->parentUi) {
-			parentUi = curwidget->parentUi;
-			return (parentUi);
-		}
-
-		curwidget = curwidget->parentWidget;
-	}
-
-	return (NULL);
-}
-
-void Widget::setExtraData (void *data, bool freeOnDestroy) {
-	if (extraData) {
-		if (isFreeingExtraData) {
-			free (extraData);
-		}
-	}
-	extraData = data;
-	isFreeingExtraData = freeOnDestroy;
 }
 
 void Widget::setMouseHoverTooltip (const StdString &text, int alignment) {
@@ -197,8 +145,10 @@ void Widget::update (int msElapsed, float originX, float originY) {
 		destroyClock -= msElapsed;
 		if (destroyClock <= 0) {
 			isDestroyed = true;
-			return;
 		}
+	}
+	if (isDestroyed) {
+		return;
 	}
 
 	position.update (msElapsed);
@@ -235,7 +185,9 @@ void Widget::doUpdate (int msElapsed, float originX, float originY) {
 }
 
 void Widget::draw () {
-	// Superclass method takes no action
+	if (isDestroyed) {
+		return;
+	}
 	doDraw ();
 }
 
@@ -451,4 +403,59 @@ void Widget::mouseClick () {
 	if (mouseClickCallback) {
 		mouseClickCallback (mouseClickCallbackData, this);
 	}
+}
+
+void Widget::flowRight (float *positionX, float positionY, float *rightExtent, float *bottomExtent) {
+	UiConfiguration *uiconfig;
+	float pos;
+
+	uiconfig = &(App::getInstance ()->uiConfig);
+	position.assign (*positionX, positionY);
+	*positionX += width + uiconfig->marginSize;
+	if (rightExtent) {
+		pos = position.x + width;
+		if (pos > *rightExtent) {
+			*rightExtent = pos;
+		}
+	}
+	if (bottomExtent) {
+		pos = position.y + height;
+		if (pos > *bottomExtent) {
+			*bottomExtent = pos;
+		}
+	}
+}
+
+void Widget::flowDown (float positionX, float *positionY, float *rightExtent, float *bottomExtent) {
+	UiConfiguration *uiconfig;
+	float pos;
+
+	uiconfig = &(App::getInstance ()->uiConfig);
+	position.assign (positionX, *positionY);
+	*positionY += height + uiconfig->marginSize;
+	if (rightExtent) {
+		pos = position.x + width;
+		if (pos > *rightExtent) {
+			*rightExtent = pos;
+		}
+	}
+	if (bottomExtent) {
+		pos = position.y + height;
+		if (pos > *bottomExtent) {
+			*bottomExtent = pos;
+		}
+	}
+}
+
+void Widget::flowLeft (float *positionX) {
+	UiConfiguration *uiconfig;
+
+	uiconfig = &(App::getInstance ()->uiConfig);
+	*positionX -= width;
+	position.assignX (*positionX);
+	*positionX -= uiconfig->marginSize;
+}
+
+void Widget::centerVertical (float topExtent, float bottomExtent) {
+	position.assignY (topExtent + ((bottomExtent - topExtent) / 2.0f) - (height / 2.0f));
 }

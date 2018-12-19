@@ -63,7 +63,7 @@ IconLabelWindow::IconLabelWindow (Sprite *iconSprite, const StdString &iconText,
 	textArea->isVisible = false;
 
 	setWordWrapped (isTextWordWrapped);
-	resetLayout ();
+	refreshLayout ();
 }
 
 IconLabelWindow::~IconLabelWindow () {
@@ -76,7 +76,7 @@ StdString IconLabelWindow::toStringDetail () {
 
 void IconLabelWindow::setText (const StdString &text) {
 	label->setText (text);
-	resetLayout ();
+	refreshLayout ();
 }
 
 void IconLabelWindow::setWordWrapped (bool enable, int maxTextLineLength, int maxTextLineWidth) {
@@ -91,7 +91,7 @@ void IconLabelWindow::setWordWrapped (bool enable, int maxTextLineLength, int ma
 	else {
 		// TODO: Copy textArea content to label (an operation currently not supported by TextArea)
 	}
-	resetLayout ();
+	refreshLayout ();
 }
 
 void IconLabelWindow::setRightAligned (bool enable) {
@@ -99,10 +99,15 @@ void IconLabelWindow::setRightAligned (bool enable) {
 		return;
 	}
 	isRightAligned = enable;
-	resetLayout ();
+	refreshLayout ();
 }
 
-void IconLabelWindow::resetLayout () {
+void IconLabelWindow::setIconImageScale (float scale) {
+	image->setScale (scale);
+	refreshLayout ();
+}
+
+void IconLabelWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y, h;
 

@@ -28,110 +28,63 @@
 * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 * POSSIBILITY OF SUCH DAMAGE.
 */
-// Panel that executes agent configuration operations
+// Panel that shows an agent's configuration and controls for changing configuration fields
 
 #ifndef AGENT_CONFIGURATION_WINDOW_H
 #define AGENT_CONFIGURATION_WINDOW_H
 
-#include <vector>
 #include "StdString.h"
-#include "SpriteGroup.h"
-#include "Image.h"
 #include "Json.h"
-#include "HashMap.h"
 #include "Label.h"
+#include "Image.h"
 #include "Button.h"
-#include "TextArea.h"
-#include "IconLabelWindow.h"
-#include "ToggleWindow.h"
-#include "StatsWindow.h"
+#include "RecordStore.h"
 #include "ActionWindow.h"
-#include "HyperlinkWindow.h"
 #include "Panel.h"
 
 class AgentConfigurationWindow : public Panel {
 public:
-	AgentConfigurationWindow (const StdString &serverHostname, SpriteGroup *linkUiSpriteGroup);
+	AgentConfigurationWindow (const StdString &agentId);
 	virtual ~AgentConfigurationWindow ();
+
+	static const int mediaScanPeriods[]; // seconds
 
 	// Read-only data members
 	StdString agentId;
-	StdString serverHostname;
-	int serverTcpPort;
+	Json agentConfiguration;
 
-	// Set a callback function that should be invoked when the window's configure button is pressed
-	void setConfigureCallback (Widget::EventCallback callback, void *callbackData);
+	// Invoke a command on the target agent to load its configuration fields
+	void loadConfiguration ();
 
-	// Set a callback function that should be invoked when the window completes a successful configure invocation
-	void setConfigureSuccessCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set the window to reflect an uninstalled server state
-	void setUninstalled ();
-
-	// Set the window's title text
-	void setTitle (const StdString &titleText);
-
-	// Set the window to reflect a stopped server state
-	void setStopped ();
-
-	// Update the window's state by reading fields from a configuration status map, as obtained by the AgentControl::readSystemAgentConfiguration method
-	void setSystemAgentConfiguration (HashMap *agentConfig, const StdString &agentId);
-
-	// Update the window's state by reading fields from an AgentStatus command object
-	void setAgentStatus (Json *agentStatusCommand);
-
-	// Update the window's state by reading fields from an AgentConfiguration command object
-	void setAgentConfiguration (Json *agentConfigurationCommand);
-
-	// Invoke a GetAgentConfiguration command targeting the window's server hostname and update the window's content if successful
-	void invokeGetAgentConfiguration ();
-
-	// Return a newly created ActionWindow object with configure action content appropriate for the window's server type, or NULL if no such window could be created
-	ActionWindow *createConfigureActionWindow ();
-
-	// Invoke an UpdateAgentConfiguration command targeting the window's server hostname, using values from the provided ActionWindow object as provided by createConfigureActionWindow
-	void invokeUpdateAgentConfiguration (ActionWindow *action);
-
-	// Invoke a GetStatus command targeting the window's server hostname and update the window's content if successful
-	void invokeGetStatus ();
-
-	// Return a boolean value indicating if the provided Widget is a member of this class
-	static bool isWidgetType (Widget *widget);
-
-	// Return a typecasted pointer to the provided widget, or NULL if the widget does not appear to be of the correct type
-	static AgentConfigurationWindow *castWidget (Widget *widget);
+	// Execute operations appropriate to sync widget state with records present in the provided RecordStore object, which has been locked prior to invocation
+	void syncRecordStore (RecordStore *store);
 
 	// Callback functions
-	static void configureButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void applyButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void actionOptionChanged (void *windowPtr, Widget *widgetPtr);
 	static void invokeGetAgentConfigurationComplete (void *windowPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand);
 	static void invokeUpdateAgentConfigurationComplete (void *windowPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand);
-	static void invokeGetStatusComplete (void *windowPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand);
+	static StdString mediaScanPeriodSliderValueName (float sliderValue);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	void resetLayout ();
+	void refreshLayout ();
 
 private:
 	// Populate widgets as appropriate for the window's initial state
 	void populate ();
 
-	SpriteGroup *spriteGroup;
-	Json agentConfiguration;
+	// Populate widgets as appropriate for fields in an AgentConfiguration command and return a Result value
+	int populateConfiguration (Json *command);
+
+	StdString agentPlatform;
 	Image *iconImage;
-	Label *nameLabel;
-	TextArea *descriptionText;
-	std::vector<IconLabelWindow *> noteIcons;
-	HyperlinkWindow *helpLinkWindow;
-	HyperlinkWindow *updateLinkWindow;
-	StatsWindow *statsWindow;
-	Button *configureButton;
-	Widget::EventCallback configureCallback;
-	void *configureCallbackData;
-	Widget::EventCallback configureSuccessCallback;
-	void *configureSuccessCallbackData;
+	Label *titleLabel;
+	ActionWindow *actionWindow;
+	Button *applyButton;
 };
 
 #endif

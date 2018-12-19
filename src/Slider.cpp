@@ -48,6 +48,8 @@
 
 Slider::Slider (float minValue, float maxValue)
 : Widget ()
+, isInverseColor (false)
+, trackWidthScale (1.0f)
 , value (minValue)
 , hoverValue (0.0f)
 , minValue (minValue)
@@ -82,7 +84,7 @@ Slider::Slider (float minValue, float maxValue)
 	trackColor.assign (uiconfig->darkPrimaryColor);
 	hoverSize = uiconfig->sliderThumbSize;
 	hoverColor.assign (uiconfig->lightPrimaryColor);
-	resetLayout ();
+	refreshLayout ();
 }
 
 Slider::~Slider () {
@@ -98,7 +100,36 @@ Slider::~Slider () {
 	}
 }
 
-void Slider::resetLayout () {
+void Slider::setInverseColor (bool inverse) {
+	UiConfiguration *uiconfig;
+
+	if (isInverseColor == inverse) {
+		return;
+	}
+	uiconfig = &(App::getInstance ()->uiConfig);
+	isInverseColor = inverse;
+	if (isInverseColor) {
+		thumbColor.assign (uiconfig->darkBackgroundColor);
+		trackColor.assign (uiconfig->darkInverseBackgroundColor);
+		hoverColor.assign (uiconfig->darkBackgroundColor);
+	}
+	else {
+		thumbColor.assign (uiconfig->lightPrimaryColor);
+		trackColor.assign (uiconfig->darkPrimaryColor);
+		hoverColor.assign (uiconfig->lightPrimaryColor);
+	}
+	refreshLayout ();
+}
+
+void Slider::setTrackWidthScale (float scale) {
+	if (scale <= 0.0f) {
+		return;
+	}
+	trackWidthScale = scale;
+	refresh ();
+}
+
+void Slider::refreshLayout () {
 	width = trackWidth;
 	height = thumbSize;
 }
@@ -133,13 +164,13 @@ float Slider::getSnappedValue (float targetValue) {
 	return (targetValue);
 }
 
-void Slider::setValue (float sliderValue) {
+void Slider::setValue (float sliderValue, bool shouldSkipChangeCallback) {
 	sliderValue = getSnappedValue (sliderValue);
 	if (FLOAT_EQUALS (value, sliderValue)) {
 		return;
 	}
 	value = sliderValue;
-	if (valueChangeCallback) {
+	if (valueChangeCallback && (! shouldSkipChangeCallback)) {
 		valueChangeCallback (valueChangeCallbackData, this);
 	}
 }
@@ -313,13 +344,21 @@ void Slider::doRefresh () {
 
 	uiconfig = &(App::getInstance ()->uiConfig);
 	thumbSize = uiconfig->sliderThumbSize;
-	thumbColor.assign (uiconfig->lightPrimaryColor);
-	trackWidth = uiconfig->sliderTrackWidth;
+	trackWidth = uiconfig->sliderTrackWidth * trackWidthScale;
 	trackHeight = uiconfig->sliderTrackHeight;
-	trackColor.assign (uiconfig->darkPrimaryColor);
 	hoverSize = uiconfig->sliderThumbSize;
-	hoverColor.assign (uiconfig->lightPrimaryColor);
-	resetLayout ();
+
+	if (isInverseColor) {
+		thumbColor.assign (uiconfig->lightBackgroundColor);
+		trackColor.assign (uiconfig->darkBackgroundColor);
+		hoverColor.assign (uiconfig->lightBackgroundColor);
+	}
+	else {
+		thumbColor.assign (uiconfig->lightPrimaryColor);
+		trackColor.assign (uiconfig->darkPrimaryColor);
+		hoverColor.assign (uiconfig->lightPrimaryColor);
+	}
+	refreshLayout ();
 }
 
 void Slider::doResetInputState () {
@@ -329,8 +368,7 @@ void Slider::doResetInputState () {
 
 void Slider::loadThumbSprite () {
 	App *app;
-	SDL_Surface *surface;
-	Uint32 *dest, color, rmask, gmask, bmask, amask;
+	Uint32 *dest, color;
 	int x, y, w, h;
 	float dist, radius, targetalpha, minalpha, opacity;
 	uint8_t alpha;
@@ -386,6 +424,22 @@ void Slider::loadThumbSprite () {
 		++y;
 	}
 
+	retain ();
+	app->addRenderTask (Slider::createThumbTexture, this);
+}
+
+void Slider::createThumbTexture (void *sliderPtr) {
+	Slider *slider;
+	App *app;
+	Uint32 rmask, gmask, bmask, amask;
+	SDL_Surface *surface;
+	SDL_Texture *texture;
+	Sprite *sprite;
+	StdString path;
+
+	slider = (Slider *) sliderPtr;
+	app = App::getInstance ();
+
 #if SDL_BYTEORDER == SDL_BIG_ENDIAN
 	rmask = 0xFF000000;
 	gmask = 0x00FF0000;
@@ -397,40 +451,37 @@ void Slider::loadThumbSprite () {
 	bmask = 0x00FF0000;
 	amask = 0xFF000000;
 #endif
-	surface = SDL_CreateRGBSurfaceFrom (thumbSpritePixels, w, h, 32, w * sizeof (Uint32), rmask, gmask, bmask, amask);
+	surface = SDL_CreateRGBSurfaceFrom (slider->thumbSpritePixels, (int) slider->thumbSize, (int) slider->thumbSize, 32, (int) slider->thumbSize * sizeof (Uint32), rmask, gmask, bmask, amask);
 	if (! surface) {
 		Log::write (Log::WARNING, "Failed to create slider texture; err=\"SDL_CreateRGBSurfaceFrom, %s\"", SDL_GetError ());
-		free (thumbSpritePixels);
-		thumbSpritePixels = NULL;
-		isThumbSpriteLoaded = true;
+		slider->endLoadThumbSprite ();
 		return;
 	}
 
-	retain ();
-	app->createResourceTexture (StdString::createSprintf ("*_Slider_%llx_%llx", (long long int) id, (long long int) app->getUniqueId ()), surface, Slider::createThumbTextureComplete, this);
-}
-
-void Slider::createThumbTextureComplete (void *sliderPtr, const StdString &path, SDL_Surface *surface, SDL_Texture *texture) {
-	Slider *slider;
-	Sprite *sprite;
-
-	slider = (Slider *) sliderPtr;
+	path.sprintf ("*_Slider_%llx_%llx", (long long int) slider->id, (long long int) app->getUniqueId ());
+	texture = app->resource.createTexture (path, surface);
+	SDL_FreeSurface (surface);
+	if (! texture) {
+		slider->endLoadThumbSprite ();
+		return;
+	}
 
 	sprite = new Sprite ();
 	sprite->addTexture (texture, path);
-	if (surface) {
-		SDL_FreeSurface (surface);
-	}
-	if (slider->thumbSpritePixels) {
-		free (slider->thumbSpritePixels);
-		slider->thumbSpritePixels = NULL;
-	}
 	if (slider->thumbSprite) {
 		slider->thumbSprite->unload ();
 		delete (slider->thumbSprite);
 	}
 	slider->thumbSprite = sprite;
-	slider->isThumbSpriteLoaded = true;
-	slider->isThumbSpriteLoading = false;
-	slider->release ();
+	slider->endLoadThumbSprite ();
+}
+
+void Slider::endLoadThumbSprite () {
+	if (thumbSpritePixels) {
+		free (thumbSpritePixels);
+		thumbSpritePixels = NULL;
+	}
+	isThumbSpriteLoaded = true;
+	isThumbSpriteLoading = false;
+	release ();
 }

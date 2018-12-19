@@ -63,7 +63,7 @@ public:
 	void setEditing (bool enable);
 
 	// Callback functions
-	static void textFieldEntered (void *windowPtr, Widget *widgetPtr);
+	static void textFieldValueChanged (void *windowPtr, Widget *widgetPtr);
 	static void enterButtonClicked (void *windowPtr, Widget *widgetPtr);
 	static void cancelButtonClicked (void *windowPtr, Widget *widgetPtr);
 	static void pasteButtonClicked (void *windowPtr, Widget *widgetPtr);
@@ -77,7 +77,7 @@ protected:
 	void doUpdate (int msElapsed, float originX, float originY);
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	void resetLayout ();
+	void refreshLayout ();
 
 private:
 	bool isFixedHeight;

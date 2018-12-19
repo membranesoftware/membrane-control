@@ -53,8 +53,8 @@ public:
 	bool isChecked;
 	bool isFocused;
 
-	// Set the toggle's checked state
-	void setChecked (bool checked);
+	// Set the toggle's checked state and invoke any configured change callback unless shouldSkipChangeCallback is true
+	void setChecked (bool checked, bool shouldSkipChangeCallback = false);
 
 	// Set the toggle's inverse color state. If enabled, the toggle uses an inverse color scheme.
 	void setInverseColor (bool inverse);
@@ -86,7 +86,7 @@ protected:
 	virtual bool doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	virtual void resetLayout ();
+	virtual void refreshLayout ();
 
 private:
 	Button *uncheckedButton;

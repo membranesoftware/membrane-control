@@ -308,9 +308,8 @@ StdString Util::getDurationDisplayString (int64_t duration) {
 		return (StdString::createSprintf ("%ih%im", h, m));
 	}
 	if (unit >= Util::MINUTES) {
-		t /= 60;
-		m = (int) t;
-		return (StdString::createSprintf ("%im", m));
+		m = (int) (t / 60);
+		return (StdString::createSprintf ("%im%is", m, (int) (t % 60)));
 	}
 
 	return (StdString::createSprintf ("%is", (int) t));

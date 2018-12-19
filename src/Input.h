@@ -72,12 +72,6 @@ public:
 	// Return the character value associated with the specified keycode, or 0 if no such character was found
 	char getKeyCharacter (SDL_Keycode keycode, bool isShiftDown);
 
-	// Return the number of joystick devices available on the system
-	int getJoystickCount ();
-
-	// Find an available controller and set it as active
-	void selectActiveController ();
-
 	// Consume keypress events that have occurred since the last poll and append the resulting items to the provided vector
 	void pollKeyPressEvents (std::vector<SDL_Keycode> *destVector);
 

@@ -49,6 +49,9 @@ public:
 	// Set the minimum and maximum extent of the view's vertical scroll position
 	void setVerticalScrollBounds (float minY, float maxY);
 
+	// Return a boolean value indicating if the view has scrolled to its bottom extent
+	bool isScrolledToBottom ();
+
 protected:
 	// Execute operations appropriate when the widget receives new mouse state
 	virtual void doProcessMouseState (const Widget::MouseState &mouseState);

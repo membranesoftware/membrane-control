@@ -28,7 +28,7 @@
 * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 * POSSIBILITY OF SUCH DAMAGE.
 */
-// Panel that shows a thumbnail image from a media item
+// Panel that shows a thumbnail image using content loaded from a provided source URL
 
 #ifndef THUMBNAIL_WINDOW_H
 #define THUMBNAIL_WINDOW_H
@@ -48,17 +48,22 @@ public:
 		HIGH_DETAIL = 2
 	};
 
-	ThumbnailWindow (float thumbnailTimestamp, int sourceWidth, int sourceHeight, const StdString &sourceUrl, Sprite *loadingThumbnailSprite, int cardLayout = ThumbnailWindow::LOW_DETAIL, float maxMediaImageWidth = 64.0f);
+	ThumbnailWindow (int thumbnailIndex, float thumbnailTimestamp, int sourceWidth, int sourceHeight, const StdString &sourceUrl, Sprite *loadingThumbnailSprite, int layoutType = ThumbnailWindow::LOW_DETAIL, float maxMediaImageWidth = 64.0f);
 	virtual ~ThumbnailWindow ();
 
 	// Read-only data members
+	int thumbnailIndex;
 	float thumbnailTimestamp;
 	int sourceWidth;
 	int sourceHeight;
 	StdString sourceUrl;
+	bool isHighlighted;
 
-	// Set the card's layout type and reset widgets to show the specified content
-	void setLayout (int cardLayout, float maxImageWidth);
+	// Set the window's layout type and reset widgets to show the specified content
+	void setLayout (int layoutType, float maxImageWidth);
+
+	// Set the window's highlighted state
+	void setHighlighted (bool highlighted);
 
 	// Return a boolean value indicating if the provided Widget is a member of this class
 	static bool isWidgetType (Widget *widget);
@@ -74,7 +79,7 @@ protected:
 	void doProcessMouseState (const Widget::MouseState &mouseState);
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	void resetLayout ();
+	void refreshLayout ();
 
 private:
 	Sprite *loadingSprite;

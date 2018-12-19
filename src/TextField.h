@@ -44,6 +44,10 @@ public:
 	// Read-only data members
 	float fieldWidth;
 	bool isEditing;
+	bool isInverseColor;
+
+	// Set the text field's inverse color state. If enabled, the text field renders using an inverse color scheme.
+	void setInverseColor (bool inverse);
 
 	// Return the text field's value
 	StdString getValue ();
@@ -51,8 +55,8 @@ public:
 	// Clear the text field's value
 	void clearValue ();
 
-	// Set the text field's value
-	void setValue (const StdString &valueText);
+	// Set the text field's value and invoke any configured change callback unless shouldSkipChangeCallback is true
+	void setValue (const StdString &valueText, bool shouldSkipChangeCallback = false);
 
 	// Read a string from the clipboard and append it to the text field's value
 	void appendClipboardText ();
@@ -66,8 +70,8 @@ public:
 	// Set the text field's width by specifying a line length in characters
 	void setLineWidth (int lineLength);
 
-	// Set a callback that should be invoked when the field ends an edit after an enter keypress
-	void setEnterCallback (Widget::EventCallback callback, void *callbackData);
+	// Set a callback that should be invoked when the field's value changes
+	void setValueChangeCallback (Widget::EventCallback callback, void *callbackData);
 
 protected:
 	// Execute operations to update object state as appropriate for an elapsed millisecond time period and origin position
@@ -80,20 +84,29 @@ protected:
 	virtual bool doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	virtual void resetLayout ();
+	virtual void refreshLayout ();
 
 private:
 	// Set the field's focused state
 	void setFocused (bool enable);
 
-	Widget::EventCallback enterCallback;
-	void *enterCallbackData;
+	Widget::EventCallback valueChangeCallback;
+	void *valueChangeCallbackData;
 	Label *promptLabel;
 	Label *valueLabel;
 	Panel *cursorPanel;
 	bool isFocused;
 	int cursorClock;
 	StdString lastValue;
+	Color normalBgColor;
+	Color normalBorderColor;
+	Color focusBgColor;
+	Color focusBorderColor;
+	Color editBgColor;
+	Color editBorderColor;
+	Color normalValueTextColor;
+	Color editValueTextColor;
+	Color promptTextColor;
 };
 
 #endif

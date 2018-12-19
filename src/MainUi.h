@@ -63,9 +63,6 @@ public:
 	MainUi ();
 	~MainUi ();
 
-	// Execute operations appropriate when an agent control link client becomes connected
-	void handleLinkClientConnect (const StdString &agentId);
-
 	// Set fields in the provided HelpWindow widget as appropriate for the UI's help content
 	void setHelpWindowContent (Widget *helpWindowPtr);
 

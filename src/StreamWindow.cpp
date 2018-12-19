@@ -47,22 +47,29 @@
 #include "ImageWindow.h"
 #include "SystemInterface.h"
 #include "UiConfiguration.h"
+#include "MonitorUi.h"
 #include "StreamWindow.h"
 
-StreamWindow::StreamWindow (Json *streamItem, Sprite *loadingThumbnailSprite, int cardLayout, float maxStreamImageWidth)
+StreamWindow::StreamWindow (Json *streamItem, SpriteGroup *monitorUiSpriteGroup, int layoutType, float maxStreamImageWidth)
 : Panel ()
+, isSelected (false)
+, selectedTimestamp (0.0f)
+, thumbnailIndex (-1)
 , segmentCount (0)
 , frameWidth (0)
 , frameHeight (0)
 , duration (0)
 , frameRate (0.0f)
 , bitrate (0)
-, loadingThumbnailSprite (loadingThumbnailSprite)
+, spriteGroup (monitorUiSpriteGroup)
 , streamImage (NULL)
 , nameLabel (NULL)
 , detailText (NULL)
 , mouseoverLabel (NULL)
 , detailNameLabel (NULL)
+, selectPanel (NULL)
+, streamImageClickCallback (NULL)
+, streamImageClickCallbackData (NULL)
 {
 	SystemInterface *interface;
 	UiConfiguration *uiconfig;
@@ -72,35 +79,38 @@ StreamWindow::StreamWindow (Json *streamItem, Sprite *loadingThumbnailSprite, in
 
 	interface = &(App::getInstance ()->systemInterface);
 	streamId = interface->getCommandStringParam (streamItem, "id", "");
+	agentId = interface->getCommandAgentId (streamItem);
 	streamName = interface->getCommandStringParam (streamItem, "name", "");
 	frameWidth = interface->getCommandNumberParam (streamItem, "width", (int) 0);
 	frameHeight = interface->getCommandNumberParam (streamItem, "height", (int) 0);
 	frameRate = interface->getCommandNumberParam (streamItem, "frameRate", (float) 0.0f);
 	bitrate = interface->getCommandNumberParam (streamItem, "bitrate", (int64_t) 0);
 
-	streamImage = (ImageWindow *) addWidget (new ImageWindow (new Image (loadingThumbnailSprite)));
+	streamImage = (ImageWindow *) addWidget (new ImageWindow (new Image (spriteGroup->getSprite (MonitorUi::LOADING_IMAGE_ICON))));
+	streamImage->setMouseClickCallback (StreamWindow::streamImageClicked, this);
+
 	nameLabel = (Label *) addWidget (new Label (streamName, UiConfiguration::CAPTION, uiconfig->primaryTextColor));
 
 	detailText = (TextArea *) addWidget (new TextArea (UiConfiguration::CAPTION, uiconfig->inverseTextColor));
 	detailText->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	detailText->setFillBg (true, 0.0f, 0.0f, 0.0f);
-	detailText->setAlphaBlend (true, uiconfig->imageTextScrimAlpha);
+	detailText->setAlphaBlend (true, uiconfig->scrimBackgroundAlpha);
 	detailText->isVisible = false;
 
 	mouseoverLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CAPTION, uiconfig->inverseTextColor)));
 	mouseoverLabel->zLevel = 1;
 	mouseoverLabel->setFillBg (true, 0.0f, 0.0f, 0.0f);
-	mouseoverLabel->setAlphaBlend (true, uiconfig->imageTextScrimAlpha);
+	mouseoverLabel->setAlphaBlend (true, uiconfig->scrimBackgroundAlpha);
 	mouseoverLabel->isVisible = false;
 
 	detailNameLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (streamName, UiConfiguration::HEADLINE, uiconfig->inverseTextColor)));
 	detailNameLabel->zLevel = 1;
 	detailNameLabel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	detailNameLabel->setFillBg (true, 0.0f, 0.0f, 0.0f);
-	detailNameLabel->setAlphaBlend (true, uiconfig->imageTextScrimAlpha);
+	detailNameLabel->setAlphaBlend (true, uiconfig->scrimBackgroundAlpha);
 	detailNameLabel->isVisible = false;
 
-	setLayout (cardLayout, maxStreamImageWidth);
+	setLayout (layoutType, maxStreamImageWidth);
 }
 
 StreamWindow::~StreamWindow () {
@@ -124,13 +134,13 @@ StreamWindow *StreamWindow::castWidget (Widget *widget) {
 	return (StreamWindow::isWidgetType (widget) ? (StreamWindow *) widget : NULL);
 }
 
-void StreamWindow::setLayout (int cardLayout, float maxImageWidth) {
+void StreamWindow::setLayout (int layoutType, float maxImageWidth) {
 	float w, h;
 
-	if (cardLayout == layout) {
+	if (layoutType == layout) {
 		return;
 	}
-	layout = cardLayout;
+	layout = layoutType;
 	w = maxImageWidth;
 	h = frameHeight;
 	h *= maxImageWidth;
@@ -140,11 +150,90 @@ void StreamWindow::setLayout (int cardLayout, float maxImageWidth) {
 	streamImage->setWindowSize (w, h);
 	streamImage->reload ();
 
-	if (layout == StreamWindow::LOW_DETAIL) {
-		mouseoverLabel->setText (streamName);
+	switch (layout) {
+		case StreamWindow::LOW_DETAIL: {
+			mouseoverLabel->setText (streamName);
+			nameLabel->isVisible = false;
+			detailNameLabel->isVisible = false;
+			detailText->isVisible = false;
+			break;
+		}
+		case StreamWindow::MEDIUM_DETAIL: {
+			detailNameLabel->isVisible = false;
+			detailText->isVisible = false;
+			nameLabel->isVisible = true;
+			break;
+		}
+		case StreamWindow::HIGH_DETAIL: {
+			nameLabel->isVisible = false;
+			detailNameLabel->isVisible = true;
+			detailText->isVisible = true;
+			break;
+		}
 	}
 
-	resetLayout ();
+	refreshLayout ();
+}
+
+void StreamWindow::setStreamImageClickCallback (Widget::EventCallback callback, void *callbackData) {
+	streamImageClickCallback = callback;
+	streamImageClickCallbackData = callbackData;
+}
+
+void StreamWindow::setThumbnailIndex (int index) {
+	App *app;
+	Json *params;
+
+	if ((index == thumbnailIndex) || (segmentCount <= 0) || (index < 0) || (index >= segmentCount)) {
+		return;
+	}
+
+	app = App::getInstance ();
+	thumbnailIndex = index;
+	if (! thumbnailPath.empty ()) {
+		params = new Json ();
+		params->set ("id", streamId);
+		params->set ("thumbnailIndex", thumbnailIndex);
+		streamImage->setLoadUrl (app->agentControl.getAgentSecondaryUrl (agentId, app->createCommand ("GetThumbnailImage", SystemInterface::Constant_Stream, params), thumbnailPath), spriteGroup->getSprite (MonitorUi::LOADING_IMAGE_ICON));
+	}
+}
+
+void StreamWindow::setSelected (bool selected, float timestamp) {
+	UiConfiguration *uiconfig;
+	Label *label;
+	Button *button;
+	float x, y;
+
+	uiconfig = &(App::getInstance ()->uiConfig);
+	isSelected = selected;
+	if (selectPanel) {
+		selectPanel->isDestroyed = true;
+		selectPanel = NULL;
+	}
+	if (! isSelected) {
+		selectedTimestamp = 0.0f;
+	}
+	else {
+		selectedTimestamp = timestamp;
+		selectPanel = (Panel *) addWidget (new Panel ());
+		selectPanel->zLevel = 2;
+		selectPanel->setFillBg (true, uiconfig->darkBackgroundColor);
+
+		label = (Label *) selectPanel->addWidget (new Label (Util::getDurationString ((int64_t) selectedTimestamp, Util::HOURS), UiConfiguration::CAPTION, uiconfig->primaryTextColor));
+		button = (Button *) selectPanel->addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::STAR_BUTTON)));
+		button->setImageColor (uiconfig->flatButtonTextColor);
+		button->setMouseClickCallback (StreamWindow::selectButtonClicked, this);
+
+		x = uiconfig->paddingSize;
+		y = 0.0f;
+		label->flowRight (&x, y);
+		button->flowRight (&x, y);
+
+		selectPanel->refresh ();
+		label->position.assignY (label->getLinePosition ((selectPanel->height / 2.0f) - (label->maxLineHeight / 2.0f)));
+	}
+
+	refreshLayout ();
 }
 
 void StreamWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
@@ -162,18 +251,16 @@ void StreamWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 void StreamWindow::syncRecordStore (RecordStore *store) {
 	App *app;
 	SystemInterface *interface;
-	Json *streamitem, *agentstatus, serverstatus, *params;
-	StdString agentid, cmdjson;
+	Json *record, *agentstatus, serverstatus;
 
 	app = App::getInstance ();
 	interface = &(app->systemInterface);
-	streamitem = store->findRecord (streamId, SystemInterface::Command_StreamItem);
-	if (! streamitem) {
+	record = store->findRecord (streamId, SystemInterface::Command_StreamItem);
+	if (! record) {
 		return;
 	}
 
-	agentid = interface->getCommandAgentId (streamitem);
-	agentstatus = store->findRecord (RecordStore::matchAgentStatusSource, &agentid);
+	agentstatus = store->findRecord (RecordStore::matchAgentStatusSource, &agentId);
 	if (! agentstatus) {
 		return;
 	}
@@ -181,27 +268,23 @@ void StreamWindow::syncRecordStore (RecordStore *store) {
 		return;
 	}
 
-	thumbnailUrl = serverstatus.getString ("thumbnailUrl", "");
-	hlsStreamUrl = serverstatus.getString ("hlsStreamUrl", "");
-	segmentCount = interface->getCommandNumberParam (streamitem, "segmentCount", (int) 0);
-	duration = interface->getCommandNumberParam (streamitem, "duration", (int64_t) 0);
+	thumbnailPath = serverstatus.getString ("thumbnailPath", "");
+	hlsStreamPath = serverstatus.getString ("hlsStreamPath", "");
+	segmentCount = interface->getCommandNumberParam (record, "segmentCount", (int) 0);
+	interface->getCommandNumberArrayParam (record, "segmentPositions", &segmentPositions, true);
+	duration = interface->getCommandNumberParam (record, "duration", (int64_t) 0);
 
-	if (streamImage->isLoadUrlEmpty () && (segmentCount > 0) && (! thumbnailUrl.empty ())) {
-		params = new Json ();
-		params->set ("id", streamId);
-		params->set ("thumbnailIndex", (segmentCount / 2));
-		cmdjson = app->createCommandJson ("GetThumbnailImage", SystemInterface::Constant_Stream, params);
-		if (! cmdjson.empty ()) {
-			streamImage->setLoadUrl (interface->getInvokeUrl (thumbnailUrl, cmdjson), loadingThumbnailSprite);
-		}
+	detailText->setText (StdString::createSprintf ("%ix%i  %s  %s", frameWidth, frameHeight, Util::getBitrateDisplayString (bitrate).c_str (), Util::getDurationDisplayString (duration).c_str ()));
+
+	if (streamImage->isLoadUrlEmpty () && (segmentCount > 0) && (! thumbnailPath.empty ())) {
+		setThumbnailIndex (segmentCount / 2);
 	}
 
-	resetLayout ();
+	refreshLayout ();
 }
 
-void StreamWindow::resetLayout () {
+void StreamWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
-	StdString text;
 	float x, y;
 
 	uiconfig = &(App::getInstance ()->uiConfig);
@@ -211,45 +294,49 @@ void StreamWindow::resetLayout () {
 
 	switch (layout) {
 		case StreamWindow::LOW_DETAIL: {
-			nameLabel->isVisible = false;
-			detailNameLabel->isVisible = false;
-			detailText->isVisible = false;
-
 			mouseoverLabel->position.assign (0.0f, streamImage->height - mouseoverLabel->height);
 			setFixedSize (true, streamImage->width, streamImage->height);
 			break;
 		}
 		case StreamWindow::MEDIUM_DETAIL: {
-			detailNameLabel->isVisible = false;
-			detailText->isVisible = false;
-
 			x += uiconfig->paddingSize;
 			y += streamImage->height + uiconfig->marginSize;
 			nameLabel->position.assign (x, y);
-			nameLabel->isVisible = true;
+
 			resetSize ();
 			setFixedSize (true, streamImage->width, maxWidgetY + uiconfig->paddingSize);
 			break;
 		}
 		case StreamWindow::HIGH_DETAIL: {
-			nameLabel->isVisible = false;
-
 			detailNameLabel->position.assign (x, y);
-			detailNameLabel->isVisible = true;
-
-			text.sprintf ("%ix%i  %s  %s", frameWidth, frameHeight, Util::getBitrateDisplayString (bitrate).c_str (), Util::getDurationDisplayString (duration).c_str ());
-
-			detailText->setText (text);
 			detailText->position.assign (streamImage->position.x, streamImage->position.y + streamImage->height - detailText->height);
-			detailText->isVisible = true;
-
-			x += uiconfig->marginSize;
-			y += streamImage->height + uiconfig->marginSize;
 
 			resetSize ();
 			setFixedSize (true, streamImage->width, maxWidgetY);
 			break;
 		}
 	}
+
+	x = width;
+	if (selectPanel) {
+		selectPanel->position.assignY (0.0f);
+		selectPanel->flowLeft (&x);
+	}
 	resetSize ();
+}
+
+void StreamWindow::streamImageClicked (void *windowPtr, Widget *widgetPtr) {
+	StreamWindow *window;
+
+	window = (StreamWindow *) windowPtr;
+	if (window->streamImageClickCallback) {
+		window->streamImageClickCallback (window->streamImageClickCallbackData, window);
+	}
+}
+
+void StreamWindow::selectButtonClicked (void *windowPtr, Widget *widgetPtr) {
+	StreamWindow *window;
+
+	window = (StreamWindow *) windowPtr;
+	window->setSelected (false);
 }

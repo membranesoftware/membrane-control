@@ -140,7 +140,6 @@ void Resource::clearFontMap () {
 void Resource::setSource (const StdString &path) {
 	dataPath.assign (path);
 	isBundleFile = (dataPath.find (".dat") == (dataPath.length () - 4));
-	Log::write (Log::DEBUG, "Set resource path; dataPath=\"%s\"", dataPath.c_str ());
 }
 
 int Resource::open () {
