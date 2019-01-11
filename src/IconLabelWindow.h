@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -50,11 +50,17 @@ public:
 	// Set the window's text
 	void setText (const StdString &labelText);
 
+	// Set the window's text change highlight option. If enabled, the window highlights text changes with a rotation from the specified color.
+	void setTextChangeHighlight (bool enable, const Color &highlightColor = Color (0.0f, 0.0f, 0.0f));
+
 	// Set the window's word wrap option. If enabled, the window applies specified maximums to word wrap its text content. maxTextLineLength specifies the maximum number of characters per text line, with a value of zero or less indicating that a default line length should be chosen from UiConfiguration. maxTextLineWidth specifies the maximum width in pixels per text line, with a value of zero or less indicating that no such maximum should apply.
 	void setWordWrapped (bool enable, int maxTextLineLength = 0, int maxTextLineWidth = 0.0f);
 
 	// Set the window's right-aligned option. If enabled, the window places the icon on the right side instead of the left side.
 	void setRightAligned (bool enable);
+
+	// Set the sprite frame that should be drawn by the window's icon image
+	void setIconImageFrame (int frame);
 
 	// Set the scale value that should be applied to the window's icon image
 	void setIconImageScale (float scale);
@@ -71,6 +77,9 @@ private:
 	Image *image;
 	bool isWordWrapped;
 	bool isRightAligned;
+	bool isTextChangeHighlightEnabled;
+	Color normalTextColor;
+	Color highlightTextColor;
 	TextArea *textArea;
 };
 

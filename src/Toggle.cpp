@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -58,7 +58,7 @@ Toggle::Toggle (Sprite *uncheckedButtonSprite, Sprite *checkedButtonSprite)
 {
 	UiConfiguration *uiconfig;
 
-	typeName.assign ("Toggle");
+	widgetType.assign ("Toggle");
 
 	// TODO: Add an indeterminate toggle state (for use when disabled)
 
@@ -93,7 +93,7 @@ bool Toggle::isWidgetType (Widget *widget) {
 		return (false);
 	}
 
-	return (widget->typeName.equals ("Toggle"));
+	return (widget->widgetType.equals ("Toggle"));
 }
 
 Toggle *Toggle::castWidget (Widget *widget) {

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -805,10 +805,6 @@ void Ui::suspendMouseHover () {
 
 Widget *Ui::addWidget (Widget *widget, float positionX, float positionY, int zLevel) {
 	return (rootPanel->addWidget (widget, positionX, positionY, zLevel));
-}
-
-Widget *Ui::findWidget (uint64_t widgetId, const StdString &widgetTypeName) {
-	return (rootPanel->findChildWidget (widgetId, widgetTypeName, true));
 }
 
 bool Ui::isSideWindowOpen () {

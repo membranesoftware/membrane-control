@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -530,6 +530,33 @@ void AgentControl::contactAgent (const StdString &hostname, int tcpPort) {
 	agentContactHostnameMap.insert (StdString::createSprintf ("%lli", (long long int) jobid), StdString::createSprintf ("%s:%i", hostname.c_str (), tcpPort));
 }
 
+void AgentControl::retryAgents () {
+	App *app;
+	std::map<StdString, Agent>::iterator i, end;
+	StringList idlist;
+	StringList::iterator j, jend;
+
+	app = App::getInstance ();
+
+	SDL_LockMutex (agentMapMutex);
+	i = agentMap.begin ();
+	end = agentMap.end ();
+	while (i != end) {
+		if (i->second.lastStatusTime <= 0) {
+			idlist.push_back (i->first);
+		}
+		++i;
+	}
+	SDL_UnlockMutex (agentMapMutex);
+
+	j = idlist.begin ();
+	jend = idlist.end ();
+	while (j != jend) {
+		invokeCommand (*j, app->createCommand ("GetStatus", SystemInterface::Constant_DefaultCommandType), AgentControl::invokeGetStatusComplete, this, NULL, *j);
+		++j;
+	}
+}
+
 void AgentControl::refreshAgentStatus (const StdString &agentId, const StdString &queueId) {
 	App *app;
 
@@ -786,6 +813,7 @@ void AgentControl::storeAgentStatus (Json *agentStatusCommand, const StdString &
 		pos = agentMap.find (recordid);
 		pos->second.id.assign (recordid);
 	}
+	pos->second.lastStatusTime = Util::getTime ();
 	pos->second.readCommand (agentStatusCommand);
 	if (! agentInvokeHostname.empty ()) {
 		pos->second.invokeHostname.assign (agentInvokeHostname);
@@ -904,116 +932,4 @@ void AgentControl::processQueueCommand (const StdString &queueId, bool removeTop
 	if (sendctx) {
 		app->network.sendHttpPost (sendctx->url, sendctx->command->toString (), AgentControl::sendHttpPostComplete, sendctx);
 	}
-}
-
-int AgentControl::readLocalAgentConfiguration (HashMap *agentConfiguration) {
-	StdString serverpath, filepath;
-	int result;
-
-#if PLATFORM_LINUX
-	serverpath = App::getInstance ()->prefsMap.find (App::prefsServerPath, "/usr/local/membrane-server");
-#endif
-#if PLATFORM_MACOS
-	serverpath = App::getInstance ()->prefsMap.find (App::prefsServerPath, "/Applications/Membrane Master.app");
-#endif
-#if PLATFORM_WINDOWS
-	// TODO: Get this path from an environment variable
-	serverpath = App::getInstance ()->prefsMap.find (App::prefsServerPath, "C:\\Program Files\\Membrane Server");
-#endif
-	if (serverpath.empty ()) {
-		return (Result::ERROR_NOT_IMPLEMENTED);
-	}
-
-	filepath.assign ("");
-#if PLATFORM_LINUX
-	filepath.sprintf ("%s/control", serverpath.c_str ());
-#endif
-#if PLATFORM_MACOS
-	filepath.sprintf ("%s/Contents/MacOS/run.sh", serverpath.c_str ());
-#endif
-#if PLATFORM_WINDOWS
-	filepath.sprintf ("%s/run.js", serverpath.c_str ());
-#endif
-	if (filepath.empty () || (! Util::fileExists (filepath))) {
-		return (Result::ERROR_APPLICATION_NOT_INSTALLED);
-	}
-
-	filepath.assign ("");
-#if PLATFORM_LINUX
-	filepath.sprintf ("%s/conf/systemagent.conf", serverpath.c_str ());
-#endif
-#if PLATFORM_MACOS
-	filepath.sprintf ("%s/Contents/MacOS/conf/systemagent.conf", serverpath.c_str ());
-#endif
-#if PLATFORM_WINDOWS
-	filepath.sprintf ("%s\\conf\\systemagent.conf", serverpath.c_str ());
-#endif
-	if (filepath.empty () || (! Util::fileExists (filepath))) {
-		return (Result::ERROR_APPLICATION_NOT_INSTALLED);
-	}
-
-	result = agentConfiguration->read (filepath, true);
-
-	return (result);
-}
-
-int AgentControl::readLocalAgentState (StdString *agentId, Json *agentState) {
-	StdString serverpath, filepath, runstate;
-	int result;
-
-#if PLATFORM_LINUX
-	serverpath = App::getInstance ()->prefsMap.find (App::prefsServerPath, "/usr/local/membrane-server");
-#endif
-#if PLATFORM_MACOS
-	serverpath = App::getInstance ()->prefsMap.find (App::prefsServerPath, "/Applications/Membrane Master.app");
-#endif
-#if PLATFORM_WINDOWS
-	// TODO: Get this path from an environment variable
-	serverpath = App::getInstance ()->prefsMap.find (App::prefsServerPath, "C:\\Program Files\\Membrane Server");
-#endif
-	if (serverpath.empty ()) {
-		return (Result::ERROR_NOT_IMPLEMENTED);
-	}
-
-	filepath.assign ("");
-#if PLATFORM_LINUX
-	filepath.sprintf ("%s/control", serverpath.c_str ());
-#endif
-#if PLATFORM_MACOS
-	filepath.sprintf ("%s/Contents/MacOS/run.sh", serverpath.c_str ());
-#endif
-#if PLATFORM_WINDOWS
-	filepath.sprintf ("%s/run.js", serverpath.c_str ());
-#endif
-	if (filepath.empty () || (! Util::fileExists (filepath))) {
-		return (Result::ERROR_APPLICATION_NOT_INSTALLED);
-	}
-
-	filepath.assign ("");
-#if PLATFORM_LINUX
-	filepath.sprintf ("%s/run/state", serverpath.c_str ());
-#endif
-#if PLATFORM_MACOS
-	filepath.sprintf ("%s/Contents/MacOS/run/state", serverpath.c_str ());
-#endif
-#if PLATFORM_WINDOWS
-	filepath.sprintf ("%s\\run\\state", serverpath.c_str ());
-#endif
-	if (filepath.empty () || (! Util::fileExists (filepath))) {
-		return (Result::ERROR_FILE_OPEN_FAILED);
-	}
-
-	result = Util::readFile (filepath, &runstate);
-	if (result != Result::SUCCESS) {
-		return (result);
-	}
-
-	result = agentState->parse (runstate);
-	if (result != Result::SUCCESS) {
-		return (result);
-	}
-
-	agentId->assign (agentState->getString ("agentId", ""));
-
-	return (Result::SUCCESS);
 }

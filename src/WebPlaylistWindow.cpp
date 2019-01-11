@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -157,7 +157,7 @@ void WebPlaylistWindow::populate () {
 	selectToggle->setStateChangeCallback (WebPlaylistWindow::selectToggleStateChanged, this);
 	selectToggle->setMouseHoverTooltip (uitext->getText (UiTextString::selectToggleTooltip));
 
-	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::EXPAND_LESS_BUTTON), uiconfig->coreSprites.getSprite (UiConfiguration::EXPAND_MORE_BUTTON)));
+	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::EXPAND_MORE_BUTTON), uiconfig->coreSprites.getSprite (UiConfiguration::EXPAND_LESS_BUTTON)));
 	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
 	expandToggle->setStateChangeCallback (WebPlaylistWindow::expandToggleStateChanged, this);
 	expandToggle->setMouseHoverTooltip (uitext->getText (UiTextString::expandToggleTooltip));

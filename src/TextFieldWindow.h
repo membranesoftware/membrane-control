@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -61,6 +61,12 @@ public:
 
 	// Set the text field's editing state
 	void setEditing (bool enable);
+
+	// Return a boolean value indicating if the provided Widget is a member of this class
+	static bool isWidgetType (Widget *widget);
+
+	// Return a typecasted pointer to the provided widget, or NULL if the widget does not appear to be of the correct type
+	static TextFieldWindow *castWidget (Widget *widget);
 
 	// Callback functions
 	static void textFieldValueChanged (void *windowPtr, Widget *widgetPtr);

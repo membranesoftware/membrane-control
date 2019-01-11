@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -43,6 +43,7 @@ public:
 
 	// Read-write data members
 	StdString id;
+	int64_t lastStatusTime;
 	StdString invokeHostname;
 	int invokeTcpPort1;
 	int invokeTcpPort2;

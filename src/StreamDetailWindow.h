@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -51,12 +51,12 @@ public:
 	// Read-only data members
 	StdString recordId;
 	StdString agentId;
-	StdString mediaName;
-	int mediaWidth, mediaHeight;
-	float mediaDuration;
-	float mediaFrameRate;
-	int64_t mediaSize;
-	int64_t mediaBitrate;
+	StdString streamName;
+	int streamWidth, streamHeight;
+	float streamDuration;
+	float streamFrameRate;
+	int64_t streamSize;
+	int64_t streamBitrate;
 	float menuPositionY;
 
 	// Set a callback function that should be invoked when the window's menu button is pressed

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -79,8 +79,10 @@ public:
 	static void reloadAgent (void *uiPtr, Widget *widgetPtr);
 	static void processAgentStatus (void *uiPtr, Json *record, const StdString &recordId);
 	static void appendPlaylistJson (void *stringListPtr, Widget *widgetPtr);
+	static void appendExpandedAgentId (void *stringListPtr, Widget *widgetPtr);
 	static void matchPlaylistName (void *stringPtr, Widget *widgetPtr);
 	static void agentSelectStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void agentExpandStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void playlistSelectStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void playlistExpandStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void addUrlButtonClicked (void *uiPtr, Widget *widgetPtr);

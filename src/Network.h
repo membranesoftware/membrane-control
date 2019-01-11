@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -36,7 +36,7 @@
 #include <map>
 #include <queue>
 #include <list>
-#include <SDL2/SDL.h>
+#include "SDL2/SDL.h"
 #include "StdString.h"
 #include "Buffer.h"
 #include "SharedBuffer.h"

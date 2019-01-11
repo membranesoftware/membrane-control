@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -36,10 +36,10 @@
 #include "Log.h"
 #include "Prng.h"
 
-// lshift - Return a uint32_t resulting from performing a left circular shift on the provided value
+// Return a uint32_t resulting from performing a left circular shift on the provided value
 static uint32_t lshift (uint32_t value, int shift);
 
-// rshift - Return a uint32_t resulting from performing a right circular shift on the provided value
+// Return a uint32_t resulting from performing a right circular shift on the provided value
 static uint32_t rshift (uint32_t value, int shift);
 
 Prng::Prng ()

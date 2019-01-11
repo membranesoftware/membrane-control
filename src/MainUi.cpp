@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -98,8 +98,8 @@ void MainUi::setHelpWindowContent (Widget *helpWindowPtr) {
 		help->addAction (uitext->getText (UiTextString::mainUiServersHelpActionText), uitext->getText (UiTextString::learnMore).capitalized (), Util::getHelpUrl ("servers"));
 	}
 
-	help->addTopicLink (uitext->getText (UiTextString::membraneSoftwareOverview), Util::getHelpUrl ("membrane-software-overview"));
-	help->addTopicLink (uitext->getText (UiTextString::searchForHelp), Util::getHelpUrl (""));
+	help->addTopicLink (uitext->getText (UiTextString::membraneSoftwareOverviewHelpTitle), Util::getHelpUrl ("membrane-software-overview"));
+	help->addTopicLink (uitext->getText (UiTextString::searchForHelp).capitalized (), Util::getHelpUrl (""));
 }
 
 int MainUi::doLoad () {

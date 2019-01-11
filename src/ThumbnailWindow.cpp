@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -51,7 +51,7 @@
 #include "UiConfiguration.h"
 #include "ThumbnailWindow.h"
 
-ThumbnailWindow::ThumbnailWindow (int thumbnailIndex, float thumbnailTimestamp, int sourceWidth, int sourceHeight, const StdString &sourceUrl, Sprite *loadingThumbnailSprite, int layoutType, float maxMediaImageWidth)
+ThumbnailWindow::ThumbnailWindow (int thumbnailIndex, float thumbnailTimestamp, int sourceWidth, int sourceHeight, const StdString &sourceUrl, int layoutType, float maxMediaImageWidth)
 : Panel ()
 , thumbnailIndex (thumbnailIndex)
 , thumbnailTimestamp (thumbnailTimestamp)
@@ -59,7 +59,6 @@ ThumbnailWindow::ThumbnailWindow (int thumbnailIndex, float thumbnailTimestamp, 
 , sourceHeight (sourceHeight)
 , sourceUrl (sourceUrl)
 , isHighlighted (false)
-, loadingSprite (loadingThumbnailSprite)
 , mediaImage (NULL)
 , timestampLabel (NULL)
 {
@@ -68,8 +67,8 @@ ThumbnailWindow::ThumbnailWindow (int thumbnailIndex, float thumbnailTimestamp, 
 	uiconfig = &(App::getInstance ()->uiConfig);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
-	mediaImage = (ImageWindow *) addWidget (new ImageWindow (new Image (loadingSprite)));
-	mediaImage->setLoadUrl (sourceUrl, loadingSprite);
+	mediaImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LOADING_IMAGE_ICON))));
+	mediaImage->setLoadUrl (sourceUrl, uiconfig->coreSprites.getSprite (UiConfiguration::LOADING_IMAGE_ICON));
 
 	timestampLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CAPTION, uiconfig->inverseTextColor)));
 	timestampLabel->zLevel = 1;

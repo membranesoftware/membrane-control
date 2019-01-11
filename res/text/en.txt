@@ -29,11 +29,11 @@ textSize text size
 showClock show clock
 media media
 mediaFile media file
+mediaFiles media files
 mediaItems media items
 videoStream video stream
 videoStreams video streams
-totalStorage total storage
-freeStorage free storage
+storage storage
 webKiosk web kiosk
 webKiosks web kiosks
 runProgram run program
@@ -41,6 +41,8 @@ createPlaylist create playlist
 createProgram create program
 runPlaylist run playlist
 addPlaylistItem add playlist item
+playAll play all
+cache cache
 shuffle shuffle
 startPosition start position
 playDuration play duration
@@ -73,8 +75,7 @@ enabled enabled
 disabled disabled
 ready ready
 learnMore learn more
-searchForHelp Search for help
-membraneSoftwareOverview Membrane Software overview
+searchForHelp search for help
 startedCreatingStream started creating stream
 removedStream removed stream
 create create
@@ -163,6 +164,9 @@ mediaDataPathPrompt (example: /media_data)
 mediaDataPathPromptWindows (example: C:\media_data)
 mediaScanPeriod media scan period
 mediaScanPeriodDescription How often the server scans the source media path for new files.
+mediaScanPeriodNeverDescription Never - scan on request only
+scanForMedia scan for media
+scanForMediaStartedMessage Command sent: <Scan for media> (this may take some time)
 streamDataPath stream data path
 streamDataPathDescription The directory path where the server writes data required for streaming media functions.
 streamDataPathPrompt (example: /stream_data)
@@ -225,18 +229,19 @@ webKioskNoAddressEnteredPrompt (Enter a website address)
 websiteAddedMessage Website added to program
 webPlaylistCreatedMessage Created program
 shuffleTooltip If enabled: Show items from the list in randomized order
+cacheTooltip If enabled: Monitors running this program cache stream data to their own storage
 clickRenameTooltip (Click to rename)
 hyperlinkTooltip Open this site using the system's web browser
 serverAdminUiEmptyTaskListTitle No tasks
 serverAdminUiEmptyTaskListText Jobs from the server's task queue appear in this list.
 serverAdminUiHelpTitle Server console
-serverAdminUiHelpText This interface shows details about a Membrane Server application and any long-running tasks in its run queue.
+serverAdminUiHelpText This interface shows details about a Membrane Server application and any in-progress tasks from its queue.
 monitorUiHelpTitle Video monitors
 monitorUiHelpText This interface commands Membrane Monitor applications to play video streams. Select monitors using the star icons in their upper right corners, then use the bottom toolbar to execute commands.
 monitorUiHelpAction1Text No Membrane Monitor applications are connected. To find one, return to the main menu and open the "Servers" interface.
 monitorUiHelpAction2Text No Membrane Media Library applications are connected. To find one, return to the main menu and open the "Servers" interface.
 monitorUiHelpAction3Text No video streams are available. To create one, return to the main menu and open the "Media" interface.
-monitorUiHelpAction4Text Click a video stream's thumbnail to view more details and select a play position.
+monitorUiHelpAction4Text Click a video stream's thumbnail to select it. View the stream's timeline images to choose a play position.
 monitorUiHelpAction5Text Create a stream playlist to keep monitors on loop showing randomly selected clips.
 monitorUiEmptyAgentStatusTitle No servers available
 monitorUiEmptyAgentStatusText Return to the main menu and open "Servers" to contact computers running Membrane Media Library and Membrane Monitor.
@@ -251,6 +256,10 @@ monitorUiWritePlaylistTooltip <F4> Run the selected playlist on all selected mon
 monitorUiStopTooltip <F3> Clear all selected monitors
 monitorUiAddPlaylistItemTooltip <F2> Add the selected clip to the selected playlist
 monitorUiCreatePlaylistTooltip <F1> Create a new playlist
+monitorUiViewCacheTooltip View the monitor's cache of stored videos
+monitorUiAddCacheStreamTooltip Store the selected stream in the monitor's cache
+monitorUiAddCachePlaylistTooltip Store all streams in the selected playlist to the monitor's cache
+invokeCreateCacheStreamMessage Command sent: <Transfer stream to cache>
 streamPlaylistCreatedMessage Created playlist
 streamItemAddedMessage Added video stream to playlist
 invokePlayMediaMessage Command sent: <Play video stream>
@@ -260,3 +269,28 @@ streamItemUiHelpText This interface shows thumbnail images from a video stream's
 streamItemUiHelpAction1Text Click a thumbnail image or the timeline bar to select a stream position and return to the previous screen.
 getAgentConfigurationServerContactError Unable to read configuration values from the remote server. Check if network connections are available and try again.
 updateAgentConfigurationMessage Server configuration updated.
+monitorCacheUiHelpTitle Video monitor
+monitorCacheUiHelpText This interface manages the video cache storage of the selected Membrane Monitor application. Use the bottom toolbar to execute commands.
+monitorCacheUiHelpAction1Text No streams are cached on this monitor. Return to the previous screen and select a stream for transfer. Streams stored this way can be played by the monitor without network access.
+monitorCacheUiHelpAction2Text Click a video stream's thumbnail to select it. View the stream's timeline images to choose a play position.
+monitorCacheUiEmptyStreamStatusTitle No video streams in cache
+monitorCacheUiEmptyStreamStatusText Streams from Membrane Monitor's cache appear in this list.
+monitorCacheUiPlayTooltip <F3> Play the selected stream
+monitorCacheUiWritePlaylistTooltip <F2> Play all cache streams on loop
+monitorCacheUiStopTooltip <F1> Clear the monitor
+monitorCacheUiDeleteTooltip Remove the selected stream
+monitorCacheUiWritePlaylistMessage Command sent: <Loop cache videos>
+viewStreamTooltip View timeline images
+unselectButtonTooltip Unselect this item
+monitorActivityIconTooltip Status of the monitor's screen
+storageTooltip Available data storage
+cachedStream cached stream
+cachedStreams cached streams
+taskInProgress task in progress
+tasksInProgress tasks in progress
+cacheVideoStream cache video stream
+cachePlaylistStreams cache playlist streams
+removeStream remove stream
+mediaStreaming media streaming
+serversHelpTitle Connecting to servers with Membrane Control
+membraneSoftwareOverviewHelpTitle Membrane Software overview

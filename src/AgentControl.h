@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -110,6 +110,9 @@ public:
 	// Send a network message to attempt contact with an agent at the specified address
 	void contactAgent (const StdString &hostname, int tcpPort);
 
+	// Attempt to gather status from all previously known agents that have not yet been successfully contacted
+	void retryAgents ();
+
 	// Invoke the GetStatus command from the specified agent and update its record if successful
 	void refreshAgentStatus (const StdString &agentId, const StdString &queueId = StdString (""));
 
@@ -125,12 +128,6 @@ public:
 
 	// Return the base invoke URL associated with the provided hostname / port pair
 	StdString getHostInvokeUrl (const StdString &hostname, int tcpPort);
-
-	// Read configuration fields from any locally installed system agent and store the gathered data in the provided objects. Returns a Result value.
-	static int readLocalAgentConfiguration (HashMap *agentConfiguration);
-
-	// Read state fields from any locally installed system agent and store the gathered data in the provided objects. Returns a Result value.
-	static int readLocalAgentState (StdString *agentId, Json *agentState);
 
 	// Callback functions
 	static void sendHttpPostComplete (void *contextPtr, const StdString &targetUrl, int statusCode, SharedBuffer *responseData);

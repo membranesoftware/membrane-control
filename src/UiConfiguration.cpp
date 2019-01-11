@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -74,11 +74,6 @@ UiConfiguration::UiConfiguration ()
 , buttonFocusedShadeAlpha (0.12f)
 , buttonPressedShadeAlpha (0.28f)
 , buttonDisabledShadeAlpha (0.58f)
-, whiteButtonFrame (0)
-, whiteLargeButtonFrame (1)
-, blackButtonFrame (2)
-, blackLargeButtonFrame (3)
-, chipIconFrame (0)
 , mouseoverBgColor (Color::getByteValue (0x15), Color::getByteValue (0x9F), Color::getByteValue (0x0E))
 , mouseoverBgAlpha (0.53f)
 , activeFocusedIconAlpha (1.0f)
@@ -102,10 +97,13 @@ UiConfiguration::UiConfiguration ()
 , textFieldMediumLineLength (32)
 , textFieldLongLineLength (60)
 , timelineMarkerWidth (16.0f)
-, rightNavWidthPercent (0.275f)
+, rightNavWidthScale (0.275f)
 , snackbarTimeout (16000)
 , snackbarScrollDuration (280)
 , recordSyncDelayDuration (700)
+, smallThumbnailImageScale (0.123f)
+, mediumThumbnailImageScale (0.240f)
+, largeThumbnailImageScale (0.480f)
 , coreSpritesPath ("ui/CoreSprites")
 , isLoaded (false)
 {

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -121,9 +121,6 @@ public:
 
 	// Add a widget to the UI. Returns the widget pointer.
 	Widget *addWidget (Widget *widget, float positionX = 0.0f, float positionY = 0.0f, int zLevel = 0);
-
-	// Return the widget matching the specified ID and type name, or NULL if no such widget was found
-	Widget *findWidget (uint64_t widgetId, const StdString &widgetTypeName);
 
 	// Return a boolean value indicating if one of the UI's side windows is open
 	bool isSideWindowOpen ();

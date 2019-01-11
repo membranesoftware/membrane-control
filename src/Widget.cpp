@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -45,7 +45,7 @@
 const int Widget::minZLevel = -10;
 
 Widget::Widget ()
-: typeName ("")
+: widgetType ("")
 , id (0)
 , isDestroyed (false)
 , isVisible (true)
@@ -205,7 +205,7 @@ void Widget::doRefresh () {
 }
 
 StdString Widget::toString () {
-	return (StdString::createSprintf ("<%s #%llu%s>", typeName.c_str (), (unsigned long long) id, toStringDetail ().c_str ()));
+	return (StdString::createSprintf ("<%s #%llu%s>", widgetType.c_str (), (unsigned long long) id, toStringDetail ().c_str ()));
 }
 
 StdString Widget::toStringDetail () {
@@ -233,16 +233,6 @@ void Widget::syncRecordStore (RecordStore *store) {
 
 void Widget::destroyAllChildWidgets () {
 	// Default implementation does nothing
-}
-
-Widget *Widget::findChildWidget (float positionX, float positionY, bool shouldRecurse) {
-	// Default implementation returns NULL
-	return (NULL);
-}
-
-Widget *Widget::findChildWidget (uint64_t widgetId, const StdString &widgetTypeName, bool shouldRecurse) {
-	// Default implementation returns NULL
-	return (NULL);
 }
 
 Widget *Widget::findMouseHoverWidget (float mouseX, float mouseY) {

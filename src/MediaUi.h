@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -47,15 +47,13 @@ class MediaUi : public Ui {
 public:
 	// Constants to use for sprite indexes
 	enum {
-		LOADING_IMAGE_ICON = 0,
+		CREATE_STREAM_BUTTON = 0,
 		LARGE_THUMBNAIL_BUTTON = 1,
 		MEDIUM_THUMBNAIL_BUTTON = 2,
 		SMALL_THUMBNAIL_BUTTON = 3,
 		BREADCRUMB_ICON = 4,
 		SEARCH_BUTTON = 5,
-		THUMBNAIL_SIZE_BUTTON = 6,
-		CREATE_STREAM_BUTTON = 7,
-		VIEW_THUMBNAILS_BUTTON = 8
+		THUMBNAIL_SIZE_BUTTON = 6
 	};
 
 	MediaUi ();
@@ -79,14 +77,20 @@ public:
 	// Callback functions
 	static void processAgentStatus (void *uiPtr, Json *record, const StdString &recordId);
 	static void processMediaItem (void *uiPtr, Json *record, const StdString &recordId);
+	static void appendExpandedAgentId (void *stringListPtr, Widget *widgetPtr);
 	static void thumbnailSizeButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void smallThumbnailActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void mediumThumbnailActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void largeThumbnailActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void resetMediaCardLayout (void *uiPtr, Widget *widgetPtr);
+	static void reloadButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void reloadAgent (void *uiPtr, Widget *widgetPtr);
+	static void agentExpandStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void mediaWindowClicked (void *uiPtr, Widget *widgetPtr);
 	static void searchFieldEdited (void *uiPtr, Widget *widgetPtr);
 	static void searchButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void mediaLibraryMenuClicked (void *uiPtr, Widget *widgetPtr);
+	static void mediaLibraryScanActionClicked (void *uiPtr, Widget *widgetPtr);
 
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
@@ -129,16 +133,17 @@ private:
 	// Execute actions appropriate when the thumbnail size button is clicked
 	void handleThumbnailSizeButtonClick (Widget *buttonWidget);
 
-	static const float smallImageScale;
-	static const float mediumImageScale;
-	static const float largeImageScale;
+	// Clear all media items and request search result sets from servers
+	void loadSearchResults ();
+
 	static const int pageSize;
 
 	CardView *cardView;
 	TextFieldWindow *searchField;
 	Button *searchButton;
 	WidgetHandle thumbnailSizeMenu;
-	WidgetHandle actionWindow;
+	WidgetHandle actionWidget;
+	WidgetHandle actionTarget;
 	WidgetHandle emptyStateWindow;
 	int cardLayout;
 	float cardMaxImageWidth;

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -56,12 +56,12 @@
 StreamDetailWindow::StreamDetailWindow (const StdString &recordId)
 : Panel ()
 , recordId (recordId)
-, mediaWidth (0)
-, mediaHeight (0)
-, mediaDuration (0.0f)
-, mediaFrameRate (0.0f)
-, mediaSize (0)
-, mediaBitrate (0)
+, streamWidth (0)
+, streamHeight (0)
+, streamDuration (0.0f)
+, streamFrameRate (0.0f)
+, streamSize (0)
+, streamBitrate (0)
 , menuPositionY (0.0f)
 , iconImage (NULL)
 , nameLabel (NULL)
@@ -109,7 +109,7 @@ void StreamDetailWindow::populate () {
 	uiconfig = &(App::getInstance ()->uiConfig);
 	uitext = &(App::getInstance ()->uiText);
 
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::STREAM_ICON)));
+	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LARGE_STREAM_ICON)));
 	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::TITLE, uiconfig->primaryTextColor));
 	descriptionLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::videoStream).capitalized (), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
 
@@ -150,24 +150,23 @@ void StreamDetailWindow::syncRecordStore (RecordStore *store) {
 	}
 
 	agentId = interface->getCommandAgentId (record);
-	mediaName = interface->getCommandStringParam (record, "name", "");
-	mediaWidth = interface->getCommandNumberParam (record, "width", (int) 0);
-	mediaHeight = interface->getCommandNumberParam (record, "height", (int) 0);
-	mediaSize = interface->getCommandNumberParam (record, "size", (int64_t) 0);
-	mediaDuration = interface->getCommandNumberParam (record, "duration", (float) 0.0f);
-	mediaFrameRate = interface->getCommandNumberParam (record, "frameRate", (float) 0.0f);
-	mediaSize = interface->getCommandNumberParam (record, "size", (int64_t) 0);
-	mediaBitrate = interface->getCommandNumberParam (record, "bitrate", (int64_t) 0);
+	streamName = interface->getCommandStringParam (record, "name", "");
+	streamWidth = interface->getCommandNumberParam (record, "width", (int) 0);
+	streamHeight = interface->getCommandNumberParam (record, "height", (int) 0);
+	streamSize = interface->getCommandNumberParam (record, "size", (int64_t) 0);
+	streamDuration = interface->getCommandNumberParam (record, "duration", (float) 0.0f);
+	streamFrameRate = interface->getCommandNumberParam (record, "frameRate", (float) 0.0f);
+	streamBitrate = interface->getCommandNumberParam (record, "bitrate", (int64_t) 0);
 
-	mediaName.assign (interface->getCommandStringParam (record, "name", ""));
-	nameLabel->setText (mediaName);
+	streamName.assign (interface->getCommandStringParam (record, "name", ""));
+	nameLabel->setText (streamName);
 
 	statsWindow->setItem (uitext->getText (UiTextString::server).capitalized (), app->agentControl.getAgentDisplayName (agentId));
 
-	if ((mediaWidth > 0) && (mediaHeight > 0)) {
-		text.sprintf ("%ix%i", mediaWidth, mediaHeight);
-		rationame = Util::getAspectRatioDisplayString (mediaWidth, mediaHeight);
-		framesizename = Util::getFrameSizeName (mediaWidth, mediaHeight);
+	if ((streamWidth > 0) && (streamHeight > 0)) {
+		text.sprintf ("%ix%i", streamWidth, streamHeight);
+		rationame = Util::getAspectRatioDisplayString (streamWidth, streamHeight);
+		framesizename = Util::getFrameSizeName (streamWidth, streamHeight);
 		if ((! rationame.empty ()) || (! framesizename.empty ())) {
 			text.append (" (");
 			if (! rationame.empty ()) {
@@ -185,20 +184,20 @@ void StreamDetailWindow::syncRecordStore (RecordStore *store) {
 		statsWindow->setItem (uitext->getText (UiTextString::frameSize).capitalized (), text);
 	}
 
-	if (mediaFrameRate > 0.0f) {
-		statsWindow->setItem (uitext->getText (UiTextString::frameRate).capitalized (), StdString::createSprintf ("%.2ffps", mediaFrameRate));
+	if (streamFrameRate > 0.0f) {
+		statsWindow->setItem (uitext->getText (UiTextString::frameRate).capitalized (), StdString::createSprintf ("%.2ffps", streamFrameRate));
 	}
 
-	if (mediaBitrate > 0.0f) {
-		statsWindow->setItem (uitext->getText (UiTextString::bitrate).capitalized (), Util::getBitrateDisplayString (mediaBitrate));
+	if (streamBitrate > 0.0f) {
+		statsWindow->setItem (uitext->getText (UiTextString::bitrate).capitalized (), Util::getBitrateDisplayString (streamBitrate));
 	}
 
-	if (mediaSize > 0) {
-		statsWindow->setItem (uitext->getText (UiTextString::fileSize).capitalized (), Util::getFileSizeDisplayString (mediaSize));
+	if (streamSize > 0) {
+		statsWindow->setItem (uitext->getText (UiTextString::fileSize).capitalized (), Util::getByteCountDisplayString (streamSize));
 	}
 
-	if (mediaDuration > 0.0f) {
-		statsWindow->setItem (uitext->getText (UiTextString::duration).capitalized (), Util::getDurationDisplayString (mediaDuration));
+	if (streamDuration > 0.0f) {
+		statsWindow->setItem (uitext->getText (UiTextString::duration).capitalized (), Util::getDurationDisplayString (streamDuration));
 	}
 
 	refreshLayout ();

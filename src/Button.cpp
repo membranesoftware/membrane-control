@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -62,7 +62,7 @@ Button::Button (const StdString &labelText, Sprite *sprite, bool shouldDestroySp
 {
 	UiConfiguration *uiconfig;
 
-	typeName.assign ("Button");
+	widgetType.assign ("Button");
 
 	uiconfig = &(App::getInstance ()->uiConfig);
 	if (! labelText.empty ()) {
@@ -70,7 +70,7 @@ Button::Button (const StdString &labelText, Sprite *sprite, bool shouldDestroySp
 		label = (Label *) addWidget (new Label (labelText, UiConfiguration::BUTTON, normalTextColor));
 	}
 	if (sprite) {
-		image = (Image *) addWidget (new Image (sprite, uiconfig->whiteButtonFrame, shouldDestroySprite));
+		image = (Image *) addWidget (new Image (sprite, UiConfiguration::WHITE_BUTTON_FRAME, shouldDestroySprite));
 		image->drawAlpha = uiconfig->activeFocusedIconAlpha;
 		maxImageWidth = image->maxSpriteWidth;
 		maxImageHeight = image->maxSpriteHeight;
@@ -96,7 +96,7 @@ bool Button::isWidgetType (Widget *widget) {
 		return (false);
 	}
 
-	return (widget->typeName.equals ("Button"));
+	return (widget->widgetType.equals ("Button"));
 }
 
 Button *Button::castWidget (Widget *widget) {
@@ -322,7 +322,7 @@ void Button::refreshLayout () {
 	iswhiteframe = (isInverseColor || isImageColorEnabled);
 	if (isDisabled) {
 		if (image) {
-			image->setFrame (iswhiteframe ? uiconfig->whiteButtonFrame : uiconfig->blackButtonFrame);
+			image->setFrame (iswhiteframe ? UiConfiguration::WHITE_BUTTON_FRAME : UiConfiguration::BLACK_BUTTON_FRAME);
 			image->drawAlpha = uiconfig->activeUnfocusedIconAlpha;
 		}
 
@@ -332,7 +332,7 @@ void Button::refreshLayout () {
 	}
 	else if (isPressed) {
 		if (image) {
-			image->setFrame (iswhiteframe ? uiconfig->whiteLargeButtonFrame : uiconfig->blackLargeButtonFrame);
+			image->setFrame (iswhiteframe ? UiConfiguration::WHITE_LARGE_BUTTON_FRAME : UiConfiguration::BLACK_LARGE_BUTTON_FRAME);
 			image->drawAlpha = uiconfig->activeFocusedIconAlpha;
 		}
 
@@ -347,7 +347,7 @@ void Button::refreshLayout () {
 	}
 	else if (isFocused) {
 		if (image) {
-			image->setFrame (iswhiteframe ? uiconfig->whiteLargeButtonFrame : uiconfig->blackLargeButtonFrame);
+			image->setFrame (iswhiteframe ? UiConfiguration::WHITE_LARGE_BUTTON_FRAME : UiConfiguration::BLACK_LARGE_BUTTON_FRAME);
 			image->drawAlpha = uiconfig->activeFocusedIconAlpha;
 		}
 
@@ -362,7 +362,7 @@ void Button::refreshLayout () {
 	}
 	else {
 		if (image) {
-			image->setFrame (iswhiteframe ? uiconfig->whiteButtonFrame : uiconfig->blackButtonFrame);
+			image->setFrame (iswhiteframe ? UiConfiguration::WHITE_BUTTON_FRAME : UiConfiguration::BLACK_BUTTON_FRAME);
 			image->drawAlpha = uiconfig->activeUnfocusedIconAlpha;
 		}
 	}

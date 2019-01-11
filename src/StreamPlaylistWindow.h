@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -91,7 +91,7 @@ public:
 	void setExpanded (bool expanded, bool shouldSkipStateChangeCallback = false);
 
 	// Add an item to the window's playlist
-	void addItem (const StdString &streamUrl, const StdString &streamId, const StdString &mediaName, float playPosition);
+	void addItem (const StdString &streamUrl, const StdString &streamId, const StdString &mediaName, float startPosition);
 
 	// Return a newly created Json object suitable for storing the window's state
 	Json *getState ();
@@ -135,8 +135,8 @@ private:
 		StdString streamUrl;
 		StdString streamId;
 		StdString mediaName;
-		float playPosition;
-		Item (): playPosition (0.0f) { }
+		float startPosition;
+		Item (): startPosition (0.0f) { }
 	};
 
 	// Populate widgets as appropriate for the window's initial state

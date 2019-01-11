@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -50,6 +50,7 @@ IconLabelWindow::IconLabelWindow (Sprite *iconSprite, const StdString &iconText,
 , image (NULL)
 , isWordWrapped (false)
 , isRightAligned (false)
+, isTextChangeHighlightEnabled (false)
 , textArea (NULL)
 {
 	UiConfiguration *uiconfig;
@@ -57,9 +58,10 @@ IconLabelWindow::IconLabelWindow (Sprite *iconSprite, const StdString &iconText,
 	uiconfig = &(App::getInstance ()->uiConfig);
 	setPadding (uiconfig->paddingSize, 0.0f);
 
-	label = (Label *) addWidget (new Label (iconText, iconFontType, iconTextColor));
+	normalTextColor.assign (iconTextColor);
+	label = (Label *) addWidget (new Label (iconText, iconFontType, normalTextColor));
 	image = (Image *) addWidget (new Image (iconSprite));
-	textArea = (TextArea *) addWidget (new TextArea (iconFontType, iconTextColor));
+	textArea = (TextArea *) addWidget (new TextArea (iconFontType, normalTextColor));
 	textArea->isVisible = false;
 
 	setWordWrapped (isTextWordWrapped);
@@ -75,8 +77,21 @@ StdString IconLabelWindow::toStringDetail () {
 }
 
 void IconLabelWindow::setText (const StdString &text) {
+	if (isTextChangeHighlightEnabled) {
+		if ((! label->text.empty ()) && (! text.equals (label->text))) {
+			label->textColor.assign (highlightTextColor);
+			label->textColor.rotate (normalTextColor, App::getInstance ()->uiConfig.longColorRotateDuration);
+		}
+	}
 	label->setText (text);
 	refreshLayout ();
+}
+
+void IconLabelWindow::setTextChangeHighlight (bool enable, const Color &highlightColor) {
+	isTextChangeHighlightEnabled = enable;
+	if (isTextChangeHighlightEnabled) {
+		highlightTextColor.assign (highlightColor);
+	}
 }
 
 void IconLabelWindow::setWordWrapped (bool enable, int maxTextLineLength, int maxTextLineWidth) {
@@ -99,6 +114,11 @@ void IconLabelWindow::setRightAligned (bool enable) {
 		return;
 	}
 	isRightAligned = enable;
+	refreshLayout ();
+}
+
+void IconLabelWindow::setIconImageFrame (int frame) {
+	image->setFrame (frame);
 	refreshLayout ();
 }
 

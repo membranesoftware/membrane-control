@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -79,8 +79,12 @@ const int64_t App::defaultServerTimeout = 180;
 const StdString App::prefsServerPath = StdString ("ServerPath");
 const StdString App::prefsApplicationName = StdString ("ApplicationName");
 const StdString App::prefsHttps = StdString ("Https");
+const StdString App::prefsWebKioskUiExpandedAgents = StdString ("WebKiosk_ExpandedAgents");
 const StdString App::prefsWebKioskUiPlaylists = StdString ("WebKiosk_Playlists");
+const StdString App::prefsMediaUiExpandedAgents = StdString ("Media_ExpandedAgents");
 const StdString App::prefsMonitorUiPlaylists = StdString ("Monitor_Playlists");
+const StdString App::prefsMonitorUiSelectedAgents = StdString ("Monitor_SelectedAgents");
+const StdString App::prefsMonitorUiExpandedAgents = StdString ("Monitor_ExpandedAgents");
 const StdString App::prefsMainUiShowAllEnabled = StdString ("Main_ShowAllEnabled");
 
 App::App ()
@@ -491,7 +495,7 @@ void App::populateWidgets () {
 	bottomBarHeight = secondaryToolbar->isVisible ? secondaryToolbar->height : 0.0f;
 
 	if (! newsWindow) {
-		newsWindow = (NewsWindow *) rootPanel->addWidget (new NewsWindow (windowWidth * uiConfig.rightNavWidthPercent, windowHeight - topBarHeight - bottomBarHeight));
+		newsWindow = (NewsWindow *) rootPanel->addWidget (new NewsWindow (windowWidth * uiConfig.rightNavWidthScale, windowHeight - topBarHeight - bottomBarHeight));
 		newsWindow->zLevel = 1;
 		newsWindow->isVisible = false;
 		newsWindow->position.assign (0.0f, windowWidth - newsWindow->width);
@@ -712,7 +716,7 @@ void App::update (int msElapsed) {
 			bottomBarHeight = secondaryToolbar->isVisible ? secondaryToolbar->height : 0.0f;
 
 			if (newsWindow->isVisible) {
-				newsWindow->setViewSize (windowWidth * uiConfig.rightNavWidthPercent, windowHeight - topBarHeight - bottomBarHeight);
+				newsWindow->setViewSize (windowWidth * uiConfig.rightNavWidthScale, windowHeight - topBarHeight - bottomBarHeight);
 				rightBarWidth = newsWindow->width;
 				newsWindow->position.assign (windowWidth - newsWindow->width, topBarHeight);
 			}
@@ -814,7 +818,7 @@ void App::refreshUi () {
 
 	secondaryToolbar->position.assign (0.0f, windowHeight - secondaryToolbar->height);
 	newsWindow->position.assign (windowWidth - newsWindow->width, topBarHeight);
-	newsWindow->setViewSize (windowWidth * uiConfig.rightNavWidthPercent, windowHeight - topBarHeight - bottomBarHeight);
+	newsWindow->setViewSize (windowWidth * uiConfig.rightNavWidthScale, windowHeight - topBarHeight - bottomBarHeight);
 	snackbarWindow->position.assign (windowWidth - rightBarWidth - snackbarWindow->width, topBarHeight);
 }
 
@@ -867,7 +871,7 @@ void App::toggleNewsWindow () {
 		rightBarWidth = 0.0f;
 	}
 	else {
-		newsWindow->setViewSize (windowWidth * uiConfig.rightNavWidthPercent, windowHeight - topBarHeight - bottomBarHeight);
+		newsWindow->setViewSize (windowWidth * uiConfig.rightNavWidthScale, windowHeight - topBarHeight - bottomBarHeight);
 		newsWindow->position.assign (windowWidth - newsWindow->width, topBarHeight);
 		rightBarWidth = newsWindow->width;
 		newsWindow->isVisible = true;
@@ -1115,7 +1119,7 @@ void App::resizeWindow () {
 	rootPanel->setFixedSize (true, windowWidth, windowHeight);
 	mainToolbar->setWidth (windowWidth);
 	secondaryToolbar->setWidth (windowWidth);
-	newsWindow->setViewSize (windowWidth * uiConfig.rightNavWidthPercent, windowHeight - topBarHeight - bottomBarHeight);
+	newsWindow->setViewSize (windowWidth * uiConfig.rightNavWidthScale, windowHeight - topBarHeight - bottomBarHeight);
 
 	uiConfig.coreSprites.resize ();
 	result = uiConfig.reloadFonts (fontScale);

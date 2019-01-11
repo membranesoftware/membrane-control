@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -79,7 +79,7 @@ Panel::Panel ()
 , widgetListMutex (NULL)
 , widgetAddListMutex (NULL)
 {
-	typeName.assign ("Panel");
+	widgetType.assign ("Panel");
 
 	widgetListMutex = SDL_CreateMutex ();
 	widgetAddListMutex = SDL_CreateMutex ();
@@ -208,125 +208,6 @@ void Panel::removeWidget (Widget *targetWidget) {
 		++i;
 	}
 	SDL_UnlockMutex (widgetListMutex);
-}
-
-Widget *Panel::findChildWidget (float positionX, float positionY, bool shouldRecurse) {
-	std::list<Widget *>::reverse_iterator i, end;
-	Widget *widget, *item, *nextitem;
-	float x, y, w, h;
-
-	item = NULL;
-	SDL_LockMutex (widgetListMutex);
-	i = widgetList.rbegin ();
-	end = widgetList.rend ();
-	while (i != end) {
-		widget = *i;
-		++i;
-		if (widget->isDestroyed || (! widget->isVisible) || (! widget->isDrawable)) {
-			continue;
-		}
-
-		w = widget->width;
-		h = widget->height;
-		if ((w <= 0.0f) || (h <= 0.0f)) {
-			continue;
-		}
-		x = widget->position.x;
-		y = widget->position.y;
-		if ((positionX >= x) && (positionX <= (x + w)) && (positionY >= y) && (positionY <= (y + h))) {
-			item = widget;
-			break;
-		}
-	}
-	SDL_UnlockMutex (widgetListMutex);
-
-	if (! item) {
-		SDL_LockMutex (widgetAddListMutex);
-		i = widgetAddList.rbegin ();
-		end = widgetAddList.rend ();
-		while (i != end) {
-			widget = *i;
-			++i;
-			if (widget->isDestroyed || (! widget->isVisible) || (! widget->isDrawable)) {
-				continue;
-			}
-
-			w = widget->width;
-			h = widget->height;
-			if ((w <= 0.0f) || (h <= 0.0f)) {
-				continue;
-			}
-			x = widget->position.x;
-			y = widget->position.y;
-			if ((positionX >= x) && (positionX <= (x + w)) && (positionY >= y) && (positionY <= (y + h))) {
-				item = widget;
-				break;
-			}
-		}
-		SDL_UnlockMutex (widgetAddListMutex);
-	}
-
-	if (item && shouldRecurse) {
-		nextitem = item->findChildWidget (positionX - item->position.x, positionY - item->position.y, true);
-		if (nextitem) {
-			item = nextitem;
-		}
-	}
-
-	return (item);
-}
-
-Widget *Panel::findChildWidget (uint64_t widgetId, const StdString &widgetTypeName, bool shouldRecurse) {
-	std::list<Widget *>::iterator i, end;
-	Widget *widget, *item, *nextitem;
-
-	item = NULL;
-	SDL_LockMutex (widgetListMutex);
-	i = widgetList.begin ();
-	end = widgetList.end ();
-	while (i != end) {
-		widget = *i;
-		if ((widget->id == widgetId) && (widget->typeName.equals (widgetTypeName))) {
-			item = widget;
-			break;
-		}
-
-		if (shouldRecurse) {
-			nextitem = widget->findChildWidget (widgetId, widgetTypeName, true);
-			if (nextitem) {
-				item = nextitem;
-				break;
-			}
-		}
-		++i;
-	}
-	SDL_UnlockMutex (widgetListMutex);
-
-	if (! item) {
-		SDL_LockMutex (widgetAddListMutex);
-		i = widgetAddList.begin ();
-		end = widgetAddList.end ();
-		while (i != end) {
-			widget = *i;
-			if ((widget->id == widgetId) && (widget->typeName.equals (widgetTypeName))) {
-				item = widget;
-				break;
-			}
-
-			if (shouldRecurse) {
-				nextitem = widget->findChildWidget (widgetId, widgetTypeName, true);
-				if (nextitem) {
-					item = nextitem;
-					break;
-				}
-			}
-
-			++i;
-		}
-		SDL_UnlockMutex (widgetAddListMutex);
-	}
-
-	return (item);
 }
 
 Widget *Panel::findMouseHoverWidget (float mouseX, float mouseY) {
@@ -770,7 +651,6 @@ void Panel::doDraw () {
 	while (i != end) {
 		widget = *i;
 		++i;
-
 		if (widget->isDestroyed || (! widget->isVisible) || (! widget->isDrawable)) {
 			continue;
 		}
@@ -836,7 +716,6 @@ void Panel::resetSize () {
 	while (i != end) {
 		widget = *i;
 		++i;
-
 		if (widget->isDestroyed || (! widget->isVisible)) {
 			continue;
 		}
@@ -858,7 +737,6 @@ void Panel::resetSize () {
 	while (i != end) {
 		widget = *i;
 		++i;
-
 		if (widget->isDestroyed || (! widget->isVisible)) {
 			continue;
 		}
@@ -899,9 +777,13 @@ void Panel::refreshLayout () {
 			end = widgetList.end ();
 			while (i != end) {
 				widget = *i;
+				++i;
+				if (widget->isDestroyed || (! widget->isVisible)) {
+					continue;
+				}
+
 				widget->position.assign (x, y);
 				y += widget->height + uiconfig->marginSize;
-				++i;
 			}
 			SDL_UnlockMutex (widgetListMutex);
 
@@ -910,9 +792,13 @@ void Panel::refreshLayout () {
 			end = widgetAddList.end ();
 			while (i != end) {
 				widget = *i;
+				++i;
+				if (widget->isDestroyed || (! widget->isVisible)) {
+					continue;
+				}
+
 				widget->position.assign (x, y);
 				y += widget->height + uiconfig->marginSize;
-				++i;
 			}
 			SDL_UnlockMutex (widgetAddListMutex);
 			break;
@@ -928,12 +814,16 @@ void Panel::refreshLayout () {
 			end = widgetList.end ();
 			while (i != end) {
 				widget = *i;
+				++i;
+				if (widget->isDestroyed || (! widget->isVisible)) {
+					continue;
+				}
+
 				widget->position.assign (x, y);
 				y += widget->height + uiconfig->marginSize;
 				if (widget->width > maxw) {
 					maxw = widget->width;
 				}
-				++i;
 			}
 			SDL_UnlockMutex (widgetListMutex);
 
@@ -942,12 +832,16 @@ void Panel::refreshLayout () {
 			end = widgetAddList.end ();
 			while (i != end) {
 				widget = *i;
+				++i;
+				if (widget->isDestroyed || (! widget->isVisible)) {
+					continue;
+				}
+
 				widget->position.assign (x, y);
 				y += widget->height + uiconfig->marginSize;
 				if (widget->width > maxw) {
 					maxw = widget->width;
 				}
-				++i;
 			}
 			SDL_UnlockMutex (widgetAddListMutex);
 
@@ -956,8 +850,12 @@ void Panel::refreshLayout () {
 			end = widgetList.end ();
 			while (i != end) {
 				widget = *i;
-				widget->position.assignX (x + maxw - widget->width);
 				++i;
+				if (widget->isDestroyed || (! widget->isVisible)) {
+					continue;
+				}
+
+				widget->position.assignX (x + maxw - widget->width);
 			}
 			SDL_UnlockMutex (widgetListMutex);
 
@@ -966,8 +864,12 @@ void Panel::refreshLayout () {
 			end = widgetAddList.end ();
 			while (i != end) {
 				widget = *i;
-				widget->position.assignX (x + maxw - widget->width);
 				++i;
+				if (widget->isDestroyed || (! widget->isVisible)) {
+					continue;
+				}
+
+				widget->position.assignX (x + maxw - widget->width);
 			}
 			SDL_UnlockMutex (widgetAddListMutex);
 			break;
@@ -982,9 +884,13 @@ void Panel::refreshLayout () {
 			end = widgetList.end ();
 			while (i != end) {
 				widget = *i;
+				++i;
+				if (widget->isDestroyed || (! widget->isVisible)) {
+					continue;
+				}
+
 				widget->position.assign (x, y);
 				x += widget->width + uiconfig->marginSize;
-				++i;
 			}
 			SDL_UnlockMutex (widgetListMutex);
 
@@ -993,9 +899,13 @@ void Panel::refreshLayout () {
 			end = widgetAddList.end ();
 			while (i != end) {
 				widget = *i;
+				++i;
+				if (widget->isDestroyed || (! widget->isVisible)) {
+					continue;
+				}
+
 				widget->position.assign (x, y);
 				x += widget->width + uiconfig->marginSize;
-				++i;
 			}
 			SDL_UnlockMutex (widgetAddListMutex);
 			break;

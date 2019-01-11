@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -81,7 +81,7 @@ public:
 	};
 	static StdString getDurationString (int64_t duration, int minUnitType = Util::MILLISECONDS);
 
-	// Return a string containing a value representing the specified millisecond duration in a readable format
+	// Return a string containing a value representing the specified millisecond duration in readable format
 	static StdString getDurationDisplayString (int64_t duration);
 
 	// Return an enum value usable as a minUnitType value with the createDurationLabel method, indicating the most suitable unit type for use with the specified millisecond duration (i.e. shorter durations should be shown with smaller unit types)
@@ -100,7 +100,10 @@ public:
 	static StdString getTimeString (int64_t timestamp = 0);
 
 	// Return a string containing text representing the specified number of bytes in readable format
-	static StdString getFileSizeDisplayString (int64_t bytes);
+	static StdString getByteCountDisplayString (int64_t bytes);
+
+	// Return a string containing text representing the specified storage numbers in readable format
+	static StdString getStorageAmountDisplayString (int64_t bytesFree, int64_t bytesTotal);
 
 	// Return a string containing the name of the specified aspect ratio, or an empty string if no such name was found.
 	static StdString getAspectRatioDisplayString (int width, int height);

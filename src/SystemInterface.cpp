@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -31,7 +31,7 @@
 #include <stdlib.h>
 #include "Config.h"
 #include "SystemInterface.h"
-const char *SystemInterface::version = "6-stable-bf255788";
+const char *SystemInterface::version = "7-stable-7790b601";
 const int SystemInterface::Constant_MaxCommandPriority = 100;
 const char *SystemInterface::Constant_CreateTimePrefixField = "a";
 const char *SystemInterface::Constant_AgentIdPrefixField = "b";
@@ -65,8 +65,10 @@ void SystemInterface::populate () {
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("Authorize"), SystemInterface::Command (19, StdString ("Authorize"), StdString ("Authorize"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("AuthorizeResult"), SystemInterface::Command (13, StdString ("AuthorizeResult"), StdString ("AuthorizeResult"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("CancelTask"), SystemInterface::Command (28, StdString ("CancelTask"), StdString ("CancelTask"))));
+  commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("ClearCache"), SystemInterface::Command (59, StdString ("ClearCache"), StdString ("EmptyObject"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("ClearDisplay"), SystemInterface::Command (31, StdString ("ClearDisplay"), StdString ("EmptyObject"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("CommandResult"), SystemInterface::Command (0, StdString ("CommandResult"), StdString ("CommandResult"))));
+  commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("CreateCacheStream"), SystemInterface::Command (60, StdString ("CreateCacheStream"), StdString ("CreateCacheStream"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("CreateMediaDisplayIntent"), SystemInterface::Command (50, StdString ("CreateMediaDisplayIntent"), StdString ("CreateMediaDisplayIntent"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("CreateMediaStream"), SystemInterface::Command (14, StdString ("CreateMediaStream"), StdString ("CreateMediaStream"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("CreateWebDisplayIntent"), SystemInterface::Command (35, StdString ("CreateWebDisplayIntent"), StdString ("CreateWebDisplayIntent"))));
@@ -87,6 +89,7 @@ void SystemInterface::populate () {
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("MediaItem"), SystemInterface::Command (16, StdString ("MediaItem"), StdString ("MediaItem"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("MediaServerStatus"), SystemInterface::Command (9, StdString ("MediaServerStatus"), StdString ("MediaServerStatus"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("MonitorServerStatus"), SystemInterface::Command (12, StdString ("MonitorServerStatus"), StdString ("MonitorServerStatus"))));
+  commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("PlayCacheStream"), SystemInterface::Command (57, StdString ("PlayCacheStream"), StdString ("PlayCacheStream"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("PlayMedia"), SystemInterface::Command (30, StdString ("PlayMedia"), StdString ("PlayMedia"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("ReadEvents"), SystemInterface::Command (18, StdString ("ReadEvents"), StdString ("ReadEvents"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("ReadTasks"), SystemInterface::Command (6, StdString ("ReadTasks"), StdString ("EmptyObject"))));
@@ -94,6 +97,7 @@ void SystemInterface::populate () {
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("RemoveStream"), SystemInterface::Command (29, StdString ("RemoveStream"), StdString ("RemoveStream"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("ReportContact"), SystemInterface::Command (32, StdString ("ReportContact"), StdString ("ReportContact"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("ReportStatus"), SystemInterface::Command (2, StdString ("ReportStatus"), StdString ("ReportStatus"))));
+  commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("ScanMediaItems"), SystemInterface::Command (58, StdString ("ScanMediaItems"), StdString ("EmptyObject"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("ServerError"), SystemInterface::Command (20, StdString ("ServerError"), StdString ("ServerError"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("SetIntentActive"), SystemInterface::Command (38, StdString ("SetIntentActive"), StdString ("SetIntentActive"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("ShowWebUrl"), SystemInterface::Command (34, StdString ("ShowWebUrl"), StdString ("ShowWebUrl"))));
@@ -115,6 +119,7 @@ void SystemInterface::populate () {
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("AuthorizeResult"), SystemInterface::getParams_AuthorizeResult));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("CancelTask"), SystemInterface::getParams_CancelTask));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("CommandResult"), SystemInterface::getParams_CommandResult));
+  getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("CreateCacheStream"), SystemInterface::getParams_CreateCacheStream));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("CreateMediaDisplayIntent"), SystemInterface::getParams_CreateMediaDisplayIntent));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("CreateMediaStream"), SystemInterface::getParams_CreateMediaStream));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("CreateWebDisplayIntent"), SystemInterface::getParams_CreateWebDisplayIntent));
@@ -136,6 +141,7 @@ void SystemInterface::populate () {
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("MediaServerStatus"), SystemInterface::getParams_MediaServerStatus));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("MonitorServerConfiguration"), SystemInterface::getParams_MonitorServerConfiguration));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("MonitorServerStatus"), SystemInterface::getParams_MonitorServerStatus));
+  getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("PlayCacheStream"), SystemInterface::getParams_PlayCacheStream));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("PlayMedia"), SystemInterface::getParams_PlayMedia));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("ReadEvents"), SystemInterface::getParams_ReadEvents));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("RemoveIntent"), SystemInterface::getParams_RemoveIntent));
@@ -161,6 +167,7 @@ void SystemInterface::populate () {
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("AuthorizeResult"), SystemInterface::populateDefaultFields_AuthorizeResult));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("CancelTask"), SystemInterface::populateDefaultFields_CancelTask));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("CommandResult"), SystemInterface::populateDefaultFields_CommandResult));
+  populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("CreateCacheStream"), SystemInterface::populateDefaultFields_CreateCacheStream));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("CreateMediaDisplayIntent"), SystemInterface::populateDefaultFields_CreateMediaDisplayIntent));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("CreateMediaStream"), SystemInterface::populateDefaultFields_CreateMediaStream));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("CreateWebDisplayIntent"), SystemInterface::populateDefaultFields_CreateWebDisplayIntent));
@@ -182,6 +189,7 @@ void SystemInterface::populate () {
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("MediaServerStatus"), SystemInterface::populateDefaultFields_MediaServerStatus));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("MonitorServerConfiguration"), SystemInterface::populateDefaultFields_MonitorServerConfiguration));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("MonitorServerStatus"), SystemInterface::populateDefaultFields_MonitorServerStatus));
+  populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("PlayCacheStream"), SystemInterface::populateDefaultFields_PlayCacheStream));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("PlayMedia"), SystemInterface::populateDefaultFields_PlayMedia));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("ReadEvents"), SystemInterface::populateDefaultFields_ReadEvents));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("RemoveIntent"), SystemInterface::populateDefaultFields_RemoveIntent));
@@ -261,11 +269,25 @@ void SystemInterface::getParams_CommandResult (std::list<SystemInterface::Param>
   destList->push_back (SystemInterface::Param (StdString ("item"), StdString ("object"), StdString (""), 256));
   destList->push_back (SystemInterface::Param (StdString ("taskId"), StdString ("string"), StdString (""), 32));
 }
+void SystemInterface::getParams_CreateCacheStream (std::list<SystemInterface::Param> *destList) {
+  destList->clear ();
+  destList->push_back (SystemInterface::Param (StdString ("streamUrl"), StdString ("string"), StdString (""), 67));
+  destList->push_back (SystemInterface::Param (StdString ("thumbnailUrl"), StdString ("string"), StdString (""), 67));
+  destList->push_back (SystemInterface::Param (StdString ("streamId"), StdString ("string"), StdString (""), 35));
+  destList->push_back (SystemInterface::Param (StdString ("streamName"), StdString ("string"), StdString (""), 3));
+  destList->push_back (SystemInterface::Param (StdString ("duration"), StdString ("number"), StdString (""), 17));
+  destList->push_back (SystemInterface::Param (StdString ("width"), StdString ("number"), StdString (""), 17));
+  destList->push_back (SystemInterface::Param (StdString ("height"), StdString ("number"), StdString (""), 17));
+  destList->push_back (SystemInterface::Param (StdString ("bitrate"), StdString ("number"), StdString (""), 17));
+  destList->push_back (SystemInterface::Param (StdString ("frameRate"), StdString ("number"), StdString (""), 17));
+}
 void SystemInterface::getParams_CreateMediaDisplayIntent (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("displayName"), StdString ("string"), StdString (""), 3));
   destList->push_back (SystemInterface::Param (StdString ("items"), StdString ("array"), StdString ("MediaDisplayItem"), 3));
   destList->push_back (SystemInterface::Param (StdString ("isShuffle"), StdString ("boolean"), StdString (""), 1));
+  destList->push_back (SystemInterface::Param (StdString ("minStartPositionDelta"), StdString ("number"), 129, (double) 0, (double) 100));
+  destList->push_back (SystemInterface::Param (StdString ("maxStartPositionDelta"), StdString ("number"), 129, (double) 0, (double) 100));
   destList->push_back (SystemInterface::Param (StdString ("minItemDisplayDuration"), StdString ("number"), StdString (""), 17));
   destList->push_back (SystemInterface::Param (StdString ("maxItemDisplayDuration"), StdString ("number"), StdString (""), 17));
 }
@@ -317,8 +339,8 @@ void SystemInterface::getParams_GetHlsManifest (std::list<SystemInterface::Param
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("streamId"), StdString ("string"), StdString (""), 35));
   destList->push_back (SystemInterface::Param (StdString ("startPosition"), StdString ("number"), StdString (""), 17));
-  destList->push_back (SystemInterface::Param (StdString ("minStartPositionDelta"), StdString ("number"), 129, (double) 0, (double) 100));
-  destList->push_back (SystemInterface::Param (StdString ("maxStartPositionDelta"), StdString ("number"), 129, (double) 0, (double) 100));
+  destList->push_back (SystemInterface::Param (StdString ("minStartPositionDelta"), StdString ("number"), 128, (double) 0, (double) 100));
+  destList->push_back (SystemInterface::Param (StdString ("maxStartPositionDelta"), StdString ("number"), 128, (double) 0, (double) 100));
 }
 void SystemInterface::getParams_GetHlsSegment (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
@@ -349,13 +371,17 @@ void SystemInterface::getParams_MediaDisplayIntentState (std::list<SystemInterfa
   destList->push_back (SystemInterface::Param (StdString ("itemChoices"), StdString ("array"), StdString ("number"), 3));
   destList->push_back (SystemInterface::Param (StdString ("agentMap"), StdString ("object"), StdString (""), 0));
   destList->push_back (SystemInterface::Param (StdString ("isShuffle"), StdString ("boolean"), StdString (""), 1));
+  destList->push_back (SystemInterface::Param (StdString ("minStartPositionDelta"), StdString ("number"), 129, (double) 0, (double) 100));
+  destList->push_back (SystemInterface::Param (StdString ("maxStartPositionDelta"), StdString ("number"), 129, (double) 0, (double) 100));
   destList->push_back (SystemInterface::Param (StdString ("minItemDisplayDuration"), StdString ("number"), StdString (""), 17));
   destList->push_back (SystemInterface::Param (StdString ("maxItemDisplayDuration"), StdString ("number"), StdString (""), 17));
 }
 void SystemInterface::getParams_MediaDisplayItem (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("mediaName"), StdString ("string"), StdString (""), 1));
-  destList->push_back (SystemInterface::Param (StdString ("streamUrl"), StdString ("string"), StdString (""), 67));
+  destList->push_back (SystemInterface::Param (StdString ("streamUrl"), StdString ("string"), StdString (""), 65));
+  destList->push_back (SystemInterface::Param (StdString ("streamId"), StdString ("string"), StdString (""), 33));
+  destList->push_back (SystemInterface::Param (StdString ("startPosition"), StdString ("number"), StdString (""), 16));
 }
 void SystemInterface::getParams_MediaItem (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
@@ -389,16 +415,31 @@ void SystemInterface::getParams_MonitorServerConfiguration (std::list<SystemInte
 }
 void SystemInterface::getParams_MonitorServerStatus (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
+  destList->push_back (SystemInterface::Param (StdString ("freeStorage"), StdString ("number"), StdString (""), 17));
+  destList->push_back (SystemInterface::Param (StdString ("totalStorage"), StdString ("number"), StdString (""), 17));
+  destList->push_back (SystemInterface::Param (StdString ("streamCount"), StdString ("number"), StdString (""), 17));
+  destList->push_back (SystemInterface::Param (StdString ("thumbnailPath"), StdString ("string"), StdString (""), 65));
   destList->push_back (SystemInterface::Param (StdString ("isPlaying"), StdString ("boolean"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("mediaName"), StdString ("string"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("isShowingUrl"), StdString ("boolean"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("showUrl"), StdString ("string"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("intentName"), StdString ("string"), StdString (""), 1));
 }
+void SystemInterface::getParams_PlayCacheStream (std::list<SystemInterface::Param> *destList) {
+  destList->clear ();
+  destList->push_back (SystemInterface::Param (StdString ("streamId"), StdString ("string"), StdString (""), 35));
+  destList->push_back (SystemInterface::Param (StdString ("startPosition"), StdString ("number"), StdString (""), 16));
+  destList->push_back (SystemInterface::Param (StdString ("minStartPositionDelta"), StdString ("number"), 128, (double) 0, (double) 100));
+  destList->push_back (SystemInterface::Param (StdString ("maxStartPositionDelta"), StdString ("number"), 128, (double) 0, (double) 100));
+}
 void SystemInterface::getParams_PlayMedia (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("mediaName"), StdString ("string"), StdString (""), 1));
-  destList->push_back (SystemInterface::Param (StdString ("streamUrl"), StdString ("string"), StdString (""), 67));
+  destList->push_back (SystemInterface::Param (StdString ("streamUrl"), StdString ("string"), StdString (""), 66));
+  destList->push_back (SystemInterface::Param (StdString ("streamId"), StdString ("string"), StdString (""), 34));
+  destList->push_back (SystemInterface::Param (StdString ("startPosition"), StdString ("number"), StdString (""), 16));
+  destList->push_back (SystemInterface::Param (StdString ("minStartPositionDelta"), StdString ("number"), 128, (double) 0, (double) 100));
+  destList->push_back (SystemInterface::Param (StdString ("maxStartPositionDelta"), StdString ("number"), 128, (double) 0, (double) 100));
 }
 void SystemInterface::getParams_ReadEvents (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
@@ -438,10 +479,11 @@ void SystemInterface::getParams_StreamItem (std::list<SystemInterface::Param> *d
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("id"), StdString ("string"), StdString (""), 35));
   destList->push_back (SystemInterface::Param (StdString ("name"), StdString ("string"), StdString (""), 3));
-  destList->push_back (SystemInterface::Param (StdString ("sourceId"), StdString ("string"), StdString (""), 35));
+  destList->push_back (SystemInterface::Param (StdString ("sourceId"), StdString ("string"), StdString (""), 33));
   destList->push_back (SystemInterface::Param (StdString ("duration"), StdString ("number"), StdString (""), 17));
   destList->push_back (SystemInterface::Param (StdString ("width"), StdString ("number"), StdString (""), 17));
   destList->push_back (SystemInterface::Param (StdString ("height"), StdString ("number"), StdString (""), 17));
+  destList->push_back (SystemInterface::Param (StdString ("size"), StdString ("number"), StdString (""), 17));
   destList->push_back (SystemInterface::Param (StdString ("bitrate"), StdString ("number"), StdString (""), 17));
   destList->push_back (SystemInterface::Param (StdString ("frameRate"), StdString ("number"), StdString (""), 17));
   destList->push_back (SystemInterface::Param (StdString ("hlsTargetDuration"), StdString ("number"), StdString (""), 17));
@@ -458,8 +500,8 @@ void SystemInterface::getParams_StreamServerStatus (std::list<SystemInterface::P
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("isReady"), StdString ("boolean"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("streamCount"), StdString ("number"), StdString (""), 17));
-  destList->push_back (SystemInterface::Param (StdString ("freeSpace"), StdString ("number"), StdString (""), 17));
-  destList->push_back (SystemInterface::Param (StdString ("totalSpace"), StdString ("number"), StdString (""), 17));
+  destList->push_back (SystemInterface::Param (StdString ("freeStorage"), StdString ("number"), StdString (""), 17));
+  destList->push_back (SystemInterface::Param (StdString ("totalStorage"), StdString ("number"), StdString (""), 17));
   destList->push_back (SystemInterface::Param (StdString ("hlsStreamPath"), StdString ("string"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("hlsHtml5Path"), StdString ("string"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("thumbnailPath"), StdString ("string"), StdString (""), 1));
@@ -531,7 +573,15 @@ void SystemInterface::populateDefaultFields_CancelTask (Json *destObject) {
 }
 void SystemInterface::populateDefaultFields_CommandResult (Json *destObject) {
 }
+void SystemInterface::populateDefaultFields_CreateCacheStream (Json *destObject) {
+}
 void SystemInterface::populateDefaultFields_CreateMediaDisplayIntent (Json *destObject) {
+  if (! destObject->exists ("minStartPositionDelta")) {
+    destObject->set ("minStartPositionDelta", 0);
+  }
+  if (! destObject->exists ("maxStartPositionDelta")) {
+    destObject->set ("maxStartPositionDelta", 0);
+  }
   if (! destObject->exists ("minItemDisplayDuration")) {
     destObject->set ("minItemDisplayDuration", 300);
   }
@@ -589,12 +639,6 @@ void SystemInterface::populateDefaultFields_GetHlsManifest (Json *destObject) {
   if (! destObject->exists ("startPosition")) {
     destObject->set ("startPosition", 0);
   }
-  if (! destObject->exists ("minStartPositionDelta")) {
-    destObject->set ("minStartPositionDelta", 0);
-  }
-  if (! destObject->exists ("maxStartPositionDelta")) {
-    destObject->set ("maxStartPositionDelta", 0);
-  }
 }
 void SystemInterface::populateDefaultFields_GetHlsSegment (Json *destObject) {
   if (! destObject->exists ("segmentIndex")) {
@@ -617,6 +661,12 @@ void SystemInterface::populateDefaultFields_IntentState (Json *destObject) {
   }
 }
 void SystemInterface::populateDefaultFields_MediaDisplayIntentState (Json *destObject) {
+  if (! destObject->exists ("minStartPositionDelta")) {
+    destObject->set ("minStartPositionDelta", 0);
+  }
+  if (! destObject->exists ("maxStartPositionDelta")) {
+    destObject->set ("maxStartPositionDelta", 0);
+  }
   if (! destObject->exists ("minItemDisplayDuration")) {
     destObject->set ("minItemDisplayDuration", 300);
   }
@@ -627,6 +677,12 @@ void SystemInterface::populateDefaultFields_MediaDisplayIntentState (Json *destO
 void SystemInterface::populateDefaultFields_MediaDisplayItem (Json *destObject) {
   if (! destObject->exists ("mediaName")) {
     destObject->set ("mediaName", "");
+  }
+  if (! destObject->exists ("streamUrl")) {
+    destObject->set ("streamUrl", "");
+  }
+  if (! destObject->exists ("streamId")) {
+    destObject->set ("streamId", "");
   }
 }
 void SystemInterface::populateDefaultFields_MediaItem (Json *destObject) {
@@ -647,6 +703,9 @@ void SystemInterface::populateDefaultFields_MediaServerStatus (Json *destObject)
 void SystemInterface::populateDefaultFields_MonitorServerConfiguration (Json *destObject) {
 }
 void SystemInterface::populateDefaultFields_MonitorServerStatus (Json *destObject) {
+  if (! destObject->exists ("thumbnailPath")) {
+    destObject->set ("thumbnailPath", "");
+  }
   if (! destObject->exists ("mediaName")) {
     destObject->set ("mediaName", "");
   }
@@ -656,6 +715,8 @@ void SystemInterface::populateDefaultFields_MonitorServerStatus (Json *destObjec
   if (! destObject->exists ("intentName")) {
     destObject->set ("intentName", "");
   }
+}
+void SystemInterface::populateDefaultFields_PlayCacheStream (Json *destObject) {
 }
 void SystemInterface::populateDefaultFields_PlayMedia (Json *destObject) {
   if (! destObject->exists ("mediaName")) {
@@ -688,6 +749,9 @@ void SystemInterface::populateDefaultFields_SetIntentActive (Json *destObject) {
 void SystemInterface::populateDefaultFields_ShowWebUrl (Json *destObject) {
 }
 void SystemInterface::populateDefaultFields_StreamItem (Json *destObject) {
+  if (! destObject->exists ("sourceId")) {
+    destObject->set ("sourceId", "");
+  }
 }
 void SystemInterface::populateDefaultFields_StreamServerConfiguration (Json *destObject) {
 }

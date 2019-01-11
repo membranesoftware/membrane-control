@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -47,8 +47,10 @@ public:
   static const int Command_Authorize = 19;
   static const int Command_AuthorizeResult = 13;
   static const int Command_CancelTask = 28;
+  static const int Command_ClearCache = 59;
   static const int Command_ClearDisplay = 31;
   static const int Command_CommandResult = 0;
+  static const int Command_CreateCacheStream = 60;
   static const int Command_CreateMediaDisplayIntent = 50;
   static const int Command_CreateMediaStream = 14;
   static const int Command_CreateWebDisplayIntent = 35;
@@ -69,6 +71,7 @@ public:
   static const int Command_MediaItem = 16;
   static const int Command_MediaServerStatus = 9;
   static const int Command_MonitorServerStatus = 12;
+  static const int Command_PlayCacheStream = 57;
   static const int Command_PlayMedia = 30;
   static const int Command_ReadEvents = 18;
   static const int Command_ReadTasks = 6;
@@ -76,6 +79,7 @@ public:
   static const int Command_RemoveStream = 29;
   static const int Command_ReportContact = 32;
   static const int Command_ReportStatus = 2;
+  static const int Command_ScanMediaItems = 58;
   static const int Command_ServerError = 20;
   static const int Command_SetIntentActive = 38;
   static const int Command_ShowWebUrl = 34;
@@ -247,6 +251,7 @@ public:
   static void getParams_AuthorizeResult (std::list<SystemInterface::Param> *destList);
   static void getParams_CancelTask (std::list<SystemInterface::Param> *destList);
   static void getParams_CommandResult (std::list<SystemInterface::Param> *destList);
+  static void getParams_CreateCacheStream (std::list<SystemInterface::Param> *destList);
   static void getParams_CreateMediaDisplayIntent (std::list<SystemInterface::Param> *destList);
   static void getParams_CreateMediaStream (std::list<SystemInterface::Param> *destList);
   static void getParams_CreateWebDisplayIntent (std::list<SystemInterface::Param> *destList);
@@ -268,6 +273,7 @@ public:
   static void getParams_MediaServerStatus (std::list<SystemInterface::Param> *destList);
   static void getParams_MonitorServerConfiguration (std::list<SystemInterface::Param> *destList);
   static void getParams_MonitorServerStatus (std::list<SystemInterface::Param> *destList);
+  static void getParams_PlayCacheStream (std::list<SystemInterface::Param> *destList);
   static void getParams_PlayMedia (std::list<SystemInterface::Param> *destList);
   static void getParams_ReadEvents (std::list<SystemInterface::Param> *destList);
   static void getParams_RemoveIntent (std::list<SystemInterface::Param> *destList);
@@ -293,6 +299,7 @@ public:
   static void populateDefaultFields_AuthorizeResult (Json *destObject);
   static void populateDefaultFields_CancelTask (Json *destObject);
   static void populateDefaultFields_CommandResult (Json *destObject);
+  static void populateDefaultFields_CreateCacheStream (Json *destObject);
   static void populateDefaultFields_CreateMediaDisplayIntent (Json *destObject);
   static void populateDefaultFields_CreateMediaStream (Json *destObject);
   static void populateDefaultFields_CreateWebDisplayIntent (Json *destObject);
@@ -314,6 +321,7 @@ public:
   static void populateDefaultFields_MediaServerStatus (Json *destObject);
   static void populateDefaultFields_MonitorServerConfiguration (Json *destObject);
   static void populateDefaultFields_MonitorServerStatus (Json *destObject);
+  static void populateDefaultFields_PlayCacheStream (Json *destObject);
   static void populateDefaultFields_PlayMedia (Json *destObject);
   static void populateDefaultFields_ReadEvents (Json *destObject);
   static void populateDefaultFields_RemoveIntent (Json *destObject);

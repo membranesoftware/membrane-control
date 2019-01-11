@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -92,7 +92,7 @@ void ServerAdminUi::setHelpWindowContent (Widget *helpWindowPtr) {
 	help = (HelpWindow *) helpWindowPtr;
 
 	help->setHelpText (uitext->getText (UiTextString::serverAdminUiHelpTitle), uitext->getText (UiTextString::serverAdminUiHelpText));
-	help->addTopicLink (uitext->getText (UiTextString::searchForHelp), Util::getHelpUrl (""));
+	help->addTopicLink (uitext->getText (UiTextString::searchForHelp).capitalized (), Util::getHelpUrl (""));
 }
 
 int ServerAdminUi::doLoad () {

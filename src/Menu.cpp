@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -56,7 +56,7 @@ Menu::Menu ()
 {
 	UiConfiguration *uiconfig;
 
-	typeName.assign ("Menu");
+	widgetType.assign ("Menu");
 
 	uiconfig = &(App::getInstance ()->uiConfig);
 	setFillBg (true, uiconfig->lightBackgroundColor);
@@ -76,7 +76,7 @@ bool Menu::isWidgetType (Widget *widget) {
 		return (false);
 	}
 
-	return (widget->typeName.equals ("Menu"));
+	return (widget->widgetType.equals ("Menu"));
 }
 
 Menu *Menu::castWidget (Widget *widget) {
@@ -102,7 +102,7 @@ void Menu::addItem (const StdString &name, Sprite *sprite, Widget::EventCallback
 
 	item.label = (Label *) panel->addWidget (new Label (name, UiConfiguration::BODY, uiconfig->primaryTextColor));
 	if (sprite) {
-		item.image = (Image *) panel->addWidget (new Image (sprite, uiconfig->blackButtonFrame));
+		item.image = (Image *) panel->addWidget (new Image (sprite, UiConfiguration::BLACK_BUTTON_FRAME));
 	}
 	item.callback = callback;
 	item.callbackData = callbackData;

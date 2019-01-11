@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -67,7 +67,7 @@ TimelineBar::TimelineBar (float barWidth, const StdString &recordId)
 {
 	UiConfiguration *uiconfig;
 
-	typeName.assign ("TimelineBar");
+	widgetType.assign ("TimelineBar");
 
 	uiconfig = &(App::getInstance ()->uiConfig);
 	setFillBg (true, uiconfig->lightBackgroundColor);

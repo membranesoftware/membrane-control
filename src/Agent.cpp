@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -40,7 +40,8 @@
 #include "Agent.h"
 
 Agent::Agent ()
-: invokeTcpPort1 (0)
+: lastStatusTime (0)
+, invokeTcpPort1 (0)
 , invokeTcpPort2 (0)
 , tcpPort1 (0)
 , tcpPort2 (0)
@@ -79,6 +80,9 @@ StdString Agent::toString () {
 	}
 	if (tcpPort2 > 0) {
 		s.appendSprintf (" tcpPort2=%i", tcpPort2);
+	}
+	if (lastStatusTime > 0) {
+		s.appendSprintf (" lastStatusTime=%lli", (long long int) lastStatusTime);
 	}
 
 	s.append (">");

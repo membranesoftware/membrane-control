@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -55,7 +55,7 @@ Image::Image (Sprite *sprite, int spriteFrame, bool shouldDestroySprite)
 , isMouseHighlightScaled (false)
 , mouseHighlightScale (1.0f)
 {
-	typeName.assign ("Image");
+	widgetType.assign ("Image");
 	spriteHandle.frame = spriteFrame;
 	maxSpriteWidth = (float) sprite->maxWidth;
 	maxSpriteHeight = (float) sprite->maxHeight;

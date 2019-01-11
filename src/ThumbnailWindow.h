@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -34,7 +34,6 @@
 #define THUMBNAIL_WINDOW_H
 
 #include "StdString.h"
-#include "Sprite.h"
 #include "ImageWindow.h"
 #include "LabelWindow.h"
 #include "Panel.h"
@@ -48,7 +47,7 @@ public:
 		HIGH_DETAIL = 2
 	};
 
-	ThumbnailWindow (int thumbnailIndex, float thumbnailTimestamp, int sourceWidth, int sourceHeight, const StdString &sourceUrl, Sprite *loadingThumbnailSprite, int layoutType = ThumbnailWindow::LOW_DETAIL, float maxMediaImageWidth = 64.0f);
+	ThumbnailWindow (int thumbnailIndex, float thumbnailTimestamp, int sourceWidth, int sourceHeight, const StdString &sourceUrl, int layoutType = ThumbnailWindow::LOW_DETAIL, float maxMediaImageWidth = 64.0f);
 	virtual ~ThumbnailWindow ();
 
 	// Read-only data members
@@ -82,7 +81,6 @@ protected:
 	void refreshLayout ();
 
 private:
-	Sprite *loadingSprite;
 	ImageWindow *mediaImage;
 	LabelWindow *timestampLabel;
 };

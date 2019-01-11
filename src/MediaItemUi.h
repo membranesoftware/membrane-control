@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -52,13 +52,12 @@ public:
 
 	// Constants to use for sprite indexes
 	enum {
-		LOADING_IMAGE_ICON = 0,
+		CREATE_STREAM_BUTTON = 0,
 		LARGE_THUMBNAILS_ICON = 1,
 		MEDIUM_THUMBNAILS_ICON = 2,
 		SMALL_THUMBNAILS_ICON = 3,
 		THUMBNAIL_SIZE_BUTTON = 4,
-		TIME_ICON = 5,
-		CREATE_STREAM_BUTTON = 6
+		TIME_ICON = 5
 	};
 
 	// Return text that should be used to identify the UI in a set of breadcrumb actions, or an empty string if no such title exists
@@ -129,10 +128,6 @@ private:
 
 	// Send a RemoveMediaStream command to a remote agent, as specified by the currently held action widget
 	void invokeRemoveMediaStream ();
-
-	static const float smallImageScale;
-	static const float mediumImageScale;
-	static const float largeImageScale;
 
 	WidgetHandle sourceMediaWindow;
 	CardView *cardView;

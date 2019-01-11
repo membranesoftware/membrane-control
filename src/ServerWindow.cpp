@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -181,12 +181,20 @@ void ServerWindow::syncRecordStore (RecordStore *store) {
 	}
 
 	icontype = UiConfiguration::SERVER_ICON;
+	if (interface->getCommandObjectParam (record, "streamServerStatus", &serverstatus)) {
+		statsWindow->setItem (uitext->getText (UiTextString::storage).capitalized (), Util::getStorageAmountDisplayString (serverstatus.getNumber ("freeStorage", (int64_t) 0), serverstatus.getNumber ("totalStorage", (int64_t) 0)));
+	}
 	if (interface->getCommandObjectParam (record, "mediaServerStatus", &serverstatus)) {
-		icontype = UiConfiguration::MEDIA_ICON;
+		icontype = UiConfiguration::LARGE_MEDIA_ICON;
 		statsWindow->setItem (uitext->getText (UiTextString::mediaItems).capitalized (), StdString::createSprintf ("%i", serverstatus.getNumber ("mediaCount", (int) 0)));
+	}
+	if (interface->getCommandObjectParam (record, "streamServerStatus", &serverstatus)) {
+		statsWindow->setItem (uitext->getText (UiTextString::videoStreams).capitalized (), StdString::createSprintf ("%i", serverstatus.getNumber ("streamCount", (int) 0)));
 	}
 	if (interface->getCommandObjectParam (record, "monitorServerStatus", &serverstatus)) {
 		icontype = UiConfiguration::DISPLAY_ICON;
+		statsWindow->setItem (uitext->getText (UiTextString::storage).capitalized (), Util::getStorageAmountDisplayString (serverstatus.getNumber ("freeStorage", (int64_t) 0), serverstatus.getNumber ("totalStorage", (int64_t) 0)));
+		statsWindow->setItem (uitext->getText (UiTextString::cachedStreams).capitalized (), StdString::createSprintf ("%i", serverstatus.getNumber ("streamCount", (int) 0)));
 		statsWindow->setItem (uitext->getText (UiTextString::program).capitalized (), serverstatus.getString ("intentName", ""));
 		statsWindow->setItem (uitext->getText (UiTextString::displayStatus).capitalized (), uitext->getMonitorStatusText (&serverstatus));
 	}

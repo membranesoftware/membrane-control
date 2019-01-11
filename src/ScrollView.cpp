@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -50,7 +50,7 @@ ScrollView::ScrollView (float viewWidth, float viewHeight)
 {
 	UiConfiguration *uiconfig;
 
-	typeName.assign ("ScrollView");
+	widgetType.assign ("ScrollView");
 
 	uiconfig = &(App::getInstance ()->uiConfig);
 	setFixedSize (true, viewWidth, viewHeight);

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -94,8 +94,12 @@ public:
 	static const StdString prefsServerPath;
 	static const StdString prefsApplicationName;
 	static const StdString prefsHttps;
+	static const StdString prefsWebKioskUiExpandedAgents;
 	static const StdString prefsWebKioskUiPlaylists;
+	static const StdString prefsMediaUiExpandedAgents;
 	static const StdString prefsMonitorUiPlaylists;
+	static const StdString prefsMonitorUiSelectedAgents;
+	static const StdString prefsMonitorUiExpandedAgents;
 	static const StdString prefsMainUiShowAllEnabled;
 
 	// Read-write data members

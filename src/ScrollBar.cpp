@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -63,7 +63,7 @@ ScrollBar::ScrollBar (float maxScrollTrackLength)
 	UiConfiguration *uiconfig;
 	float w, h;
 
-	typeName.assign ("ScrollBar");
+	widgetType.assign ("ScrollBar");
 
 	uiconfig = &(App::getInstance ()->uiConfig);
 

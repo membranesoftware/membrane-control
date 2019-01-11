@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -105,7 +105,7 @@ void MediaDetailWindow::populate () {
 	uiconfig = &(App::getInstance ()->uiConfig);
 	uitext = &(App::getInstance ()->uiText);
 
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::MEDIA_ICON)));
+	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LARGE_MEDIA_ICON)));
 	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::TITLE, uiconfig->primaryTextColor));
 	descriptionLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::mediaFile).capitalized (), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
 
@@ -141,7 +141,6 @@ void MediaDetailWindow::syncRecordStore (RecordStore *store) {
 	mediaSize = interface->getCommandNumberParam (record, "size", (int64_t) 0);
 	mediaDuration = interface->getCommandNumberParam (record, "duration", (float) 0.0f);
 	mediaFrameRate = interface->getCommandNumberParam (record, "frameRate", (float) 0.0f);
-	mediaSize = interface->getCommandNumberParam (record, "size", (int64_t) 0);
 	mediaBitrate = interface->getCommandNumberParam (record, "bitrate", (int64_t) 0);
 
 	mediaName.assign (interface->getCommandStringParam (record, "name", ""));
@@ -179,7 +178,7 @@ void MediaDetailWindow::syncRecordStore (RecordStore *store) {
 	}
 
 	if (mediaSize > 0) {
-		statsWindow->setItem (uitext->getText (UiTextString::fileSize).capitalized (), Util::getFileSizeDisplayString (mediaSize));
+		statsWindow->setItem (uitext->getText (UiTextString::fileSize).capitalized (), Util::getByteCountDisplayString (mediaSize));
 	}
 
 	if (mediaDuration > 0.0f) {

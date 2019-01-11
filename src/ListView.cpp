@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -59,7 +59,7 @@ ListView::ListView (float viewWidth, int minItemHeight, int itemFontType, const 
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
-	typeName.assign ("ListView");
+	widgetType.assign ("ListView");
 
 	uiconfig = &(App::getInstance ()->uiConfig);
 	uitext = &(App::getInstance ()->uiText);

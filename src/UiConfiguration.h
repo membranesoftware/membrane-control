@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -82,12 +82,19 @@ public:
 		AGENT_ADMIN_BUTTON = 35,
 		SERVER_ICON = 36,
 		DISPLAY_ICON = 37,
-		MEDIA_ICON = 38,
-		STREAM_ICON = 39,
+		LARGE_MEDIA_ICON = 38,
+		LARGE_STREAM_ICON = 39,
 		PROGRAM_ICON = 40,
 		EXPAND_LESS_BUTTON = 41,
 		EXPAND_MORE_BUTTON = 42,
-		CONFIGURATION_ICON = 43
+		CONFIGURATION_ICON = 43,
+		LOADING_IMAGE_ICON = 44,
+		IMAGE_BUTTON = 45,
+		ACTIVITY_STATE_ICON = 46,
+		STORAGE_ICON = 47,
+		SMALL_STREAM_ICON = 48,
+		TASK_COUNT_ICON = 49,
+		SMALL_MEDIA_ICON = 50
 	};
 
 	// Constants to use for font types
@@ -98,6 +105,17 @@ public:
 		TITLE = 3,
 		HEADLINE = 4,
 		NUM_FONT_TYPES = 5
+	};
+
+	// Constants to use for sprite frame indexes
+	enum {
+		INACTIVE_STATE_ICON_FRAME = 0,
+		ACTIVE_STATE_ICON_FRAME = 1,
+		WHITE_BUTTON_FRAME = 0,
+		WHITE_LARGE_BUTTON_FRAME = 1,
+		BLACK_BUTTON_FRAME = 2,
+		BLACK_LARGE_BUTTON_FRAME = 3,
+		CHIP_ICON_FRAME = 0
 	};
 
 	UiConfiguration ();
@@ -152,11 +170,6 @@ public:
 	float buttonFocusedShadeAlpha;
 	float buttonPressedShadeAlpha;
 	float buttonDisabledShadeAlpha;
-	int whiteButtonFrame;
-	int whiteLargeButtonFrame;
-	int blackButtonFrame;
-	int blackLargeButtonFrame;
-	int chipIconFrame;
 	Color mouseoverBgColor;
 	float mouseoverBgAlpha;
 	float activeFocusedIconAlpha;
@@ -166,7 +179,7 @@ public:
 	float overlayWindowAlpha;
 	float waitingShadeAlpha;
 	float progressBarHeight;
-	float mouseWheelScrollSpeed; // percentage of view height per wheel scroll event
+	float mouseWheelScrollSpeed; // portion of view height per wheel scroll event, from 0.0f to 1.0f
 	float textLineHeightMargin;
 	float textUnderlineMargin;
 	float menuDividerLineWidth;
@@ -180,10 +193,13 @@ public:
 	int textFieldMediumLineLength;
 	int textFieldLongLineLength;
 	float timelineMarkerWidth;
-	float rightNavWidthPercent; // percentage of total window width, expressed as a value from 0.0f to 1.0f
+	float rightNavWidthScale; // portion of total window width, from 0.0f to 1.0f
 	int snackbarTimeout; // ms
 	int snackbarScrollDuration; // ms
 	int recordSyncDelayDuration; // ms
+	float smallThumbnailImageScale; // portion of total window width, from 0.0f to 1.0f
+	float mediumThumbnailImageScale; // portion of total window width, from 0.0f to 1.0f
+	float largeThumbnailImageScale; // portion of total window width, from 0.0f to 1.0f
 	StdString coreSpritesPath;
 	bool isLoaded;
 	SpriteGroup coreSprites;

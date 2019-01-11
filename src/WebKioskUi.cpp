@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -105,8 +105,8 @@ void WebKioskUi::setHelpWindowContent (Widget *helpWindowPtr) {
 		help->addAction (uitext->getText (UiTextString::webKioskUiHelpAction2Text));
 	}
 
-	help->addTopicLink (uitext->getText (UiTextString::membraneSoftwareOverview), Util::getHelpUrl ("membrane-software-overview"));
-	help->addTopicLink (uitext->getText (UiTextString::searchForHelp), Util::getHelpUrl (""));
+	help->addTopicLink (uitext->getText (UiTextString::membraneSoftwareOverviewHelpTitle), Util::getHelpUrl ("membrane-software-overview"));
+	help->addTopicLink (uitext->getText (UiTextString::searchForHelp).capitalized (), Util::getHelpUrl (""));
 }
 
 WebPlaylistWindow *WebKioskUi::createWebPlaylistWindow () {
@@ -315,6 +315,15 @@ void WebKioskUi::doPause () {
 	else {
 		app->prefsMap.insert (App::prefsWebKioskUiPlaylists, &items);
 	}
+
+	items.clear ();
+	cardView->processItems (WebKioskUi::appendExpandedAgentId, &items);
+	if (items.empty ()) {
+		app->prefsMap.remove (App::prefsWebKioskUiExpandedAgents);
+	}
+	else {
+		app->prefsMap.insert (App::prefsWebKioskUiExpandedAgents, &items);
+	}
 }
 
 void WebKioskUi::appendPlaylistJson (void *stringListPtr, Widget *widgetPtr) {
@@ -326,6 +335,15 @@ void WebKioskUi::appendPlaylistJson (void *stringListPtr, Widget *widgetPtr) {
 		json = window->getState ();
 		((StringList *) stringListPtr)->push_back (json->toString ());
 		delete (json);
+	}
+}
+
+void WebKioskUi::appendExpandedAgentId (void *stringListPtr, Widget *widgetPtr) {
+	MonitorWindow *window;
+
+	window = MonitorWindow::castWidget (widgetPtr);
+	if (window && window->isExpanded) {
+		((StringList *) stringListPtr)->push_back (window->agentId);
 	}
 }
 
@@ -370,20 +388,30 @@ bool WebKioskUi::matchWebKioskAgentStatus (void *ptr, Json *record) {
 
 void WebKioskUi::processAgentStatus (void *uiPtr, Json *record, const StdString &recordId) {
 	WebKioskUi *ui;
+	App *app;
 	SystemInterface *interface;
 	MonitorWindow *window;
 	StdString name;
+	StringList items;
 
 	ui = (WebKioskUi *) uiPtr;
-	interface = &(App::getInstance ()->systemInterface);
+	app = App::getInstance ();
+	interface = &(app->systemInterface);
 
 	if (! ui->cardView->contains (recordId)) {
 		name = interface->getCommandStringParam (record, "applicationName", "");
 		if (name.equals (WebKioskUi::serverApplicationName)) {
 			if (interface->getCommandObjectParam (record, "monitorServerStatus", NULL)) {
 				window = new MonitorWindow (recordId);
-				window->sortKey.assign (interface->getCommandAgentName (record).lowercased ());
 				window->setSelectStateChangeCallback (WebKioskUi::agentSelectStateChanged, ui);
+				window->setExpandStateChangeCallback (WebKioskUi::agentExpandStateChanged, ui);
+				window->sortKey.assign (interface->getCommandAgentName (record).lowercased ());
+
+				app->prefsMap.find (App::prefsWebKioskUiExpandedAgents, &items);
+				if (items.contains (recordId)) {
+					window->setExpanded (true, true);
+				}
+
 				ui->cardView->addItem (window, recordId, 0);
 			}
 		}
@@ -1003,4 +1031,11 @@ StdString WebKioskUi::getSelectedAgentNames (float maxWidth) {
 	Label::truncateText (&text, UiConfiguration::CAPTION, maxWidth, StdString::createSprintf ("... (%i)", count));
 
 	return (text);
+}
+
+void WebKioskUi::agentExpandStateChanged (void *uiPtr, Widget *widgetPtr) {
+	WebKioskUi *ui;
+
+	ui = (WebKioskUi *) uiPtr;
+	ui->cardView->refresh ();
 }

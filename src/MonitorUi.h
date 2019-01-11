@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -58,7 +58,7 @@ public:
 		LARGE_THUMBNAIL_BUTTON = 2,
 		MEDIUM_THUMBNAIL_BUTTON = 3,
 		SMALL_THUMBNAIL_BUTTON = 4,
-		LOADING_IMAGE_ICON = 5,
+		ADD_CACHE_STREAM_BUTTON = 5,
 		PLAY_BUTTON = 6,
 		STOP_BUTTON = 7,
 		SMALL_MONITOR_ICON = 8,
@@ -67,7 +67,8 @@ public:
 		CREATE_PLAYLIST_BUTTON = 11,
 		ADD_PLAYLIST_ITEM_BUTTON = 12,
 		SMALL_PROGRAM_ICON = 13,
-		SEARCH_BUTTON = 14
+		SEARCH_BUTTON = 14,
+		CACHE_BUTTON = 15
 	};
 
 	// Return text that should be used to identify the UI in a set of breadcrumb actions, or an empty string if no such title exists
@@ -92,13 +93,15 @@ public:
 	static void reloadButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void reloadAgent (void *uiPtr, Widget *widgetPtr);
 	static void monitorAgentSelectStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void agentExpandStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void thumbnailSizeButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void smallThumbnailActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void mediumThumbnailActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void largeThumbnailActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void resetStreamWindowLayout (void *uiPtr, Widget *widgetPtr);
 	static void streamWindowImageClicked (void *uiPtr, Widget *widgetPtr);
-	static void streamUiThumbnailClicked (void *uiPtr, Widget *widgetPtr);
+	static void streamWindowViewButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void streamItemUiThumbnailClicked (void *uiPtr, Widget *widgetPtr);
 	static void unselectStreamWindow (void *uiPtr, Widget *widgetPtr);
 	static void searchFieldEdited (void *uiPtr, Widget *widgetPtr);
 	static void searchButtonClicked (void *uiPtr, Widget *widgetPtr);
@@ -118,6 +121,12 @@ public:
 	static void playlistNameEdited (void *uiPtr, Widget *widgetPtr);
 	static void removePlaylistActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void appendPlaylistJson (void *stringListPtr, Widget *widgetPtr);
+	static void appendSelectedAgentId (void *stringListPtr, Widget *widgetPtr);
+	static void appendExpandedAgentId (void *stringListPtr, Widget *widgetPtr);
+	static void monitorCacheButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void monitorStreamButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void monitorStreamButtonMouseEntered (void *uiPtr, Widget *widgetPtr);
+	static void monitorCommandButtonMouseExited (void *uiPtr, Widget *widgetPtr);
 
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
@@ -169,9 +178,9 @@ private:
 	// Return a generated string that does not match any existing playlist name
 	StdString getAvailablePlaylistName ();
 
-	static const float smallImageScale;
-	static const float mediumImageScale;
-	static const float largeImageScale;
+	// Clear all stream items and request search result sets from servers
+	void loadSearchResults ();
+
 	static const int pageSize;
 
 	HashMap selectedAgentMap;
@@ -190,12 +199,13 @@ private:
 	WidgetHandle selectedStreamWindow;
 	WidgetHandle selectedPlaylistWindow;
 	WidgetHandle commandPopup;
-	WidgetHandle commandButton;
+	WidgetHandle commandPopupSource;
 	int cardLayout;
 	float cardMaxImageWidth;
 	int recordReceiveCount;
 	int64_t nextRecordSyncTime;
 	StdString streamSearchKey;
+	HashMap streamServerAgentMap;
 	HashMap streamServerResultOffsetMap;
 	HashMap streamServerSetSizeMap;
 	HashMap streamServerRecordCountMap;

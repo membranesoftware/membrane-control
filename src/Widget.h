@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -54,8 +54,8 @@ public:
 
 	static const int minZLevel;
 
-	// Subclasses should assign the typeName value in their constructor
-	StdString typeName;
+	// Subclasses should assign the widgetType value in their constructor
+	StdString widgetType;
 
 	// Read-write data members
 	uint64_t id;
@@ -103,12 +103,6 @@ public:
 
 	// Set the isDestroyed state for all child widgets, causing them to be removed during the next update cycle
 	virtual void destroyAllChildWidgets ();
-
-	// Return the child widget at the specified position in the widget's area, or NULL if no such widget was found. If shouldRecurse is true, the method finds the topmost child widget using recursive invocations.
-	virtual Widget *findChildWidget (float positionX, float positionY, bool shouldRecurse = false);
-
-	// Return the child widget matching the specified ID and type name, or NULL if no such widget was found
-	virtual Widget *findChildWidget (uint64_t widgetId, const StdString &widgetTypeName, bool shouldRecurse = false);
 
 	// Return the topmost child widget at the specified mouse position that holds a non-zero mouseHoverId value, or NULL if no such widget was found
 	virtual Widget *findMouseHoverWidget (float mouseX, float mouseY);

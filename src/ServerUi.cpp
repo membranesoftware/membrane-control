@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -97,8 +97,9 @@ void ServerUi::setHelpWindowContent (Widget *helpWindowPtr) {
 		help->addAction (uitext->getText (UiTextString::serverUiHelpAction2Text), uitext->getText (UiTextString::learnMore).capitalized (), Util::getHelpUrl ("servers"));
 	}
 
-	help->addTopicLink (uitext->getText (UiTextString::membraneSoftwareOverview), Util::getHelpUrl ("membrane-software-overview"));
-	help->addTopicLink (uitext->getText (UiTextString::searchForHelp), Util::getHelpUrl (""));
+	help->addTopicLink (uitext->getText (UiTextString::serversHelpTitle), Util::getHelpUrl ("servers"));
+	help->addTopicLink (uitext->getText (UiTextString::membraneSoftwareOverviewHelpTitle), Util::getHelpUrl ("membrane-software-overview"));
+	help->addTopicLink (uitext->getText (UiTextString::searchForHelp).capitalized (), Util::getHelpUrl (""));
 }
 
 int ServerUi::doLoad () {
@@ -272,9 +273,12 @@ void ServerUi::processAgentStatus (void *uiPtr, Json *record, const StdString &r
 
 void ServerUi::reloadButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	ServerUi *ui;
+	App *app;
 
 	ui = (ServerUi *) uiPtr;
+	app = App::getInstance ();
 	ui->cardView->processItems (ServerUi::reloadAgent, ui);
+	app->agentControl.retryAgents ();
 }
 
 void ServerUi::reloadAgent (void *uiPtr, Widget *widgetPtr) {

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -41,6 +41,7 @@
 #include "Button.h"
 #include "Toggle.h"
 #include "StatsWindow.h"
+#include "IconLabelWindow.h"
 #include "Panel.h"
 
 class MediaLibraryWindow : public Panel {
@@ -50,11 +51,21 @@ public:
 
 	// Read-only data members
 	bool isSelected;
+	bool isExpanded;
 	StdString agentId;
 	StdString agentName;
+	int agentTaskCount;
+	float menuPositionX;
+	float menuPositionY;
+
+	// Set a callback function that should be invoked when the window's menu button is pressed
+	void setMenuClickCallback (Widget::EventCallback callback, void *callbackData);
 
 	// Set a callback that should be invoked when the select toggle's checked state changes
 	void setSelectStateChangeCallback (Widget::EventCallback callback, void *callbackData);
+
+	// Set a callback that should be invoked when the expand toggle's checked state changes
+	void setExpandStateChangeCallback (Widget::EventCallback callback, void *callbackData);
 
 	// Execute operations appropriate to sync widget state with records present in the provided RecordStore object, which has been locked prior to invocation
 	void syncRecordStore (RecordStore *store);
@@ -65,8 +76,13 @@ public:
 	// Return a typecasted pointer to the provided widget, or NULL if the widget does not appear to be of the correct type
 	static MediaLibraryWindow *castWidget (Widget *widget);
 
+	// Set the window's expand state, then execute any expand state change callback that might be configured unless shouldSkipStateChangeCallback is true
+	void setExpanded (bool expanded, bool shouldSkipStateChangeCallback = false);
+
 	// Callback functions
+	static void menuButtonClicked (void *windowPtr, Widget *widgetPtr);
 	static void selectToggleStateChanged (void *windowPtr, Widget *widgetPtr);
+	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
@@ -82,10 +98,20 @@ private:
 	Image *iconImage;
 	Label *nameLabel;
 	Label *descriptionLabel;
+	IconLabelWindow *taskCountIcon;
+	IconLabelWindow *storageIcon;
+	IconLabelWindow *mediaCountIcon;
+	IconLabelWindow *streamCountIcon;
 	StatsWindow *statsWindow;
+	Button *menuButton;
 	Toggle *selectToggle;
+	Toggle *expandToggle;
+	Widget::EventCallback menuClickCallback;
+	void *menuClickCallbackData;
 	Widget::EventCallback selectStateChangeCallback;
 	void *selectStateChangeCallbackData;
+	Widget::EventCallback expandStateChangeCallback;
+	void *expandStateChangeCallbackData;
 };
 
 #endif

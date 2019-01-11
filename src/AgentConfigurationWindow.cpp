@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -305,7 +305,7 @@ StdString AgentConfigurationWindow::mediaScanPeriodSliderValueName (float slider
 
 	uitext = &(App::getInstance ()->uiText);
 	if (FLOAT_EQUALS (sliderValue, 0.0f)) {
-		return (uitext->getText (UiTextString::never).capitalized ());
+		return (uitext->getText (UiTextString::mediaScanPeriodNeverDescription).capitalized ());
 	}
 	if (FLOAT_EQUALS (sliderValue, 1.0f)) {
 		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::slowest).capitalized ().c_str (), Util::getDurationDisplayString (AgentConfigurationWindow::mediaScanPeriods[(int) sliderValue] * 1000).c_str ()));

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -57,10 +57,6 @@
 #include "StreamDetailWindow.h"
 #include "MediaItemUi.h"
 
-const float MediaItemUi::smallImageScale = 0.123f;
-const float MediaItemUi::mediumImageScale = 0.240f;
-const float MediaItemUi::largeImageScale = 0.480f;
-
 MediaItemUi::MediaItemUi (MediaWindow *mediaWindow)
 : Ui ()
 , cardView (NULL)
@@ -101,6 +97,9 @@ void MediaItemUi::setHelpWindowContent (Widget *helpWindowPtr) {
 	if (streamCount <= 0) {
 		help->addAction (uitext->getText (UiTextString::mediaItemUiHelpAction1Text), uitext->getText (UiTextString::learnMore).capitalized (), Util::getHelpUrl ("media-streaming"));
 	}
+
+	help->addTopicLink (uitext->getText (UiTextString::mediaStreaming).capitalized (), Util::getHelpUrl ("media-streaming"));
+	help->addTopicLink (uitext->getText (UiTextString::searchForHelp).capitalized (), Util::getHelpUrl (""));
 }
 
 int MediaItemUi::doLoad () {
@@ -157,7 +156,7 @@ int MediaItemUi::doLoad () {
 			url = app->agentControl.getAgentSecondaryUrl (mediawindow->agentId, app->createCommand ("GetThumbnailImage", SystemInterface::Constant_Media, params), mediawindow->thumbnailPath);
 
 			cardid.sprintf ("%i", i);
-			thumbnailwindow = new ThumbnailWindow (i, t, mediawindow->mediaWidth, mediawindow->mediaHeight, url, sprites.getSprite (MediaItemUi::LOADING_IMAGE_ICON), cardLayout, cardMaxImageWidth);
+			thumbnailwindow = new ThumbnailWindow (i, t, mediawindow->mediaWidth, mediawindow->mediaHeight, url, cardLayout, cardMaxImageWidth);
 			thumbnailwindow->setMouseEnterCallback (MediaItemUi::thumbnailMouseEntered, this);
 			thumbnailwindow->setMouseExitCallback (MediaItemUi::thumbnailMouseExited, this);
 			cardView->addItem (thumbnailwindow, cardid, 1);
@@ -315,6 +314,7 @@ void MediaItemUi::handleThumbnailSizeButtonClick (Widget *buttonWidget) {
 
 void MediaItemUi::smallThumbnailActionClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaItemUi *ui;
+	UiConfiguration *uiconfig;
 	float y0, h0;
 
 	ui = (MediaItemUi *) uiPtr;
@@ -322,10 +322,11 @@ void MediaItemUi::smallThumbnailActionClicked (void *uiPtr, Widget *widgetPtr) {
 		return;
 	}
 
+	uiconfig = &(App::getInstance ()->uiConfig);
 	y0 = ui->cardView->viewOriginY;
 	h0 = ui->cardView->maxWidgetY;
 	ui->cardLayout = ThumbnailWindow::LOW_DETAIL;
-	ui->cardMaxImageWidth = ui->cardView->cardAreaWidth * MediaItemUi::smallImageScale;
+	ui->cardMaxImageWidth = ui->cardView->cardAreaWidth * uiconfig->smallThumbnailImageScale;
 	if (ui->cardMaxImageWidth < 1.0f) {
 		ui->cardMaxImageWidth = 1.0f;
 	}
@@ -339,6 +340,7 @@ void MediaItemUi::smallThumbnailActionClicked (void *uiPtr, Widget *widgetPtr) {
 
 void MediaItemUi::mediumThumbnailActionClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaItemUi *ui;
+	UiConfiguration *uiconfig;
 	float y0, h0;
 
 	ui = (MediaItemUi *) uiPtr;
@@ -346,10 +348,11 @@ void MediaItemUi::mediumThumbnailActionClicked (void *uiPtr, Widget *widgetPtr) 
 		return;
 	}
 
+	uiconfig = &(App::getInstance ()->uiConfig);
 	y0 = ui->cardView->viewOriginY;
 	h0 = ui->cardView->maxWidgetY;
 	ui->cardLayout = ThumbnailWindow::MEDIUM_DETAIL;
-	ui->cardMaxImageWidth = ui->cardView->cardAreaWidth * MediaItemUi::mediumImageScale;
+	ui->cardMaxImageWidth = ui->cardView->cardAreaWidth * uiconfig->mediumThumbnailImageScale;
 	if (ui->cardMaxImageWidth < 1.0f) {
 		ui->cardMaxImageWidth = 1.0f;
 	}
@@ -363,6 +366,7 @@ void MediaItemUi::mediumThumbnailActionClicked (void *uiPtr, Widget *widgetPtr) 
 
 void MediaItemUi::largeThumbnailActionClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaItemUi *ui;
+	UiConfiguration *uiconfig;
 	float y0, h0;
 
 	ui = (MediaItemUi *) uiPtr;
@@ -370,10 +374,11 @@ void MediaItemUi::largeThumbnailActionClicked (void *uiPtr, Widget *widgetPtr) {
 		return;
 	}
 
+	uiconfig = &(App::getInstance ()->uiConfig);
 	y0 = ui->cardView->viewOriginY;
 	h0 = ui->cardView->maxWidgetY;
 	ui->cardLayout = ThumbnailWindow::HIGH_DETAIL;
-	ui->cardMaxImageWidth = ui->cardView->cardAreaWidth * MediaItemUi::largeImageScale;
+	ui->cardMaxImageWidth = ui->cardView->cardAreaWidth * uiconfig->largeThumbnailImageScale;
 	if (ui->cardMaxImageWidth < 1.0f) {
 		ui->cardMaxImageWidth = 1.0f;
 	}

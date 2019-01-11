@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -139,9 +139,8 @@ void StreamPlaylistWindow::populate () {
 	nameLabel->setMouseClickCallback (StreamPlaylistWindow::nameLabelClicked, this);
 	nameLabel->setMouseHoverTooltip (uitext->getText (UiTextString::clickRenameTooltip));
 
-	itemCountLabel = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::STREAM_ICON), StdString ("0"), UiConfiguration::TITLE));
+	itemCountLabel = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SMALL_STREAM_ICON), StdString ("0"), UiConfiguration::TITLE));
 	itemCountLabel->setPadding (0.0f, 0.0f);
-	itemCountLabel->setIconImageScale (0.5f);
 	itemCountLabel->setMouseHoverTooltip (uitext->getCountText (0, UiTextString::streamPlaylistItem, UiTextString::streamPlaylistItems));
 
 	selectToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::STAR_OUTLINE_BUTTON), uiconfig->coreSprites.getSprite (UiConfiguration::STAR_BUTTON)));
@@ -149,7 +148,7 @@ void StreamPlaylistWindow::populate () {
 	selectToggle->setStateChangeCallback (StreamPlaylistWindow::selectToggleStateChanged, this);
 	selectToggle->setMouseHoverTooltip (uitext->getText (UiTextString::selectToggleTooltip));
 
-	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::EXPAND_LESS_BUTTON), uiconfig->coreSprites.getSprite (UiConfiguration::EXPAND_MORE_BUTTON)));
+	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::EXPAND_MORE_BUTTON), uiconfig->coreSprites.getSprite (UiConfiguration::EXPAND_LESS_BUTTON)));
 	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
 	expandToggle->setStateChangeCallback (StreamPlaylistWindow::expandToggleStateChanged, this);
 	expandToggle->setMouseHoverTooltip (uitext->getText (UiTextString::expandToggleTooltip));
@@ -504,15 +503,15 @@ void StreamPlaylistWindow::menuButtonClicked (void *windowPtr, Widget *widgetPtr
 	}
 }
 
-void StreamPlaylistWindow::addItem (const StdString &streamUrl, const StdString &streamId, const StdString &mediaName, float playPosition) {
+void StreamPlaylistWindow::addItem (const StdString &streamUrl, const StdString &streamId, const StdString &mediaName, float startPosition) {
 	StreamPlaylistWindow::Item *item;
 
 	item = new StreamPlaylistWindow::Item ();
 	item->streamUrl.assign (streamUrl);
 	item->streamId.assign (streamId);
 	item->mediaName.assign (mediaName);
-	item->playPosition = playPosition;
-	itemListView->addItem (StdString::createSprintf ("%s %s", Util::getDurationString (playPosition, Util::HOURS).c_str (), mediaName.c_str ()), item, StreamPlaylistWindow::freeItem);
+	item->startPosition = startPosition;
+	itemListView->addItem (StdString::createSprintf ("%s %s", Util::getDurationString (startPosition * 1000.0f, Util::HOURS).c_str (), mediaName.c_str ()), item, StreamPlaylistWindow::freeItem);
 }
 
 void StreamPlaylistWindow::freeItem (void *itemPtr) {
@@ -659,7 +658,7 @@ static const char *IS_SHUFFLE_KEY = "sh";
 static const char *STREAM_URL_KEY = "su";
 static const char *STREAM_ID_KEY = "si";
 static const char *MEDIA_NAME_KEY = "mn";
-static const char *PLAY_POSITION_KEY = "pp";
+static const char *START_POSITION_KEY = "sp";
 Json *StreamPlaylistWindow::getState () {
 	Json *obj, *itemobj;
 	StreamPlaylistWindow::Item *item;
@@ -684,7 +683,7 @@ Json *StreamPlaylistWindow::getState () {
 			itemobj->set (STREAM_URL_KEY, item->streamUrl.c_str ());
 			itemobj->set (STREAM_ID_KEY, item->streamId.c_str ());
 			itemobj->set (MEDIA_NAME_KEY, item->mediaName.c_str ());
-			itemobj->set (PLAY_POSITION_KEY, item->playPosition);
+			itemobj->set (START_POSITION_KEY, item->startPosition);
 
 			items.push_back (itemobj);
 		}
@@ -718,9 +717,9 @@ void StreamPlaylistWindow::setState (Json *stateObject) {
 			item.streamUrl.assign (itemobj.getString (STREAM_URL_KEY, ""));
 			item.streamId.assign (itemobj.getString (STREAM_ID_KEY, ""));
 			item.mediaName.assign (itemobj.getString (MEDIA_NAME_KEY, ""));
-			item.playPosition = itemobj.getNumber (PLAY_POSITION_KEY, 0.0f);
+			item.startPosition = itemobj.getNumber (START_POSITION_KEY, 0.0f);
 
-			addItem (item.streamUrl, item.streamId, item.mediaName, item.playPosition);
+			addItem (item.streamUrl, item.streamId, item.mediaName, item.startPosition);
 		}
 	}
 
@@ -734,14 +733,11 @@ void StreamPlaylistWindow::setState (Json *stateObject) {
 }
 
 Json *StreamPlaylistWindow::getCreateCommand () {
-	App *app;
 	std::list<Json *> items;
 	StreamPlaylistWindow::Item *item;
-	Json *obj, *itemparams, *playparams, *cmd;
-	StdString streamurl;
+	Json *obj, *itemparams;
 	int i, count;
 
-	app = App::getInstance ();
 	obj = new Json ();
 	obj->set ("displayName", playlistName);
 
@@ -751,27 +747,17 @@ Json *StreamPlaylistWindow::getCreateCommand () {
 		if (item) {
 			itemparams = new Json ();
 			itemparams->set ("mediaName", item->mediaName);
+			itemparams->set ("streamUrl", item->streamUrl);
+			itemparams->set ("streamId", item->streamId);
+			itemparams->set ("startPosition", item->startPosition);
 
-			streamurl.assign (item->streamUrl);
-			playparams = new Json ();
-			playparams->set ("streamId", item->streamId);
-			playparams->set ("startPosition", item->playPosition / 1000.0f);
-			if ((startPositionMinSlider->value > 0.0f) || (startPositionMaxSlider->value > 0.0f)) {
-				playparams->set ("minStartPositionDelta", (int) (startPositionMinSlider->value * 99.0f));
-				playparams->set ("maxStartPositionDelta", (int) (startPositionMaxSlider->value * 99.0f));
-			}
-
-			cmd = app->createCommand ("GetHlsManifest", SystemInterface::Constant_Stream, playparams);
-			if (cmd) {
-				streamurl.appendSprintf ("?%s=%s", SystemInterface::Constant_UrlQueryParameter, cmd->toString ().urlEncoded ().c_str ());
-				delete (cmd);
-			}
-			itemparams->set ("streamUrl", streamurl);
 			items.push_back (itemparams);
 		}
 	}
 	obj->set ("items", &items);
 	obj->set ("isShuffle", shuffleToggle->isChecked);
+	obj->set ("minStartPositionDelta", (int) (startPositionMinSlider->value * 99.0f));
+	obj->set ("maxStartPositionDelta", (int) (startPositionMaxSlider->value * 99.0f));
 	obj->set ("minItemDisplayDuration", (int) playDurationMinSlider->value);
 	obj->set ("maxItemDisplayDuration", (int) playDurationMaxSlider->value);
 

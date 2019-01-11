@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -36,6 +36,8 @@
 #include "App.h"
 #include "UiText.h"
 #include "Util.h"
+#include "SystemInterface.h"
+#include "UiConfiguration.h"
 #include "Widget.h"
 #include "Color.h"
 #include "Image.h"
@@ -48,22 +50,35 @@
 #include "Button.h"
 #include "Toggle.h"
 #include "StatsWindow.h"
-#include "SystemInterface.h"
-#include "UiConfiguration.h"
+#include "IconLabelWindow.h"
 #include "MediaUi.h"
 #include "MediaLibraryWindow.h"
 
 MediaLibraryWindow::MediaLibraryWindow (const StdString &agentId)
 : Panel ()
 , isSelected (false)
+, isExpanded (false)
 , agentId (agentId)
+, agentTaskCount (0)
+, menuPositionX (0.0f)
+, menuPositionY (0.0f)
 , iconImage (NULL)
 , nameLabel (NULL)
 , descriptionLabel (NULL)
+, taskCountIcon (NULL)
+, storageIcon (NULL)
+, mediaCountIcon (NULL)
+, streamCountIcon (NULL)
 , statsWindow (NULL)
+, menuButton (NULL)
 , selectToggle (NULL)
+, expandToggle (NULL)
+, menuClickCallback (NULL)
+, menuClickCallbackData (NULL)
 , selectStateChangeCallback (NULL)
 , selectStateChangeCallbackData (NULL)
+, expandStateChangeCallback (NULL)
+, expandStateChangeCallbackData (NULL)
 {
 	UiConfiguration *uiconfig;
 
@@ -103,56 +118,171 @@ void MediaLibraryWindow::populate () {
 	uiconfig = &(App::getInstance ()->uiConfig);
 	uitext = &(App::getInstance ()->uiText);
 
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::MEDIA_ICON)));
+	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LARGE_MEDIA_ICON)));
 	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::HEADLINE, uiconfig->primaryTextColor));
 
 	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
 	descriptionLabel->isVisible = false;
 
+	taskCountIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::TASK_COUNT_ICON), StdString (""), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
+	taskCountIcon->setPadding (0.0f, 0.0f);
+	taskCountIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
+	taskCountIcon->isVisible = false;
+
+	storageIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::STORAGE_ICON), StdString (""), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
+	storageIcon->setPadding (0.0f, 0.0f);
+	storageIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
+	storageIcon->setMouseHoverTooltip (uitext->getText (UiTextString::storageTooltip));
+	storageIcon->isVisible = false;
+
+	mediaCountIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SMALL_MEDIA_ICON), StdString (""), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
+	mediaCountIcon->setPadding (0.0f, 0.0f);
+	mediaCountIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
+	mediaCountIcon->isVisible = false;
+
+	streamCountIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SMALL_STREAM_ICON), StdString (""), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
+	streamCountIcon->setPadding (0.0f, 0.0f);
+	streamCountIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
+	streamCountIcon->isVisible = false;
+
 	statsWindow = (StatsWindow *) addWidget (new StatsWindow ());
 	statsWindow->setPadding (uiconfig->paddingSize, 0.0f);
+	statsWindow->isVisible = false;
+
+	menuButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::MAIN_MENU_BUTTON)));
+	menuButton->setMouseClickCallback (MediaLibraryWindow::menuButtonClicked, this);
+	menuButton->setImageColor (uiconfig->flatButtonTextColor);
+	menuButton->setMouseHoverTooltip (uitext->getText (UiTextString::moreActionsTooltip));
+	menuButton->isVisible = false;
 
 	selectToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::STAR_OUTLINE_BUTTON), uiconfig->coreSprites.getSprite (UiConfiguration::STAR_BUTTON)));
 	selectToggle->setImageColor (uiconfig->flatButtonTextColor);
 	selectToggle->setStateChangeCallback (MediaLibraryWindow::selectToggleStateChanged, this);
 	selectToggle->setMouseHoverTooltip (uitext->getText (UiTextString::selectToggleTooltip));
 	selectToggle->isVisible = false;
+
+	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::EXPAND_MORE_BUTTON), uiconfig->coreSprites.getSprite (UiConfiguration::EXPAND_LESS_BUTTON)));
+	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
+	expandToggle->setStateChangeCallback (MediaLibraryWindow::expandToggleStateChanged, this);
+	expandToggle->setMouseHoverTooltip (uitext->getText (UiTextString::expandToggleTooltip));
 }
 
 void MediaLibraryWindow::syncRecordStore (RecordStore *store) {
 	SystemInterface *interface;
 	UiText *uitext;
-	Json *record, serverstatus;
+	Json *record, mediaserverstatus, streamserverstatus;
+	int count;
 
 	interface = &(App::getInstance ()->systemInterface);
 	record = store->findRecord (agentId, SystemInterface::Command_AgentStatus);
 	if (! record) {
 		return;
 	}
-	if (! interface->getCommandObjectParam (record, "mediaServerStatus", &serverstatus)) {
+	if (! interface->getCommandObjectParam (record, "mediaServerStatus", &mediaserverstatus)) {
+		return;
+	}
+	if (! interface->getCommandObjectParam (record, "streamServerStatus", &streamserverstatus)) {
 		return;
 	}
 
 	uitext = &(App::getInstance ()->uiText);
 	agentName.assign (interface->getCommandAgentName (record));
 	nameLabel->setText (agentName);
+	agentTaskCount = interface->getCommandNumberParam (record, "taskCount", (int) 0);
 
 	descriptionLabel->setText (interface->getCommandStringParam (record, "applicationName", ""));
-	descriptionLabel->isVisible = true;
+
+	taskCountIcon->setText (StdString::createSprintf ("%i", agentTaskCount));
+	taskCountIcon->setMouseHoverTooltip (uitext->getCountText (agentTaskCount, UiTextString::taskInProgress, UiTextString::tasksInProgress));
+	if ((agentTaskCount > 0) && isExpanded) {
+		taskCountIcon->isVisible = true;
+	}
+	else {
+		taskCountIcon->isVisible = false;
+	}
+
+	storageIcon->setText (Util::getStorageAmountDisplayString (streamserverstatus.getNumber ("freeStorage", (int64_t) 0), streamserverstatus.getNumber ("totalStorage", (int64_t) 0)));
+
+	count = mediaserverstatus.getNumber ("mediaCount", (int) 0);
+	mediaCountIcon->setText (StdString::createSprintf ("%i", count));
+	mediaCountIcon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::mediaFile, UiTextString::mediaFiles));
+
+	count = streamserverstatus.getNumber ("streamCount", (int) 0);
+	streamCountIcon->setText (StdString::createSprintf ("%i", count));
+	streamCountIcon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::videoStream, UiTextString::videoStreams));
 
 	statsWindow->setItem (uitext->getText (UiTextString::address).capitalized (), Util::getAddressDisplayString (interface->getCommandAgentAddress (record), SystemInterface::Constant_DefaultTcpPort1));
 	statsWindow->setItem (uitext->getText (UiTextString::version).capitalized (), interface->getCommandStringParam (record, "version", ""));
 	statsWindow->setItem (uitext->getText (UiTextString::uptime).capitalized (), interface->getCommandStringParam (record, "uptime", ""));
-	statsWindow->setItem (uitext->getText (UiTextString::mediaItems).capitalized (), StdString::createSprintf ("%i", serverstatus.getNumber ("mediaCount", (int) 0)));
+	if (menuClickCallback) {
+		menuButton->isVisible = true;
+	}
 
 	refreshLayout ();
 	Panel::syncRecordStore (store);
+}
+
+void MediaLibraryWindow::setMenuClickCallback (Widget::EventCallback callback, void *callbackData) {
+	menuClickCallback = callback;
+	menuClickCallbackData = callbackData;
 }
 
 void MediaLibraryWindow::setSelectStateChangeCallback (Widget::EventCallback callback, void *callbackData) {
 	selectStateChangeCallback = callback;
 	selectStateChangeCallbackData = callbackData;
 	selectToggle->isVisible = selectStateChangeCallback ? true : false;
+}
+
+void MediaLibraryWindow::setExpandStateChangeCallback (Widget::EventCallback callback, void *callbackData) {
+	expandStateChangeCallback = callback;
+	expandStateChangeCallbackData = callbackData;
+}
+
+void MediaLibraryWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallback) {
+	Widget::EventCallback callback;
+	void *callbackdata;
+
+	if (expanded == isExpanded) {
+		return;
+	}
+	callback = NULL;
+	callbackdata = NULL;
+	if (shouldSkipStateChangeCallback) {
+		callback = expandStateChangeCallback;
+		callbackdata = expandStateChangeCallbackData;
+		expandStateChangeCallback = NULL;
+		expandStateChangeCallbackData = NULL;
+	}
+	isExpanded = expanded;
+	if (isExpanded) {
+		expandToggle->setChecked (true);
+		descriptionLabel->isVisible = true;
+		statsWindow->isVisible = true;
+		if (agentTaskCount > 0) {
+			taskCountIcon->isVisible = true;
+		}
+		else {
+			taskCountIcon->isVisible = false;
+		}
+		storageIcon->isVisible = true;
+		mediaCountIcon->isVisible = true;
+		streamCountIcon->isVisible = true;
+	}
+	else {
+		expandToggle->setChecked (false);
+		descriptionLabel->isVisible = false;
+		statsWindow->isVisible = false;
+		taskCountIcon->isVisible = false;
+		storageIcon->isVisible = false;
+		mediaCountIcon->isVisible = false;
+		streamCountIcon->isVisible = false;
+	}
+
+	refreshLayout ();
+	if (shouldSkipStateChangeCallback) {
+		expandStateChangeCallback = callback;
+		expandStateChangeCallbackData = callbackdata;
+	}
 }
 
 void MediaLibraryWindow::refreshLayout () {
@@ -171,21 +301,59 @@ void MediaLibraryWindow::refreshLayout () {
 	nameLabel->flowDown (x, &y, &x2, &y2);
 	descriptionLabel->flowRight (&x, y, &x2, &y2);
 
-	x = x2;
+	x = x2 + uiconfig->marginSize;
 	y = y0;
+	expandToggle->flowRight (&x, y, &x2, &y2);
+	if (menuButton->isVisible) {
+		menuButton->flowRight (&x, y, &x2, &y2);
+	}
 	if (selectToggle->isVisible) {
 		selectToggle->flowDown (x, &y, &x2, &y2);
 	}
 
 	x = x0;
 	y = y2 + uiconfig->marginSize;
-	statsWindow->flowDown (x, &y);
+	x2 = 0.0f;
+	if (storageIcon->isVisible) {
+		storageIcon->flowRight (&x, y, &x2, &y2);
+	}
+	if (mediaCountIcon->isVisible) {
+		mediaCountIcon->flowRight (&x, y, &x2, &y2);
+	}
+	if (streamCountIcon->isVisible) {
+		streamCountIcon->flowRight (&x, y, &x2, &y2);
+	}
+
+	x = x0;
+	y = y2 + uiconfig->marginSize;
+	x2 = 0.0f;
+	if (statsWindow->isVisible) {
+		statsWindow->flowRight (&x, y, &x2, &y2);
+	}
+	if (taskCountIcon->isVisible) {
+		taskCountIcon->flowRight (&x, y, &x2, &y2);
+	}
 
 	resetSize ();
 
 	x = width - uiconfig->paddingSize;
 	if (selectToggle->isVisible) {
 		selectToggle->flowLeft (&x);
+	}
+	if (menuButton->isVisible) {
+		menuButton->flowLeft (&x);
+		menuPositionX = menuButton->position.x;
+		menuPositionY = menuButton->position.y + menuButton->height;
+	}
+	expandToggle->flowLeft (&x);
+}
+
+void MediaLibraryWindow::menuButtonClicked (void *windowPtr, Widget *widgetPtr) {
+	MediaLibraryWindow *window;
+
+	window = (MediaLibraryWindow *) windowPtr;
+	if (window->menuClickCallback) {
+		window->menuClickCallback (window->menuClickCallbackData, window);
 	}
 }
 
@@ -198,5 +366,17 @@ void MediaLibraryWindow::selectToggleStateChanged (void *windowPtr, Widget *widg
 	window->isSelected = toggle->isChecked;
 	if (window->selectStateChangeCallback) {
 		window->selectStateChangeCallback (window->selectStateChangeCallbackData, window);
+	}
+}
+
+void MediaLibraryWindow::expandToggleStateChanged (void *windowPtr, Widget *widgetPtr) {
+	MediaLibraryWindow *window;
+	Toggle *toggle;
+
+	window = (MediaLibraryWindow *) windowPtr;
+	toggle = (Toggle *) widgetPtr;
+	window->setExpanded (toggle->isChecked, true);
+	if (window->expandStateChangeCallback) {
+		window->expandStateChangeCallback (window->expandStateChangeCallbackData, window);
 	}
 }

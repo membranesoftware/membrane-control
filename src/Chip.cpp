@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -47,7 +47,7 @@ Chip::Chip (const StdString &chipText, Sprite *iconSprite, bool shouldDestroySpr
 {
 	UiConfiguration *uiconfig;
 
-	typeName.assign ("Chip");
+	widgetType.assign ("Chip");
 
 	uiconfig = &(App::getInstance ()->uiConfig);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize / 2.0f);
@@ -57,7 +57,7 @@ Chip::Chip (const StdString &chipText, Sprite *iconSprite, bool shouldDestroySpr
 		textLabel = (Label *) addWidget (new Label (chipText, UiConfiguration::CAPTION, uiconfig->inverseTextColor));
 	}
 	if (iconSprite) {
-		iconImage = (Image *) addWidget (new Image (iconSprite, uiconfig->chipIconFrame, shouldDestroySprite));
+		iconImage = (Image *) addWidget (new Image (iconSprite, UiConfiguration::CHIP_ICON_FRAME, shouldDestroySprite));
 	}
 
 	refreshLayout ();
@@ -93,15 +93,12 @@ void Chip::setText (const StdString &text) {
 }
 
 void Chip::setIconSprite (Sprite *iconSprite, bool shouldDestroySprite) {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::getInstance ()->uiConfig);
 	if (iconImage) {
 		iconImage->isDestroyed = true;
 		iconImage = NULL;
 	}
 	if (iconSprite) {
-		iconImage = (Image *) addWidget (new Image (iconSprite, uiconfig->chipIconFrame, shouldDestroySprite));
+		iconImage = (Image *) addWidget (new Image (iconSprite, UiConfiguration::CHIP_ICON_FRAME, shouldDestroySprite));
 	}
 	refreshLayout ();
 }

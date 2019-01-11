@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -52,7 +52,7 @@
 #include "MediaUi.h"
 #include "MediaWindow.h"
 
-MediaWindow::MediaWindow (Json *mediaItem, SpriteGroup *mediaUiSpriteGroup, int layoutType, float maxMediaImageWidth)
+MediaWindow::MediaWindow (Json *mediaItem, int layoutType, float maxMediaImageWidth)
 : Panel ()
 , thumbnailCount (0)
 , mediaWidth (0)
@@ -61,7 +61,6 @@ MediaWindow::MediaWindow (Json *mediaItem, SpriteGroup *mediaUiSpriteGroup, int 
 , mediaFrameRate (0.0f)
 , mediaSize (0)
 , mediaBitrate (0)
-, spriteGroup (mediaUiSpriteGroup)
 , mediaImage (NULL)
 , nameLabel (NULL)
 , detailText (NULL)
@@ -81,7 +80,7 @@ MediaWindow::MediaWindow (Json *mediaItem, SpriteGroup *mediaUiSpriteGroup, int 
 	mediaWidth = interface->getCommandNumberParam (mediaItem, "width", (int) 0);
 	mediaHeight = interface->getCommandNumberParam (mediaItem, "height", (int) 0);
 
-	mediaImage = (ImageWindow *) addWidget (new ImageWindow (new Image (spriteGroup->getSprite (MediaUi::LOADING_IMAGE_ICON))));
+	mediaImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LOADING_IMAGE_ICON))));
 	nameLabel = (Label *) addWidget (new Label (mediaName, UiConfiguration::BODY, uiconfig->primaryTextColor));
 
 	detailText = (TextArea *) addWidget (new TextArea (UiConfiguration::CAPTION, uiconfig->inverseTextColor));
@@ -134,11 +133,13 @@ bool MediaWindow::hasThumbnails () {
 void MediaWindow::syncRecordStore (RecordStore *store) {
 	App *app;
 	SystemInterface *interface;
+	UiConfiguration *uiconfig;
 	Json *mediaitem, *agentstatus, serverstatus, *streamitem, *params;
 	StdString agentid, recordid, agentname;
 
 	app = App::getInstance ();
 	interface = &(app->systemInterface);
+	uiconfig = &(app->uiConfig);
 	mediaitem = store->findRecord (mediaId, SystemInterface::Command_MediaItem);
 	if (! mediaitem) {
 		return;
@@ -197,7 +198,7 @@ void MediaWindow::syncRecordStore (RecordStore *store) {
 		params = new Json ();
 		params->set ("id", mediaId);
 		params->set ("thumbnailIndex", (thumbnailCount / 4));
-		mediaImage->setLoadUrl (app->agentControl.getAgentSecondaryUrl (agentId, app->createCommand ("GetThumbnailImage", SystemInterface::Constant_Media, params), thumbnailPath), spriteGroup->getSprite (MediaUi::LOADING_IMAGE_ICON));
+		mediaImage->setLoadUrl (app->agentControl.getAgentSecondaryUrl (agentId, app->createCommand ("GetThumbnailImage", SystemInterface::Constant_Media, params), thumbnailPath), uiconfig->coreSprites.getSprite (UiConfiguration::LOADING_IMAGE_ICON));
 	}
 
 	refreshLayout ();
@@ -260,7 +261,7 @@ void MediaWindow::refreshLayout () {
 			detailNameLabel->position.assign (x, y);
 			detailNameLabel->isVisible = true;
 
-			text.sprintf ("%ix%i  %s  %s  %s", mediaWidth, mediaHeight, Util::getBitrateDisplayString (mediaBitrate).c_str (), Util::getFileSizeDisplayString (mediaSize).c_str (), Util::getDurationDisplayString (mediaDuration).c_str ());
+			text.sprintf ("%ix%i  %s  %s  %s", mediaWidth, mediaHeight, Util::getBitrateDisplayString (mediaBitrate).c_str (), Util::getByteCountDisplayString (mediaSize).c_str (), Util::getDurationDisplayString (mediaDuration).c_str ());
 			if (! streamAgentName.empty ()) {
 				text.appendSprintf ("\n%s: %s", uitext->getText (UiTextString::streamServer).capitalized ().c_str (), streamAgentName.c_str ());
 			}

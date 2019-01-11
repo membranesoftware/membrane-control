@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -53,7 +53,7 @@ Toolbar::Toolbar (float toolbarWidth)
 {
 	UiConfiguration *uiconfig;
 
-	typeName.assign ("Toolbar");
+	widgetType.assign ("Toolbar");
 
 	uiconfig = &(App::getInstance ()->uiConfig);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
@@ -86,7 +86,6 @@ void Toolbar::clearAll () {
 	clearRightItems ();
 	leftCorner.destroyAndClear ();
 	rightCorner.destroyAndClear ();
-	refreshLayout ();
 }
 
 void Toolbar::clearLeftItems () {

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -52,10 +52,6 @@
 #include "ThumbnailWindow.h"
 #include "StreamItemUi.h"
 
-const float StreamItemUi::smallImageScale = 0.123f;
-const float StreamItemUi::mediumImageScale = 0.240f;
-const float StreamItemUi::largeImageScale = 0.480f;
-
 StreamItemUi::StreamItemUi (StreamWindow *streamWindow, const StdString &captionText)
 : Ui ()
 , captionText (captionText)
@@ -101,6 +97,9 @@ void StreamItemUi::setHelpWindowContent (Widget *helpWindowPtr) {
 
 	help->setHelpText (uitext->getText (UiTextString::streamItemUiHelpTitle), uitext->getText (UiTextString::streamItemUiHelpText));
 	help->addAction (uitext->getText (UiTextString::streamItemUiHelpAction1Text));
+
+	help->addTopicLink (uitext->getText (UiTextString::mediaStreaming).capitalized (), Util::getHelpUrl ("media-streaming"));
+	help->addTopicLink (uitext->getText (UiTextString::searchForHelp).capitalized (), Util::getHelpUrl (""));
 }
 
 int StreamItemUi::doLoad () {
@@ -163,7 +162,7 @@ int StreamItemUi::doLoad () {
 			else {
 				t = i * (streamwindow->duration / (float) segmentcount);
 			}
-			window = new ThumbnailWindow (i, t, streamwindow->frameWidth, streamwindow->frameHeight, url, sprites.getSprite (StreamItemUi::LOADING_IMAGE_ICON), cardLayout, cardMaxImageWidth);
+			window = new ThumbnailWindow (i, t, streamwindow->frameWidth, streamwindow->frameHeight, url, cardLayout, cardMaxImageWidth);
 			window->setMouseClickCallback (StreamItemUi::thumbnailClicked, this);
 			window->setMouseEnterCallback (StreamItemUi::thumbnailMouseEntered, this);
 			window->setMouseExitCallback (StreamItemUi::thumbnailMouseExited, this);
@@ -302,6 +301,7 @@ void StreamItemUi::handleThumbnailSizeButtonClick (Widget *buttonWidget) {
 
 void StreamItemUi::viewSmallActionClicked (void *uiPtr, Widget *widgetPtr) {
 	StreamItemUi *ui;
+	UiConfiguration *uiconfig;
 	float y0, h0;
 
 	ui = (StreamItemUi *) uiPtr;
@@ -309,10 +309,11 @@ void StreamItemUi::viewSmallActionClicked (void *uiPtr, Widget *widgetPtr) {
 		return;
 	}
 
+	uiconfig = &(App::getInstance ()->uiConfig);
 	y0 = ui->cardView->viewOriginY;
 	h0 = ui->cardView->maxWidgetY;
 	ui->cardLayout = ThumbnailWindow::LOW_DETAIL;
-	ui->cardMaxImageWidth = ui->cardView->cardAreaWidth * StreamItemUi::smallImageScale;
+	ui->cardMaxImageWidth = ui->cardView->cardAreaWidth * uiconfig->smallThumbnailImageScale;
 	if (ui->cardMaxImageWidth < 1.0f) {
 		ui->cardMaxImageWidth = 1.0f;
 	}
@@ -326,6 +327,7 @@ void StreamItemUi::viewSmallActionClicked (void *uiPtr, Widget *widgetPtr) {
 
 void StreamItemUi::viewMediumActionClicked (void *uiPtr, Widget *widgetPtr) {
 	StreamItemUi *ui;
+	UiConfiguration *uiconfig;
 	float y0, h0;
 
 	ui = (StreamItemUi *) uiPtr;
@@ -333,10 +335,11 @@ void StreamItemUi::viewMediumActionClicked (void *uiPtr, Widget *widgetPtr) {
 		return;
 	}
 
+	uiconfig = &(App::getInstance ()->uiConfig);
 	y0 = ui->cardView->viewOriginY;
 	h0 = ui->cardView->maxWidgetY;
 	ui->cardLayout = ThumbnailWindow::MEDIUM_DETAIL;
-	ui->cardMaxImageWidth = ui->cardView->cardAreaWidth * StreamItemUi::mediumImageScale;
+	ui->cardMaxImageWidth = ui->cardView->cardAreaWidth * uiconfig->mediumThumbnailImageScale;
 	if (ui->cardMaxImageWidth < 1.0f) {
 		ui->cardMaxImageWidth = 1.0f;
 	}
@@ -350,6 +353,7 @@ void StreamItemUi::viewMediumActionClicked (void *uiPtr, Widget *widgetPtr) {
 
 void StreamItemUi::viewLargeActionClicked (void *uiPtr, Widget *widgetPtr) {
 	StreamItemUi *ui;
+	UiConfiguration *uiconfig;
 	float y0, h0;
 
 	ui = (StreamItemUi *) uiPtr;
@@ -357,10 +361,11 @@ void StreamItemUi::viewLargeActionClicked (void *uiPtr, Widget *widgetPtr) {
 		return;
 	}
 
+	uiconfig = &(App::getInstance ()->uiConfig);
 	y0 = ui->cardView->viewOriginY;
 	h0 = ui->cardView->maxWidgetY;
 	ui->cardLayout = ThumbnailWindow::HIGH_DETAIL;
-	ui->cardMaxImageWidth = ui->cardView->cardAreaWidth * StreamItemUi::largeImageScale;
+	ui->cardMaxImageWidth = ui->cardView->cardAreaWidth * uiconfig->largeThumbnailImageScale;
 	if (ui->cardMaxImageWidth < 1.0f) {
 		ui->cardMaxImageWidth = 1.0f;
 	}

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -109,6 +109,19 @@ TextFieldWindow::~TextFieldWindow () {
 
 StdString TextFieldWindow::toStringDetail () {
 	return (StdString (" TextFieldWindow"));
+}
+
+bool TextFieldWindow::isWidgetType (Widget *widget) {
+	if (! widget) {
+		return (false);
+	}
+
+	// This operation references output from the toStringDetail method, above
+	return (widget->toString ().contains (" TextFieldWindow"));
+}
+
+TextFieldWindow *TextFieldWindow::castWidget (Widget *widget) {
+	return (TextFieldWindow::isWidgetType (widget) ? (TextFieldWindow *) widget : NULL);
 }
 
 StdString TextFieldWindow::getValue () {

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -55,7 +55,7 @@ TextArea::TextArea (int fontType, const Color &textColor, int maxTextLineLength,
 {
 	UiConfiguration *uiconfig;
 
-	typeName.assign ("TextArea");
+	widgetType.assign ("TextArea");
 	uiconfig = &(App::getInstance ()->uiConfig);
 	if (maxLineLength <= 0) {
 		maxLineLength = uiconfig->textAreaMediumLineLength;

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -54,7 +54,7 @@ public:
 		HIGH_DETAIL = 2
 	};
 
-	StreamWindow (Json *streamItem, SpriteGroup *monitorUiSpriteGroup, int layoutType = StreamWindow::LOW_DETAIL, float maxStreamImageWidth = 64.0f);
+	StreamWindow (Json *streamItem, int layoutType = StreamWindow::LOW_DETAIL, float maxStreamImageWidth = 64.0f);
 	virtual ~StreamWindow ();
 
 	// Read-only data members
@@ -80,6 +80,9 @@ public:
 	// Set a callback that should be invoked when the stream image is clicked
 	void setStreamImageClickCallback (Widget::EventCallback callback, void *callbackData);
 
+	// Set a callback that should be invoked when the view button is clicked
+	void setViewButtonClickCallback (Widget::EventCallback callback, void *callbackData);
+
 	// Set the index that should be used to load the window's thumbnail image
 	void setThumbnailIndex (int index);
 
@@ -98,6 +101,7 @@ public:
 	// Callback functions
 	static void streamImageClicked (void *windowPtr, Widget *widgetPtr);
 	static void selectButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void viewButtonClicked (void *windowPtr, Widget *widgetPtr);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
@@ -110,15 +114,20 @@ protected:
 	void refreshLayout ();
 
 private:
-	SpriteGroup *spriteGroup;
 	ImageWindow *streamImage;
 	Label *nameLabel;
 	TextArea *detailText;
 	LabelWindow *mouseoverLabel;
 	LabelWindow *detailNameLabel;
 	Panel *selectPanel;
+	Panel *spacerPanel;
+	Label *timestampLabel;
+	Button *selectButton;
+	Button *viewButton;
 	Widget::EventCallback streamImageClickCallback;
 	void *streamImageClickCallbackData;
+	Widget::EventCallback viewButtonClickCallback;
+	void *viewButtonClickCallbackData;
 };
 
 #endif

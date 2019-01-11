@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -41,6 +41,7 @@
 #include "Button.h"
 #include "Toggle.h"
 #include "StatsWindow.h"
+#include "IconLabelWindow.h"
 #include "Panel.h"
 
 class MonitorWindow : public Panel {
@@ -50,11 +51,34 @@ public:
 
 	// Read-only data members
 	bool isSelected;
+	bool isExpanded;
+	bool isStorageDisplayEnabled;
 	StdString agentId;
 	StdString agentName;
+	int agentTaskCount;
+	float menuPositionX;
+	float menuPositionY;
+
+	// Set a callback function that should be invoked when the window's menu button is pressed
+	void setMenuClickCallback (Widget::EventCallback callback, void *callbackData);
 
 	// Set a callback that should be invoked when the select toggle's checked state changes
 	void setSelectStateChangeCallback (Widget::EventCallback callback, void *callbackData);
+
+	// Set a callback that should be invoked when the expand toggle's checked state changes
+	void setExpandStateChangeCallback (Widget::EventCallback callback, void *callbackData);
+
+	// Set the enable state of the window's storage display elements
+	void setStorageDisplayEnabled (bool enable);
+
+	// Add a cache button to the window, assigning it the provided sprite and callbacks
+	void addCacheButton (Sprite *sprite, Widget::EventCallback clickCallback = NULL, Widget::EventCallback mouseEnterCallback = NULL, Widget::EventCallback mouseExitCallback = NULL, void *callbackData = NULL);
+
+	// Add a stream button to the window, assigning it the provided sprite and callbacks
+	void addStreamButton (Sprite *sprite, Widget::EventCallback clickCallback = NULL, Widget::EventCallback mouseEnterCallback = NULL, Widget::EventCallback mouseExitCallback = NULL, void *callbackData = NULL);
+
+	// Add a playlist button to the window, assigning it the provided sprite and callbacks
+	void addPlaylistButton (Sprite *sprite, Widget::EventCallback clickCallback = NULL, Widget::EventCallback mouseEnterCallback = NULL, Widget::EventCallback mouseExitCallback = NULL, void *callbackData = NULL);
 
 	// Execute operations appropriate to sync widget state with records present in the provided RecordStore object, which has been locked prior to invocation
 	void syncRecordStore (RecordStore *store);
@@ -65,8 +89,25 @@ public:
 	// Return a typecasted pointer to the provided widget, or NULL if the widget does not appear to be of the correct type
 	static MonitorWindow *castWidget (Widget *widget);
 
+	// Set the window's select state, then execute any select state change callback that might be configured unless shouldSkipStateChangeCallback is true
+	void setSelected (bool selected, bool shouldSkipStateChangeCallback = false);
+
+	// Set the window's expand state, then execute any expand state change callback that might be configured unless shouldSkipStateChangeCallback is true
+	void setExpanded (bool expanded, bool shouldSkipStateChangeCallback = false);
+
 	// Callback functions
+	static void menuButtonClicked (void *windowPtr, Widget *widgetPtr);
 	static void selectToggleStateChanged (void *windowPtr, Widget *widgetPtr);
+	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
+	static void cacheButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void cacheButtonMouseEntered (void *windowPtr, Widget *widgetPtr);
+	static void cacheButtonMouseExited (void *windowPtr, Widget *widgetPtr);
+	static void streamButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void streamButtonMouseEntered (void *windowPtr, Widget *widgetPtr);
+	static void streamButtonMouseExited (void *windowPtr, Widget *widgetPtr);
+	static void playlistButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void playlistButtonMouseEntered (void *windowPtr, Widget *widgetPtr);
+	static void playlistButtonMouseExited (void *windowPtr, Widget *widgetPtr);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
@@ -82,10 +123,35 @@ private:
 	Image *iconImage;
 	Label *nameLabel;
 	Label *descriptionLabel;
+	IconLabelWindow *statusIcon;
+	IconLabelWindow *taskCountIcon;
+	IconLabelWindow *storageIcon;
+	IconLabelWindow *streamCountIcon;
 	StatsWindow *statsWindow;
+	Button *menuButton;
 	Toggle *selectToggle;
+	Toggle *expandToggle;
+	Button *cacheButton;
+	Button *streamButton;
+	Button *playlistButton;
+	Widget::EventCallback menuClickCallback;
+	void *menuClickCallbackData;
 	Widget::EventCallback selectStateChangeCallback;
 	void *selectStateChangeCallbackData;
+	Widget::EventCallback expandStateChangeCallback;
+	void *expandStateChangeCallbackData;
+	Widget::EventCallback cacheButtonClickCallback;
+	Widget::EventCallback cacheButtonMouseEnterCallback;
+	Widget::EventCallback cacheButtonMouseExitCallback;
+	void *cacheButtonCallbackData;
+	Widget::EventCallback streamButtonClickCallback;
+	Widget::EventCallback streamButtonMouseEnterCallback;
+	Widget::EventCallback streamButtonMouseExitCallback;
+	void *streamButtonCallbackData;
+	Widget::EventCallback playlistButtonClickCallback;
+	Widget::EventCallback playlistButtonMouseEnterCallback;
+	Widget::EventCallback playlistButtonMouseExitCallback;
+	void *playlistButtonCallbackData;
 };
 
 #endif

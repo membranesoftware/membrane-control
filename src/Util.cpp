@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -452,8 +452,12 @@ StdString Util::getTimeString (int64_t timestamp) {
 	return (s);
 }
 
-StdString Util::getFileSizeDisplayString (int64_t bytes) {
+StdString Util::getByteCountDisplayString (int64_t bytes) {
 	float n;
+
+	if (bytes <= 0) {
+		return (StdString ("0B"));
+	}
 
 	if (bytes >= 1099511627776L) {
 		n = (float) bytes;
@@ -482,6 +486,19 @@ StdString Util::getFileSizeDisplayString (int64_t bytes) {
 		n = 0.01f;
 	}
 	return (StdString::createSprintf ("%.2fkB", n));
+}
+
+StdString Util::getStorageAmountDisplayString (int64_t bytesFree, int64_t bytesTotal) {
+	float pct;
+
+	if ((bytesFree > bytesTotal) || (bytesTotal <= 0)) {
+		return (StdString ("0B"));
+	}
+
+	pct = (float) bytesFree;
+	pct /= (float) bytesTotal;
+	pct *= 100.0f;
+	return (StdString::createSprintf ("%s / %s (%i%%)", Util::getByteCountDisplayString (bytesFree).c_str (), Util::getByteCountDisplayString (bytesTotal).c_str (), (int) pct));
 }
 
 StdString Util::getAspectRatioDisplayString (int width, int height) {

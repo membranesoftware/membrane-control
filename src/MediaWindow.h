@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -35,8 +35,6 @@
 
 #include "StdString.h"
 #include "StringList.h"
-#include "Sprite.h"
-#include "SpriteGroup.h"
 #include "RecordStore.h"
 #include "Json.h"
 #include "Image.h"
@@ -57,7 +55,7 @@ public:
 		HIGH_DETAIL = 2
 	};
 
-	MediaWindow (Json *mediaItem, SpriteGroup *mediaUiSpriteGroup, int layoutType = MediaWindow::LOW_DETAIL, float maxMediaImageWidth = 64.0f);
+	MediaWindow (Json *mediaItem, int layoutType = MediaWindow::LOW_DETAIL, float maxMediaImageWidth = 64.0f);
 	virtual ~MediaWindow ();
 
 	// Read-only data members
@@ -105,7 +103,6 @@ protected:
 	void refreshLayout ();
 
 private:
-	SpriteGroup *spriteGroup;
 	ImageWindow *mediaImage;
 	Label *nameLabel;
 	TextArea *detailText;

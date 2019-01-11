@@ -1,5 +1,5 @@
 /*
-* Copyright 2018 Membrane Software <author@membranesoftware.com>
+* Copyright 2019 Membrane Software <author@membranesoftware.com>
 *                 https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
@@ -81,12 +81,6 @@ public:
 
 	// Remove the specified widget from the panel
 	void removeWidget (Widget *targetWidget);
-
-	// Return the child widget at the specified position in the widget's area, or NULL if no such widget was found. If shouldRecurse is true, the method finds the topmost child widget using recursive invocations.
-	Widget *findChildWidget (float positionX, float positionY, bool shouldRecurse = false);
-
-	// Return the child widget matching the specified ID and type name, or NULL if no such widget was found
-	Widget *findChildWidget (uint64_t widgetId, const StdString &widgetTypeName, bool shouldRecurse = false);
 
 	// Return the topmost child widget at the specified mouse position that holds a non-zero mouseHoverId value, or NULL if no such widget was found
 	Widget *findMouseHoverWidget (float mouseX, float mouseY);
