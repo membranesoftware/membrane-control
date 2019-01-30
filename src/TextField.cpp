@@ -48,6 +48,8 @@ TextField::TextField (float fieldWidth, const StdString &promptText)
 , fieldWidth (fieldWidth)
 , isEditing (false)
 , isInverseColor (false)
+, isPromptErrorColor (false)
+, isObscured (false)
 , valueChangeCallback (NULL)
 , valueChangeCallbackData (NULL)
 , promptLabel (NULL)
@@ -68,7 +70,7 @@ TextField::TextField (float fieldWidth, const StdString &promptText)
 	focusBorderColor.assign (uiconfig->lightBackgroundColor);
 	editBgColor.assign (uiconfig->lightBackgroundColor);
 	editBorderColor.assign (uiconfig->darkBackgroundColor);
-	normalValueTextColor.assign (uiconfig->lightPrimaryTextColor);
+	normalValueTextColor.assign (uiconfig->lightPrimaryColor);
 	editValueTextColor.assign (uiconfig->primaryTextColor);
 	promptTextColor.assign (uiconfig->lightPrimaryColor);
 
@@ -115,7 +117,12 @@ void TextField::setInverseColor (bool inverse) {
 		editBorderColor.assign (uiconfig->darkInverseBackgroundColor);
 		normalValueTextColor.assign (uiconfig->darkInverseTextColor);
 		editValueTextColor.assign (uiconfig->inverseTextColor);
-		promptTextColor.assign (uiconfig->lightPrimaryColor);
+		if (isPromptErrorColor) {
+			promptTextColor.assign (uiconfig->errorTextColor);
+		}
+		else {
+			promptTextColor.assign (uiconfig->darkInverseTextColor);
+		}
 	}
 	else {
 		normalBgColor.assign (uiconfig->lightBackgroundColor);
@@ -124,9 +131,14 @@ void TextField::setInverseColor (bool inverse) {
 		focusBorderColor.assign (uiconfig->lightBackgroundColor);
 		editBgColor.assign (uiconfig->lightBackgroundColor);
 		editBorderColor.assign (uiconfig->darkBackgroundColor);
-		normalValueTextColor.assign (uiconfig->lightPrimaryTextColor);
+		normalValueTextColor.assign (uiconfig->lightPrimaryColor);
 		editValueTextColor.assign (uiconfig->primaryTextColor);
-		promptTextColor.assign (uiconfig->lightPrimaryColor);
+		if (isPromptErrorColor) {
+			promptTextColor.assign (uiconfig->errorTextColor);
+		}
+		else {
+			promptTextColor.assign (uiconfig->lightPrimaryColor);
+		}
 	}
 
 	setFillBg (true, normalBgColor);
@@ -136,6 +148,45 @@ void TextField::setInverseColor (bool inverse) {
 	}
 	valueLabel->textColor.assign (normalValueTextColor);
 	cursorPanel->setFillBg (true, normalValueTextColor);
+	refreshLayout ();
+}
+
+void TextField::setPromptErrorColor (bool enable) {
+	UiConfiguration *uiconfig;
+
+	if (isPromptErrorColor == enable) {
+		return;
+	}
+	uiconfig = &(App::getInstance ()->uiConfig);
+	isPromptErrorColor = enable;
+	if (isPromptErrorColor) {
+		promptTextColor.assign (uiconfig->errorTextColor);
+	}
+	else {
+		if (isInverseColor) {
+			promptTextColor.assign (uiconfig->darkInverseTextColor);
+		}
+		else {
+			promptTextColor.assign (uiconfig->lightPrimaryColor);
+		}
+	}
+	if (promptLabel) {
+		promptLabel->textColor.assign (promptTextColor);
+	}
+}
+
+void TextField::setObscured (bool enable) {
+	if (isObscured == enable) {
+		return;
+	}
+	isObscured = enable;
+	if (isObscured) {
+		valueLabel->setObscured (true);
+	}
+	else {
+		valueLabel->setObscured (false);
+	}
+
 	refreshLayout ();
 }
 

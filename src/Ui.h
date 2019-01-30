@@ -204,6 +204,8 @@ protected:
 	WidgetHandle settingsWindow;
 	WidgetHandle helpWindow;
 	WidgetHandle mouseHoverWidget;
+	WidgetHandle actionWidget;
+	WidgetHandle actionTarget;
 	int mouseHoverClock;
 	bool isMouseHoverActive;
 	bool isMouseHoverSuspended;

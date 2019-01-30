@@ -115,11 +115,17 @@ void Agent::readCommand (Json *command) {
 	val = interface->getCommandStringParam (command, "urlHostname", "");
 	if (! val.empty ()) {
 		urlHostname.assign (val);
+		if (invokeHostname.empty ()) {
+			invokeHostname.assign (urlHostname);
+		}
 	}
 
 	i = interface->getCommandNumberParam (command, "tcpPort1", 0);
 	if (i > 0) {
 		tcpPort1 = i;
+		if (invokeTcpPort1 <= 0) {
+			invokeTcpPort1 = tcpPort1;
+		}
 	}
 
 	i = interface->getCommandNumberParam (command, "tcpPort2", 0);
@@ -184,21 +190,24 @@ StdString Agent::getLinkUrl () {
 	}
 
 	url = getInvokeUrl ();
+	if (url.empty ()) {
+		return (StdString (""));
+	}
+
 	url.appendSprintf ("%s/?transport=websocket", linkPath.c_str ());
 
 	return (url);
 }
 
-static const char *AGENT_ID_KEY = "id";
-static const char *INVOKE_HOSTNAME_KEY = "ih";
-static const char *INVOKE_TCP_PORT1_KEY = "i1";
-static const char *INVOKE_TCP_PORT2_KEY = "i2";
-static const char *LINK_PATH_KEY = "lp";
-static const char *DISPLAY_NAME_KEY = "dn";
-static const char *URL_HOSTNAME_KEY = "uh";
-static const char *TCP_PORT1_KEY = "t1";
-static const char *TCP_PORT2_KEY = "t2";
-
+static const char *AGENT_ID_KEY = "a";
+static const char *INVOKE_HOSTNAME_KEY = "b";
+static const char *INVOKE_TCP_PORT1_KEY = "c";
+static const char *INVOKE_TCP_PORT2_KEY = "d";
+static const char *LINK_PATH_KEY = "e";
+static const char *DISPLAY_NAME_KEY = "f";
+static const char *URL_HOSTNAME_KEY = "g";
+static const char *TCP_PORT1_KEY = "h";
+static const char *TCP_PORT2_KEY = "i";
 StdString Agent::toPrefsJsonString () {
 	Json *obj;
 	StdString s;

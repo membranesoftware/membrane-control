@@ -177,7 +177,6 @@ int StreamItemUi::doLoad () {
 
 void StreamItemUi::doUnload () {
 	thumbnailSizeMenu.clear ();
-	actionWindow.clear ();
 }
 
 void StreamItemUi::doResetMainToolbar (Toolbar *toolbar) {
@@ -222,7 +221,6 @@ void StreamItemUi::doResetSecondaryToolbar (Toolbar *toolbar) {
 
 void StreamItemUi::doClearPopupWidgets () {
 	thumbnailSizeMenu.destroyAndClear ();
-	actionWindow.destroyAndClear ();
 }
 
 void StreamItemUi::doRefresh () {
@@ -252,7 +250,6 @@ void StreamItemUi::doPause () {
 
 void StreamItemUi::doUpdate (int msElapsed) {
 	thumbnailSizeMenu.compact ();
-	actionWindow.compact ();
 }
 
 void StreamItemUi::doSyncRecordStore (RecordStore *store) {

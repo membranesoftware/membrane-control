@@ -33,7 +33,6 @@
 #ifndef SERVER_WINDOW_H
 #define SERVER_WINDOW_H
 
-#include <list>
 #include "StdString.h"
 #include "Image.h"
 #include "Json.h"
@@ -85,9 +84,6 @@ protected:
 	void refreshLayout ();
 
 private:
-	// Populate widgets as appropriate for the window's initial state
-	void populate ();
-
 	Image *iconImage;
 	Label *nameLabel;
 	Label *descriptionLabel;

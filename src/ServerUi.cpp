@@ -53,12 +53,15 @@
 #include "IconCardWindow.h"
 #include "CardView.h"
 #include "ServerWindow.h"
+#include "ServerContactWindow.h"
+#include "AdminSecretWindow.h"
 #include "ServerAdminUi.h"
 #include "ServerUi.h"
 
 ServerUi::ServerUi ()
 : Ui ()
 , cardView (NULL)
+, adminSecretWindow (NULL)
 , agentCount (0)
 {
 
@@ -116,14 +119,18 @@ int ServerUi::doLoad () {
 	cardView->setRowHeader (0, uitext->getText (UiTextString::serverUiNetworkAgentsTitle), UiConfiguration::TITLE, uiconfig->inverseTextColor);
 	cardView->position.assign (0.0f, app->topBarHeight);
 
+	adminSecretWindow = new AdminSecretWindow ();
+	adminSecretWindow->setAddButtonClickCallback (ServerUi::adminSecretAddButtonClicked, this);
+	adminSecretWindow->setExpandStateChangeCallback (ServerUi::adminSecretExpandStateChanged, this);
+	adminSecretWindow->setExpanded (false);
+	cardView->addItem (adminSecretWindow, StdString (""), 1);
+
 	return (Result::SUCCESS);
 }
 
 void ServerUi::doUnload () {
 	addressToggle.clear ();
 	addressTextFieldWindow.clear ();
-	actionWidget.clear ();
-	actionTarget.clear ();
 	emptyServerWindow.clear ();
 }
 
@@ -171,7 +178,7 @@ void ServerUi::doResetSecondaryToolbar (Toolbar *toolbar) {
 }
 
 void ServerUi::doClearPopupWidgets () {
-	actionWidget.destroyAndClear ();
+
 }
 
 void ServerUi::doResume () {
@@ -182,7 +189,8 @@ void ServerUi::doResume () {
 	app->setNextBackgroundTexturePath ("ui/ServerUi/bg");
 	cardView->setViewSize (app->windowWidth - app->rightBarWidth, app->windowHeight - app->topBarHeight - app->bottomBarHeight);
 	cardView->position.assign (0.0f, app->topBarHeight);
-	actionTarget.clear ();
+
+	adminSecretWindow->readItems ();
 }
 
 void ServerUi::doRefresh () {
@@ -194,10 +202,12 @@ void ServerUi::doRefresh () {
 }
 
 void ServerUi::doPause () {
-	actionTarget.clear ();
+
 }
 
 void ServerUi::doUpdate (int msElapsed) {
+	StringList::iterator i, end;
+
 	addressToggle.compact ();
 	if (addressToggle.widget) {
 		if (addressTextFieldWindow.widget && addressTextFieldWindow.widget->isDestroyed) {
@@ -205,10 +215,35 @@ void ServerUi::doUpdate (int msElapsed) {
 			addressTextFieldWindow.clear ();
 		}
 	}
-
-	actionWidget.compact ();
-	actionTarget.compact ();
 	emptyServerWindow.compact ();
+
+	cardIdList.clear ();
+	cardView->processItems (ServerUi::findDeletedServerContactWindows, this);
+	if (! cardIdList.empty ()) {
+		i = cardIdList.begin ();
+		end = cardIdList.end ();
+		while (i != end) {
+			cardView->removeItem (*i);
+			++i;
+		}
+		cardView->refresh ();
+		cardIdList.clear ();
+	}
+}
+
+void ServerUi::findDeletedServerContactWindows (void *uiPtr, Widget *widgetPtr) {
+	ServerUi *ui;
+	ServerContactWindow *window;
+
+	ui = (ServerUi *) uiPtr;
+	window = ServerContactWindow::castWidget (widgetPtr);
+	if (! window) {
+		return;
+	}
+
+	if (window->isDeleted) {
+		ui->cardIdList.push_back (window->itemId);
+	}
 }
 
 void ServerUi::doResize () {
@@ -231,6 +266,7 @@ void ServerUi::doSyncRecordStore (RecordStore *store) {
 
 	agentCount = 0;
 	store->processCommandRecords (SystemInterface::Command_AgentStatus, ServerUi::processAgentStatus, this);
+	cardView->processItems (ServerUi::countServerContactWindows, this);
 
 	window = (IconCardWindow *) emptyServerWindow.widget;
 	if (agentCount > 0) {
@@ -252,6 +288,15 @@ void ServerUi::doSyncRecordStore (RecordStore *store) {
 
 	cardView->syncRecordStore (store);
 	cardView->refresh ();
+}
+
+void ServerUi::countServerContactWindows (void *uiPtr, Widget *widgetPtr) {
+	ServerUi *ui;
+
+	ui = (ServerUi *) uiPtr;
+	if (ServerContactWindow::isWidgetType (widgetPtr)) {
+		++(ui->agentCount);
+	}
 }
 
 void ServerUi::processAgentStatus (void *uiPtr, Json *record, const StdString &recordId) {
@@ -282,16 +327,21 @@ void ServerUi::reloadButtonClicked (void *uiPtr, Widget *widgetPtr) {
 }
 
 void ServerUi::reloadAgent (void *uiPtr, Widget *widgetPtr) {
-	ServerWindow *window;
+	ServerWindow *serverwindow;
+	ServerContactWindow *servercontactwindow;
 	App *app;
 
-	window = ServerWindow::castWidget (widgetPtr);
-	if (! window) {
-		return;
-	}
-
 	app = App::getInstance ();
-	app->agentControl.refreshAgentStatus (window->agentId);
+	serverwindow = ServerWindow::castWidget (widgetPtr);
+	if (serverwindow) {
+		app->agentControl.refreshAgentStatus (serverwindow->agentId);
+	}
+	else {
+		servercontactwindow = ServerContactWindow::castWidget (widgetPtr);
+		if (servercontactwindow) {
+			app->agentControl.contactAgent (servercontactwindow->agentHostname, servercontactwindow->agentPort);
+		}
+	}
 }
 
 void ServerUi::broadcastButtonClicked (void *uiPtr, Widget *widgetPtr) {
@@ -338,7 +388,8 @@ void ServerUi::addressTextFieldEdited (void *uiPtr, Widget *widgetPtr) {
 	App *app;
 	ServerUi *ui;
 	TextFieldWindow *textfield;
-	StdString address, hostname;
+	ServerContactWindow *window;
+	StdString address, hostname, key;
 	int port;
 
 	ui = (ServerUi *) uiPtr;
@@ -355,8 +406,23 @@ void ServerUi::addressTextFieldEdited (void *uiPtr, Widget *widgetPtr) {
 		return;
 	}
 
+	if (app->agentControl.isContacted (hostname, port)) {
+		app->agentControl.refreshAgentStatus (hostname, port);
+		return;
+	}
+
 	app->agentControl.contactAgent (hostname, port);
-	app->showSnackbar (app->uiText.getText (UiTextString::serverUiContactingAgentMessage));
+	app->showSnackbar (StdString::createSprintf ("%s: %s", app->uiText.getText (UiTextString::serverUiContactingAgentMessage).c_str (), address.c_str ()));
+
+	key.sprintf ("%s:%i", hostname.c_str (), port);
+	if (! ui->cardView->contains (key)) {
+		window = new ServerContactWindow (address, hostname, port);
+		window->setStateChangeCallback (ServerUi::serverContactWindowStateChanged, ui);
+		window->sortKey.assign (address.lowercased ());
+		window->itemId.assign (key);
+		ui->cardView->addItem (window, window->itemId, 0);
+	}
+	app->shouldSyncRecordStore = true;
 }
 
 void ServerUi::addressSnackbarHelpClicked (void *uiPtr, Widget *widgetPtr) {
@@ -470,4 +536,68 @@ void ServerUi::agentRemoveActionClicked (void *uiPtr, Widget *widgetPtr) {
 	}
 	ui->clearPopupWidgets ();
 	app->shouldSyncRecordStore = true;
+}
+
+void ServerUi::adminSecretAddButtonClicked (void *uiPtr, Widget *widgetPtr) {
+	ServerUi *ui;
+	AdminSecretWindow *target;
+	App *app;
+	ActionWindow *action;
+	bool show;
+
+	ui = (ServerUi *) uiPtr;
+	target = (AdminSecretWindow *) widgetPtr;
+	app = App::getInstance ();
+
+	show = true;
+	if (ActionWindow::isWidgetType (ui->actionWidget.widget) && (ui->actionTarget.widget == target)) {
+		show = false;
+	}
+	ui->clearPopupWidgets ();
+	if (! show) {
+		return;
+	}
+
+	action = target->createAddActionWindow ();
+	action->zLevel = app->rootPanel->maxWidgetZLevel + 1;
+	action->setCloseCallback (ServerUi::adminSecretAddActionClosed, ui);
+
+	app->rootPanel->addWidget (action);
+	ui->actionWidget.assign (action);
+	ui->actionTarget.assign (target);
+	action->position.assign (target->drawX + target->width, target->drawY + target->height - action->height);
+}
+
+void ServerUi::adminSecretAddActionClosed (void *uiPtr, Widget *widgetPtr) {
+	ServerUi *ui;
+	ActionWindow *action;
+	AdminSecretWindow *target;
+
+	ui = (ServerUi *) uiPtr;
+	action = (ActionWindow *) widgetPtr;
+	if (! action->isConfirmed) {
+		return;
+	}
+
+	target = AdminSecretWindow::castWidget (ui->actionTarget.widget);
+	if (! target) {
+		return;
+	}
+
+	target->addItem (action);
+	ui->cardView->refresh ();
+}
+
+void ServerUi::adminSecretExpandStateChanged (void *uiPtr, Widget *widgetPtr) {
+	ServerUi *ui;
+
+	ui = (ServerUi *) uiPtr;
+	ui->cardView->refresh ();
+}
+
+void ServerUi::serverContactWindowStateChanged (void *uiPtr, Widget *widgetPtr) {
+	ServerUi *ui;
+
+	ui = (ServerUi *) uiPtr;
+	ui->cardView->refresh ();
 }

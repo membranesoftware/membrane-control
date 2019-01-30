@@ -59,18 +59,38 @@ const int AgentConfigurationWindow::mediaScanPeriods[] = { 0, 24 * 3600, 4 * 360
 AgentConfigurationWindow::AgentConfigurationWindow (const StdString &agentId)
 : Panel ()
 , agentId (agentId)
+, isExpanded (false)
 , iconImage (NULL)
 , titleLabel (NULL)
+, expandToggle (NULL)
 , actionWindow (NULL)
 , applyButton (NULL)
+, expandStateChangeCallback (NULL)
+, expandStateChangeCallbackData (NULL)
 {
 	UiConfiguration *uiconfig;
+	UiText *uitext;
 
 	uiconfig = &(App::getInstance ()->uiConfig);
+	uitext = &(App::getInstance ()->uiText);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
-	populate ();
+	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::CONFIGURATION_ICON)));
+	titleLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::configuration).capitalized (), UiConfiguration::HEADLINE, uiconfig->primaryTextColor));
+
+	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::EXPAND_MORE_BUTTON), uiconfig->coreSprites.getSprite (UiConfiguration::EXPAND_LESS_BUTTON)));
+	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
+	expandToggle->setStateChangeCallback (AgentConfigurationWindow::expandToggleStateChanged, this);
+	expandToggle->setMouseHoverTooltip (uitext->getText (UiTextString::expandToggleTooltip));
+	expandToggle->isVisible = false;
+
+	applyButton = (Button *) addWidget (new Button (uitext->getText (UiTextString::apply).uppercased ()));
+	applyButton->setMouseClickCallback (AgentConfigurationWindow::applyButtonClicked, this);
+	applyButton->setTextColor (uiconfig->raisedButtonTextColor);
+	applyButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
+	applyButton->isVisible = false;
+
 	refreshLayout ();
 }
 
@@ -82,41 +102,60 @@ StdString AgentConfigurationWindow::toStringDetail () {
 	return (StdString (" AgentConfigurationWindow"));
 }
 
-void AgentConfigurationWindow::populate () {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
+void AgentConfigurationWindow::setExpandStateChangeCallback (Widget::EventCallback callback, void *callbackData) {
+	expandStateChangeCallback = callback;
+	expandStateChangeCallbackData = callbackData;
+}
 
-	uiconfig = &(App::getInstance ()->uiConfig);
-	uitext = &(App::getInstance ()->uiText);
+void AgentConfigurationWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallback) {
+	isExpanded = expanded;
+	if (isExpanded) {
+		expandToggle->setChecked (true, true);
+		if (actionWindow) {
+			actionWindow->isVisible = true;
+			applyButton->isVisible = true;
+		}
+		else {
+			applyButton->isVisible = false;
+		}
+	}
+	else {
+		expandToggle->setChecked (false, true);
+		if (actionWindow) {
+			actionWindow->isVisible = false;
+		}
+		applyButton->isVisible = false;
+	}
 
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::CONFIGURATION_ICON)));
-	titleLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::configuration).capitalized (), UiConfiguration::HEADLINE, uiconfig->primaryTextColor));
-
-	applyButton = (Button *) addWidget (new Button (uitext->getText (UiTextString::apply).uppercased ()));
-	applyButton->setMouseClickCallback (AgentConfigurationWindow::applyButtonClicked, this);
-	applyButton->setTextColor (uiconfig->raisedButtonTextColor);
-	applyButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
-	applyButton->isVisible = false;
+	refreshLayout ();
+	if ((! shouldSkipStateChangeCallback) && expandStateChangeCallback) {
+		expandStateChangeCallback (expandStateChangeCallbackData, this);
+	}
 }
 
 void AgentConfigurationWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
-	float x, y, x0, x2, y2;
+	float x, y, x0, y0, x2, y2;
 
 	uiconfig = &(App::getInstance ()->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	x0 = x;
+	y0 = y;
 	x2 = 0.0f;
 	y2 = 0.0f;
 
 	iconImage->flowRight (&x, y, &x2, &y2);
-	titleLabel->flowDown (x, &y, &x2, &y2);
+	titleLabel->flowRight (&x, y, &x2, &y2);
+	if (expandToggle->isVisible) {
+		expandToggle->flowRight (&x, y, &x2, &y2);
+	}
+	titleLabel->position.assignY (y0 + ((y2 - y0) / 2.0f) - (titleLabel->height / 2.0f));
 
 	x2 = 0.0f;
 	x = x0;
 	y = y2 + uiconfig->marginSize;
-	if (actionWindow) {
+	if (actionWindow && actionWindow->isVisible) {
 		actionWindow->flowDown (x, &y, &x2, &y2);
 		y = y2 + uiconfig->marginSize;
 	}
@@ -124,7 +163,15 @@ void AgentConfigurationWindow::refreshLayout () {
 		applyButton->flowDown (x, &y, &x2, &y2);
 	}
 
+	if (actionWindow) {
+		expandToggle->position.assignX (x + actionWindow->width - expandToggle->width);
+	}
 	resetSize ();
+
+	x = width - widthPadding;
+	if (expandToggle->isVisible) {
+		expandToggle->flowLeft (&x);
+	}
 
 	x = width - widthPadding;
 	if (applyButton->isVisible) {
@@ -166,7 +213,7 @@ void AgentConfigurationWindow::loadConfiguration () {
 	setWaiting (true);
 }
 
-void AgentConfigurationWindow::invokeGetAgentConfigurationComplete (void *windowPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand) {
+void AgentConfigurationWindow::invokeGetAgentConfigurationComplete (void *windowPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand) {
 	App *app;
 	AgentConfigurationWindow *window;
 	int result;
@@ -178,8 +225,8 @@ void AgentConfigurationWindow::invokeGetAgentConfigurationComplete (void *window
 		return;
 	}
 
-	if (jobResult != Result::SUCCESS) {
-		Log::write (Log::DEBUG, "Failed to invoke GetAgentConfiguration command; err=%i agentId=\"%s\"", jobResult, agentId.c_str ());
+	if (invokeResult != Result::SUCCESS) {
+		Log::write (Log::DEBUG, "Failed to invoke GetAgentConfiguration command; err=%i agentId=\"%s\"", invokeResult, agentId.c_str ());
 		app->showSnackbar (app->uiText.getText (UiTextString::getAgentConfigurationServerContactError));
 	}
 	else {
@@ -205,7 +252,7 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 	SliderWindow *slider;
 	Json cfg;
 	StdString prompt;
-	int result, i, numperiods, period;
+	int i, numperiods, period;
 
 	app = App::getInstance ();
 	interface = &(app->systemInterface);
@@ -216,11 +263,7 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 		return (Result::ERROR_INVALID_PARAM);
 	}
 
-	result = agentConfiguration.copy (command);
-	if (result != Result::SUCCESS) {
-		return (result);
-	}
-
+	agentConfiguration.copy (command);
 	if (actionWindow) {
 		actionWindow->isDestroyed = true;
 	}
@@ -231,10 +274,11 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 	actionWindow->setOptionChangeCallback (AgentConfigurationWindow::actionOptionChanged, this);
 
 	toggle = new Toggle ();
-	toggle->setChecked (interface->getCommandBooleanParam (&agentConfiguration, "isEnabled", true));
+	toggle->setChecked (interface->getCommandBooleanParam (&agentConfiguration, "isEnabled", false));
 	actionWindow->addOption (uitext->getText (UiTextString::enabled).capitalized (), toggle, uitext->getText (UiTextString::agentEnabledDescription));
 
 	textfield = new TextField (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CAPTION]->maxGlyphWidth, uitext->getText (UiTextString::agentDisplayNamePrompt));
+	textfield->setPromptErrorColor (true);
 	textfield->setValue (interface->getCommandStringParam (&agentConfiguration, "displayName", ""));
 	actionWindow->addOption (uitext->getText (UiTextString::displayName).capitalized (), textfield, uitext->getText (UiTextString::agentDisplayNameDescription));
 	actionWindow->setOptionNotEmptyString (uitext->getText (UiTextString::displayName).capitalized ());
@@ -247,6 +291,7 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 			prompt = uitext->getText (UiTextString::sourceMediaPathPrompt);
 		}
 		textfield = new TextField (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CAPTION]->maxGlyphWidth, prompt);
+		textfield->setPromptErrorColor (true);
 		textfield->setValue (cfg.getString ("mediaPath", ""));
 		actionWindow->addOption (uitext->getText (UiTextString::sourceMediaPath).capitalized (), textfield, uitext->getText (UiTextString::sourceMediaPathDescription));
 		actionWindow->setOptionNotEmptyString (uitext->getText (UiTextString::sourceMediaPath).capitalized ());
@@ -258,6 +303,7 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 			prompt = uitext->getText (UiTextString::mediaDataPathPrompt);
 		}
 		textfield = new TextField (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CAPTION]->maxGlyphWidth, prompt);
+		textfield->setPromptErrorColor (true);
 		textfield->setValue (cfg.getString ("dataPath", ""));
 		actionWindow->addOption (uitext->getText (UiTextString::mediaDataPath).capitalized (), textfield, uitext->getText (UiTextString::mediaDataPathDescription));
 		actionWindow->setOptionNotEmptyString (uitext->getText (UiTextString::mediaDataPath).capitalized ());
@@ -287,6 +333,7 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 			prompt = uitext->getText (UiTextString::streamDataPathPrompt);
 		}
 		textfield = new TextField (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CAPTION]->maxGlyphWidth, prompt);
+		textfield->setPromptErrorColor (true);
 		textfield->setValue (cfg.getString ("dataPath", ""));
 		actionWindow->addOption (uitext->getText (UiTextString::streamDataPath).capitalized (), textfield, uitext->getText (UiTextString::streamDataPathDescription));
 		actionWindow->setOptionNotEmptyString (uitext->getText (UiTextString::streamDataPath).capitalized ());
@@ -295,7 +342,15 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 	if (! actionWindow->isOptionDataValid) {
 		applyButton->setDisabled (true);
 	}
-	applyButton->isVisible = true;
+
+	expandToggle->isVisible = true;
+	if ((! interface->getCommandBooleanParam (&agentConfiguration, "isEnabled", false)) || (! actionWindow->isOptionDataValid)) {
+		setExpanded (true);
+	}
+	else {
+		setExpanded (false);
+	}
+
 	refreshLayout ();
 	return (Result::SUCCESS);
 }
@@ -324,6 +379,18 @@ StdString AgentConfigurationWindow::mediaScanPeriodSliderValueName (float slider
 	}
 
 	return (StdString (""));
+}
+
+void AgentConfigurationWindow::expandToggleStateChanged (void *windowPtr, Widget *widgetPtr) {
+	AgentConfigurationWindow *window;
+	Toggle *toggle;
+
+	window = (AgentConfigurationWindow *) windowPtr;
+	toggle = (Toggle *) widgetPtr;
+	window->setExpanded (toggle->isChecked, true);
+	if (window->expandStateChangeCallback) {
+		window->expandStateChangeCallback (window->expandStateChangeCallbackData, window);
+	}
 }
 
 void AgentConfigurationWindow::actionOptionChanged (void *windowPtr, Widget *widgetPtr) {
@@ -396,7 +463,7 @@ void AgentConfigurationWindow::applyButtonClicked (void *windowPtr, Widget *widg
 	window->setWaiting (true);
 }
 
-void AgentConfigurationWindow::invokeUpdateAgentConfigurationComplete (void *windowPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand) {
+void AgentConfigurationWindow::invokeUpdateAgentConfigurationComplete (void *windowPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand) {
 	AgentConfigurationWindow *window;
 	App *app;
 	SystemInterface *interface;
@@ -409,8 +476,8 @@ void AgentConfigurationWindow::invokeUpdateAgentConfigurationComplete (void *win
 
 	app = App::getInstance ();
 	interface = &(app->systemInterface);
-	if (jobResult != Result::SUCCESS) {
-		Log::write (Log::DEBUG, "Failed to invoke UpdateAgentConfiguration command; err=%i agentId=\"%s\"", jobResult, agentId.c_str ());
+	if (invokeResult != Result::SUCCESS) {
+		Log::write (Log::DEBUG, "Failed to invoke UpdateAgentConfiguration command; err=%i agentId=\"%s\"", invokeResult, agentId.c_str ());
 		app->showSnackbar (app->uiText.getText (UiTextString::serverContactError));
 	}
 	else {

@@ -469,12 +469,12 @@ int WebPlaylistWindow::getItemDisplayDuration () {
 	return (WebPlaylistWindow::itemDisplayDurations[2]);
 }
 
-static const char *PLAYLIST_NAME_KEY = "pn";
-static const char *IS_SELECTED_KEY = "se";
-static const char *IS_EXPANDED_KEY = "ex";
-static const char *URL_LIST_KEY = "ur";
-static const char *IS_SHUFFLE_KEY = "sh";
-static const char *ITEM_DISPLAY_DURATION_KEY = "dd";
+static const char *PLAYLIST_NAME_KEY = "a";
+static const char *IS_SELECTED_KEY = "b";
+static const char *IS_EXPANDED_KEY = "c";
+static const char *URL_LIST_KEY = "d";
+static const char *IS_SHUFFLE_KEY = "e";
+static const char *ITEM_DISPLAY_DURATION_KEY = "f";
 Json *WebPlaylistWindow::getState () {
 	Json *obj;
 	StringList urls;

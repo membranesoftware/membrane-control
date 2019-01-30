@@ -30,7 +30,6 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include <list>
 #include "Result.h"
 #include "Log.h"
 #include "StdString.h"
@@ -71,12 +70,34 @@ ServerWindow::ServerWindow (const StdString &agentId)
 , menuClickCallbackData (NULL)
 {
 	UiConfiguration *uiconfig;
+	UiText *uitext;
 
 	uiconfig = &(App::getInstance ()->uiConfig);
+	uitext = &(App::getInstance ()->uiText);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
-	populate ();
+	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::SERVER_ICON)));
+	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::HEADLINE, uiconfig->primaryTextColor));
+
+	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
+	descriptionLabel->isVisible = false;
+
+	statsWindow = (StatsWindow *) addWidget (new StatsWindow ());
+	statsWindow->setPadding (uiconfig->paddingSize, 0.0f);
+	statsWindow->setItem (uitext->getText (UiTextString::status).capitalized (), "");
+	statsWindow->setItem (uitext->getText (UiTextString::uptime).capitalized (), "");
+	statsWindow->setItem (uitext->getText (UiTextString::address).capitalized (), "");
+	statsWindow->setItem (uitext->getText (UiTextString::version).capitalized (), "");
+	statsWindow->setItem (uitext->getText (UiTextString::platform).capitalized (), "");
+	statsWindow->isVisible = false;
+
+	menuButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::MAIN_MENU_BUTTON)));
+	menuButton->setMouseClickCallback (ServerWindow::menuButtonClicked, this);
+	menuButton->setImageColor (uiconfig->flatButtonTextColor);
+	menuButton->setMouseHoverTooltip (uitext->getText (UiTextString::moreActionsTooltip));
+	menuButton->isVisible = false;
+
 	refreshLayout ();
 }
 
@@ -85,7 +106,7 @@ ServerWindow::~ServerWindow () {
 }
 
 StdString ServerWindow::toStringDetail () {
-  return (StdString (" ServerWindow"));
+	return (StdString (" ServerWindow"));
 }
 
 bool ServerWindow::isWidgetType (Widget *widget) {
@@ -99,34 +120,6 @@ bool ServerWindow::isWidgetType (Widget *widget) {
 
 ServerWindow *ServerWindow::castWidget (Widget *widget) {
 	return (ServerWindow::isWidgetType (widget) ? (ServerWindow *) widget : NULL);
-}
-
-void ServerWindow::populate () {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
-
-	uiconfig = &(App::getInstance ()->uiConfig);
-	uitext = &(App::getInstance ()->uiText);
-
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::SERVER_ICON)));
-	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::HEADLINE, uiconfig->primaryTextColor));
-
-	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
-	descriptionLabel->isVisible = false;
-
-	statsWindow = (StatsWindow *) addWidget (new StatsWindow ());
-	statsWindow->setPadding (uiconfig->paddingSize, 0.0f);
-	statsWindow->setItem (uitext->getText (UiTextString::status).capitalized (), "");
-	statsWindow->setItem (uitext->getText (UiTextString::address).capitalized (), "");
-	statsWindow->setItem (uitext->getText (UiTextString::version).capitalized (), "");
-	statsWindow->setItem (uitext->getText (UiTextString::uptime).capitalized (), "");
-	statsWindow->isVisible = false;
-
-	menuButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::MAIN_MENU_BUTTON)));
-	menuButton->setMouseClickCallback (ServerWindow::menuButtonClicked, this);
-	menuButton->setImageColor (uiconfig->flatButtonTextColor);
-	menuButton->setMouseHoverTooltip (uitext->getText (UiTextString::moreActionsTooltip));
-	menuButton->isVisible = false;
 }
 
 void ServerWindow::setMenuClickCallback (Widget::EventCallback callback, void *callbackData) {
@@ -154,8 +147,11 @@ void ServerWindow::syncRecordStore (RecordStore *store) {
 
 	version = interface->getCommandStringParam (record, "version", "");
 	platform = interface->getCommandStringParam (record, "platform", "");
-	if ((! version.empty ()) && (! platform.empty ())) {
-		applicationId.sprintf ("%s_%s", version.c_str (), platform.c_str ());
+	if (! version.empty ()) {
+		applicationId.assign (version);
+		if (! platform.empty ()) {
+			applicationId.appendSprintf ("_%s", platform.c_str ());
+		}
 	}
 
 	nameLabel->setText (interface->getCommandAgentName (record));
@@ -174,6 +170,7 @@ void ServerWindow::syncRecordStore (RecordStore *store) {
 
 	statsWindow->setItem (uitext->getText (UiTextString::address).capitalized (), Util::getAddressDisplayString (interface->getCommandAgentAddress (record), SystemInterface::Constant_DefaultTcpPort1));
 	statsWindow->setItem (uitext->getText (UiTextString::version).capitalized (), interface->getCommandStringParam (record, "version", ""));
+	statsWindow->setItem (uitext->getText (UiTextString::platform).capitalized (), interface->getCommandStringParam (record, "platform", ""));
 	statsWindow->setItem (uitext->getText (UiTextString::uptime).capitalized (), interface->getCommandStringParam (record, "uptime", ""));
 	statsWindow->isVisible = true;
 	if (menuClickCallback) {

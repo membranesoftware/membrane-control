@@ -459,6 +459,14 @@ StdString StdString::createSprintf (const char *str, ...) {
 	return (StdString (buf));
 }
 
+StdString StdString::createHex (const unsigned char *hexData, int hexDataLength) {
+	StdString s;
+
+	s.assignHex (hexData, hexDataLength);
+
+	return (s);
+}
+
 bool StdString::parseInt (const char *str, int *value) {
 	char *s, c;
 
@@ -547,6 +555,31 @@ Buffer *StdString::createBuffer () {
 
 void StdString::assignBuffer (Buffer *buffer) {
 	assign ((char *) buffer->data, buffer->length);
+}
+
+void StdString::assignHex (const unsigned char *hexData, int hexDataLength) {
+	unsigned char *d, *end;
+
+	assign ("");
+	d = (unsigned char *) hexData;
+	end = d + hexDataLength;
+	while (d < end) {
+		appendSprintf ("%02x", *d);
+		++d;
+	}
+}
+
+void StdString::wipe () {
+	StdString::iterator i1, i2;
+
+	i1 = begin ();
+	i2 = end ();
+	while (i1 != i2) {
+		*i1 = ' ';
+		++i1;
+	}
+
+	clear ();
 }
 
 void StdString::split (const char *delimiter, std::list<StdString> *destList) {

@@ -34,11 +34,12 @@
 #define SERVER_UI_H
 
 #include "StdString.h"
+#include "StringList.h"
 #include "Json.h"
 #include "WidgetHandle.h"
 #include "CardView.h"
-#include "HashMap.h"
 #include "Toolbar.h"
+#include "AdminSecretWindow.h"
 #include "Ui.h"
 
 class ServerUi : public Ui {
@@ -68,6 +69,9 @@ public:
 	static void processAgentStatus (void *uiPtr, Json *record, const StdString &recordId);
 	static void reloadButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void reloadAgent (void *uiPtr, Widget *widgetPtr);
+	static void countServerContactWindows (void *uiPtr, Widget *widgetPtr);
+	static void findDeletedServerContactWindows (void *uiPtr, Widget *widgetPtr);
+	static void serverContactWindowStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void broadcastButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void addressToggleStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void addressTextFieldEdited (void *uiPtr, Widget *widgetPtr);
@@ -76,6 +80,9 @@ public:
 	static void agentAdminActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void agentUpdateActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void agentRemoveActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void adminSecretAddButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void adminSecretAddActionClosed (void *uiPtr, Widget *widgetPtr);
+	static void adminSecretExpandStateChanged (void *uiPtr, Widget *widgetPtr);
 
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
@@ -116,11 +123,11 @@ protected:
 
 private:
 	CardView *cardView;
+	AdminSecretWindow *adminSecretWindow;
 	WidgetHandle addressToggle;
 	WidgetHandle addressTextFieldWindow;
-	WidgetHandle actionWidget;
-	WidgetHandle actionTarget;
 	WidgetHandle emptyServerWindow;
+	StringList cardIdList;
 	int agentCount;
 };
 

@@ -89,11 +89,13 @@ public:
 	static const StdString prefsMonitorImageSize;
 	static const StdString prefsMediaItemImageSize;
 	static const StdString prefsStreamItemImageSize;
+	static const StdString prefsServerAdminSecrets;
 	static const StdString prefsServerTimeout; // seconds
 	static const int64_t defaultServerTimeout;
 	static const StdString prefsServerPath;
 	static const StdString prefsApplicationName;
 	static const StdString prefsHttps;
+	static const StdString prefsWebKioskUiSelectedAgents;
 	static const StdString prefsWebKioskUiExpandedAgents;
 	static const StdString prefsWebKioskUiPlaylists;
 	static const StdString prefsMediaUiExpandedAgents;
@@ -199,9 +201,6 @@ public:
 	// Return a newly created Json object containing the specified command and the default prefix, or NULL if the command could not be created. commandParams can be NULL if not needed, causing the returned command to use empty parameter fields. If a commandParams object is provided, this method becomes responsible for deleting it when it's no longer needed.
 	Json *createCommand (const char *commandName, int commandType, Json *commandParams = NULL);
 
-	// Return the JSON string for a command with the specified parameters, or an empty string if the command could not be created. commandParams can be NULL if not needed, causing the returned command to use empty parameter fields. If a commandParams object is provided, this method becomes responsible for deleting it when it's no longer needed.
-	StdString createCommandJson (const char *commandName, int commandType, Json *commandParams = NULL);
-
 	typedef void (*RenderTaskFunction) (void *fnData);
 	struct RenderTaskContext {
 		RenderTaskFunction callback;
@@ -214,6 +213,12 @@ public:
 	// Set a resource path that should be used to load a background texture and render it during draw operations
 	void setNextBackgroundTexturePath (const StdString &path);
 	void setNextBackgroundTexturePath (const char *path);
+
+	// Return a pseudorandom int value, chosen from within the specified inclusive range
+	int getRandomInt (int i1, int i2);
+
+	// Return a pseudorandomly chosen string value of the specified length
+	StdString getRandomString (int stringLength);
 
 private:
 	// Constants to use for UiChange type values

@@ -39,12 +39,15 @@
 #include "Button.h"
 #include "Image.h"
 #include "ImageWindow.h"
+#include "Toggle.h"
 #include "UiConfiguration.h"
 #include "TextField.h"
 #include "TextFieldWindow.h"
 
 TextFieldWindow::TextFieldWindow (float windowWidth, const StdString &promptText, Sprite *iconSprite)
 : Panel ()
+, isInverseColor (false)
+, isObscured (false)
 , isFixedHeight (false)
 , windowWidth (windowWidth)
 , windowHeight (0.0f)
@@ -55,7 +58,9 @@ TextFieldWindow::TextFieldWindow (float windowWidth, const StdString &promptText
 , cancelButton (NULL)
 , pasteButton (NULL)
 , clearButton (NULL)
+, randomizeButton (NULL)
 , iconImage (NULL)
+, visibilityToggle (NULL)
 , shouldResetEditing (false)
 {
 	UiConfiguration *uiconfig;
@@ -79,7 +84,7 @@ TextFieldWindow::TextFieldWindow (float windowWidth, const StdString &promptText
 	enterButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::ENTER_TEXT_BUTTON)));
 	enterButton->setInverseColor (true);
 	enterButton->setMouseClickCallback (TextFieldWindow::enterButtonClicked, this);
-	enterButton->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldEnterTooltip).capitalized ());
+	enterButton->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldEnterTooltip));
 	enterButton->isVisible = false;
 
 	cancelButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::CANCEL_BUTTON)));
@@ -90,15 +95,18 @@ TextFieldWindow::TextFieldWindow (float windowWidth, const StdString &promptText
 
 	pasteButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::PASTE_BUTTON)));
 	pasteButton->setMouseClickCallback (TextFieldWindow::pasteButtonClicked, this);
-	pasteButton->setRaised (true, uiconfig->darkBackgroundColor);
 	pasteButton->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldPasteTooltip));
 	pasteButton->isVisible = false;
 
 	clearButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::CLEAR_BUTTON)));
 	clearButton->setMouseClickCallback (TextFieldWindow::clearButtonClicked, this);
-	clearButton->setRaised (true, uiconfig->darkBackgroundColor);
 	clearButton->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldClearTooltip));
 	clearButton->isVisible = false;
+
+	randomizeButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::RANDOMIZE_BUTTON)));
+	randomizeButton->setMouseClickCallback (TextFieldWindow::randomizeButtonClicked, this);
+	randomizeButton->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldRandomizeTooltip));
+	randomizeButton->isVisible = false;
 
 	refreshLayout ();
 }
@@ -124,6 +132,57 @@ TextFieldWindow *TextFieldWindow::castWidget (Widget *widget) {
 	return (TextFieldWindow::isWidgetType (widget) ? (TextFieldWindow *) widget : NULL);
 }
 
+void TextFieldWindow::setInverseColor (bool inverse) {
+	if (isInverseColor == inverse) {
+		return;
+	}
+
+	isInverseColor = inverse;
+	textField->setInverseColor (isInverseColor);
+	enterButton->setInverseColor (isInverseColor);
+	cancelButton->setInverseColor (isInverseColor);
+	pasteButton->setInverseColor (isInverseColor);
+	clearButton->setInverseColor (isInverseColor);
+	randomizeButton->setInverseColor (isInverseColor);
+	if (visibilityToggle) {
+		visibilityToggle->setInverseColor (isInverseColor);
+	}
+	refreshLayout ();
+}
+
+void TextFieldWindow::setPromptErrorColor (bool enable) {
+	textField->setPromptErrorColor (enable);
+}
+
+void TextFieldWindow::setObscured (bool enable) {
+	UiConfiguration *uiconfig;
+	UiText *uitext;
+
+	if (isObscured == enable) {
+		return;
+	}
+
+	uiconfig = &(App::getInstance ()->uiConfig);
+	uitext = &(App::getInstance ()->uiText);
+	if (visibilityToggle) {
+		visibilityToggle->isDestroyed = true;
+		visibilityToggle = NULL;
+	}
+	isObscured = enable;
+	if (isObscured) {
+		textField->setObscured (true);
+		visibilityToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::VISIBILITY_OFF_BUTTON), uiconfig->coreSprites.getSprite (UiConfiguration::VISIBILITY_ON_BUTTON)));
+		visibilityToggle->setInverseColor (isInverseColor);
+		visibilityToggle->setStateChangeCallback (TextFieldWindow::visibilityToggleStateChanged, this);
+		visibilityToggle->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldVisibilityToggleTooltip));
+		visibilityToggle->zLevel = 1;
+	}
+	else {
+		textField->setObscured (false);
+	}
+	refreshLayout ();
+}
+
 StdString TextFieldWindow::getValue () {
 	return (textField->getValue ());
 }
@@ -147,11 +206,12 @@ void TextFieldWindow::setEditCallback (Widget::EventCallback callback, void *cal
 	editCallbackData = callbackData;
 }
 
-void TextFieldWindow::setButtonsEnabled (bool enableEnterButton, bool enableCancelButton, bool enablePasteButton, bool enableClearButton) {
+void TextFieldWindow::setButtonsEnabled (bool enableEnterButton, bool enableCancelButton, bool enablePasteButton, bool enableClearButton, bool enableRandomizeButton) {
 	enterButton->isVisible = enableEnterButton;
 	cancelButton->isVisible = enableCancelButton;
 	pasteButton->isVisible = enablePasteButton;
 	clearButton->isVisible = enableClearButton;
+	randomizeButton->isVisible = enableRandomizeButton;
 	refreshLayout ();
 }
 
@@ -246,6 +306,10 @@ void TextFieldWindow::refreshLayout () {
 	textField->position.assignY ((h / 2.0f) - (textField->height / 2.0f));
 	x = textField->position.x + textField->width;
 	y = textField->position.y + (textField->height / 2.0f);
+	if (visibilityToggle) {
+		x -= visibilityToggle->width;
+		visibilityToggle->position.assign (x, y - (visibilityToggle->height / 2.0f));
+	}
 	if (clearButton->isVisible) {
 		x -= clearButton->width;
 		clearButton->position.assign (x, y - (clearButton->height / 2.0f));
@@ -253,6 +317,10 @@ void TextFieldWindow::refreshLayout () {
 	if (pasteButton->isVisible) {
 		x -= pasteButton->width;
 		pasteButton->position.assign (x, y - (pasteButton->height / 2.0f));
+	}
+	if (randomizeButton->isVisible) {
+		x -= randomizeButton->width;
+		randomizeButton->position.assign (x, y - (randomizeButton->height / 2.0f));
 	}
 }
 
@@ -312,5 +380,27 @@ void TextFieldWindow::clearButtonClicked (void *windowPtr, Widget *widgetPtr) {
 	window->textField->clearValue ();
 	if (editing) {
 		window->shouldResetEditing = true;
+	}
+}
+
+static const int RANDOMIZE_STRING_LENGTH = 16;
+void TextFieldWindow::randomizeButtonClicked (void *windowPtr, Widget *widgetPtr) {
+	TextFieldWindow *window;
+	App *app;
+
+	window = (TextFieldWindow *) windowPtr;
+	app = App::getInstance ();
+	window->textField->setValue (app->getRandomString (RANDOMIZE_STRING_LENGTH));
+}
+
+void TextFieldWindow::visibilityToggleStateChanged (void *windowPtr, Widget *widgetPtr) {
+	TextFieldWindow *window;
+
+	window = (TextFieldWindow *) windowPtr;
+	if (window->visibilityToggle->isChecked) {
+		window->textField->setObscured (false);
+	}
+	else {
+		window->textField->setObscured (true);
 	}
 }

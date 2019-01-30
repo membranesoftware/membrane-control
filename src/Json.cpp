@@ -55,6 +55,10 @@ Json::~Json () {
 	clear ();
 }
 
+void Json::freeObject (void *jsonPtr) {
+	delete ((Json *) jsonPtr);
+}
+
 void Json::clear () {
 	if (json) {
 		if (shouldFreeJson) {
@@ -285,11 +289,65 @@ int Json::parse (const StdString &data) {
 	return (parse (data.c_str (), data.length ()));
 }
 
-int Json::copy (Json *sourceJson) {
-	StdString s;
+void Json::copy (Json *sourceJson) {
+	setEmpty ();
+	if (! sourceJson->json) {
+		return;
+	}
 
-	s.assign (sourceJson->toString ());
-	return (parse (s));
+	setJsonValue (copyJsonValue (sourceJson->json), true);
+	shouldFreeJson = true;
+}
+
+json_value *Json::copyJsonValue (json_value *sourceValue) {
+	json_value *value;
+	json_object_entry *entry;
+	StdString s;
+	int i, len;
+
+	switch (sourceValue->type) {
+		case json_integer: {
+			value = json_integer_new (sourceValue->u.integer);
+			break;
+		}
+		case json_double: {
+			value = json_double_new (sourceValue->u.dbl);
+			break;
+		}
+		case json_boolean: {
+			value = json_boolean_new (sourceValue->u.boolean);
+			break;
+		}
+		case json_string: {
+			s.assign (sourceValue->u.string.ptr, sourceValue->u.string.length);
+			value = json_string_new (s.c_str ());
+			break;
+		}
+		case json_array: {
+			value = json_array_new (0);
+			len = sourceValue->u.array.length;
+			for (i = 0; i < len; ++i) {
+				json_array_push (value, copyJsonValue (sourceValue->u.array.values[i]));
+			}
+			break;
+		}
+		case json_object: {
+			value = json_object_new (0);
+			len = sourceValue->u.object.length;
+			for (i = 0; i < len; ++i) {
+				entry = &(sourceValue->u.object.values[i]);
+				s.assign (entry->name, entry->name_length);
+				json_object_push (value, s.c_str (), copyJsonValue (entry->value));
+			}
+			break;
+		}
+		default: {
+			value = json_null_new ();
+			break;
+		}
+	}
+
+	return (value);
 }
 
 int Json::getNumber (const StdString &key, int defaultValue) const {
@@ -799,6 +857,46 @@ StdString Json::getArrayString (const char *key, int index, const StdString &def
 	return (getArrayString (StdString (key), index, defaultValue));
 }
 
+bool Json::getArrayBoolean (const StdString &key, int index, bool defaultValue) const {
+	int i, len;
+	json_object_entry *entry;
+	json_value *item;
+
+	if ((! json) || (index < 0)) {
+		return (defaultValue);
+	}
+
+	len = json->u.object.length;
+	for (i = 0; i < len; ++i) {
+		entry = &(json->u.object.values[i]);
+		if (key.equals (0, key.length (), entry->name, 0, entry->name_length)) {
+			switch (entry->value->type) {
+				case json_array: {
+					if (index >= (int) entry->value->u.array.length) {
+						return (defaultValue);
+					}
+					item = entry->value->u.array.values[index];
+					if (item->type == json_boolean) {
+						return (item->u.boolean);
+					}
+
+					return (defaultValue);
+				}
+				default: {
+					return (defaultValue);
+				}
+			}
+			break;
+		}
+	}
+
+	return (defaultValue);
+}
+
+bool Json::getArrayBoolean (const char *key, int index, bool defaultValue) const {
+	return (getArrayBoolean (StdString (key), index, defaultValue));
+}
+
 bool Json::getArrayObject (const StdString &key, int index, Json *destJson) {
 	int i, len;
 	json_object_entry *entry;
@@ -925,6 +1023,101 @@ void Json::set (const StdString &key, StringList *value) {
 }
 
 void Json::set (const char *key, StringList *value) {
+	set (StdString (key), value);
+}
+
+void Json::set (const StdString &key, std::list<int> *value) {
+	json_value *a;
+	std::list<int>::iterator i, end;
+
+	a = json_array_new (0);
+	i = value->begin ();
+	end = value->end ();
+	while (i != end) {
+		json_array_push (a, json_integer_new (*i));
+		++i;
+	}
+
+	jsonObjectPush (key.c_str (), a);
+}
+
+void Json::set (const char *key, std::list<int> *value) {
+	set (StdString (key), value);
+}
+
+void Json::set (const StdString &key, std::list<int64_t> *value) {
+	json_value *a;
+	std::list<int64_t>::iterator i, end;
+
+	a = json_array_new (0);
+	i = value->begin ();
+	end = value->end ();
+	while (i != end) {
+		json_array_push (a, json_integer_new (*i));
+		++i;
+	}
+
+	jsonObjectPush (key.c_str (), a);
+}
+
+void Json::set (const char *key, std::list<int64_t> *value) {
+	set (StdString (key), value);
+}
+
+void Json::set (const StdString &key, std::list<float> *value) {
+	json_value *a;
+	std::list<float>::iterator i, end;
+
+	a = json_array_new (0);
+	i = value->begin ();
+	end = value->end ();
+	while (i != end) {
+		json_array_push (a, json_double_new (*i));
+		++i;
+	}
+
+	jsonObjectPush (key.c_str (), a);
+}
+
+void Json::set (const char *key, std::list<float> *value) {
+	set (StdString (key), value);
+}
+
+void Json::set (const StdString &key, std::list<double> *value) {
+	json_value *a;
+	std::list<double>::iterator i, end;
+
+	a = json_array_new (0);
+	i = value->begin ();
+	end = value->end ();
+	while (i != end) {
+		json_array_push (a, json_double_new (*i));
+		++i;
+	}
+
+	jsonObjectPush (key.c_str (), a);
+}
+
+void Json::set (const char *key, std::list<double> *value) {
+	set (StdString (key), value);
+}
+
+void Json::set (const StdString &key, std::list<bool> *value) {
+	json_value *a;
+	std::list<bool>::iterator i, end;
+
+	a = json_array_new (0);
+	i = value->begin ();
+	end = value->end ();
+	while (i != end) {
+		json_array_push (a, json_boolean_new (*i));
+		++i;
+	}
+
+	jsonObjectPush (key.c_str (), a);
+}
+
+void Json::set (const char *key, std::list<bool> *value) {
 	set (StdString (key), value);
 }
 

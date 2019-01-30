@@ -9,8 +9,11 @@ edit edit
 help help
 remove remove
 rename rename
+name name
+password password
 address address
 version version
+platform platform
 uptime uptime
 status status
 active active
@@ -33,6 +36,7 @@ mediaFiles media files
 mediaItems media items
 videoStream video stream
 videoStreams video streams
+videoQuality video quality
 storage storage
 webKiosk web kiosk
 webKiosks web kiosks
@@ -119,6 +123,8 @@ moreActionsTooltip View more actions
 textFieldEnterTooltip <Enter> Confirm field text
 textFieldPasteTooltip Paste text from the clipboard into this field
 textFieldClearTooltip Remove all text from this field
+textFieldRandomizeTooltip Set field text to a randomly generated value
+textFieldVisibilityToggleTooltip Show or hide field text
 newsButtonTooltip View the notification list
 serverConnected server connected
 serversConnected servers connected
@@ -146,14 +152,12 @@ serverUiEmptyAgentStatusTitle No servers contacted
 serverUiEmptyAgentStatusText To find Membrane Servers on the network:\n\n- Click the broadcast button in the bottom right corner to discover any servers available on the local network.\n- Click the address button to directly contact a server by name.
 serverUiAddressTooltip <F1> Enter an address to contact a Membrane Server on the network
 serverUiBroadcastTooltip <F2> Scan for Membrane Servers on the local network
-serverUiUninstalledAgentTitle No server installed
-serverUiUninstalledAgentDescription Install Membrane Server to enable this computer for access by other Membrane systems.
-serverUiUncontactedAgentTitle Server installed
-serverUiUncontactedAgentDescription Membrane Server is installed on this computer but is not running.
-serverUiContactedAgentTitle Server installed
-serverUiContactedAgentDescription Membrane Server is installed on this computer.
-serverUiStartLinkText How to start and stop the server
-serverUiContactingAgentMessage Attempting contact. If the server responds, it will be shown in the top row.
+serverUiContactingAgentMessage Attempting server contact
+serverUiContactingAgentDescription Contacting
+serverUiUnauthorizedErrorTitle Password required
+serverUiUnauthorizedErrorText To connect, create a server password entry matching the one previously used to configure this server.
+serverUiFailedContactErrorTitle Connection not available
+serverUiFailedContactErrorText A network connection to this server could not be established.
 sourceMediaPath source media path
 sourceMediaPathDescription The directory path where the server finds media files.
 sourceMediaPathPrompt (example: /media)
@@ -236,6 +240,11 @@ serverAdminUiEmptyTaskListTitle No tasks
 serverAdminUiEmptyTaskListText Jobs from the server's task queue appear in this list.
 serverAdminUiHelpTitle Server console
 serverAdminUiHelpText This interface shows details about a Membrane Server application and any in-progress tasks from its queue.
+serverAdminUiHelpAction1Text Click the lock button to set the server's password to any of the items in the server passwords list. If a password is set, the server will not accept commands unless the correct password is present in the list.
+serverAdminUiLockTooltip Set the server's admin password
+serverAdminUiEmptyAdminPasswordText (No password)
+serverAdminUiAdminPasswordDescription If a password is set, the server will not accept commands unless the correct password is present in the server passwords list.
+serverAdminUiSetPasswordCompleteMessage Admin password changed.
 monitorUiHelpTitle Video monitors
 monitorUiHelpText This interface commands Membrane Monitor applications to play video streams. Select monitors using the star icons in their upper right corners, then use the bottom toolbar to execute commands.
 monitorUiHelpAction1Text No Membrane Monitor applications are connected. To find one, return to the main menu and open the "Servers" interface.
@@ -294,3 +303,15 @@ removeStream remove stream
 mediaStreaming media streaming
 serversHelpTitle Connecting to servers with Membrane Control
 membraneSoftwareOverviewHelpTitle Membrane Software overview
+serverPasswords server passwords
+addAdminPasswordTooltip Create a new admin password
+createAdminPassword create admin password
+setAdminPassword set admin password
+adminPasswordNamePrompt (Enter a name)
+adminPasswordPrompt (Enter a password)
+emptyAdminSecretListText (No passwords stored)
+normalVideoQualityDescription Normal (match original)
+highVideoQualityDescription High
+lowVideoQualityDescription Low
+lowestVideoQualityDescription Lowest
+videoQualityDescription High quality: less storage space consumed. Lower qualities: grainier picture, much less storage space consumed.

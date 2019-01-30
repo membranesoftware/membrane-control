@@ -43,6 +43,7 @@
 #include "Button.h"
 #include "ComboBox.h"
 #include "TextField.h"
+#include "TextFieldWindow.h"
 #include "Toggle.h"
 #include "SliderWindow.h"
 #include "WidgetHandle.h"
@@ -79,6 +80,7 @@ public:
 	// Add the provided widget to the window as an option item
 	void addOption (const StdString &optionName, ComboBox *comboBox, const StdString &descriptionText = StdString (""));
 	void addOption (const StdString &optionName, TextField *textField, const StdString &descriptionText = StdString (""));
+	void addOption (const StdString &optionName, TextFieldWindow *textFieldWindow, const StdString &descriptionText = StdString (""));
 	void addOption (const StdString &optionName, Toggle *toggle, const StdString &descriptionText = StdString (""));
 	void addOption (const StdString &optionName, SliderWindow *slider, const StdString &descriptionText = StdString (""));
 
@@ -119,8 +121,9 @@ private:
 	enum {
 		COMBO_BOX = 1,
 		TEXT_FIELD = 2,
-		TOGGLE = 3,
-		SLIDER = 4
+		TEXT_FIELD_WINDOW = 3,
+		TOGGLE = 4,
+		SLIDER = 5
 	};
 	struct Item {
 		StdString name;

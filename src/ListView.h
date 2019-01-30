@@ -46,17 +46,23 @@ public:
 	ListView (float viewWidth, int minItemHeight = 0, int itemFontType = UiConfiguration::BODY, const StdString &titleText = StdString (""), const StdString &emptyStateText = StdString (""));
 	~ListView ();
 
+	// Read-only data members
+	int focusItemIndex;
+
 	// Set the view's width
 	void setViewWidth (float fixedWidth);
 
 	// Set a callback that should be invoked when the list content changes
 	void setListChangeCallback (Widget::EventCallback callback, void *callbackData);
 
+	// Set a callback that should be invoked when an item delete button is pressed, replacing the default click handler that removes the focused item
+	void setItemDeleteCallback (Widget::EventCallback callback, void *callbackData);
+
 	// Remove all items from the view
 	void clearItems ();
 
 	// Set the view's item list
-	void setItems (StringList *itemList);
+	void setItems (StringList *itemList, bool shouldSkipChangeCallback = false);
 
 	// Clear the provided StringList object and insert items from the view's list
 	void getItems (StringList *destList);
@@ -64,11 +70,20 @@ public:
 	// Return the number of items in the view's list
 	int getItemCount ();
 
+	// Return a boolean value indicating if the specified item exists in the list
+	bool contains (const StdString &itemText);
+
+	// Add an item to the view's list
+	void addItem (const StdString &itemText, void *itemData = NULL, Widget::FreeFunction itemFree = NULL, bool shouldSkipChangeCallback = false);
+
+	// Return the text associated with the specified item index, or an empty string if no such item was found
+	StdString getItemText (int itemIndex);
+
 	// Return the itemData pointer associated with the specified item index, or NULL if no such data was found
 	void *getItemData (int itemIndex);
 
-	// Add an item to the view's list
-	void addItem (const StdString &itemText, void *itemData = NULL, Widget::FreeFunction itemFree = NULL);
+	// Remove the item with the specified index
+	void removeItem (int itemIndex, bool shouldSkipChangeCallback = false);
 
 	// Callback functions
 	static void deleteButtonClicked (void *listViewPtr, Widget *widgetPtr);
@@ -93,6 +108,9 @@ private:
 		Item (): panel (NULL), label (NULL), data (NULL), dataFree (NULL) { }
 	};
 
+	// Free objects associated with a list item
+	void freeItem (std::vector<ListView::Item>::iterator item);
+
 	float viewWidth;
 	int minItemHeight;
 	int itemFontType;
@@ -104,6 +122,8 @@ private:
 	Panel *lastFocusPanel;
 	Widget::EventCallback listChangeCallback;
 	void *listChangeCallbackData;
+	Widget::EventCallback itemDeleteCallback;
+	void *itemDeleteCallbackData;
 };
 
 #endif

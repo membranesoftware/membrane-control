@@ -131,7 +131,6 @@ private:
 	float cardMaxImageWidth;
 	TimelineBar *timelineBar;
 	WidgetHandle thumbnailSizeMenu;
-	WidgetHandle actionWindow;
 	int lastTimelineHoverPosition;
 
 	Widget::EventCallback thumbnailClickCallback;

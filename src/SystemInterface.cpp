@@ -31,7 +31,7 @@
 #include <stdlib.h>
 #include "Config.h"
 #include "SystemInterface.h"
-const char *SystemInterface::version = "7-stable-7790b601";
+const char *SystemInterface::version = "8-stable-f11d18e2";
 const int SystemInterface::Constant_MaxCommandPriority = 100;
 const char *SystemInterface::Constant_CreateTimePrefixField = "a";
 const char *SystemInterface::Constant_AgentIdPrefixField = "b";
@@ -62,6 +62,7 @@ void SystemInterface::populate () {
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("AgentConfiguration"), SystemInterface::Command (45, StdString ("AgentConfiguration"), StdString ("AgentConfiguration"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("AgentContact"), SystemInterface::Command (33, StdString ("AgentContact"), StdString ("AgentContact"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("AgentStatus"), SystemInterface::Command (1, StdString ("AgentStatus"), StdString ("AgentStatus"))));
+  commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("AuthorizationRequired"), SystemInterface::Command (62, StdString ("AuthorizationRequired"), StdString ("EmptyObject"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("Authorize"), SystemInterface::Command (19, StdString ("Authorize"), StdString ("Authorize"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("AuthorizeResult"), SystemInterface::Command (13, StdString ("AuthorizeResult"), StdString ("AuthorizeResult"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("CancelTask"), SystemInterface::Command (28, StdString ("CancelTask"), StdString ("CancelTask"))));
@@ -85,6 +86,7 @@ void SystemInterface::populate () {
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("GetStatus"), SystemInterface::Command (8, StdString ("GetStatus"), StdString ("EmptyObject"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("GetThumbnailImage"), SystemInterface::Command (5, StdString ("GetThumbnailImage"), StdString ("GetThumbnailImage"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("IntentState"), SystemInterface::Command (36, StdString ("IntentState"), StdString ("IntentState"))));
+  commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("LinkSuccess"), SystemInterface::Command (63, StdString ("LinkSuccess"), StdString ("EmptyObject"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("MediaDisplayIntentState"), SystemInterface::Command (51, StdString ("MediaDisplayIntentState"), StdString ("MediaDisplayIntentState"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("MediaItem"), SystemInterface::Command (16, StdString ("MediaItem"), StdString ("MediaItem"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("MediaServerStatus"), SystemInterface::Command (9, StdString ("MediaServerStatus"), StdString ("MediaServerStatus"))));
@@ -99,6 +101,7 @@ void SystemInterface::populate () {
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("ReportStatus"), SystemInterface::Command (2, StdString ("ReportStatus"), StdString ("ReportStatus"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("ScanMediaItems"), SystemInterface::Command (58, StdString ("ScanMediaItems"), StdString ("EmptyObject"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("ServerError"), SystemInterface::Command (20, StdString ("ServerError"), StdString ("ServerError"))));
+  commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("SetAdminSecret"), SystemInterface::Command (61, StdString ("SetAdminSecret"), StdString ("SetAdminSecret"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("SetIntentActive"), SystemInterface::Command (38, StdString ("SetIntentActive"), StdString ("SetIntentActive"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("ShowWebUrl"), SystemInterface::Command (34, StdString ("ShowWebUrl"), StdString ("ShowWebUrl"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("ShutdownAgent"), SystemInterface::Command (43, StdString ("ShutdownAgent"), StdString ("EmptyObject"))));
@@ -149,6 +152,7 @@ void SystemInterface::populate () {
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("ReportContact"), SystemInterface::getParams_ReportContact));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("ReportStatus"), SystemInterface::getParams_ReportStatus));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("ServerError"), SystemInterface::getParams_ServerError));
+  getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("SetAdminSecret"), SystemInterface::getParams_SetAdminSecret));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("SetIntentActive"), SystemInterface::getParams_SetIntentActive));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("ShowWebUrl"), SystemInterface::getParams_ShowWebUrl));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("StreamItem"), SystemInterface::getParams_StreamItem));
@@ -197,6 +201,7 @@ void SystemInterface::populate () {
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("ReportContact"), SystemInterface::populateDefaultFields_ReportContact));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("ReportStatus"), SystemInterface::populateDefaultFields_ReportStatus));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("ServerError"), SystemInterface::populateDefaultFields_ServerError));
+  populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("SetAdminSecret"), SystemInterface::populateDefaultFields_SetAdminSecret));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("SetIntentActive"), SystemInterface::populateDefaultFields_SetIntentActive));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("ShowWebUrl"), SystemInterface::populateDefaultFields_ShowWebUrl));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("StreamItem"), SystemInterface::populateDefaultFields_StreamItem));
@@ -208,7 +213,57 @@ void SystemInterface::populate () {
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("WatchEvents"), SystemInterface::populateDefaultFields_WatchEvents));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("WatchTasks"), SystemInterface::populateDefaultFields_WatchTasks));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("WebDisplayIntentState"), SystemInterface::populateDefaultFields_WebDisplayIntentState));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("AgentConfiguration"), SystemInterface::hashFields_AgentConfiguration));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("AgentContact"), SystemInterface::hashFields_AgentContact));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("AgentStatus"), SystemInterface::hashFields_AgentStatus));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("Authorize"), SystemInterface::hashFields_Authorize));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("AuthorizeResult"), SystemInterface::hashFields_AuthorizeResult));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("CancelTask"), SystemInterface::hashFields_CancelTask));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("CommandResult"), SystemInterface::hashFields_CommandResult));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("CreateCacheStream"), SystemInterface::hashFields_CreateCacheStream));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("CreateMediaDisplayIntent"), SystemInterface::hashFields_CreateMediaDisplayIntent));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("CreateMediaStream"), SystemInterface::hashFields_CreateMediaStream));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("CreateWebDisplayIntent"), SystemInterface::hashFields_CreateWebDisplayIntent));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("EmptyObject"), SystemInterface::hashFields_EmptyObject));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("EventRecord"), SystemInterface::hashFields_EventRecord));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("FindItems"), SystemInterface::hashFields_FindItems));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("FindMediaResult"), SystemInterface::hashFields_FindMediaResult));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("FindStreamsResult"), SystemInterface::hashFields_FindStreamsResult));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("GetHlsHtml5Interface"), SystemInterface::hashFields_GetHlsHtml5Interface));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("GetHlsManifest"), SystemInterface::hashFields_GetHlsManifest));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("GetHlsSegment"), SystemInterface::hashFields_GetHlsSegment));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("GetMedia"), SystemInterface::hashFields_GetMedia));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("GetThumbnailImage"), SystemInterface::hashFields_GetThumbnailImage));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("IntentState"), SystemInterface::hashFields_IntentState));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("MediaDisplayIntentState"), SystemInterface::hashFields_MediaDisplayIntentState));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("MediaDisplayItem"), SystemInterface::hashFields_MediaDisplayItem));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("MediaItem"), SystemInterface::hashFields_MediaItem));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("MediaServerConfiguration"), SystemInterface::hashFields_MediaServerConfiguration));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("MediaServerStatus"), SystemInterface::hashFields_MediaServerStatus));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("MonitorServerConfiguration"), SystemInterface::hashFields_MonitorServerConfiguration));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("MonitorServerStatus"), SystemInterface::hashFields_MonitorServerStatus));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("PlayCacheStream"), SystemInterface::hashFields_PlayCacheStream));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("PlayMedia"), SystemInterface::hashFields_PlayMedia));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("ReadEvents"), SystemInterface::hashFields_ReadEvents));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("RemoveIntent"), SystemInterface::hashFields_RemoveIntent));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("RemoveStream"), SystemInterface::hashFields_RemoveStream));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("ReportContact"), SystemInterface::hashFields_ReportContact));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("ReportStatus"), SystemInterface::hashFields_ReportStatus));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("ServerError"), SystemInterface::hashFields_ServerError));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("SetAdminSecret"), SystemInterface::hashFields_SetAdminSecret));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("SetIntentActive"), SystemInterface::hashFields_SetIntentActive));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("ShowWebUrl"), SystemInterface::hashFields_ShowWebUrl));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("StreamItem"), SystemInterface::hashFields_StreamItem));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("StreamServerConfiguration"), SystemInterface::hashFields_StreamServerConfiguration));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("StreamServerStatus"), SystemInterface::hashFields_StreamServerStatus));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("TaskItem"), SystemInterface::hashFields_TaskItem));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("UpdateAgentConfiguration"), SystemInterface::hashFields_UpdateAgentConfiguration));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("UpdateIntentState"), SystemInterface::hashFields_UpdateIntentState));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("WatchEvents"), SystemInterface::hashFields_WatchEvents));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("WatchTasks"), SystemInterface::hashFields_WatchTasks));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("WebDisplayIntentState"), SystemInterface::hashFields_WebDisplayIntentState));
 }
+
 void SystemInterface::getParams_AgentConfiguration (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("isEnabled"), StdString ("boolean"), StdString (""), 0));
@@ -217,6 +272,7 @@ void SystemInterface::getParams_AgentConfiguration (std::list<SystemInterface::P
   destList->push_back (SystemInterface::Param (StdString ("streamServerConfiguration"), StdString ("StreamServerConfiguration"), StdString (""), 0));
   destList->push_back (SystemInterface::Param (StdString ("monitorServerConfiguration"), StdString ("MonitorServerConfiguration"), StdString (""), 0));
 }
+
 void SystemInterface::getParams_AgentContact (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("id"), StdString ("string"), StdString (""), 35));
@@ -227,6 +283,7 @@ void SystemInterface::getParams_AgentContact (std::list<SystemInterface::Param> 
   destList->push_back (SystemInterface::Param (StdString ("version"), StdString ("string"), StdString (""), 3));
   destList->push_back (SystemInterface::Param (StdString ("nodeVersion"), StdString ("string"), StdString (""), 0));
 }
+
 void SystemInterface::getParams_AgentStatus (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("id"), StdString ("string"), StdString (""), 35));
@@ -249,18 +306,22 @@ void SystemInterface::getParams_AgentStatus (std::list<SystemInterface::Param> *
   destList->push_back (SystemInterface::Param (StdString ("streamServerStatus"), StdString ("StreamServerStatus"), StdString (""), 0));
   destList->push_back (SystemInterface::Param (StdString ("monitorServerStatus"), StdString ("MonitorServerStatus"), StdString (""), 0));
 }
+
 void SystemInterface::getParams_Authorize (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("token"), StdString ("string"), StdString (""), 3));
 }
+
 void SystemInterface::getParams_AuthorizeResult (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("token"), StdString ("string"), StdString (""), 3));
 }
+
 void SystemInterface::getParams_CancelTask (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("taskId"), StdString ("string"), StdString (""), 35));
 }
+
 void SystemInterface::getParams_CommandResult (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("success"), StdString ("boolean"), StdString (""), 1));
@@ -269,6 +330,7 @@ void SystemInterface::getParams_CommandResult (std::list<SystemInterface::Param>
   destList->push_back (SystemInterface::Param (StdString ("item"), StdString ("object"), StdString (""), 256));
   destList->push_back (SystemInterface::Param (StdString ("taskId"), StdString ("string"), StdString (""), 32));
 }
+
 void SystemInterface::getParams_CreateCacheStream (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("streamUrl"), StdString ("string"), StdString (""), 67));
@@ -281,6 +343,7 @@ void SystemInterface::getParams_CreateCacheStream (std::list<SystemInterface::Pa
   destList->push_back (SystemInterface::Param (StdString ("bitrate"), StdString ("number"), StdString (""), 17));
   destList->push_back (SystemInterface::Param (StdString ("frameRate"), StdString ("number"), StdString (""), 17));
 }
+
 void SystemInterface::getParams_CreateMediaDisplayIntent (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("displayName"), StdString ("string"), StdString (""), 3));
@@ -291,13 +354,18 @@ void SystemInterface::getParams_CreateMediaDisplayIntent (std::list<SystemInterf
   destList->push_back (SystemInterface::Param (StdString ("minItemDisplayDuration"), StdString ("number"), StdString (""), 17));
   destList->push_back (SystemInterface::Param (StdString ("maxItemDisplayDuration"), StdString ("number"), StdString (""), 17));
 }
+
 void SystemInterface::getParams_CreateMediaStream (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("name"), StdString ("string"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("mediaServerAgentId"), StdString ("string"), StdString (""), 34));
   destList->push_back (SystemInterface::Param (StdString ("mediaId"), StdString ("string"), StdString (""), 35));
   destList->push_back (SystemInterface::Param (StdString ("mediaUrl"), StdString ("string"), StdString (""), 65));
+  destList->push_back (SystemInterface::Param (StdString ("width"), StdString ("number"), StdString (""), 8));
+  destList->push_back (SystemInterface::Param (StdString ("height"), StdString ("number"), StdString (""), 8));
+  destList->push_back (SystemInterface::Param (StdString ("h264Preset"), StdString ("string"), StdString (""), 512));
 }
+
 void SystemInterface::getParams_CreateWebDisplayIntent (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("displayName"), StdString ("string"), StdString (""), 3));
@@ -306,35 +374,42 @@ void SystemInterface::getParams_CreateWebDisplayIntent (std::list<SystemInterfac
   destList->push_back (SystemInterface::Param (StdString ("minItemDisplayDuration"), StdString ("number"), StdString (""), 17));
   destList->push_back (SystemInterface::Param (StdString ("maxItemDisplayDuration"), StdString ("number"), StdString (""), 17));
 }
+
 void SystemInterface::getParams_EmptyObject (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
 }
+
 void SystemInterface::getParams_EventRecord (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("record"), StdString ("object"), StdString (""), 257));
 }
+
 void SystemInterface::getParams_FindItems (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("searchKey"), StdString ("string"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("resultOffset"), StdString ("number"), StdString (""), 17));
   destList->push_back (SystemInterface::Param (StdString ("maxResults"), StdString ("number"), StdString (""), 17));
 }
+
 void SystemInterface::getParams_FindMediaResult (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("searchKey"), StdString ("string"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("setSize"), StdString ("number"), StdString (""), 17));
   destList->push_back (SystemInterface::Param (StdString ("resultOffset"), StdString ("number"), StdString (""), 17));
 }
+
 void SystemInterface::getParams_FindStreamsResult (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("searchKey"), StdString ("string"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("setSize"), StdString ("number"), StdString (""), 17));
   destList->push_back (SystemInterface::Param (StdString ("resultOffset"), StdString ("number"), StdString (""), 17));
 }
+
 void SystemInterface::getParams_GetHlsHtml5Interface (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("streamId"), StdString ("string"), StdString (""), 35));
 }
+
 void SystemInterface::getParams_GetHlsManifest (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("streamId"), StdString ("string"), StdString (""), 35));
@@ -342,20 +417,24 @@ void SystemInterface::getParams_GetHlsManifest (std::list<SystemInterface::Param
   destList->push_back (SystemInterface::Param (StdString ("minStartPositionDelta"), StdString ("number"), 128, (double) 0, (double) 100));
   destList->push_back (SystemInterface::Param (StdString ("maxStartPositionDelta"), StdString ("number"), 128, (double) 0, (double) 100));
 }
+
 void SystemInterface::getParams_GetHlsSegment (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("streamId"), StdString ("string"), StdString (""), 35));
   destList->push_back (SystemInterface::Param (StdString ("segmentIndex"), StdString ("number"), StdString (""), 17));
 }
+
 void SystemInterface::getParams_GetMedia (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("id"), StdString ("string"), StdString (""), 35));
 }
+
 void SystemInterface::getParams_GetThumbnailImage (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("id"), StdString ("string"), StdString (""), 35));
   destList->push_back (SystemInterface::Param (StdString ("thumbnailIndex"), StdString ("number"), StdString (""), 17));
 }
+
 void SystemInterface::getParams_IntentState (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("id"), StdString ("string"), StdString (""), 35));
@@ -365,6 +444,7 @@ void SystemInterface::getParams_IntentState (std::list<SystemInterface::Param> *
   destList->push_back (SystemInterface::Param (StdString ("isActive"), StdString ("boolean"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("state"), StdString ("object"), StdString (""), 1));
 }
+
 void SystemInterface::getParams_MediaDisplayIntentState (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("items"), StdString ("array"), StdString ("MediaDisplayItem"), 3));
@@ -376,6 +456,7 @@ void SystemInterface::getParams_MediaDisplayIntentState (std::list<SystemInterfa
   destList->push_back (SystemInterface::Param (StdString ("minItemDisplayDuration"), StdString ("number"), StdString (""), 17));
   destList->push_back (SystemInterface::Param (StdString ("maxItemDisplayDuration"), StdString ("number"), StdString (""), 17));
 }
+
 void SystemInterface::getParams_MediaDisplayItem (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("mediaName"), StdString ("string"), StdString (""), 1));
@@ -383,6 +464,7 @@ void SystemInterface::getParams_MediaDisplayItem (std::list<SystemInterface::Par
   destList->push_back (SystemInterface::Param (StdString ("streamId"), StdString ("string"), StdString (""), 33));
   destList->push_back (SystemInterface::Param (StdString ("startPosition"), StdString ("number"), StdString (""), 16));
 }
+
 void SystemInterface::getParams_MediaItem (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("id"), StdString ("string"), StdString (""), 35));
@@ -396,12 +478,14 @@ void SystemInterface::getParams_MediaItem (std::list<SystemInterface::Param> *de
   destList->push_back (SystemInterface::Param (StdString ("size"), StdString ("number"), StdString (""), 17));
   destList->push_back (SystemInterface::Param (StdString ("bitrate"), StdString ("number"), StdString (""), 17));
 }
+
 void SystemInterface::getParams_MediaServerConfiguration (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("mediaPath"), StdString ("string"), StdString (""), 2));
   destList->push_back (SystemInterface::Param (StdString ("dataPath"), StdString ("string"), StdString (""), 2));
   destList->push_back (SystemInterface::Param (StdString ("scanPeriod"), StdString ("number"), StdString (""), 16));
 }
+
 void SystemInterface::getParams_MediaServerStatus (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("isReady"), StdString ("boolean"), StdString (""), 1));
@@ -410,9 +494,11 @@ void SystemInterface::getParams_MediaServerStatus (std::list<SystemInterface::Pa
   destList->push_back (SystemInterface::Param (StdString ("thumbnailPath"), StdString ("string"), StdString (""), 65));
   destList->push_back (SystemInterface::Param (StdString ("thumbnailCount"), StdString ("number"), StdString (""), 17));
 }
+
 void SystemInterface::getParams_MonitorServerConfiguration (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
 }
+
 void SystemInterface::getParams_MonitorServerStatus (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("freeStorage"), StdString ("number"), StdString (""), 17));
@@ -425,6 +511,7 @@ void SystemInterface::getParams_MonitorServerStatus (std::list<SystemInterface::
   destList->push_back (SystemInterface::Param (StdString ("showUrl"), StdString ("string"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("intentName"), StdString ("string"), StdString (""), 1));
 }
+
 void SystemInterface::getParams_PlayCacheStream (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("streamId"), StdString ("string"), StdString (""), 35));
@@ -432,6 +519,7 @@ void SystemInterface::getParams_PlayCacheStream (std::list<SystemInterface::Para
   destList->push_back (SystemInterface::Param (StdString ("minStartPositionDelta"), StdString ("number"), 128, (double) 0, (double) 100));
   destList->push_back (SystemInterface::Param (StdString ("maxStartPositionDelta"), StdString ("number"), 128, (double) 0, (double) 100));
 }
+
 void SystemInterface::getParams_PlayMedia (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("mediaName"), StdString ("string"), StdString (""), 1));
@@ -441,40 +529,54 @@ void SystemInterface::getParams_PlayMedia (std::list<SystemInterface::Param> *de
   destList->push_back (SystemInterface::Param (StdString ("minStartPositionDelta"), StdString ("number"), 128, (double) 0, (double) 100));
   destList->push_back (SystemInterface::Param (StdString ("maxStartPositionDelta"), StdString ("number"), 128, (double) 0, (double) 100));
 }
+
 void SystemInterface::getParams_ReadEvents (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
 }
+
 void SystemInterface::getParams_RemoveIntent (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("id"), StdString ("string"), StdString (""), 35));
 }
+
 void SystemInterface::getParams_RemoveStream (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("id"), StdString ("string"), StdString (""), 35));
 }
+
 void SystemInterface::getParams_ReportContact (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("destination"), StdString ("string"), StdString (""), 65));
   destList->push_back (SystemInterface::Param (StdString ("reportCommandType"), StdString ("number"), StdString (""), 1));
 }
+
 void SystemInterface::getParams_ReportStatus (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("destination"), StdString ("string"), StdString (""), 65));
   destList->push_back (SystemInterface::Param (StdString ("reportCommandType"), StdString ("number"), StdString (""), 1));
 }
+
 void SystemInterface::getParams_ServerError (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("error"), StdString ("string"), StdString (""), 0));
 }
+
+void SystemInterface::getParams_SetAdminSecret (std::list<SystemInterface::Param> *destList) {
+  destList->clear ();
+  destList->push_back (SystemInterface::Param (StdString ("secret"), StdString ("string"), StdString (""), 1));
+}
+
 void SystemInterface::getParams_SetIntentActive (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("id"), StdString ("string"), StdString (""), 35));
   destList->push_back (SystemInterface::Param (StdString ("isActive"), StdString ("boolean"), StdString (""), 1));
 }
+
 void SystemInterface::getParams_ShowWebUrl (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("url"), StdString ("string"), StdString (""), 67));
 }
+
 void SystemInterface::getParams_StreamItem (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("id"), StdString ("string"), StdString (""), 35));
@@ -492,10 +594,12 @@ void SystemInterface::getParams_StreamItem (std::list<SystemInterface::Param> *d
   destList->push_back (SystemInterface::Param (StdString ("segmentLengths"), StdString ("array"), StdString ("number"), 17));
   destList->push_back (SystemInterface::Param (StdString ("segmentPositions"), StdString ("array"), StdString ("number"), 17));
 }
+
 void SystemInterface::getParams_StreamServerConfiguration (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("dataPath"), StdString ("string"), StdString (""), 2));
 }
+
 void SystemInterface::getParams_StreamServerStatus (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("isReady"), StdString ("boolean"), StdString (""), 1));
@@ -506,6 +610,7 @@ void SystemInterface::getParams_StreamServerStatus (std::list<SystemInterface::P
   destList->push_back (SystemInterface::Param (StdString ("hlsHtml5Path"), StdString ("string"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("thumbnailPath"), StdString ("string"), StdString (""), 1));
 }
+
 void SystemInterface::getParams_TaskItem (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("id"), StdString ("string"), StdString (""), 33));
@@ -518,23 +623,28 @@ void SystemInterface::getParams_TaskItem (std::list<SystemInterface::Param> *des
   destList->push_back (SystemInterface::Param (StdString ("createTime"), StdString ("number"), StdString (""), 9));
   destList->push_back (SystemInterface::Param (StdString ("endTime"), StdString ("number"), StdString (""), 17));
 }
+
 void SystemInterface::getParams_UpdateAgentConfiguration (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("agentConfiguration"), StdString ("AgentConfiguration"), StdString (""), 1));
 }
+
 void SystemInterface::getParams_UpdateIntentState (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("id"), StdString ("string"), StdString (""), 35));
   destList->push_back (SystemInterface::Param (StdString ("state"), StdString ("object"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("isReplace"), StdString ("boolean"), StdString (""), 1));
 }
+
 void SystemInterface::getParams_WatchEvents (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
 }
+
 void SystemInterface::getParams_WatchTasks (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("taskIds"), StdString ("array"), StdString ("string"), 3));
 }
+
 void SystemInterface::getParams_WebDisplayIntentState (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("urls"), StdString ("array"), StdString ("string"), 3));
@@ -544,13 +654,16 @@ void SystemInterface::getParams_WebDisplayIntentState (std::list<SystemInterface
   destList->push_back (SystemInterface::Param (StdString ("minItemDisplayDuration"), StdString ("number"), StdString (""), 17));
   destList->push_back (SystemInterface::Param (StdString ("maxItemDisplayDuration"), StdString ("number"), StdString (""), 17));
 }
+
 void SystemInterface::populateDefaultFields_AgentConfiguration (Json *destObject) {
 }
+
 void SystemInterface::populateDefaultFields_AgentContact (Json *destObject) {
   if (! destObject->exists ("nodeVersion")) {
     destObject->set ("nodeVersion", "");
   }
 }
+
 void SystemInterface::populateDefaultFields_AgentStatus (Json *destObject) {
   if (! destObject->exists ("linkPath")) {
     destObject->set ("linkPath", "");
@@ -565,16 +678,22 @@ void SystemInterface::populateDefaultFields_AgentStatus (Json *destObject) {
     destObject->set ("platform", "");
   }
 }
+
 void SystemInterface::populateDefaultFields_Authorize (Json *destObject) {
 }
+
 void SystemInterface::populateDefaultFields_AuthorizeResult (Json *destObject) {
 }
+
 void SystemInterface::populateDefaultFields_CancelTask (Json *destObject) {
 }
+
 void SystemInterface::populateDefaultFields_CommandResult (Json *destObject) {
 }
+
 void SystemInterface::populateDefaultFields_CreateCacheStream (Json *destObject) {
 }
+
 void SystemInterface::populateDefaultFields_CreateMediaDisplayIntent (Json *destObject) {
   if (! destObject->exists ("minStartPositionDelta")) {
     destObject->set ("minStartPositionDelta", 0);
@@ -589,11 +708,13 @@ void SystemInterface::populateDefaultFields_CreateMediaDisplayIntent (Json *dest
     destObject->set ("maxItemDisplayDuration", 900);
   }
 }
+
 void SystemInterface::populateDefaultFields_CreateMediaStream (Json *destObject) {
   if (! destObject->exists ("mediaUrl")) {
     destObject->set ("mediaUrl", "");
   }
 }
+
 void SystemInterface::populateDefaultFields_CreateWebDisplayIntent (Json *destObject) {
   if (! destObject->exists ("minItemDisplayDuration")) {
     destObject->set ("minItemDisplayDuration", 300);
@@ -602,10 +723,13 @@ void SystemInterface::populateDefaultFields_CreateWebDisplayIntent (Json *destOb
     destObject->set ("maxItemDisplayDuration", 900);
   }
 }
+
 void SystemInterface::populateDefaultFields_EmptyObject (Json *destObject) {
 }
+
 void SystemInterface::populateDefaultFields_EventRecord (Json *destObject) {
 }
+
 void SystemInterface::populateDefaultFields_FindItems (Json *destObject) {
   if (! destObject->exists ("searchKey")) {
     destObject->set ("searchKey", "*");
@@ -617,6 +741,7 @@ void SystemInterface::populateDefaultFields_FindItems (Json *destObject) {
     destObject->set ("maxResults", 0);
   }
 }
+
 void SystemInterface::populateDefaultFields_FindMediaResult (Json *destObject) {
   if (! destObject->exists ("setSize")) {
     destObject->set ("setSize", 0);
@@ -625,6 +750,7 @@ void SystemInterface::populateDefaultFields_FindMediaResult (Json *destObject) {
     destObject->set ("resultOffset", 0);
   }
 }
+
 void SystemInterface::populateDefaultFields_FindStreamsResult (Json *destObject) {
   if (! destObject->exists ("setSize")) {
     destObject->set ("setSize", 0);
@@ -633,25 +759,31 @@ void SystemInterface::populateDefaultFields_FindStreamsResult (Json *destObject)
     destObject->set ("resultOffset", 0);
   }
 }
+
 void SystemInterface::populateDefaultFields_GetHlsHtml5Interface (Json *destObject) {
 }
+
 void SystemInterface::populateDefaultFields_GetHlsManifest (Json *destObject) {
   if (! destObject->exists ("startPosition")) {
     destObject->set ("startPosition", 0);
   }
 }
+
 void SystemInterface::populateDefaultFields_GetHlsSegment (Json *destObject) {
   if (! destObject->exists ("segmentIndex")) {
     destObject->set ("segmentIndex", 0);
   }
 }
+
 void SystemInterface::populateDefaultFields_GetMedia (Json *destObject) {
 }
+
 void SystemInterface::populateDefaultFields_GetThumbnailImage (Json *destObject) {
   if (! destObject->exists ("thumbnailIndex")) {
     destObject->set ("thumbnailIndex", 0);
   }
 }
+
 void SystemInterface::populateDefaultFields_IntentState (Json *destObject) {
   if (! destObject->exists ("groupName")) {
     destObject->set ("groupName", "");
@@ -660,6 +792,7 @@ void SystemInterface::populateDefaultFields_IntentState (Json *destObject) {
     destObject->set ("displayName", "");
   }
 }
+
 void SystemInterface::populateDefaultFields_MediaDisplayIntentState (Json *destObject) {
   if (! destObject->exists ("minStartPositionDelta")) {
     destObject->set ("minStartPositionDelta", 0);
@@ -674,6 +807,7 @@ void SystemInterface::populateDefaultFields_MediaDisplayIntentState (Json *destO
     destObject->set ("maxItemDisplayDuration", 900);
   }
 }
+
 void SystemInterface::populateDefaultFields_MediaDisplayItem (Json *destObject) {
   if (! destObject->exists ("mediaName")) {
     destObject->set ("mediaName", "");
@@ -685,13 +819,16 @@ void SystemInterface::populateDefaultFields_MediaDisplayItem (Json *destObject) 
     destObject->set ("streamId", "");
   }
 }
+
 void SystemInterface::populateDefaultFields_MediaItem (Json *destObject) {
   if (! destObject->exists ("mtime")) {
     destObject->set ("mtime", 0);
   }
 }
+
 void SystemInterface::populateDefaultFields_MediaServerConfiguration (Json *destObject) {
 }
+
 void SystemInterface::populateDefaultFields_MediaServerStatus (Json *destObject) {
   if (! destObject->exists ("thumbnailPath")) {
     destObject->set ("thumbnailPath", "");
@@ -700,8 +837,10 @@ void SystemInterface::populateDefaultFields_MediaServerStatus (Json *destObject)
     destObject->set ("thumbnailCount", 0);
   }
 }
+
 void SystemInterface::populateDefaultFields_MonitorServerConfiguration (Json *destObject) {
 }
+
 void SystemInterface::populateDefaultFields_MonitorServerStatus (Json *destObject) {
   if (! destObject->exists ("thumbnailPath")) {
     destObject->set ("thumbnailPath", "");
@@ -716,47 +855,64 @@ void SystemInterface::populateDefaultFields_MonitorServerStatus (Json *destObjec
     destObject->set ("intentName", "");
   }
 }
+
 void SystemInterface::populateDefaultFields_PlayCacheStream (Json *destObject) {
 }
+
 void SystemInterface::populateDefaultFields_PlayMedia (Json *destObject) {
   if (! destObject->exists ("mediaName")) {
     destObject->set ("mediaName", "");
   }
 }
+
 void SystemInterface::populateDefaultFields_ReadEvents (Json *destObject) {
 }
+
 void SystemInterface::populateDefaultFields_RemoveIntent (Json *destObject) {
 }
+
 void SystemInterface::populateDefaultFields_RemoveStream (Json *destObject) {
 }
+
 void SystemInterface::populateDefaultFields_ReportContact (Json *destObject) {
   if (! destObject->exists ("reportCommandType")) {
     destObject->set ("reportCommandType", 0);
   }
 }
+
 void SystemInterface::populateDefaultFields_ReportStatus (Json *destObject) {
   if (! destObject->exists ("reportCommandType")) {
     destObject->set ("reportCommandType", 0);
   }
 }
+
 void SystemInterface::populateDefaultFields_ServerError (Json *destObject) {
   if (! destObject->exists ("error")) {
     destObject->set ("error", "");
   }
 }
+
+void SystemInterface::populateDefaultFields_SetAdminSecret (Json *destObject) {
+}
+
 void SystemInterface::populateDefaultFields_SetIntentActive (Json *destObject) {
 }
+
 void SystemInterface::populateDefaultFields_ShowWebUrl (Json *destObject) {
 }
+
 void SystemInterface::populateDefaultFields_StreamItem (Json *destObject) {
   if (! destObject->exists ("sourceId")) {
     destObject->set ("sourceId", "");
   }
 }
+
 void SystemInterface::populateDefaultFields_StreamServerConfiguration (Json *destObject) {
 }
+
 void SystemInterface::populateDefaultFields_StreamServerStatus (Json *destObject) {
 }
+
 void SystemInterface::populateDefaultFields_TaskItem (Json *destObject) {
   if (! destObject->exists ("subtitle")) {
     destObject->set ("subtitle", "");
@@ -768,23 +924,937 @@ void SystemInterface::populateDefaultFields_TaskItem (Json *destObject) {
     destObject->set ("percentComplete", 0);
   }
 }
+
 void SystemInterface::populateDefaultFields_UpdateAgentConfiguration (Json *destObject) {
 }
+
 void SystemInterface::populateDefaultFields_UpdateIntentState (Json *destObject) {
   if (! destObject->exists ("isReplace")) {
     destObject->set ("isReplace", false);
   }
 }
+
 void SystemInterface::populateDefaultFields_WatchEvents (Json *destObject) {
 }
+
 void SystemInterface::populateDefaultFields_WatchTasks (Json *destObject) {
 }
+
 void SystemInterface::populateDefaultFields_WebDisplayIntentState (Json *destObject) {
   if (! destObject->exists ("minItemDisplayDuration")) {
     destObject->set ("minItemDisplayDuration", 300);
   }
   if (! destObject->exists ("maxItemDisplayDuration")) {
     destObject->set ("maxItemDisplayDuration", 900);
+  }
+}
+
+void SystemInterface::hashFields_AgentConfiguration (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  Json obj;
+  StdString s;
+
+  s = commandParams->getString ("displayName", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  if (commandParams->exists ("isEnabled")) {
+    s.sprintf ("%s", commandParams->getBoolean ("isEnabled", false) ? "true" : "false");
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  if (commandParams->exists ("mediaServerConfiguration")) {
+    if (commandParams->getObject ("mediaServerConfiguration", &obj)) {
+      SystemInterface::hashFields_MediaServerConfiguration (&obj, hashUpdateFn, hashContextPtr);
+    }
+  }
+  if (commandParams->exists ("monitorServerConfiguration")) {
+    if (commandParams->getObject ("monitorServerConfiguration", &obj)) {
+      SystemInterface::hashFields_MonitorServerConfiguration (&obj, hashUpdateFn, hashContextPtr);
+    }
+  }
+  if (commandParams->exists ("streamServerConfiguration")) {
+    if (commandParams->getObject ("streamServerConfiguration", &obj)) {
+      SystemInterface::hashFields_StreamServerConfiguration (&obj, hashUpdateFn, hashContextPtr);
+    }
+  }
+}
+
+void SystemInterface::hashFields_AgentContact (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s = commandParams->getString ("id", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  if (commandParams->exists ("nodeVersion")) {
+    s = commandParams->getString ("nodeVersion", "");
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
+  }
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("tcpPort1", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("tcpPort2", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("udpPort", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s = commandParams->getString ("urlHostname", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s = commandParams->getString ("version", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+}
+
+void SystemInterface::hashFields_AgentStatus (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  Json obj;
+  StdString s;
+
+  s = commandParams->getString ("applicationName", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s = commandParams->getString ("displayName", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s = commandParams->getString ("id", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%s", commandParams->getBoolean ("isEnabled", false) ? "true" : "false");
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s = commandParams->getString ("linkPath", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("maxRunCount", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  if (commandParams->exists ("mediaServerStatus")) {
+    if (commandParams->getObject ("mediaServerStatus", &obj)) {
+      SystemInterface::hashFields_MediaServerStatus (&obj, hashUpdateFn, hashContextPtr);
+    }
+  }
+  if (commandParams->exists ("monitorServerStatus")) {
+    if (commandParams->getObject ("monitorServerStatus", &obj)) {
+      SystemInterface::hashFields_MonitorServerStatus (&obj, hashUpdateFn, hashContextPtr);
+    }
+  }
+  if (commandParams->exists ("nodeVersion")) {
+    s = commandParams->getString ("nodeVersion", "");
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
+  }
+  if (commandParams->exists ("platform")) {
+    s = commandParams->getString ("platform", "");
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
+  }
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("runCount", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  if (commandParams->exists ("streamServerStatus")) {
+    if (commandParams->getObject ("streamServerStatus", &obj)) {
+      SystemInterface::hashFields_StreamServerStatus (&obj, hashUpdateFn, hashContextPtr);
+    }
+  }
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("taskCount", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("tcpPort1", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("tcpPort2", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("udpPort", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s = commandParams->getString ("uptime", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s = commandParams->getString ("urlHostname", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s = commandParams->getString ("version", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+}
+
+void SystemInterface::hashFields_Authorize (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s = commandParams->getString ("token", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+}
+
+void SystemInterface::hashFields_AuthorizeResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s = commandParams->getString ("token", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+}
+
+void SystemInterface::hashFields_CancelTask (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s = commandParams->getString ("taskId", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+}
+
+void SystemInterface::hashFields_CommandResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  if (commandParams->exists ("error")) {
+    s = commandParams->getString ("error", "");
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
+  }
+  if (commandParams->exists ("itemId")) {
+    s = commandParams->getString ("itemId", "");
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
+  }
+  s.sprintf ("%s", commandParams->getBoolean ("success", false) ? "true" : "false");
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  if (commandParams->exists ("taskId")) {
+    s = commandParams->getString ("taskId", "");
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
+  }
+}
+
+void SystemInterface::hashFields_CreateCacheStream (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("bitrate", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("duration", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("frameRate", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("height", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s = commandParams->getString ("streamId", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s = commandParams->getString ("streamName", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s = commandParams->getString ("streamUrl", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s = commandParams->getString ("thumbnailUrl", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("width", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+}
+
+void SystemInterface::hashFields_CreateMediaDisplayIntent (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  Json obj;
+  StdString s;
+  int i, len;
+
+  s = commandParams->getString ("displayName", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%s", commandParams->getBoolean ("isShuffle", false) ? "true" : "false");
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  len = commandParams->getArrayLength ("items");
+  for (i = 0; i < len; ++i) {
+    if (commandParams->getArrayObject ("items", i, &obj)) {
+      SystemInterface::hashFields_MediaDisplayItem (&obj, hashUpdateFn, hashContextPtr);
+    }
+  }
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("maxItemDisplayDuration", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("maxStartPositionDelta", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("minItemDisplayDuration", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("minStartPositionDelta", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+}
+
+void SystemInterface::hashFields_CreateMediaStream (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  if (commandParams->exists ("h264Preset")) {
+    s = commandParams->getString ("h264Preset", "");
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
+  }
+  if (commandParams->exists ("height")) {
+    s.sprintf ("%lli", (long long int) commandParams->getNumber ("height", (int64_t) 0));
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s = commandParams->getString ("mediaId", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  if (commandParams->exists ("mediaServerAgentId")) {
+    s = commandParams->getString ("mediaServerAgentId", "");
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
+  }
+  s = commandParams->getString ("mediaUrl", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s = commandParams->getString ("name", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  if (commandParams->exists ("width")) {
+    s.sprintf ("%lli", (long long int) commandParams->getNumber ("width", (int64_t) 0));
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+}
+
+void SystemInterface::hashFields_CreateWebDisplayIntent (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+  int i, len;
+
+  s = commandParams->getString ("displayName", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%s", commandParams->getBoolean ("isShuffle", false) ? "true" : "false");
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("maxItemDisplayDuration", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("minItemDisplayDuration", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  len = commandParams->getArrayLength ("urls");
+  for (i = 0; i < len; ++i) {
+    s = commandParams->getArrayString ("urls", i, StdString (""));
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
+  }
+}
+
+void SystemInterface::hashFields_EmptyObject (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+
+}
+
+void SystemInterface::hashFields_EventRecord (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+
+}
+
+void SystemInterface::hashFields_FindItems (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("maxResults", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("resultOffset", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s = commandParams->getString ("searchKey", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+}
+
+void SystemInterface::hashFields_FindMediaResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("resultOffset", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s = commandParams->getString ("searchKey", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("setSize", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+}
+
+void SystemInterface::hashFields_FindStreamsResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("resultOffset", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s = commandParams->getString ("searchKey", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("setSize", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+}
+
+void SystemInterface::hashFields_GetHlsHtml5Interface (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s = commandParams->getString ("streamId", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+}
+
+void SystemInterface::hashFields_GetHlsManifest (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  if (commandParams->exists ("maxStartPositionDelta")) {
+    s.sprintf ("%lli", (long long int) commandParams->getNumber ("maxStartPositionDelta", (int64_t) 0));
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  if (commandParams->exists ("minStartPositionDelta")) {
+    s.sprintf ("%lli", (long long int) commandParams->getNumber ("minStartPositionDelta", (int64_t) 0));
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("startPosition", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s = commandParams->getString ("streamId", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+}
+
+void SystemInterface::hashFields_GetHlsSegment (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("segmentIndex", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s = commandParams->getString ("streamId", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+}
+
+void SystemInterface::hashFields_GetMedia (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s = commandParams->getString ("id", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+}
+
+void SystemInterface::hashFields_GetThumbnailImage (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s = commandParams->getString ("id", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("thumbnailIndex", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+}
+
+void SystemInterface::hashFields_IntentState (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s = commandParams->getString ("displayName", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s = commandParams->getString ("groupName", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s = commandParams->getString ("id", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%s", commandParams->getBoolean ("isActive", false) ? "true" : "false");
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s = commandParams->getString ("name", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+}
+
+void SystemInterface::hashFields_MediaDisplayIntentState (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  Json obj;
+  StdString s;
+  int i, len;
+
+  s.sprintf ("%s", commandParams->getBoolean ("isShuffle", false) ? "true" : "false");
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  len = commandParams->getArrayLength ("itemChoices");
+  for (i = 0; i < len; ++i) {
+    s.sprintf ("%lli", (long long int) commandParams->getArrayNumber ("itemChoices", i, (int64_t) 0));
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  len = commandParams->getArrayLength ("items");
+  for (i = 0; i < len; ++i) {
+    if (commandParams->getArrayObject ("items", i, &obj)) {
+      SystemInterface::hashFields_MediaDisplayItem (&obj, hashUpdateFn, hashContextPtr);
+    }
+  }
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("maxItemDisplayDuration", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("maxStartPositionDelta", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("minItemDisplayDuration", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("minStartPositionDelta", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+}
+
+void SystemInterface::hashFields_MediaDisplayItem (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s = commandParams->getString ("mediaName", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  if (commandParams->exists ("startPosition")) {
+    s.sprintf ("%lli", (long long int) commandParams->getNumber ("startPosition", (int64_t) 0));
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s = commandParams->getString ("streamId", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s = commandParams->getString ("streamUrl", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+}
+
+void SystemInterface::hashFields_MediaItem (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("bitrate", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("duration", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("frameRate", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("height", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s = commandParams->getString ("id", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s = commandParams->getString ("mediaPath", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("mtime", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s = commandParams->getString ("name", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("size", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("width", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+}
+
+void SystemInterface::hashFields_MediaServerConfiguration (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  if (commandParams->exists ("dataPath")) {
+    s = commandParams->getString ("dataPath", "");
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
+  }
+  if (commandParams->exists ("mediaPath")) {
+    s = commandParams->getString ("mediaPath", "");
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
+  }
+  if (commandParams->exists ("scanPeriod")) {
+    s.sprintf ("%lli", (long long int) commandParams->getNumber ("scanPeriod", (int64_t) 0));
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+}
+
+void SystemInterface::hashFields_MediaServerStatus (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s.sprintf ("%s", commandParams->getBoolean ("isReady", false) ? "true" : "false");
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("mediaCount", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s = commandParams->getString ("mediaPath", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("thumbnailCount", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s = commandParams->getString ("thumbnailPath", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+}
+
+void SystemInterface::hashFields_MonitorServerConfiguration (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+
+}
+
+void SystemInterface::hashFields_MonitorServerStatus (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("freeStorage", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s = commandParams->getString ("intentName", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%s", commandParams->getBoolean ("isPlaying", false) ? "true" : "false");
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%s", commandParams->getBoolean ("isShowingUrl", false) ? "true" : "false");
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s = commandParams->getString ("mediaName", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s = commandParams->getString ("showUrl", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("streamCount", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s = commandParams->getString ("thumbnailPath", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("totalStorage", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+}
+
+void SystemInterface::hashFields_PlayCacheStream (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  if (commandParams->exists ("maxStartPositionDelta")) {
+    s.sprintf ("%lli", (long long int) commandParams->getNumber ("maxStartPositionDelta", (int64_t) 0));
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  if (commandParams->exists ("minStartPositionDelta")) {
+    s.sprintf ("%lli", (long long int) commandParams->getNumber ("minStartPositionDelta", (int64_t) 0));
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  if (commandParams->exists ("startPosition")) {
+    s.sprintf ("%lli", (long long int) commandParams->getNumber ("startPosition", (int64_t) 0));
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s = commandParams->getString ("streamId", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+}
+
+void SystemInterface::hashFields_PlayMedia (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  if (commandParams->exists ("maxStartPositionDelta")) {
+    s.sprintf ("%lli", (long long int) commandParams->getNumber ("maxStartPositionDelta", (int64_t) 0));
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s = commandParams->getString ("mediaName", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  if (commandParams->exists ("minStartPositionDelta")) {
+    s.sprintf ("%lli", (long long int) commandParams->getNumber ("minStartPositionDelta", (int64_t) 0));
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  if (commandParams->exists ("startPosition")) {
+    s.sprintf ("%lli", (long long int) commandParams->getNumber ("startPosition", (int64_t) 0));
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  if (commandParams->exists ("streamId")) {
+    s = commandParams->getString ("streamId", "");
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
+  }
+  if (commandParams->exists ("streamUrl")) {
+    s = commandParams->getString ("streamUrl", "");
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
+  }
+}
+
+void SystemInterface::hashFields_ReadEvents (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+
+}
+
+void SystemInterface::hashFields_RemoveIntent (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s = commandParams->getString ("id", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+}
+
+void SystemInterface::hashFields_RemoveStream (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s = commandParams->getString ("id", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+}
+
+void SystemInterface::hashFields_ReportContact (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s = commandParams->getString ("destination", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("reportCommandType", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+}
+
+void SystemInterface::hashFields_ReportStatus (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s = commandParams->getString ("destination", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("reportCommandType", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+}
+
+void SystemInterface::hashFields_ServerError (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  if (commandParams->exists ("error")) {
+    s = commandParams->getString ("error", "");
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
+  }
+}
+
+void SystemInterface::hashFields_SetAdminSecret (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s = commandParams->getString ("secret", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+}
+
+void SystemInterface::hashFields_SetIntentActive (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s = commandParams->getString ("id", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%s", commandParams->getBoolean ("isActive", false) ? "true" : "false");
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+}
+
+void SystemInterface::hashFields_ShowWebUrl (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s = commandParams->getString ("url", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+}
+
+void SystemInterface::hashFields_StreamItem (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+  int i, len;
+
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("bitrate", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("duration", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("frameRate", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("height", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("hlsTargetDuration", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s = commandParams->getString ("id", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s = commandParams->getString ("name", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("segmentCount", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  len = commandParams->getArrayLength ("segmentFilenames");
+  for (i = 0; i < len; ++i) {
+    s = commandParams->getArrayString ("segmentFilenames", i, StdString (""));
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
+  }
+  len = commandParams->getArrayLength ("segmentLengths");
+  for (i = 0; i < len; ++i) {
+    s.sprintf ("%lli", (long long int) commandParams->getArrayNumber ("segmentLengths", i, (int64_t) 0));
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  len = commandParams->getArrayLength ("segmentPositions");
+  for (i = 0; i < len; ++i) {
+    s.sprintf ("%lli", (long long int) commandParams->getArrayNumber ("segmentPositions", i, (int64_t) 0));
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("size", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s = commandParams->getString ("sourceId", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("width", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+}
+
+void SystemInterface::hashFields_StreamServerConfiguration (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  if (commandParams->exists ("dataPath")) {
+    s = commandParams->getString ("dataPath", "");
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
+  }
+}
+
+void SystemInterface::hashFields_StreamServerStatus (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("freeStorage", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s = commandParams->getString ("hlsHtml5Path", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s = commandParams->getString ("hlsStreamPath", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%s", commandParams->getBoolean ("isReady", false) ? "true" : "false");
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("streamCount", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s = commandParams->getString ("thumbnailPath", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("totalStorage", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+}
+
+void SystemInterface::hashFields_TaskItem (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+  int i, len;
+
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("createTime", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s = commandParams->getString ("description", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("endTime", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s = commandParams->getString ("id", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%s", commandParams->getBoolean ("isRunning", false) ? "true" : "false");
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s = commandParams->getString ("name", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("percentComplete", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s = commandParams->getString ("subtitle", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  len = commandParams->getArrayLength ("tags");
+  for (i = 0; i < len; ++i) {
+    s = commandParams->getArrayString ("tags", i, StdString (""));
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
+  }
+}
+
+void SystemInterface::hashFields_UpdateAgentConfiguration (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  Json obj;
+
+  if (commandParams->getObject ("agentConfiguration", &obj)) {
+    SystemInterface::hashFields_AgentConfiguration (&obj, hashUpdateFn, hashContextPtr);
+  }
+}
+
+void SystemInterface::hashFields_UpdateIntentState (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s = commandParams->getString ("id", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%s", commandParams->getBoolean ("isReplace", false) ? "true" : "false");
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+}
+
+void SystemInterface::hashFields_WatchEvents (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+
+}
+
+void SystemInterface::hashFields_WatchTasks (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+  int i, len;
+
+  len = commandParams->getArrayLength ("taskIds");
+  for (i = 0; i < len; ++i) {
+    s = commandParams->getArrayString ("taskIds", i, StdString (""));
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
+  }
+}
+
+void SystemInterface::hashFields_WebDisplayIntentState (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+  int i, len;
+
+  s.sprintf ("%s", commandParams->getBoolean ("isShuffle", false) ? "true" : "false");
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("maxItemDisplayDuration", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("minItemDisplayDuration", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  len = commandParams->getArrayLength ("urlChoices");
+  for (i = 0; i < len; ++i) {
+    s.sprintf ("%lli", (long long int) commandParams->getArrayNumber ("urlChoices", i, (int64_t) 0));
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  len = commandParams->getArrayLength ("urls");
+  for (i = 0; i < len; ++i) {
+    s = commandParams->getArrayString ("urls", i, StdString (""));
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
   }
 }
 SystemInterface::SystemInterface ()
@@ -822,6 +1892,9 @@ Json *SystemInterface::createCommand (const SystemInterface::Prefix &prefix, con
 	cmd->set ("commandType", commandType);
 
 	cmdprefix = new Json ();
+	if (prefix.createTime > 0) {
+		cmdprefix->set (SystemInterface::Constant_CreateTimePrefixField, prefix.createTime);
+	}
 	if (! prefix.agentId.empty ()) {
 		cmdprefix->set (SystemInterface::Constant_AgentIdPrefixField, prefix.agentId);
 	}
@@ -842,6 +1915,92 @@ Json *SystemInterface::createCommand (const SystemInterface::Prefix &prefix, con
 	cmd->set ("params", commandParams);
 
 	return (cmd);
+}
+
+bool SystemInterface::setCommandAuthorization (Json *command, const StdString &authSecret, const StdString &authToken, SystemInterface::HashUpdateFunction hashUpdateFn, SystemInterface::HashDigestFunction hashDigestFn, void *hashContextPtr) {
+	StdString hash;
+	Json prefix;
+	bool result;
+
+	result = false;
+	hash = getCommandAuthorizationHash (command, authSecret, authToken, hashUpdateFn, hashDigestFn, hashContextPtr);
+	if (! hash.empty ()) {
+		if (command->getObject ("prefix", &prefix)) {
+			prefix.set (SystemInterface::Constant_AuthorizationHashPrefixField, hash);
+			if ((! authToken.empty ()) && (! prefix.exists (SystemInterface::Constant_AuthorizationTokenPrefixField))) {
+				prefix.set (SystemInterface::Constant_AuthorizationTokenPrefixField, authToken);
+			}
+			result = true;
+		}
+	}
+
+	return (result);
+}
+
+StdString SystemInterface::getCommandAuthorizationHash (Json *command, const StdString &authSecret, const StdString &authToken, SystemInterface::HashUpdateFunction hashUpdateFn, SystemInterface::HashDigestFunction hashDigestFn, void *hashContextPtr) {
+	SystemInterface::Command cmd;
+	StdString token, cmdname, s;
+	Json prefix, params;
+
+	if (! (hashUpdateFn && hashDigestFn)) {
+		return (StdString (""));
+	}
+
+	cmdname = command->getString ("commandName", "");
+	if (! getCommand (cmdname, &cmd)) {
+		return (StdString (""));
+	}
+
+	if (! command->getObject ("prefix", &prefix)) {
+		return (StdString (""));
+	}
+
+	if (! authToken.empty ()) {
+		token.assign (authToken);
+	}
+	else {
+		token = prefix.getString (SystemInterface::Constant_AuthorizationTokenPrefixField, "");
+	}
+
+	hashUpdateFn (hashContextPtr, (unsigned char *) authSecret.c_str (), authSecret.length ());
+	hashUpdateFn (hashContextPtr, (unsigned char *) token.c_str (), token.length ());
+	hashUpdateFn (hashContextPtr, (unsigned char *) cmdname.c_str (), cmdname.length ());
+
+	if (prefix.isNumber (SystemInterface::Constant_CreateTimePrefixField)) {
+		s.sprintf ("%lli", (long long int) prefix.getNumber (SystemInterface::Constant_CreateTimePrefixField, (int64_t) 0));
+		hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+	}
+
+	s = prefix.getString (SystemInterface::Constant_AgentIdPrefixField, "");
+	if (! s.empty ()) {
+		hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+	}
+
+	s = prefix.getString (SystemInterface::Constant_UserIdPrefixField, "");
+	if (! s.empty ()) {
+		hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+	}
+
+	if (prefix.isNumber (SystemInterface::Constant_PriorityPrefixField)) {
+		s.sprintf ("%lli", (long long int) prefix.getNumber (SystemInterface::Constant_PriorityPrefixField, (int64_t) 0));
+		hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+	}
+
+	if (prefix.isNumber (SystemInterface::Constant_StartTimePrefixField)) {
+		s.sprintf ("%lli", (long long int) prefix.getNumber (SystemInterface::Constant_StartTimePrefixField, (int64_t) 0));
+		hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+	}
+
+	if (prefix.isNumber (SystemInterface::Constant_DurationPrefixField)) {
+		s.sprintf ("%lli", (long long int) prefix.getNumber (SystemInterface::Constant_DurationPrefixField, (int64_t) 0));
+		hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+	}
+
+	if (command->getObject ("params", &params)) {
+		hashFields (cmd.paramType, &params, hashUpdateFn, hashContextPtr);
+	}
+
+	return (hashDigestFn (hashContextPtr));
 }
 
 bool SystemInterface::getCommand (const StdString &name, SystemInterface::Command *command) {
@@ -878,6 +2037,21 @@ bool SystemInterface::populateDefaultFields (const StdString &typeName, Json *de
 
 	i->second (destObject);
 	return (true);
+}
+
+void SystemInterface::hashFields (const StdString &typeName, Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+	std::map<StdString, SystemInterface::HashFieldsFunction>::iterator i;
+
+	if (! hashUpdateFn) {
+		return;
+	}
+
+	i = hashFieldsMap.find (typeName);
+	if (i == hashFieldsMap.end ()) {
+		return;
+	}
+
+	i->second (commandParams, hashUpdateFn, hashContextPtr);
 }
 
 bool SystemInterface::fieldsValid (Json *fields, std::list<SystemInterface::Param> *paramList) {
@@ -924,6 +2098,10 @@ bool SystemInterface::fieldsValid (Json *fields, std::list<SystemInterface::Para
 					lastError.sprintf ("Parameter field \"%s\" must be a number in the range [%f..%f]", i->name.c_str (), i->rangeMin, i->rangeMax);
 					return (false);
 				}
+			}
+
+			if (i->flags & SystemInterface::ParamFlag_EnumValue) {
+				// TODO: Implement this
 			}
 		}
 		else if (i->type.equals ("boolean")) {
@@ -973,6 +2151,9 @@ bool SystemInterface::fieldsValid (Json *fields, std::list<SystemInterface::Para
 				*/
 			}
 
+			if (i->flags & SystemInterface::ParamFlag_EnumValue) {
+				// TODO: Implement this
+			}
 		}
 		else if (i->type.equals ("array")) {
 			// TODO: Implement this

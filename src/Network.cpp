@@ -57,8 +57,8 @@
 #include <Iphlpapi.h>
 #include <Ipifcons.h>
 #endif
-#include <curl/curl.h>
-#include <openssl/ssl.h>
+#include "curl/curl.h"
+#include "openssl/ssl.h"
 #include "App.h"
 #include "Result.h"
 #include "Log.h"

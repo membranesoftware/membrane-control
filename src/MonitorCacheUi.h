@@ -46,8 +46,8 @@ public:
 	MonitorCacheUi (const StdString &agentId, const StdString &agentDisplayName, int streamWindowLayout);
 	~MonitorCacheUi ();
 
-  // Constants to use for sprite indexes
-  enum {
+	// Constants to use for sprite indexes
+	enum {
 		BREADCRUMB_ICON = 0,
 		THUMBNAIL_SIZE_BUTTON = 1,
 		LARGE_THUMBNAIL_BUTTON = 2,
@@ -98,7 +98,7 @@ public:
 	static void writePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void appendPlaylistItem (void *jsonListPtr, Widget *widgetPtr);
 	static void deleteButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void removeStreamComplete (void *uiPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand);
+	static void removeStreamComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
 
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
@@ -150,8 +150,6 @@ private:
 	Button *writePlaylistButton;
 	Button *deleteButton;
 	WidgetHandle emptyStreamWindow;
-	WidgetHandle actionWidget;
-	WidgetHandle actionTarget;
 	WidgetHandle selectedStreamWindow;
 	WidgetHandle commandPopup;
 	WidgetHandle commandButton;

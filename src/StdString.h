@@ -155,12 +155,21 @@ public:
 	// Assign the string's value from data held in a Buffer object
 	void assignBuffer (Buffer *buffer);
 
+	// Assign the string's value to a set of hex numbers, as read from the provided data
+	void assignHex (const unsigned char *hexData, int hexDataLength);
+
 	// Split the string by the specified delimiter and store the resulting parts into the provided list, clearing the list before doing so
 	void split (const char *delimiter, std::list<StdString> *destList);
 	void split (const StdString &delimiter, std::list<StdString> *destList);
 
+	// Overwrite all characters in the string and clear its contents
+	void wipe ();
+
 	// Return a newly created string with content generated from a format string
 	static StdString createSprintf (const char *str, ...) __attribute__((format(printf, 1, 2)));
+
+	// Return a newly created string with hex number content generated from the provided data
+	static StdString createHex (const unsigned char *hexData, int hexDataLength);
 
 	// Parse the provided string as an integer and store its value in the provided pointer. Returns a boolean value indicating if the parse was successful.
 	static bool parseInt (const char *str, int *value);

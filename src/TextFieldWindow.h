@@ -36,6 +36,7 @@
 #include "TextField.h"
 #include "Button.h"
 #include "Sprite.h"
+#include "Toggle.h"
 #include "ImageWindow.h"
 #include "Panel.h"
 
@@ -44,6 +45,19 @@ public:
 	TextFieldWindow (float windowWidth, const StdString &promptText = StdString (""), Sprite *iconSprite = NULL);
 	virtual ~TextFieldWindow ();
 
+	// Read-only data members
+	bool isInverseColor;
+	bool isObscured;
+
+	// Set the window's inverse color option
+	void setInverseColor (bool inverse);
+
+	// Set the text field's prompt error color state. If enabled, the text field shows its prompt text in the UiConfiguration error color.
+	void setPromptErrorColor (bool enable);
+
+	// Set the window's text field obscure option
+	void setObscured (bool enable);
+
 	// Set the window to use a fixed height of the specified value, replacing default window behavior that computes height as needed to contain its elements
 	void setWindowHeight (float fixedHeight);
 
@@ -51,7 +65,7 @@ public:
 	void setEditCallback (Widget::EventCallback callback, void *callbackData);
 
 	// Set the enable state for the window's utility buttons
-	void setButtonsEnabled (bool enableEnterButton = false, bool enableCancelButton = false, bool enablePasteButton = false, bool enableClearButton = false);
+	void setButtonsEnabled (bool enableEnterButton = false, bool enableCancelButton = false, bool enablePasteButton = false, bool enableClearButton = false, bool enableRandomizeButton = false);
 
 	// Return the text field's value
 	StdString getValue ();
@@ -74,6 +88,8 @@ public:
 	static void cancelButtonClicked (void *windowPtr, Widget *widgetPtr);
 	static void pasteButtonClicked (void *windowPtr, Widget *widgetPtr);
 	static void clearButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void randomizeButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void visibilityToggleStateChanged (void *windowPtr, Widget *widgetPtr);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
@@ -96,7 +112,9 @@ private:
 	Button *cancelButton;
 	Button *pasteButton;
 	Button *clearButton;
+	Button *randomizeButton;
 	ImageWindow *iconImage;
+	Toggle *visibilityToggle;
 	bool shouldResetEditing;
 };
 

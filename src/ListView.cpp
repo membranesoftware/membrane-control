@@ -45,6 +45,7 @@
 
 ListView::ListView (float viewWidth, int minItemHeight, int itemFontType, const StdString &titleText, const StdString &emptyStateText)
 : Panel ()
+, focusItemIndex (-1)
 , viewWidth (viewWidth)
 , minItemHeight (minItemHeight)
 , itemFontType (itemFontType)
@@ -55,6 +56,8 @@ ListView::ListView (float viewWidth, int minItemHeight, int itemFontType, const 
 , lastFocusPanel (NULL)
 , listChangeCallback (NULL)
 , listChangeCallbackData (NULL)
+, itemDeleteCallback (NULL)
+, itemDeleteCallbackData (NULL)
 {
 	UiConfiguration *uiconfig;
 	UiText *uitext;
@@ -91,6 +94,18 @@ ListView::~ListView () {
 	clearItems ();
 }
 
+void ListView::freeItem (std::vector<ListView::Item>::iterator item) {
+	if (item->panel) {
+		item->panel->isDestroyed = true;
+		item->panel = NULL;
+	}
+	if (item->data && item->dataFree) {
+		item->dataFree (item->data);
+	}
+	item->data = NULL;
+	item->dataFree = NULL;
+}
+
 void ListView::setViewWidth (float fixedWidth) {
 	viewWidth = fixedWidth;
 	refreshLayout ();
@@ -101,46 +116,35 @@ void ListView::setListChangeCallback (Widget::EventCallback callback, void *call
 	listChangeCallbackData = callbackData;
 }
 
+void ListView::setItemDeleteCallback (Widget::EventCallback callback, void *callbackData) {
+	itemDeleteCallback = callback;
+	itemDeleteCallbackData = callbackData;
+}
+
 void ListView::clearItems () {
 	std::vector<ListView::Item>::iterator i, end;
 
 	i = itemList.begin ();
 	end = itemList.end ();
 	while (i != end) {
-		if (i->panel) {
-			i->panel->isDestroyed = true;
-		}
-		if (i->data && i->dataFree) {
-			i->dataFree (i->data);
-			i->data = NULL;
-			i->dataFree = NULL;
-		}
+		freeItem (i);
 		++i;
 	}
 	itemList.clear ();
 }
 
-void ListView::setItems (StringList *itemList) {
+void ListView::setItems (StringList *itemList, bool shouldSkipChangeCallback) {
 	StringList::iterator i, end;
-	Widget::EventCallback callback;
-	void *callbackdata;
-
-	callback = listChangeCallback;
-	callbackdata = listChangeCallbackData;
-	listChangeCallback = NULL;
-	listChangeCallbackData = NULL;
 
 	clearItems ();
 	i = itemList->begin ();
 	end = itemList->end ();
 	while (i != end) {
-		addItem (*i);
+		addItem (*i, NULL, NULL, true);
 		++i;
 	}
 
-	listChangeCallback = callback;
-	listChangeCallbackData = callbackdata;
-	if (listChangeCallback) {
+	if ((! shouldSkipChangeCallback) && listChangeCallback) {
 		listChangeCallback (listChangeCallbackData, this);
 	}
 }
@@ -161,6 +165,29 @@ int ListView::getItemCount () {
 	return ((int) itemList.size ());
 }
 
+bool ListView::contains (const StdString &itemText) {
+	std::vector<ListView::Item>::iterator i, end;
+
+	i = itemList.begin ();
+	end = itemList.end ();
+	while (i != end) {
+		if (i->text.equals (itemText)) {
+			return (true);
+		}
+		++i;
+	}
+
+	return (false);
+}
+
+StdString ListView::getItemText (int itemIndex) {
+	if ((itemIndex < 0) || (itemIndex >= (int) itemList.size ())) {
+		return (StdString (""));
+	}
+
+	return (itemList.at (itemIndex).text);
+}
+
 void *ListView::getItemData (int itemIndex) {
 	if ((itemIndex < 0) || (itemIndex >= (int) itemList.size ())) {
 		return (NULL);
@@ -169,7 +196,7 @@ void *ListView::getItemData (int itemIndex) {
 	return (itemList.at (itemIndex).data);
 }
 
-void ListView::addItem (const StdString &itemText, void *itemData, Widget::FreeFunction itemFree) {
+void ListView::addItem (const StdString &itemText, void *itemData, Widget::FreeFunction itemFree, bool shouldSkipChangeCallback) {
 	ListView::Item item;
 	Panel *panel;
 	UiConfiguration *uiconfig;
@@ -191,7 +218,29 @@ void ListView::addItem (const StdString &itemText, void *itemData, Widget::FreeF
 	itemList.push_back (item);
 	refreshLayout ();
 
-	if (listChangeCallback) {
+	if ((! shouldSkipChangeCallback) && listChangeCallback) {
+		listChangeCallback (listChangeCallbackData, this);
+	}
+}
+
+void ListView::removeItem (int itemIndex, bool shouldSkipChangeCallback) {
+	std::vector<ListView::Item>::iterator pos;
+
+	if ((itemIndex < 0) || (itemIndex >= (int) itemList.size ())) {
+		return;
+	}
+
+	pos = itemList.begin () + itemIndex;
+	freeItem (pos);
+	itemList.erase (pos);
+	if (itemIndex == focusItemIndex) {
+		isItemFocused = false;
+		lastFocusPanel = NULL;
+		focusItemIndex = -1;
+	}
+
+	refreshLayout ();
+	if ((! shouldSkipChangeCallback) && listChangeCallback) {
 		listChangeCallback (listChangeCallbackData, this);
 	}
 }
@@ -241,6 +290,7 @@ void ListView::refreshLayout () {
 		sz = minItemHeight;
 	}
 	h *= sz;
+	h += uiconfig->paddingSize;
 
 	setFixedSize (true, viewWidth, h);
 
@@ -255,30 +305,34 @@ void ListView::refreshLayout () {
 void ListView::deleteButtonClicked (void *listViewPtr, Widget *widgetPtr) {
 	ListView *view;
 	std::vector<ListView::Item>::iterator i, end;
+	int index;
 
 	view = (ListView *) listViewPtr;
 	if (! view->lastFocusPanel) {
 		return;
 	}
 
+	index = 0;
 	i = view->itemList.begin ();
 	end = view->itemList.end ();
 	while (i != end) {
 		if (i->panel == view->lastFocusPanel) {
-			i->panel->isDestroyed = true;
-			if (i->data && i->dataFree) {
-				i->dataFree (i->data);
-				i->data = NULL;
-				i->dataFree = NULL;
-			}
-			view->itemList.erase (i);
 			break;
 		}
+		++index;
 		++i;
 	}
+	view->focusItemIndex = index;
 
+	if (view->itemDeleteCallback) {
+		view->itemDeleteCallback (view->itemDeleteCallbackData, view);
+		return;
+	}
+
+	view->removeItem (index, true);
 	view->isItemFocused = false;
 	view->lastFocusPanel = NULL;
+	view->focusItemIndex = -1;
 	view->refreshLayout ();
 	if (view->listChangeCallback) {
 		view->listChangeCallback (view->listChangeCallbackData, view);

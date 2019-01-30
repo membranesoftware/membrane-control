@@ -74,11 +74,13 @@ const StdString App::prefsMediaImageSize = StdString ("Media_ImageSize");
 const StdString App::prefsMonitorImageSize = StdString ("Monitor_ImageSize");
 const StdString App::prefsMediaItemImageSize = StdString ("MediaItem_ImageSize");
 const StdString App::prefsStreamItemImageSize = StdString ("StreamItem_ImageSize");
+const StdString App::prefsServerAdminSecrets = StdString ("ServerAdminSecrets");
 const StdString App::prefsServerTimeout = StdString ("ServerTimeout");
 const int64_t App::defaultServerTimeout = 180;
 const StdString App::prefsServerPath = StdString ("ServerPath");
 const StdString App::prefsApplicationName = StdString ("ApplicationName");
 const StdString App::prefsHttps = StdString ("Https");
+const StdString App::prefsWebKioskUiSelectedAgents = StdString ("WebKiosk_SelectedAgents");
 const StdString App::prefsWebKioskUiExpandedAgents = StdString ("WebKiosk_ExpandedAgents");
 const StdString App::prefsWebKioskUiPlaylists = StdString ("WebKiosk_Playlists");
 const StdString App::prefsMediaUiExpandedAgents = StdString ("Media_ExpandedAgents");
@@ -1034,28 +1036,16 @@ Json *App::createCommand (const char *commandName, int commandType, Json *comman
 	return (cmd);
 }
 
-StdString App::createCommandJson (const char *commandName, int commandType, Json *commandParams) {
-	Json *cmd;
-	StdString json;
-
-	cmd = createCommand (commandName, commandType, commandParams);
-	if (! cmd) {
-		return (StdString (""));
-	}
-	json = cmd->toString ();
-	delete (cmd);
-
-	return (json);
-}
-
 SystemInterface::Prefix App::createCommandPrefix () {
 	SystemInterface::Prefix prefix;
 
-	// TODO: Possibly set different fields here
+	prefix.createTime = Util::getTime ();
 	prefix.agentId.assign (agentControl.agentId);
+
+	// TODO: Possibly assign values to these fields
 	prefix.userId.assign ("");
 	prefix.priority = 0;
-	prefix.startTime = Util::getTime ();
+	prefix.startTime = 0;
 	prefix.duration = 0;
 
 	return (prefix);
@@ -1181,4 +1171,20 @@ void App::setNextBackgroundTexturePath (const char *path) {
 
 StdString App::getBackgroundTexturePath (const StdString &basePath) {
 	return (StdString::createSprintf ("%s/%i.png", basePath.c_str (), imageScale));
+}
+
+int App::getRandomInt (int i1, int i2) {
+	return (prng.getRandomValue (i1, i2));
+}
+
+const char RANDOM_STRING_CHARS[] = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
+StdString App::getRandomString (int stringLength) {
+	StdString s;
+	int i;
+
+	for (i = 0; i < stringLength; ++i) {
+		s.append (1, RANDOM_STRING_CHARS[getRandomInt (0, sizeof (RANDOM_STRING_CHARS) - 1)]);
+	}
+
+	return (s);
 }

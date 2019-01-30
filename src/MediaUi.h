@@ -142,8 +142,6 @@ private:
 	TextFieldWindow *searchField;
 	Button *searchButton;
 	WidgetHandle thumbnailSizeMenu;
-	WidgetHandle actionWidget;
-	WidgetHandle actionTarget;
 	WidgetHandle emptyStateWindow;
 	int cardLayout;
 	float cardMaxImageWidth;

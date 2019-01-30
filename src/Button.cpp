@@ -384,7 +384,12 @@ void Button::refreshLayout () {
 
 	if (label) {
 		if (isDisabled) {
-			label->textColor.assign (uiconfig->lightInverseBackgroundColor);
+			if (isInverseColor) {
+				label->textColor.assign (uiconfig->darkInverseBackgroundColor);
+			}
+			else {
+				label->textColor.assign (uiconfig->lightInverseBackgroundColor);
+			}
 		}
 		else {
 			label->textColor.assign (normalTextColor);

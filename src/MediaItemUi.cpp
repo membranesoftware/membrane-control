@@ -48,6 +48,7 @@
 #include "Toolbar.h"
 #include "TimelineBar.h"
 #include "CardView.h"
+#include "ComboBox.h"
 #include "HelpWindow.h"
 #include "IconCardWindow.h"
 #include "MediaWindow.h"
@@ -171,8 +172,6 @@ int MediaItemUi::doLoad () {
 
 void MediaItemUi::doUnload () {
 	thumbnailSizeMenu.clear ();
-	actionWidget.clear ();
-	actionTarget.clear ();
 	streamServerAgentMap.clear ();
 }
 
@@ -216,7 +215,6 @@ void MediaItemUi::doResetSecondaryToolbar (Toolbar *toolbar) {
 
 void MediaItemUi::doClearPopupWidgets () {
 	thumbnailSizeMenu.destroyAndClear ();
-	actionWidget.destroyAndClear ();
 }
 
 void MediaItemUi::doRefresh () {
@@ -254,8 +252,6 @@ void MediaItemUi::doResize () {
 
 void MediaItemUi::doUpdate (int msElapsed) {
 	thumbnailSizeMenu.compact ();
-	actionWidget.compact ();
-	actionTarget.compact ();
 }
 
 void MediaItemUi::doSyncRecordStore (RecordStore *store) {
@@ -266,6 +262,7 @@ void MediaItemUi::doSyncRecordStore (RecordStore *store) {
 
 	timelineBar->syncRecordStore (store);
 	cardView->syncRecordStore (store);
+	cardView->refresh ();
 }
 
 void MediaItemUi::processStreamItem (void *uiPtr, Json *record, const StdString &recordId) {
@@ -462,12 +459,12 @@ void MediaItemUi::streamDetailMenuClicked (void *uiPtr, Widget *widgetPtr) {
 void MediaItemUi::createStreamButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	App *app;
 	MediaItemUi *ui;
+	UiText *uitext;
 	ActionWindow *action;
 	Widget *target;
-	UiText *uitext;
+	ComboBox *combobox;
 
 	ui = (MediaItemUi *) uiPtr;
-
 	action = ActionWindow::castWidget (ui->actionWidget.widget);
 	target = ui->actionTarget.widget;
 	if (action && (target == widgetPtr)) {
@@ -490,8 +487,16 @@ void MediaItemUi::createStreamButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	action->setInverseColor (true);
 	action->setTitleText (uitext->getText (UiTextString::createStream).capitalized ());
 	action->setConfirmButtonText (uitext->getText (UiTextString::createStream).uppercased ());
+
 // TODO: Allow selection of a stream server (currently restricted to the server holding the source media item)
 //	action->addComboBoxOption (uitext->getText (UiTextString::streamServer).capitalized (), &(ui->streamServerAgentMap));
+
+	combobox = new ComboBox ();
+	combobox->addItem (uitext->getText (UiTextString::normalVideoQualityDescription));
+	combobox->addItem (uitext->getText (UiTextString::highVideoQualityDescription));
+	combobox->addItem (uitext->getText (UiTextString::lowVideoQualityDescription));
+	combobox->addItem (uitext->getText (UiTextString::lowestVideoQualityDescription));
+	action->addOption (uitext->getText (UiTextString::videoQuality).capitalized (), combobox, uitext->getText (UiTextString::videoQualityDescription));
 
 	action->setCloseCallback (MediaItemUi::createStreamActionClosed, ui);
 	action->zLevel = app->rootPanel->maxWidgetZLevel + 1;
@@ -512,13 +517,15 @@ void MediaItemUi::createStreamActionClosed (void *uiPtr, Widget *widgetPtr) {
 
 void MediaItemUi::invokeCreateMediaStream () {
 	App *app;
+	UiText *uitext;
 	MediaWindow *mediawindow;
 	ActionWindow *action;
-	StdString agentid;
+	StdString agentid, quality;
 	Json *params;
-	int result;
+	int result, w, h;
 
 	app = App::getInstance ();
+	uitext = &(app->uiText);
 	mediawindow = (MediaWindow *) sourceMediaWindow.widget;
 	action = ActionWindow::castWidget (actionWidget.widget);
 	if (! action) {
@@ -537,6 +544,40 @@ void MediaItemUi::invokeCreateMediaStream () {
 	params->set ("mediaServerAgentId", mediawindow->agentId);
 	params->set ("mediaId", mediawindow->mediaId);
 
+	quality = action->getStringValue (uitext->getText (UiTextString::videoQuality).capitalized (), "");
+	if (quality.equals (uitext->getText (UiTextString::normalVideoQualityDescription))) {
+		params->set ("h264Preset", "faster");
+	}
+	else if (quality.equals (uitext->getText (UiTextString::highVideoQualityDescription))) {
+		params->set ("h264Preset", "slower");
+	}
+	else if (quality.equals (uitext->getText (UiTextString::lowVideoQualityDescription))) {
+		params->set ("h264Preset", "medium");
+		w = mediawindow->mediaWidth;
+		h = mediawindow->mediaHeight;
+		w /= 2;
+		h /= 2;
+		w -= (w % 16);
+		h -= (h % 16);
+		if ((w > 0) && (h > 0)) {
+			params->set ("width", w);
+			params->set ("height", h);
+		}
+	}
+	else if (quality.equals (uitext->getText (UiTextString::lowestVideoQualityDescription))) {
+		params->set ("h264Preset", "medium");
+		w = mediawindow->mediaWidth;
+		h = mediawindow->mediaHeight;
+		w /= 4;
+		h /= 4;
+		w -= (w % 16);
+		h -= (h % 16);
+		if ((w > 0) && (h > 0)) {
+			params->set ("width", w);
+			params->set ("height", h);
+		}
+	}
+
 	// TODO: Populate the mediaUrl field (to allow streams to be populated on a stream server other than the source agent)
 	//	params->set ("mediaUrl", url);
 
@@ -550,14 +591,13 @@ void MediaItemUi::invokeCreateMediaStream () {
 	}
 }
 
-void MediaItemUi::createMediaStreamComplete (void *uiPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand) {
+void MediaItemUi::createMediaStreamComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand) {
 	MediaItemUi *ui;
 	App *app;
 	MediaWindow *mediawindow;
 	UiText *uitext;
 	SystemInterface *interface;
 	StdString recordid, agentname, text;
-
 
 	ui = (MediaItemUi *) uiPtr;
 	app = App::getInstance ();
@@ -619,7 +659,7 @@ void MediaItemUi::invokeRemoveMediaStream () {
 	}
 }
 
-void MediaItemUi::removeStreamComplete (void *uiPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand) {
+void MediaItemUi::removeStreamComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand) {
 	MediaItemUi *ui;
 	App *app;
 	SystemInterface *interface;
@@ -627,13 +667,12 @@ void MediaItemUi::removeStreamComplete (void *uiPtr, int64_t jobId, int jobResul
 	StdString agentname, text, id;
 
 	ui = (MediaItemUi *) uiPtr;
-
 	app = App::getInstance ();
 	interface = &(app->systemInterface);
 	uitext = &(app->uiText);
 
 	if (responseCommand && (interface->getCommandId (responseCommand) == SystemInterface::Command_CommandResult) && interface->getCommandBooleanParam (responseCommand, "success", false)) {
-		id = interface->getCommandStringParam (command, "id", "");
+		id = interface->getCommandStringParam (invokeCommand, "id", "");
 		if (! id.empty ()) {
 			app->agentControl.recordStore.removeRecord (id);
 			ui->cardView->removeItem (id);

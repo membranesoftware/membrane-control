@@ -143,8 +143,6 @@ int WebKioskUi::doLoad () {
 void WebKioskUi::doUnload () {
 	selectedAgentMap.clear ();
 	selectedPlaylistId.assign ("");
-	actionWidget.destroyAndClear ();
-	actionTarget.clear ();
 	commandPopup.destroyAndClear ();
 	commandButton.clear ();
 }
@@ -237,8 +235,6 @@ void WebKioskUi::doResetSecondaryToolbar (Toolbar *toolbar) {
 }
 
 void WebKioskUi::doClearPopupWidgets () {
-	actionWidget.destroyAndClear ();
-	actionTarget.clear ();
 	commandPopup.destroyAndClear ();
 }
 
@@ -317,6 +313,15 @@ void WebKioskUi::doPause () {
 	}
 
 	items.clear ();
+	cardView->processItems (WebKioskUi::appendSelectedAgentId, &items);
+	if (items.empty ()) {
+		app->prefsMap.remove (App::prefsWebKioskUiSelectedAgents);
+	}
+	else {
+		app->prefsMap.insert (App::prefsWebKioskUiSelectedAgents, &items);
+	}
+
+	items.clear ();
 	cardView->processItems (WebKioskUi::appendExpandedAgentId, &items);
 	if (items.empty ()) {
 		app->prefsMap.remove (App::prefsWebKioskUiExpandedAgents);
@@ -338,6 +343,15 @@ void WebKioskUi::appendPlaylistJson (void *stringListPtr, Widget *widgetPtr) {
 	}
 }
 
+void WebKioskUi::appendSelectedAgentId (void *stringListPtr, Widget *widgetPtr) {
+	MonitorWindow *window;
+
+	window = MonitorWindow::castWidget (widgetPtr);
+	if (window && window->isSelected) {
+		((StringList *) stringListPtr)->push_back (window->agentId);
+	}
+}
+
 void WebKioskUi::appendExpandedAgentId (void *stringListPtr, Widget *widgetPtr) {
 	MonitorWindow *window;
 
@@ -348,8 +362,6 @@ void WebKioskUi::appendExpandedAgentId (void *stringListPtr, Widget *widgetPtr) 
 }
 
 void WebKioskUi::doUpdate (int msElapsed) {
-	actionWidget.compact ();
-	actionTarget.compact ();
 	commandPopup.compact ();
 	commandButton.compact ();
 }
@@ -406,6 +418,11 @@ void WebKioskUi::processAgentStatus (void *uiPtr, Json *record, const StdString 
 				window->setSelectStateChangeCallback (WebKioskUi::agentSelectStateChanged, ui);
 				window->setExpandStateChangeCallback (WebKioskUi::agentExpandStateChanged, ui);
 				window->sortKey.assign (interface->getCommandAgentName (record).lowercased ());
+
+				app->prefsMap.find (App::prefsWebKioskUiSelectedAgents, &items);
+				if (items.contains (recordId)) {
+					window->setSelected (true, true);
+				}
 
 				app->prefsMap.find (App::prefsWebKioskUiExpandedAgents, &items);
 				if (items.contains (recordId)) {
@@ -556,13 +573,13 @@ void WebKioskUi::showUrlButtonClicked (void *uiPtr, Widget *widgetPtr) {
 		id = ui->selectedAgentMap.next (&i);
 		params = new Json ();
 		params->set ("url", Util::getProtocolString (url));
-		result = app->agentControl.invokeCommand (id, app->createCommand ("ShowWebUrl", SystemInterface::Constant_Monitor, params), NULL, NULL, NULL, id);
+		result = app->agentControl.invokeCommand (id, app->createCommand ("ShowWebUrl", SystemInterface::Constant_Monitor, params));
 		if (result != Result::SUCCESS) {
 			Log::write (Log::DEBUG, "Failed to invoke ShowWebUrl command; err=%i agentId=\"%s\"", result, id.c_str ());
 		}
 		else {
 			++count;
-			app->agentControl.refreshAgentStatus (id, id);
+			app->agentControl.refreshAgentStatus (id);
 		}
 	}
 
@@ -619,14 +636,14 @@ void WebKioskUi::writePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	while (ui->selectedAgentMap.hasNext (&i)) {
 		id = ui->selectedAgentMap.next (&i);
 		ui->retain ();
-		result = app->agentControl.invokeCommand (id, item->getCreateCommand (), WebKioskUi::writePlaylistComplete, ui, NULL, id);
+		result = app->agentControl.invokeCommand (id, item->getCreateCommand (), WebKioskUi::writePlaylistComplete, ui);
 		if (result != Result::SUCCESS) {
 			Log::write (Log::DEBUG, "Failed to invoke WebPlaylistWindow create command; err=%i agentId=\"%s\"", result, id.c_str ());
 			ui->release ();
 		}
 		else {
 			++count;
-			app->agentControl.refreshAgentStatus (id, id);
+			app->agentControl.refreshAgentStatus (id);
 		}
 	}
 
@@ -638,7 +655,7 @@ void WebKioskUi::writePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	}
 }
 
-void WebKioskUi::writePlaylistComplete (void *uiPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand) {
+void WebKioskUi::writePlaylistComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand) {
 	WebKioskUi *ui;
 	App *app;
 	SystemInterface *interface;
@@ -825,13 +842,13 @@ void WebKioskUi::clearDisplayButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	i = ui->selectedAgentMap.begin ();
 	while (ui->selectedAgentMap.hasNext (&i)) {
 		id = ui->selectedAgentMap.next (&i);
-		result = app->agentControl.invokeCommand (id, app->createCommand ("ClearDisplay", SystemInterface::Constant_Monitor, NULL), NULL, NULL, NULL, id);
+		result = app->agentControl.invokeCommand (id, app->createCommand ("ClearDisplay", SystemInterface::Constant_Monitor, NULL));
 		if (result != Result::SUCCESS) {
 			Log::write (Log::DEBUG, "Failed to invoke ClearDisplay command; err=%i agentId=\"%s\"", result, id.c_str ());
 		}
 		else {
 			++count;
-			app->agentControl.refreshAgentStatus (id, id);
+			app->agentControl.refreshAgentStatus (id);
 		}
 	}
 

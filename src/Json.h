@@ -47,6 +47,9 @@ public:
 	Json ();
 	~Json ();
 
+	// Free the provided Json object pointer
+	static void freeObject (void *jsonPtr);
+
 	// Reassign the Json object's underlying json_value pointer, clearing any pointer that might already be present
 	void setJsonValue (Json *value);
 	void setJsonValue (json_value *value, bool isJsonBuilder);
@@ -61,8 +64,8 @@ public:
 	// Return a JSON string containing object fields
 	StdString toString ();
 
-	// Replace the Json object's content with a copy of the provided source object. Returns a Result value.
-	int copy (Json *sourceJson);
+	// Replace the Json object's content with a copy of the provided source object
+	void copy (Json *sourceJson);
 
 	// Store a list of currently available map keys in the provided list, optionally clearing the list before doing so
 	void getKeys (std::vector<StdString> *keyVector, bool shouldClear = false);
@@ -130,9 +133,13 @@ public:
 	float getArrayNumber (const StdString &key, int index, float defaultValue) const;
 	float getArrayNumber (const char *key, int index, float defaultValue) const;
 
-	// Get a string item from the named array key and store its value in the provided Json object. Returns a boolean value indicating if the string was found.
+	// Get a string item from the named array key return its value, or the specified default value if no such item was found
 	StdString getArrayString (const StdString &key, int index, const StdString &defaultValue) const;
 	StdString getArrayString (const char *key, int index, const StdString &defaultValue) const;
+
+	// Get a boolean item from the named array key return its value, or the specified default value if no such item was found
+	bool getArrayBoolean (const StdString &key, int index, bool defaultValue) const;
+	bool getArrayBoolean (const char *key, int index, bool defaultValue) const;
 
 	// Get an object item from the named array key and store its value in the provided Json object. Returns a boolean value indicating if the object was found.
 	bool getArrayObject (const StdString &key, int index, Json *destJson);
@@ -157,6 +164,16 @@ public:
 	void set (const char *key, Json *value);
 	void set (const StdString &key, StringList *value);
 	void set (const char *key, StringList *value);
+	void set (const StdString &key, std::list<int> *value);
+	void set (const char *key, std::list<int> *value);
+	void set (const StdString &key, std::list<int64_t> *value);
+	void set (const char *key, std::list<int64_t> *value);
+	void set (const StdString &key, std::list<float> *value);
+	void set (const char *key, std::list<float> *value);
+	void set (const StdString &key, std::list<double> *value);
+	void set (const char *key, std::list<double> *value);
+	void set (const StdString &key, std::list<bool> *value);
+	void set (const char *key, std::list<bool> *value);
 	void set (const StdString &key, std::vector<Json *> *value);
 	void set (const char *key, std::vector<Json *> *value);
 	void set (const StdString &key, std::list<Json *> *value);
@@ -179,6 +196,9 @@ private:
 
 	// Use the json_object_push method to set a key in the json object, creating the object if needed
 	void jsonObjectPush (const json_char *name, json_value *value);
+
+	// Return a newly created json_value object containing a copy of the provided source value's data
+	json_value *copyJsonValue (json_value *sourceValue);
 
 	json_value *json;
 	bool shouldFreeJson;

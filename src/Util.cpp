@@ -56,53 +56,6 @@ const char *Util::monthNames[12] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "
 const float Util::aspectRatioMatchEpsilon = 0.1f;
 const StdString Util::serverUrl = StdString ("https://membranesoftware.com/");
 
-int Util::randomInt (void) {
-#if PLATFORM_WINDOWS
-	uint8_t b;
-	int i;
-
-	b = (uint8_t) (rand () & 0xFF);
-	i = (int) b; i <<= 8;
-	b = (uint8_t) (rand () & 0xFF);
-	i |= (int) b; i <<= 8;
-	b = (uint8_t) (rand () & 0xFF);
-	i |= (int) b; i <<= 8;
-	b = (uint8_t) (rand () & 0xFF);
-	i |= (int) b;
-
-	return (i);
-#else
-	return (rand ());
-#endif
-}
-
-int Util::randomInt (int i1, int i2) {
-	int diff, i;
-
-	diff = i2 - i1 + 1;
-	i = i1;
-	if (diff > 1) {
-#if PLATFORM_WINDOWS
-		i += Util::randomInt () % diff;
-#else
-		i += rand () % diff;
-#endif
-	}
-
-	return (i);
-}
-
-float Util::randomFloat (float f1, float f2) {
-	float diff;
-
-	diff = f2 - f1;
-	if (diff < CONFIG_FLOAT_EPSILON) {
-		return (f1);
-	}
-
-	return (f1 + (diff * (((float) Util::randomInt ()) / ((float) RAND_MAX))));
-}
-
 float Util::normalizeDirection (float direction) {
 	while (direction < 0.0f) {
 		direction += 360.0f;

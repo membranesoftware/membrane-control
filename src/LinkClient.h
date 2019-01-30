@@ -82,11 +82,14 @@ public:
 	// Establish the client connection, then service protocol events until the connection ends
 	void run ();
 
+	// Execute an authorize command using the next available authorize secret, if any
+	void authorize ();
+
 	// Write a message to the client
 	void write (const StdString &message);
 
 	// Write a command to the client
-	void writeCommand (Json *command);
+	void writeCommand (Json *sourceCommand);
 	void writeCommand (const StdString &commandJson);
 
 	// Parse the provided data buffer, as received from the WebSocket/engine.io server, and execute actions appropriate for the received message
@@ -137,6 +140,10 @@ private:
 	int pingInterval; // ms
 	int64_t nextPingTime;
 	int reconnectClock;
+	StdString authorizeToken;
+	int authorizeSecretIndex;
+	bool isAuthorizing;
+	bool isAuthorizeComplete;
 };
 
 #endif

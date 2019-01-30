@@ -79,6 +79,7 @@ public:
 	static void reloadAgent (void *uiPtr, Widget *widgetPtr);
 	static void processAgentStatus (void *uiPtr, Json *record, const StdString &recordId);
 	static void appendPlaylistJson (void *stringListPtr, Widget *widgetPtr);
+	static void appendSelectedAgentId (void *stringListPtr, Widget *widgetPtr);
 	static void appendExpandedAgentId (void *stringListPtr, Widget *widgetPtr);
 	static void matchPlaylistName (void *stringPtr, Widget *widgetPtr);
 	static void agentSelectStateChanged (void *uiPtr, Widget *widgetPtr);
@@ -92,7 +93,7 @@ public:
 	static bool matchWebKioskAgentStatus (void *ptr, Json *record);
 	static void addPlaylistUrl (void *urlStringPtr, Widget *widgetPtr);
 	static void writePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void writePlaylistComplete (void *uiPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand);
+	static void writePlaylistComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
 	static void playlistNameClicked (void *uiPtr, Widget *widgetPtr);
 	static void playlistNameEdited (void *uiPtr, Widget *widgetPtr);
 	static void playlistUrlListChanged (void *uiPtr, Widget *widgetPtr);
@@ -161,8 +162,6 @@ private:
 	Button *addPlaylistButton;
 	Button *writePlaylistButton;
 	Button *clearDisplayButton;
-	WidgetHandle actionWidget;
-	WidgetHandle actionTarget;
 	WidgetHandle commandPopup;
 	WidgetHandle commandButton;
 };

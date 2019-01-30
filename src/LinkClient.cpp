@@ -95,9 +95,12 @@ LinkClient::LinkClient (const StdString &serverUrl, const StdString &agentId, vo
 , isWriteReady (false)
 , writeBuffer (NULL)
 , writeBufferSize (0)
-, pingInterval (LinkClient::defaultPingInterval)
+, pingInterval (0)
 , nextPingTime (0)
 , reconnectClock (0)
+, authorizeSecretIndex (0)
+, isAuthorizing (false)
+, isAuthorizeComplete (false)
 {
 	runMutex = SDL_CreateMutex ();
 	runCond = SDL_CreateCond ();
@@ -146,6 +149,7 @@ void LinkClient::clear () {
 	isStopped = false;
 	isClosing = false;
 	isClosed = false;
+	pingInterval = 0;
 	nextPingTime = 0;
 	commandBuffer.reset ();
 	sessionId.assign ("");
@@ -336,13 +340,11 @@ void LinkClient::run () {
 			lws_callback_on_writable (lws);
 		}
 
-		if (isConnected) {
-			if ((pingInterval > 0) && (nextPingTime > 0)) {
-				now = Util::getTime ();
-				if (nextPingTime <= now) {
-					write (StdString ("2"));
-					nextPingTime = 0;
-				}
+		if ((pingInterval > 0) && (nextPingTime > 0)) {
+			now = Util::getTime ();
+			if (nextPingTime <= now) {
+				write (StdString ("2"));
+				nextPingTime = 0;
 			}
 		}
 
@@ -361,14 +363,72 @@ void LinkClient::run () {
 	}
 }
 
+void LinkClient::authorize () {
+	App *app;
+	Json *cmd, *params;
+	bool sent;
+
+	if (! isAuthorizing) {
+		if (! isAuthorizeComplete) {
+			authorizeSecretIndex = 0;
+			isAuthorizing = true;
+		}
+	}
+	else {
+		++authorizeSecretIndex;
+	}
+	if (! isAuthorizing) {
+		// TODO: Possibly disconnect the client here (expecting to retry authorization on the next scheduled reconnect)
+		return;
+	}
+
+	app = App::getInstance ();
+	sent = false;
+	authorizeToken.assign ("");
+	params = new Json ();
+	params->set ("token", app->getRandomString (64));
+	cmd = app->createCommand ("Authorize", SystemInterface::Constant_DefaultCommandType, params);
+	if (cmd) {
+		if (app->agentControl.setCommandAuthorization (cmd, authorizeSecretIndex)) {
+			writeCommand (cmd);
+			sent = true;
+		}
+		delete (cmd);
+	}
+
+	if (! sent) {
+		isAuthorizeComplete = true;
+		isAuthorizing = false;
+		// TODO: Possibly disconnect the client here (expecting to retry authorization on the next scheduled reconnect)
+	}
+}
+
 void LinkClient::write (const StdString &message) {
 	SDL_LockMutex (writeQueueMutex);
 	writeQueue.push (message);
 	SDL_UnlockMutex (writeQueueMutex);
 }
 
-void LinkClient::writeCommand (Json *command) {
-	writeCommand (command->toString ());
+void LinkClient::writeCommand (Json *sourceCommand) {
+	App *app;
+	Json *cmd;
+
+	app = App::getInstance ();
+	if (authorizeToken.empty ()) {
+		writeCommand (sourceCommand->toString ());
+	}
+	else {
+		cmd = new Json ();
+		cmd->copy (sourceCommand);
+		if (! app->agentControl.setCommandAuthorization (cmd, authorizeSecretIndex, authorizeToken)) {
+			authorizeToken.assign ("");
+			writeCommand (sourceCommand->toString ());
+		}
+		else {
+			writeCommand (cmd->toString ());
+		}
+		delete (cmd);
+	}
 }
 
 void LinkClient::writeCommand (const StdString &commandJson) {
@@ -452,15 +512,11 @@ void LinkClient::receiveData (char *data, int dataLength) {
 			else {
 				sessionId = json->getString ("sid", "");
 				pingInterval = json->getNumber ("pingInterval", LinkClient::defaultPingInterval);
-				isConnected = true;
 				if (pingInterval <= 0) {
 					nextPingTime = 0;
 				}
 				else {
 					nextPingTime = Util::getTime () + pingInterval;
-				}
-				if (connectCallback) {
-					connectCallback (callbackData, this);
 				}
 			}
 			delete (json);
@@ -499,14 +555,17 @@ void LinkClient::receiveData (char *data, int dataLength) {
 }
 
 void LinkClient::processCommandMessage (char *data, int dataLength) {
+	App *app;
 	StdString s, prefix;
 	size_t pos1, pos2;
 	Json *cmd;
+	int commandid;
 
 	if ((! data) || (dataLength <= 0)) {
 		return;
 	}
 
+	app = App::getInstance ();
 	if (! commandBuffer.empty ()) {
 		commandBuffer.add ((uint8_t *) data, dataLength);
 		s.assignBuffer (&commandBuffer);
@@ -545,8 +604,32 @@ void LinkClient::processCommandMessage (char *data, int dataLength) {
 		return;
 	}
 	commandBuffer.reset ();
-	if (commandCallback) {
-		commandCallback (callbackData, this, cmd);
+
+	commandid = app->systemInterface.getCommandId (cmd);
+	switch (commandid) {
+		case SystemInterface::Command_AuthorizationRequired: {
+			authorize ();
+			break;
+		}
+		case SystemInterface::Command_AuthorizeResult: {
+			authorizeToken = app->systemInterface.getCommandStringParam (cmd, "token", "");
+			break;
+		}
+		case SystemInterface::Command_LinkSuccess: {
+			if (! isConnected) {
+				isConnected = true;
+				if (connectCallback) {
+					connectCallback (callbackData, this);
+				}
+			}
+			break;
+		}
+		default: {
+			if (commandCallback) {
+				commandCallback (callbackData, this, cmd);
+			}
+			break;
+		}
 	}
 	delete (cmd);
 }

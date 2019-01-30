@@ -646,19 +646,19 @@ void StreamPlaylistWindow::playDurationSliderValueChanged (void *windowPtr, Widg
 	window->refresh ();
 }
 
-static const char *PLAYLIST_NAME_KEY = "pn";
-static const char *IS_SELECTED_KEY = "se";
-static const char *IS_EXPANDED_KEY = "ex";
-static const char *START_POSITION_MIN_KEY = "rs1";
-static const char *START_POSITION_MAX_KEY = "rs2";
-static const char *PLAY_DURATION_MIN_KEY = "rd1";
-static const char *PLAY_DURATION_MAX_KEY = "rd2";
-static const char *ITEM_LIST_KEY = "it";
-static const char *IS_SHUFFLE_KEY = "sh";
-static const char *STREAM_URL_KEY = "su";
-static const char *STREAM_ID_KEY = "si";
-static const char *MEDIA_NAME_KEY = "mn";
-static const char *START_POSITION_KEY = "sp";
+static const char *PLAYLIST_NAME_KEY = "a";
+static const char *IS_SELECTED_KEY = "b";
+static const char *IS_EXPANDED_KEY = "c";
+static const char *START_POSITION_MIN_KEY = "d";
+static const char *START_POSITION_MAX_KEY = "e";
+static const char *PLAY_DURATION_MIN_KEY = "f";
+static const char *PLAY_DURATION_MAX_KEY = "g";
+static const char *ITEM_LIST_KEY = "h";
+static const char *IS_SHUFFLE_KEY = "i";
+static const char *STREAM_URL_KEY = "j";
+static const char *STREAM_ID_KEY = "k";
+static const char *MEDIA_NAME_KEY = "l";
+static const char *START_POSITION_KEY = "m";
 Json *StreamPlaylistWindow::getState () {
 	Json *obj, *itemobj;
 	StreamPlaylistWindow::Item *item;

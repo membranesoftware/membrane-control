@@ -146,6 +146,8 @@ void Ui::unload () {
 	clearPopupWidgets ();
 	breadcrumbChip.destroyAndClear ();
 	mouseHoverWidget.clear ();
+	actionWidget.destroyAndClear ();
+	actionTarget.clear ();
 
 	rootPanel->clear ();
 	doUnload ();
@@ -553,6 +555,8 @@ void Ui::update (int msElapsed) {
 	mainMenu.compact ();
 	settingsWindow.compact ();
 	helpWindow.compact ();
+	actionWidget.compact ();
+	actionTarget.compact ();
 
 	if (darkenPanel.widget && (! settingsWindow.widget) && (! helpWindow.widget)) {
 		darkenPanel.destroyAndClear ();
@@ -683,6 +687,7 @@ void Ui::doSyncRecordStore (RecordStore *store) {
 void Ui::clearPopupWidgets () {
 	tooltip.destroyAndClear ();
 	mainMenu.destroyAndClear ();
+	actionWidget.destroyAndClear ();
 
 	doClearPopupWidgets ();
 }

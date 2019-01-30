@@ -76,7 +76,6 @@ void RecordStore::addRecord (Json *record, const StdString &recordId) {
 	std::map<StdString, Json *>::iterator pos;
 	StdString id;
 	Json *item;
-	int result;
 
 	interface = &(App::getInstance ()->systemInterface);
 	if (! recordId.empty ()) {
@@ -90,24 +89,19 @@ void RecordStore::addRecord (Json *record, const StdString &recordId) {
 	}
 
 	item = new Json ();
-	result = item->copy (record);
-	if (result != Result::SUCCESS) {
-		delete (item);
+	item->copy (record);
+	lock ();
+	pos = recordMap.find (id);
+	if (pos != recordMap.end ()) {
+		if (pos->second) {
+			delete (pos->second);
+		}
+		pos->second = item;
 	}
 	else {
-		lock ();
-		pos = recordMap.find (id);
-		if (pos != recordMap.end ()) {
-			if (pos->second) {
-				delete (pos->second);
-			}
-			pos->second = item;
-		}
-		else {
-			recordMap.insert (std::pair<StdString, Json *> (id, item));
-		}
-		unlock ();
+		recordMap.insert (std::pair<StdString, Json *> (id, item));
 	}
+	unlock ();
 }
 
 void RecordStore::removeRecord (const StdString &recordId) {

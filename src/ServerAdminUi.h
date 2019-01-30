@@ -39,7 +39,8 @@
 #include "RecordStore.h"
 #include "WidgetHandle.h"
 #include "Toolbar.h"
-#include "Toggle.h"
+#include "Button.h"
+#include "AdminSecretWindow.h"
 #include "CardView.h"
 #include "Ui.h"
 
@@ -47,7 +48,8 @@ class ServerAdminUi : public Ui {
 public:
 	// Constants to use for sprite indexes
 	enum {
-		BREADCRUMB_ICON = 0
+		BREADCRUMB_ICON = 0,
+		LOCK_BUTTON = 1
 	};
 
 	ServerAdminUi (const StdString &agentId, const StdString &agentDisplayName);
@@ -66,7 +68,14 @@ public:
 	void handleLinkClientConnect (const StdString &agentId);
 
 	// Callback functions
+	static void configurationExpandStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void adminSecretAddButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void adminSecretAddActionClosed (void *uiPtr, Widget *widgetPtr);
+	static void adminSecretExpandStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void lockButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void setAdminPasswordActionClosed (void *uiPtr, Widget *widgetPtr);
 	static void processTaskItem (void *uiPtr, Json *record, const StdString &recordId);
+	static void setAdminSecretComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
 
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
@@ -80,6 +89,9 @@ protected:
 
 	// Add subclass-specific items to the provided main toolbar object
 	void doResetMainToolbar (Toolbar *toolbar);
+
+	// Add subclass-specific items to the provided secondary toolbar object
+	void doResetSecondaryToolbar (Toolbar *toolbar);
 
 	// Remove and destroy any subclass-specific popup widgets that have been created by the UI
 	void doClearPopupWidgets ();
@@ -107,8 +119,11 @@ private:
 	StdString agentDisplayName;
 	StringList watchIdList;
 	CardView *cardView;
+	Button *lockButton;
+	AdminSecretWindow *adminSecretWindow;
 	WidgetHandle emptyTaskWindow;
 	int taskCount;
+	StdString emptyPasswordName;
 };
 
 #endif

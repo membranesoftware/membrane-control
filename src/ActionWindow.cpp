@@ -44,6 +44,7 @@
 #include "SpriteGroup.h"
 #include "ComboBox.h"
 #include "TextField.h"
+#include "TextFieldWindow.h"
 #include "Toggle.h"
 #include "SliderWindow.h"
 #include "UiConfiguration.h"
@@ -183,6 +184,10 @@ void ActionWindow::setInverseColor (bool inverse) {
 				((TextField *) i->optionWidget)->setInverseColor (isInverseColor);
 				break;
 			}
+			case ActionWindow::TEXT_FIELD_WINDOW: {
+				((TextFieldWindow *) i->optionWidget)->setInverseColor (isInverseColor);
+				break;
+			}
 			case ActionWindow::TOGGLE: {
 				((Toggle *) i->optionWidget)->setInverseColor (isInverseColor);
 				break;
@@ -212,6 +217,12 @@ void ActionWindow::addOption (const StdString &optionName, TextField *textField,
 	textField->setValueChangeCallback (ActionWindow::optionValueChanged, this);
 	textField->setInverseColor (isInverseColor);
 	doAddOption (ActionWindow::TEXT_FIELD, optionName, textField, descriptionText);
+}
+
+void ActionWindow::addOption (const StdString &optionName, TextFieldWindow *textFieldWindow, const StdString &descriptionText) {
+	textFieldWindow->setEditCallback (ActionWindow::optionValueChanged, this);
+	textFieldWindow->setInverseColor (isInverseColor);
+	doAddOption (ActionWindow::TEXT_FIELD_WINDOW, optionName, textFieldWindow, descriptionText);
 }
 
 void ActionWindow::addOption (const StdString &optionName, Toggle *toggle, const StdString &descriptionText) {
@@ -275,6 +286,9 @@ StdString ActionWindow::getStringValue (const StdString &optionName, const StdSt
 		case ActionWindow::TEXT_FIELD: {
 			return (((TextField *) item->optionWidget)->getValue ());
 		}
+		case ActionWindow::TEXT_FIELD_WINDOW: {
+			return (((TextFieldWindow *) item->optionWidget)->getValue ());
+		}
 		case ActionWindow::TOGGLE: {
 			return (((Toggle *) item->optionWidget)->isChecked ? "true" : "false");
 		}
@@ -312,6 +326,13 @@ int ActionWindow::getNumberValue (const StdString &optionName, int defaultValue)
 			}
 			break;
 		}
+		case ActionWindow::TEXT_FIELD_WINDOW: {
+			s = ((TextFieldWindow *) item->optionWidget)->getValue ();
+			if (StdString::parseFloat (s.c_str (), &val)) {
+				return ((int) val);
+			}
+			break;
+		}
 		case ActionWindow::SLIDER: {
 			return ((int) ((SliderWindow *) item->optionWidget)->value);
 		}
@@ -340,6 +361,13 @@ float ActionWindow::getNumberValue (const StdString &optionName, float defaultVa
 		}
 		case ActionWindow::TEXT_FIELD: {
 			s = ((TextField *) item->optionWidget)->getValue ();
+			if (StdString::parseFloat (s.c_str (), &val)) {
+				return (val);
+			}
+			break;
+		}
+		case ActionWindow::TEXT_FIELD_WINDOW: {
+			s = ((TextFieldWindow *) item->optionWidget)->getValue ();
 			if (StdString::parseFloat (s.c_str (), &val)) {
 				return (val);
 			}
@@ -549,6 +577,17 @@ void ActionWindow::verifyOptions () {
 
 				break;
 			}
+			case ActionWindow::TEXT_FIELD_WINDOW: {
+				s = ((TextFieldWindow *) i->optionWidget)->getValue ();
+				if (i->isNotEmptyString) {
+					if (s.empty ()) {
+						optionvalid = false;
+						break;
+					}
+				}
+
+				break;
+			}
 			case ActionWindow::TOGGLE: {
 				break;
 			}
@@ -565,4 +604,10 @@ void ActionWindow::verifyOptions () {
 	}
 
 	isOptionDataValid = windowvalid;
+	if (isOptionDataValid) {
+		confirmButton->setDisabled (false);
+	}
+	else {
+		confirmButton->setDisabled (true);
+	}
 }

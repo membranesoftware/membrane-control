@@ -146,8 +146,6 @@ int MonitorCacheUi::doLoad () {
 }
 
 void MonitorCacheUi::doUnload () {
-	actionTarget.clear ();
-	actionWidget.destroyAndClear ();
 	emptyStreamWindow.destroyAndClear ();
 	selectedStreamWindow.clear ();
 	commandPopup.destroyAndClear ();
@@ -197,7 +195,7 @@ void MonitorCacheUi::doResetSecondaryToolbar (Toolbar *toolbar) {
 	playButton->setMouseClickCallback (MonitorCacheUi::playButtonClicked, this);
 	playButton->setMouseEnterCallback (MonitorCacheUi::commandButtonMouseEntered, this);
 	playButton->setMouseExitCallback (MonitorCacheUi::commandButtonMouseExited, this);
-  playButton->shortcutKey = SDLK_F3;
+	playButton->shortcutKey = SDLK_F3;
 	playButton->setMouseHoverTooltip (uitext->getText (UiTextString::monitorCacheUiPlayTooltip), Widget::LEFT);
 	toolbar->addRightItem (playButton);
 
@@ -223,7 +221,6 @@ void MonitorCacheUi::doResetSecondaryToolbar (Toolbar *toolbar) {
 }
 
 void MonitorCacheUi::doClearPopupWidgets () {
-	actionWidget.destroyAndClear ();
 	commandPopup.destroyAndClear ();
 	commandButton.clear ();
 }
@@ -255,8 +252,6 @@ void MonitorCacheUi::doUpdate (int msElapsed) {
 	int64_t now;
 
 	app = App::getInstance ();
-	actionWidget.compact ();
-	actionTarget.compact ();
 	emptyStreamWindow.compact ();
 	commandPopup.compact ();
 
@@ -338,7 +333,7 @@ void MonitorCacheUi::handleLinkClientConnect (const StdString &linkAgentId) {
 
 	params = new Json ();
 	params->set ("maxResults", 0);
-	app->agentControl.writeLinkCommand (app->createCommandJson ("FindItems", SystemInterface::Constant_Monitor, params), agentId);
+	app->agentControl.writeLinkCommand (app->createCommand ("FindItems", SystemInterface::Constant_Monitor, params), agentId);
 }
 
 void MonitorCacheUi::handleLinkClientCommand (const StdString &linkAgentId, int commandId, Json *command) {
@@ -505,7 +500,7 @@ void MonitorCacheUi::reloadButtonClicked (void *uiPtr, Widget *widgetPtr) {
 
 	params = new Json ();
 	params->set ("maxResults", 0);
-	app->agentControl.writeLinkCommand (app->createCommandJson ("FindItems", SystemInterface::Constant_Monitor, params), ui->agentId);
+	app->agentControl.writeLinkCommand (app->createCommand ("FindItems", SystemInterface::Constant_Monitor, params), ui->agentId);
 }
 
 void MonitorCacheUi::processStreamItem (void *uiPtr, Json *record, const StdString &recordId) {
@@ -708,7 +703,7 @@ void MonitorCacheUi::stopButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	ui = (MonitorCacheUi *) uiPtr;
 	app = App::getInstance ();
 
-	result = app->agentControl.invokeCommand (ui->agentId, app->createCommand ("ClearDisplay", SystemInterface::Constant_Monitor), NULL, NULL, NULL, ui->agentId);
+	result = app->agentControl.invokeCommand (ui->agentId, app->createCommand ("ClearDisplay", SystemInterface::Constant_Monitor));
 	if (result != Result::SUCCESS) {
 		Log::write (Log::DEBUG, "Failed to invoke ClearDisplay command; err=%i agentId=\"%s\"", result, ui->agentId.c_str ());
 		app->showSnackbar (app->uiText.getText (UiTextString::internalError));
@@ -717,7 +712,7 @@ void MonitorCacheUi::stopButtonClicked (void *uiPtr, Widget *widgetPtr) {
 		app->showSnackbar (app->uiText.getText (UiTextString::invokeClearDisplayMessage));
 	}
 
-	app->agentControl.refreshAgentStatus (ui->agentId, ui->agentId);
+	app->agentControl.refreshAgentStatus (ui->agentId);
 }
 
 void MonitorCacheUi::playButtonClicked (void *uiPtr, Widget *widgetPtr) {
@@ -737,7 +732,7 @@ void MonitorCacheUi::playButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	params = new Json ();
 	params->set ("streamId", streamwindow->streamId);
 	params->set ("startPosition", streamwindow->selectedTimestamp / 1000.0f);
-	result = app->agentControl.invokeCommand (ui->agentId, app->createCommand ("PlayCacheStream", SystemInterface::Constant_Monitor, params), NULL, NULL, NULL, ui->agentId);
+	result = app->agentControl.invokeCommand (ui->agentId, app->createCommand ("PlayCacheStream", SystemInterface::Constant_Monitor, params));
 	if (result != Result::SUCCESS) {
 		Log::write (Log::DEBUG, "Failed to invoke PlayCacheStream command; err=%i agentId=\"%s\"", result, ui->agentId.c_str ());
 		app->showSnackbar (app->uiText.getText (UiTextString::internalError));
@@ -746,7 +741,7 @@ void MonitorCacheUi::playButtonClicked (void *uiPtr, Widget *widgetPtr) {
 		app->showSnackbar (app->uiText.getText (UiTextString::invokePlayMediaMessage));
 	}
 
-	app->agentControl.refreshAgentStatus (ui->agentId, ui->agentId);
+	app->agentControl.refreshAgentStatus (ui->agentId);
 }
 
 void MonitorCacheUi::writePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr) {
@@ -777,7 +772,7 @@ void MonitorCacheUi::writePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr)
 	params->set ("minItemDisplayDuration", 30);
 	params->set ("maxItemDisplayDuration", 360);
 
-	result = app->agentControl.invokeCommand (ui->agentId, app->createCommand ("CreateMediaDisplayIntent", SystemInterface::Constant_Monitor, params), NULL, NULL, NULL, ui->agentId);
+	result = app->agentControl.invokeCommand (ui->agentId, app->createCommand ("CreateMediaDisplayIntent", SystemInterface::Constant_Monitor, params));
 	if (result != Result::SUCCESS) {
 		Log::write (Log::DEBUG, "Failed to invoke CreateMediaDisplayIntent command; err=%i agentId=\"%s\"", result, ui->agentId.c_str ());
 		app->showSnackbar (app->uiText.getText (UiTextString::internalError));
@@ -786,7 +781,7 @@ void MonitorCacheUi::writePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr)
 		app->showSnackbar (app->uiText.getText (UiTextString::monitorCacheUiWritePlaylistMessage));
 	}
 
-	app->agentControl.refreshAgentStatus (ui->agentId, ui->agentId);
+	app->agentControl.refreshAgentStatus (ui->agentId);
 }
 
 void MonitorCacheUi::appendPlaylistItem (void *jsonListPtr, Widget *widgetPtr) {
@@ -840,7 +835,7 @@ void MonitorCacheUi::invokeRemoveMediaStream () {
 	}
 }
 
-void MonitorCacheUi::removeStreamComplete (void *uiPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand) {
+void MonitorCacheUi::removeStreamComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand) {
 	MonitorCacheUi *ui;
 	App *app;
 	SystemInterface *interface;
@@ -854,7 +849,7 @@ void MonitorCacheUi::removeStreamComplete (void *uiPtr, int64_t jobId, int jobRe
 	uitext = &(app->uiText);
 
 	if (responseCommand && (interface->getCommandId (responseCommand) == SystemInterface::Command_CommandResult) && interface->getCommandBooleanParam (responseCommand, "success", false)) {
-		id = interface->getCommandStringParam (command, "id", "");
+		id = interface->getCommandStringParam (invokeCommand, "id", "");
 		if (! id.empty ()) {
 			app->agentControl.recordStore.removeRecord (id);
 			ui->cardView->removeItem (id);

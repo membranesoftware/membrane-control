@@ -43,6 +43,8 @@
 #include "Widget.h"
 #include "Label.h"
 
+static const char OBSCURE_CHARACTER = '*';
+
 Label::Label (const StdString &text, int fontType, const Color &color)
 : Widget ()
 , textColor (color)
@@ -55,6 +57,7 @@ Label::Label (const StdString &text, int fontType, const Color &color)
 , maxCharacterHeight (0.0f)
 , descenderHeight (0.0f)
 , isUnderlined (false)
+, isObscured (false)
 , maxGlyphTopBearing (0)
 , underlineMargin (0.0f)
 , textMutex (NULL)
@@ -66,6 +69,10 @@ Label::Label (const StdString &text, int fontType, const Color &color)
 
 Label::~Label () {
 	Resource *resource;
+
+	if (isObscured) {
+		text.wipe ();
+	}
 
 	if (textMutex) {
 		SDL_LockMutex (textMutex);
@@ -114,6 +121,14 @@ void Label::setUnderlined (bool enable) {
 	else {
 		height = maxCharacterHeight;
 	}
+}
+
+void Label::setObscured (bool enable) {
+	if (isObscured == enable) {
+		return;
+	}
+	isObscured = enable;
+	setText (text, textFontType, true);
 }
 
 void Label::doDraw () {
@@ -257,7 +272,7 @@ void Label::setText (const StdString &labelText, int fontType, bool forceFontRel
 	maxbearing = -1;
 	buf = (char *) text.c_str ();
 	for (i = 0; i < textlen; ++i) {
-		c = buf[i];
+		c = isObscured ? OBSCURE_CHARACTER : buf[i];
 		glyph = textFont->getGlyph (c);
 		glyphList.push_back (glyph);
 
@@ -297,7 +312,7 @@ void Label::setText (const StdString &labelText, int fontType, bool forceFontRel
 
 	maxh = 0;
 	for (i = 0; i < textlen; ++i) {
-		c = buf[i];
+		c = isObscured ? OBSCURE_CHARACTER : buf[i];
 		glyph = textFont->getGlyph (c);
 		if (glyph) {
 			h = maxGlyphTopBearing - glyph->topBearing + glyph->height;

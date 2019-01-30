@@ -51,7 +51,8 @@ public:
 
 	// Constants to use for HTTP status codes
 	enum {
-		HTTP_OK = 200
+		HTTP_OK = 200,
+		HTTP_UNAUTHORIZED = 401
 	};
 
 	typedef void (*DatagramCallback) (void *callbackData, const char *messageData, int messageLength);

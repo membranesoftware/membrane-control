@@ -31,11 +31,15 @@
 #include "Config.h"
 #include <stdlib.h>
 #include <map>
+#include <list>
+#include <vector>
 #include "SDL2/SDL.h"
+#include "openssl/evp.h"
 #include "App.h"
 #include "Result.h"
 #include "Log.h"
 #include "Util.h"
+#include "StdString.h"
 #include "Json.h"
 #include "SystemInterface.h"
 #include "HashMap.h"
@@ -46,6 +50,9 @@
 #include "AgentControl.h"
 
 const StdString AgentControl::localHostname = StdString ("127.0.0.1");
+static const int COMMAND_LIST_IDLE_TIMEOUT = 60000; // ms
+static const char *NAME_KEY = "a";
+static const char *SECRET_KEY = "b";
 
 AgentControl::AgentControl ()
 : agentDatagramPort (63738)
@@ -54,36 +61,37 @@ AgentControl::AgentControl ()
 , linkClientConnectionCount (0)
 , isStarted (false)
 , linkClientMutex (NULL)
-, commandQueueMutex (NULL)
 , agentMapMutex (NULL)
+, commandMapMutex (NULL)
+, adminSecretMutex (NULL)
 {
 	// TODO: Possibly set an agentId value (currently empty)
 
 	linkClientMutex = SDL_CreateMutex ();
-	commandQueueMutex = SDL_CreateMutex ();
 	agentMapMutex = SDL_CreateMutex ();
+	commandMapMutex = SDL_CreateMutex ();
+	adminSecretMutex = SDL_CreateMutex ();
 }
 
 AgentControl::~AgentControl () {
 	clearLinkClients ();
-	clearCommandQueues ();
+	clearCommandMap ();
 	if (linkClientMutex) {
 		SDL_DestroyMutex (linkClientMutex);
 		linkClientMutex = NULL;
-	}
-	if (commandQueueMutex) {
-		SDL_DestroyMutex (commandQueueMutex);
-		commandQueueMutex = NULL;
 	}
 	if (agentMapMutex) {
 		SDL_DestroyMutex (agentMapMutex);
 		agentMapMutex = NULL;
 	}
-}
-
-void AgentControl::destroyCommandContext (AgentControl::CommandContext *ctx) {
-	delete (ctx->command);
-	delete (ctx);
+	if (commandMapMutex) {
+		SDL_DestroyMutex (commandMapMutex);
+		commandMapMutex = NULL;
+	}
+	if (adminSecretMutex) {
+		SDL_DestroyMutex (adminSecretMutex);
+		adminSecretMutex = NULL;
+	}
 }
 
 void AgentControl::clearLinkClients () {
@@ -115,34 +123,28 @@ void AgentControl::clearLinkClients () {
 	SDL_UnlockMutex (linkClientMutex);
 }
 
-void AgentControl::clearCommandQueues () {
-	std::map<StdString, AgentControl::CommandContextQueue>::iterator i, end;
-	AgentControl::CommandContextQueue *q;
-	AgentControl::CommandContext *ctx;
+void AgentControl::clearCommandMap () {
+	std::map<StdString, CommandList *>::iterator i, end;
 
-	SDL_LockMutex (commandQueueMutex);
-	i = commandQueueMap.begin ();
-	end = commandQueueMap.end ();
+	SDL_LockMutex (commandMapMutex);
+	i = commandMap.begin ();
+	end = commandMap.end ();
 	while (i != end) {
-		q = &(i->second);
-		while (! q->empty ()) {
-			ctx = q->front ();
-			destroyCommandContext (ctx);
-			q->pop ();
+		if (i->second) {
+			delete (i->second);
+			i->second = NULL;
 		}
 		++i;
 	}
-	commandQueueMap.clear ();
-	SDL_UnlockMutex (commandQueueMutex);
+	commandMap.clear ();
+	SDL_UnlockMutex (commandMapMutex);
 }
 
 int AgentControl::start () {
-	App *app;
 	std::map<StdString, Agent>::iterator i, end;
 	StringList idlist;
 	StringList::iterator j, jend;
 
-	app = App::getInstance ();
 	if (isStarted) {
 		return (Result::SUCCESS);
 	}
@@ -164,7 +166,7 @@ int AgentControl::start () {
 	j = idlist.begin ();
 	jend = idlist.end ();
 	while (j != jend) {
-		invokeCommand (*j, app->createCommand ("GetStatus", SystemInterface::Constant_DefaultCommandType), AgentControl::invokeGetStatusComplete, this);
+		refreshAgentStatus (*j);
 		++j;
 	}
 
@@ -172,29 +174,39 @@ int AgentControl::start () {
 }
 
 void AgentControl::stop () {
-	agentLinkUrlMap.clear ();
-	agentContactHostnameMap.clear ();
+	SDL_LockMutex (adminSecretMutex);
+	adminSecretList.clear ();
+	SDL_UnlockMutex (adminSecretMutex);
+
 	SDL_LockMutex (agentMapMutex);
 	agentMap.clear ();
 	SDL_UnlockMutex (agentMapMutex);
+
 	clearLinkClients ();
 }
 
 void AgentControl::update (int msElapsed) {
+	updateLinkClients (msElapsed);
+	updateCommandMap (msElapsed);
+
+	// TODO: Age the record store here (delete old records as appropriate)
+}
+
+void AgentControl::updateLinkClients (int msElapsed) {
 	std::map<StdString, LinkClient *>::iterator mi, mend;
 	std::list<LinkClient *>::iterator li, lend;
 	std::map<StdString, Agent>::iterator ai, aend;
 	LinkClient *client;
+	HashMap urlmap;
 	StdString url;
 	int count;
 	bool found;
 
-	agentLinkUrlMap.clear ();
 	SDL_LockMutex (agentMapMutex);
 	ai = agentMap.begin ();
 	aend = agentMap.end ();
 	while (ai != aend) {
-		agentLinkUrlMap.insert (ai->first, ai->second.getLinkUrl ());
+		urlmap.insert (ai->first, ai->second.getLinkUrl ());
 		++ai;
 	}
 	SDL_UnlockMutex (agentMapMutex);
@@ -205,7 +217,7 @@ void AgentControl::update (int msElapsed) {
 	mend = linkClientMap.end ();
 	while (mi != mend) {
 		client = mi->second;
-		url = agentLinkUrlMap.find (client->agentId, "");
+		url = urlmap.find (client->agentId, "");
 		if (! client->url.equals (url)) {
 			client->setUrl (url);
 		}
@@ -237,8 +249,38 @@ void AgentControl::update (int msElapsed) {
 	}
 
 	SDL_UnlockMutex (linkClientMutex);
+}
 
-	// TODO: Age the record store here (delete old records as needed)
+void AgentControl::updateCommandMap (int msElapsed) {
+	std::map<StdString, CommandList *>::iterator mi, mend;
+	StringList keys;
+	StringList::iterator ki, kend;
+
+	SDL_LockMutex (commandMapMutex);
+	mi = commandMap.begin ();
+	mend = commandMap.end ();
+	while (mi != mend) {
+		if (mi->second->isIdle (COMMAND_LIST_IDLE_TIMEOUT) && mi->second->empty ()) {
+			keys.push_back (mi->first);
+		}
+		++mi;
+	}
+	if (! keys.empty ()) {
+		ki = keys.begin ();
+		kend = keys.end ();
+		while (ki != kend) {
+			mi = commandMap.find (*ki);
+			if (mi != commandMap.end ()) {
+				if (mi->second) {
+					delete (mi->second);
+					mi->second = NULL;
+				}
+				commandMap.erase (mi);
+			}
+			++ki;
+		}
+	}
+	SDL_UnlockMutex (commandMapMutex);
 }
 
 void AgentControl::connectLinkClient (const StdString &agentId) {
@@ -292,36 +334,6 @@ void AgentControl::disconnectLinkClient (const StdString &agentId) {
 	SDL_UnlockMutex (linkClientMutex);
 }
 
-void AgentControl::invokeLinkServerGetStatusComplete (void *agentControlPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand) {
-	AgentControl *agentcontrol;
-	App *app;
-	SystemInterface *interface;
-	Json serverstatus;
-	StdString agentid;
-	int commandid;
-
-	agentcontrol = (AgentControl *) agentControlPtr;
-
-	if (! responseCommand) {
-		return;
-	}
-
-	app = App::getInstance ();
-	interface = &(app->systemInterface);
-	agentcontrol->storeAgentStatus (responseCommand);
-	app->shouldSyncRecordStore = true;
-
-	commandid = interface->getCommandId (responseCommand);
-	if (commandid == SystemInterface::Command_AgentStatus) {
-		if (interface->getCommandObjectParam (responseCommand, "linkServerStatus", &serverstatus)) {
-			agentid = interface->getCommandStringParam (responseCommand, "id", "");
-			if (! agentid.empty ()) {
-				agentcontrol->connectLinkClient (agentid);
-			}
-		}
-	}
-}
-
 void AgentControl::linkClientConnect (void *agentControlPtr, LinkClient *client) {
 	App::getInstance ()->handleLinkClientConnect (client->agentId);
 }
@@ -341,38 +353,9 @@ void AgentControl::writeLinkCommand (Json *command, const StdString &agentId) {
 	std::map<StdString, LinkClient *>::iterator i, end;
 	LinkClient *client;
 
-	SDL_LockMutex (linkClientMutex);
-	end = linkClientMap.end ();
-	if (agentId.empty ()) {
-		i = linkClientMap.begin ();
-		while (i != end) {
-			client = i->second;
-			if (client->isConnected) {
-				client->writeCommand (command);
-			}
-			++i;
-		}
-	}
-	else {
-		i = linkClientMap.find (agentId);
-		if (i != end) {
-			client = i->second;
-			if (client->isConnected) {
-				client->writeCommand (command);
-			}
-		}
-	}
-	SDL_UnlockMutex (linkClientMutex);
-}
-
-void AgentControl::writeLinkCommand (const StdString &commandJson, const StdString &agentId) {
-	std::map<StdString, LinkClient *>::iterator i, end;
-	LinkClient *client;
-
-	if (commandJson.empty () || (commandJson.find ('{') != 0)) {
+	if (! command) {
 		return;
 	}
-
 	SDL_LockMutex (linkClientMutex);
 	end = linkClientMap.end ();
 	if (agentId.empty ()) {
@@ -380,7 +363,7 @@ void AgentControl::writeLinkCommand (const StdString &commandJson, const StdStri
 		while (i != end) {
 			client = i->second;
 			if (client->isConnected) {
-				client->writeCommand (commandJson);
+				client->writeCommand (command);
 			}
 			++i;
 		}
@@ -390,11 +373,13 @@ void AgentControl::writeLinkCommand (const StdString &commandJson, const StdStri
 		if (i != end) {
 			client = i->second;
 			if (client->isConnected) {
-				client->writeCommand (commandJson);
+				client->writeCommand (command);
 			}
 		}
 	}
 	SDL_UnlockMutex (linkClientMutex);
+
+	delete (command);
 }
 
 bool AgentControl::isLinkClientConnected (const StdString &agentId) {
@@ -437,6 +422,53 @@ int AgentControl::getLinkClientCount () {
 	return (count);
 }
 
+bool AgentControl::isContacted (const StdString &invokeHostname, int invokePort) {
+	std::map<StdString, Agent>::iterator pos;
+	bool result;
+
+	result = false;
+	SDL_LockMutex (agentMapMutex);
+	pos = findAgent (invokeHostname, invokePort);
+	if (pos != agentMap.end ()) {
+		if ((! pos->second.id.empty ()) && (pos->second.lastStatusTime > 0)) {
+			result = true;
+		}
+	}
+	SDL_UnlockMutex (agentMapMutex);
+
+	return (result);
+}
+
+bool AgentControl::isContacting (const StdString &invokeHostname, int invokePort) {
+	CommandList *cmdlist;
+	bool result;
+
+	result = false;
+	SDL_LockMutex (commandMapMutex);
+	cmdlist = findCommandList (getMapKey (invokeHostname, invokePort));
+	if (cmdlist && (! cmdlist->empty ())) {
+		result = true;
+	}
+	SDL_UnlockMutex (commandMapMutex);
+
+	return (result);
+}
+
+bool AgentControl::isUnauthorized (const StdString &invokeHostname, int invokePort) {
+	CommandList *cmdlist;
+	bool result;
+
+	result = false;
+	SDL_LockMutex (commandMapMutex);
+	cmdlist = findCommandList (getMapKey (invokeHostname, invokePort));
+	if (cmdlist && (cmdlist->lastInvokeResult == Result::ERROR_UNAUTHORIZED)) {
+		result = true;
+	}
+	SDL_UnlockMutex (commandMapMutex);
+
+	return (result);
+}
+
 StdString AgentControl::getAgentDisplayName (const StdString &agentId) {
 	StdString s;
 	std::map<StdString, Agent>::iterator pos;
@@ -444,7 +476,12 @@ StdString AgentControl::getAgentDisplayName (const StdString &agentId) {
 	SDL_LockMutex (agentMapMutex);
 	pos = agentMap.find (agentId);
 	if (pos != agentMap.end ()) {
-		s.assign (pos->second.displayName);
+		if (! pos->second.displayName.empty ()) {
+			s.assign (pos->second.displayName);
+		}
+		else if (! pos->second.invokeHostname.empty ()) {
+			s.assign (pos->second.invokeHostname);
+		}
 	}
 	SDL_UnlockMutex (agentMapMutex);
 
@@ -469,6 +506,9 @@ StdString AgentControl::getAgentInvokeUrl (const StdString &agentId, Json *comma
 		return (StdString (""));
 	}
 
+	if (! path.startsWith ("/")) {
+		url.append ("/");
+	}
 	url.append (path);
 	if (command) {
 		url.appendSprintf ("?%s=%s", SystemInterface::Constant_UrlQueryParameter, command->toString ().urlEncoded ().c_str ());
@@ -517,26 +557,59 @@ StdString AgentControl::getAgentLinkUrl (const StdString &agentId) {
 	return (s);
 }
 
-StdString AgentControl::getHostInvokeUrl (const StdString &hostname, int tcpPort) {
-	return (StdString::createSprintf ("%s://%s:%i", App::getInstance ()->isHttpsEnabled ? "https" : "http", hostname.c_str (), tcpPort));
+StdString AgentControl::getHostInvokeUrl (const StdString &hostname, int tcpPort, const StdString &path) {
+	return (StdString::createSprintf ("%s://%s:%i%s%s", App::getInstance ()->isHttpsEnabled ? "https" : "http", hostname.c_str (), tcpPort, path.startsWith ("/") ? "" : "/", path.c_str ()));
+}
+
+StdString AgentControl::getMapKey (const StdString &hostname, int tcpPort) {
+	return (StdString::createSprintf ("%s:%i", hostname.c_str (), tcpPort));
+}
+
+StdString AgentControl::getStringHash (const StdString &sourceString) {
+	EVP_MD_CTX *ctx;
+	unsigned char digest[EVP_MAX_MD_SIZE];
+	unsigned int len;
+
+	ctx = EVP_MD_CTX_create ();
+	if (! ctx) {
+		Log::write (Log::ERR, "Failed to compute string hash; err=EVP_MD_CTX_create failed");
+		return (StdString (""));
+	}
+
+	len = 0;
+	if (EVP_DigestInit_ex (ctx, EVP_sha256 (), NULL) != 1) {
+		Log::write (Log::ERR, "Failed to compute string hash; err=EVP_DigestInit_ex failed");
+	}
+	else {
+		if (EVP_DigestUpdate (ctx, sourceString.c_str (), sourceString.length ()) != 1) {
+			Log::write (Log::ERR, "Failed to compute string hash; err=EVP_DigestUpdate failed");
+		}
+		else {
+			if (EVP_DigestFinal_ex (ctx, digest, &len) != 1) {
+				Log::write (Log::ERR, "Failed to compute string hash; err=EVP_DigestFinal_ex failed");
+			}
+		}
+	}
+	EVP_MD_CTX_destroy (ctx);
+
+	if (len <= 0) {
+		return (StdString (""));
+	}
+
+	return (StdString::createHex (digest, len));
 }
 
 void AgentControl::contactAgent (const StdString &hostname, int tcpPort) {
 	App *app;
-	int64_t jobid;
 
 	app = App::getInstance ();
-	invokeCommand (hostname, tcpPort, app->createCommand ("GetStatus", SystemInterface::Constant_DefaultCommandType), AgentControl::invokeGetStatusComplete, this, &jobid);
-	agentContactHostnameMap.insert (StdString::createSprintf ("%lli", (long long int) jobid), StdString::createSprintf ("%s:%i", hostname.c_str (), tcpPort));
+	invokeCommand (hostname, tcpPort, app->createCommand ("GetStatus", SystemInterface::Constant_DefaultCommandType), AgentControl::invokeGetStatusComplete, this);
 }
 
 void AgentControl::retryAgents () {
-	App *app;
 	std::map<StdString, Agent>::iterator i, end;
 	StringList idlist;
 	StringList::iterator j, jend;
-
-	app = App::getInstance ();
 
 	SDL_LockMutex (agentMapMutex);
 	i = agentMap.begin ();
@@ -552,7 +625,7 @@ void AgentControl::retryAgents () {
 	j = idlist.begin ();
 	jend = idlist.end ();
 	while (j != jend) {
-		invokeCommand (*j, app->createCommand ("GetStatus", SystemInterface::Constant_DefaultCommandType), AgentControl::invokeGetStatusComplete, this, NULL, *j);
+		refreshAgentStatus (*j);
 		++j;
 	}
 }
@@ -561,7 +634,26 @@ void AgentControl::refreshAgentStatus (const StdString &agentId, const StdString
 	App *app;
 
 	app = App::getInstance ();
-	invokeCommand (agentId, app->createCommand ("GetStatus", SystemInterface::Constant_DefaultCommandType), AgentControl::invokeGetStatusComplete, this, NULL, queueId);
+	invokeCommand (agentId, app->createCommand ("GetStatus", SystemInterface::Constant_DefaultCommandType), AgentControl::invokeGetStatusComplete, this, queueId);
+}
+
+void AgentControl::refreshAgentStatus (const StdString &invokeHostname, int invokeTcpPort, const StdString &queueId) {
+	App *app;
+	StdString agentid;
+	std::map<StdString, Agent>::iterator pos;
+
+	app = App::getInstance ();
+
+	SDL_LockMutex (agentMapMutex);
+	pos = findAgent (invokeHostname, invokeTcpPort);
+	if (pos != agentMap.end ()) {
+		agentid.assign (pos->second.id);
+	}
+	SDL_UnlockMutex (agentMapMutex);
+	if (agentid.empty ()) {
+		return;
+	}
+	invokeCommand (agentid, app->createCommand ("GetStatus", SystemInterface::Constant_DefaultCommandType), AgentControl::invokeGetStatusComplete, this, queueId);
 }
 
 void AgentControl::removeAgent (const StdString &agentId) {
@@ -583,136 +675,80 @@ void AgentControl::removeAgent (const StdString &agentId) {
 	}
 }
 
-int AgentControl::invokeCommand (const StdString &agentId, Json *command, AgentControl::InvokeCommandCallback callback, void *callbackData, int64_t *jobId, const StdString &queueId) {
-	App *app;
-	AgentControl::CommandContext *ctx;
-	StdString url;
+int AgentControl::invokeCommand (const StdString &hostname, int tcpPort, Json *command, CommandList::InvokeCallback callback, void *callbackData, const StdString &queueId) {
+	CommandList *cmdlist;
+	StdString key;
 
-	app = App::getInstance ();
 	if (! command) {
 		return (Result::ERROR_INVALID_PARAM);
 	}
 
-	url = getAgentInvokeUrl (agentId);
-	if (url.empty ()) {
+	if (! queueId.empty ()) {
+		key.assign (queueId);
+	}
+	else {
+		key.assign (getMapKey (hostname, tcpPort));
+	}
+	SDL_LockMutex (commandMapMutex);
+	cmdlist = findCommandList (key, true);
+	cmdlist->addCommand (hostname, tcpPort, command, callback, callbackData);
+	SDL_UnlockMutex (commandMapMutex);
+
+	return (Result::SUCCESS);
+}
+
+int AgentControl::invokeCommand (const StdString &agentId, Json *command, CommandList::InvokeCallback callback, void *callbackData, const StdString &queueId) {
+	CommandList *cmdlist;
+	std::map<StdString, Agent>::iterator pos;
+	StdString key, hostname;
+	int port;
+
+	if (! command) {
+		return (Result::ERROR_INVALID_PARAM);
+	}
+
+	port = 0;
+	SDL_LockMutex (agentMapMutex);
+	pos = findAgent (agentId);
+	if (pos != agentMap.end ()) {
+		hostname.assign (pos->second.invokeHostname);
+		port = pos->second.invokeTcpPort1;
+	}
+	SDL_UnlockMutex (agentMapMutex);
+
+	if (hostname.empty () || (port <= 0)) {
 		return (Result::ERROR_KEY_NOT_FOUND);
 	}
-	if (url.empty ()) {
-		if (command) {
-			delete (command);
-		}
-		return (Result::ERROR_UNKNOWN_HOSTNAME);
-	}
-	ctx = new AgentControl::CommandContext ();
-	ctx->agentId.assign (agentId);
-	ctx->url.assign (url);
-	ctx->command = command;
-	ctx->jobId = app->getUniqueId ();
-	if (jobId) {
-		*jobId = ctx->jobId;
-	}
-	ctx->callback = callback;
-	ctx->callbackData = callbackData;
 
-	if (queueId.empty ()) {
-		app->network.sendHttpPost (ctx->url, command->toString (), AgentControl::sendHttpPostComplete, ctx);
+	if (! queueId.empty ()) {
+		key.assign (queueId);
 	}
 	else {
-		addQueueCommand (queueId, ctx);
+		key.assign (getMapKey (hostname, port));
 	}
+	SDL_LockMutex (commandMapMutex);
+	cmdlist = findCommandList (key, true);
+	cmdlist->addCommand (hostname, port, command, callback, callbackData);
+	SDL_UnlockMutex (commandMapMutex);
 
 	return (Result::SUCCESS);
-}
-
-int AgentControl::invokeCommand (const StdString &hostname, int tcpPort, Json *command, AgentControl::InvokeCommandCallback callback, void *callbackData, int64_t *jobId, const StdString &queueId) {
-	App *app;
-	AgentControl::CommandContext *ctx;
-	StdString url;
-
-	if (! command) {
-		return (Result::ERROR_INVALID_PARAM);
-	}
-	app = App::getInstance ();
-	url.assign (getHostInvokeUrl (hostname, tcpPort));
-	ctx = new AgentControl::CommandContext ();
-	ctx->agentId.assign (url);
-	ctx->url.assign (url);
-	ctx->command = command;
-	ctx->jobId = app->getUniqueId ();
-	if (jobId) {
-		*jobId = ctx->jobId;
-	}
-	ctx->callback = callback;
-	ctx->callbackData = callbackData;
-
-	if (queueId.empty ()) {
-		app->network.sendHttpPost (ctx->url, command->toString (), AgentControl::sendHttpPostComplete, ctx);
-	}
-	else {
-		addQueueCommand (queueId, ctx);
-	}
-
-	return (Result::SUCCESS);
-}
-
-void AgentControl::sendHttpPostComplete (void *contextPtr, const StdString &targetUrl, int statusCode, SharedBuffer *responseData) {
-	App *app;
-	AgentControl::CommandContext *ctx;
-	StdString resp;
-	Json *responsecmd;
-	int result;
-
-	ctx = (AgentControl::CommandContext *) contextPtr;
-	app = App::getInstance ();
-
-	result = Result::SUCCESS;
-	responsecmd = NULL;
-
-	if ((statusCode != Network::HTTP_OK) || (! responseData)) {
-		result = Result::ERROR_HTTP_OPERATION_FAILED;
-	}
-
-	if (result == Result::SUCCESS) {
-		if (responseData->empty ()) {
-			result = Result::ERROR_MALFORMED_RESPONSE;
-		}
-	}
-
-	if (result == Result::SUCCESS) {
-		resp.assignBuffer (responseData);
-		if (! App::getInstance ()->systemInterface.parseCommand (resp, &responsecmd)) {
-			result = Result::ERROR_MALFORMED_RESPONSE;
-		}
-	}
-
-	if (ctx->callback) {
-		ctx->callback (ctx->callbackData, ctx->jobId, result, ctx->agentId, ctx->command, responsecmd);
-	}
-
-	if (responsecmd) {
-		delete (responsecmd);
-	}
-
-	if (! ctx->queueId.empty ()) {
-		app->agentControl.processQueueCommand (ctx->queueId, true);
-	}
-	app->agentControl.destroyCommandContext (ctx);
 }
 
 void AgentControl::broadcastContactMessage () {
 	App *app;
-	Json *params;
-	StdString cmdjson;
+	Json *params, *cmd;
+	StdString msg;
 
 	app = App::getInstance ();
 	params = new Json ();
 	params->set ("destination", StdString::createSprintf ("udp://%s:%i", urlHostname.c_str (), app->network.datagramPort));
-	cmdjson = app->createCommandJson ("ReportContact", SystemInterface::Constant_DefaultCommandType, params);
-	if (cmdjson.empty ()) {
+	cmd = app->createCommand ("ReportContact", SystemInterface::Constant_DefaultCommandType, params);
+	if (! cmd) {
 		return;
 	}
-
-	app->network.sendBroadcastDatagram (agentDatagramPort, cmdjson.createBuffer ());
+	msg = cmd->toString ();
+	delete (cmd);
+	app->network.sendBroadcastDatagram (agentDatagramPort, msg.createBuffer ());
 }
 
 void AgentControl::receiveMessage (const char *messageData, int messageLength) {
@@ -761,35 +797,24 @@ void AgentControl::receiveMessage (const char *messageData, int messageLength) {
 	delete (command);
 }
 
-void AgentControl::invokeGetStatusComplete (void *agentControlPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand) {
+void AgentControl::invokeGetStatusComplete (void *agentControlPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand) {
 	App *app;
-	StdString key, hostname, invokehostname;
-	int invokeport;
-
+	AgentControl *agentcontrol;
 
 	app = App::getInstance ();
-	key.sprintf ("%lli", (long long int) jobId);
-	hostname = app->agentControl.agentContactHostnameMap.find (key, "");
-	app->agentControl.agentContactHostnameMap.remove (key);
-	if (responseCommand) {
-		invokeport = 0;
-		if (! hostname.empty ()) {
-			if (! StdString::parseAddress (hostname.c_str (), &invokehostname, &invokeport, SystemInterface::Constant_DefaultTcpPort1)) {
-				invokehostname.assign ("");
-				invokeport = 0;
-			}
-		}
+	agentcontrol = (AgentControl *) agentControlPtr;
 
-		app->agentControl.storeAgentStatus (responseCommand, invokehostname, invokeport);
+	if (responseCommand) {
+		agentcontrol->storeAgentStatus (responseCommand, invokeHostname, invokeTcpPort);
 		app->shouldSyncRecordStore = true;
 	}
 }
 
-void AgentControl::storeAgentStatus (Json *agentStatusCommand, const StdString &agentInvokeHostname, int agentInvokeTcpPort1) {
+void AgentControl::storeAgentStatus (Json *agentStatusCommand, const StdString &invokeHostname, int invokeTcpPort) {
 	App *app;
 	SystemInterface *interface;
 	int commandid;
-	StdString recordid, name;
+	StdString recordid;
 	Agent agent;
 	std::map<StdString, Agent>::iterator pos;
 
@@ -807,22 +832,212 @@ void AgentControl::storeAgentStatus (Json *agentStatusCommand, const StdString &
 	recordStore.addRecord (agentStatusCommand, recordid);
 
 	SDL_LockMutex (agentMapMutex);
-	pos = agentMap.find (recordid);
-	if (pos == agentMap.end ()) {
-		agentMap.insert (std::pair<StdString, Agent> (recordid, agent));
-		pos = agentMap.find (recordid);
-		pos->second.id.assign (recordid);
+	pos = findAgent (recordid);
+	if ((pos == agentMap.end ()) && (! invokeHostname.empty ()) && (invokeTcpPort > 0)) {
+		pos = findAgent (invokeHostname, invokeTcpPort);
 	}
+	if (pos == agentMap.end ()) {
+		pos = findAgent (recordid, true);
+		if ((! invokeHostname.empty ()) && (invokeTcpPort > 0)) {
+			pos->second.invokeHostname.assign (invokeHostname);
+			pos->second.invokeTcpPort1 = invokeTcpPort;
+		}
+	}
+
+	pos->second.id.assign (recordid);
 	pos->second.lastStatusTime = Util::getTime ();
 	pos->second.readCommand (agentStatusCommand);
-	if (! agentInvokeHostname.empty ()) {
-		pos->second.invokeHostname.assign (agentInvokeHostname);
-	}
-	if (agentInvokeTcpPort1 > 0) {
-		pos->second.invokeTcpPort1 = agentInvokeTcpPort1;
-	}
 	SDL_UnlockMutex (agentMapMutex);
 	writePrefs ();
+}
+
+void AgentControl::addAdminSecret (const StdString &entryName, const StdString &entrySecret) {
+	App *app;
+	StringList items;
+	Json *json;
+
+	app = App::getInstance ();
+
+	app->prefsMap.find (App::prefsServerAdminSecrets, &items);
+	json = new Json ();
+	json->set (NAME_KEY, entryName);
+	json->set (SECRET_KEY, entrySecret);
+	items.push_back (json->toString ());
+	delete (json);
+	app->prefsMap.insert (App::prefsServerAdminSecrets, &items);
+
+	SDL_LockMutex (adminSecretMutex);
+	adminSecretList.push_back (getStringHash (entrySecret));
+	SDL_UnlockMutex (adminSecretMutex);
+}
+
+void AgentControl::removeAdminSecret (const StdString &entryName) {
+	App *app;
+	StringList items, writeitems;
+	StringList::iterator i, end;
+	StdString val;
+	Json *json;
+	bool shouldwrite;
+
+	app = App::getInstance ();
+	app->prefsMap.find (App::prefsServerAdminSecrets, &items);
+	shouldwrite = false;
+	i = items.begin ();
+	end = items.end ();
+	while (i != end) {
+		json = new Json ();
+		if (json->parse (*i) != Result::SUCCESS) {
+			shouldwrite = true;
+		}
+		else {
+			if (entryName.equals (json->getString (NAME_KEY, ""))) {
+				shouldwrite = true;
+			}
+			else {
+				writeitems.push_back (*i);
+			}
+		}
+		delete (json);
+		++i;
+	}
+
+	if (shouldwrite) {
+		app->prefsMap.insert (App::prefsServerAdminSecrets, &writeitems);
+		SDL_LockMutex (adminSecretMutex);
+		adminSecretList.clear ();
+		i = writeitems.begin ();
+		end = writeitems.end ();
+		while (i != end) {
+			json = new Json ();
+			if (json->parse (*i) == Result::SUCCESS) {
+				val = json->getString (SECRET_KEY, "");
+				if (! val.empty ()) {
+					adminSecretList.push_back (getStringHash (val));
+				}
+			}
+			delete (json);
+			++i;
+		}
+		SDL_UnlockMutex (adminSecretMutex);
+	}
+}
+
+StdString AgentControl::getAdminSecret (const StdString &entryName) {
+	App *app;
+	StringList items;
+	StringList::iterator i, end;
+	StdString result;
+	Json *json;
+
+	app = App::getInstance ();
+	app->prefsMap.find (App::prefsServerAdminSecrets, &items);
+	i = items.begin ();
+	end = items.end ();
+	while (i != end) {
+		json = new Json ();
+		if (json->parse (*i) == Result::SUCCESS) {
+			if (entryName.equals (json->getString (NAME_KEY, ""))) {
+				result.assign (json->getString (SECRET_KEY, ""));
+			}
+		}
+		delete (json);
+
+		if (! result.empty ()) {
+			break;
+		}
+		++i;
+	}
+
+	return (result);
+}
+
+void AgentControl::getAdminSecretNames (StringList *destList) {
+	App *app;
+	StringList items;
+	StringList::iterator i, end;
+	StdString name;
+	Json *json;
+
+	app = App::getInstance ();
+	app->prefsMap.find (App::prefsServerAdminSecrets, &items);
+	destList->clear ();
+	i = items.begin ();
+	end = items.end ();
+	while (i != end) {
+		json = new Json ();
+		if (json->parse (*i) == Result::SUCCESS) {
+			name = json->getString (NAME_KEY, "");
+			if (! name.empty ()) {
+				destList->push_back (name);
+			}
+		}
+		delete (json);
+		++i;
+	}
+}
+
+bool AgentControl::setCommandAuthorization (Json *command, int secretIndex, const StdString &authToken, StdString *authPath) {
+	App *app;
+	EVP_MD_CTX *ctx;
+	StdString secret;
+	int len;
+	bool result;
+
+	if (secretIndex < 0) {
+		return (false);
+	}
+
+	app = App::getInstance ();
+	ctx = EVP_MD_CTX_create ();
+	if (! ctx) {
+		Log::write (Log::ERR, "Failed to set command authorization; err=EVP_MD_CTX_create failed");
+		return (false);
+	}
+	if (EVP_DigestInit_ex (ctx, EVP_sha256 (), NULL) != 1) {
+		EVP_MD_CTX_destroy (ctx);
+		Log::write (Log::ERR, "Failed to set command authorization; err=EVP_DigestInit_ex failed");
+		return (false);
+	}
+
+	result = false;
+	SDL_LockMutex (adminSecretMutex);
+	if (secretIndex < (int) adminSecretList.size ()) {
+		secret = adminSecretList.at (secretIndex);
+		len = ((int) secret.length ()) / 2;
+		if (len <= 0) {
+			if (authPath) {
+				authPath->assign (SystemInterface::Constant_DefaultAuthorizePath);
+			}
+		}
+		else {
+			if (authPath) {
+				authPath->assign (secret.substr (len));
+			}
+			secret.erase (len);
+		}
+
+		result = app->systemInterface.setCommandAuthorization (command, secret, authToken, AgentControl::hashUpdate, AgentControl::hashDigest, ctx);
+	}
+	SDL_UnlockMutex (adminSecretMutex);
+	EVP_MD_CTX_destroy (ctx);
+
+	return (result);
+}
+
+void AgentControl::hashUpdate (void *contextPtr, unsigned char *data, int dataLength) {
+	EVP_DigestUpdate ((EVP_MD_CTX *) contextPtr, data, dataLength);
+}
+
+StdString AgentControl::hashDigest (void *contextPtr) {
+	unsigned char digest[EVP_MAX_MD_SIZE];
+	unsigned int len;
+	StdString s;
+
+	if (EVP_DigestFinal_ex ((EVP_MD_CTX *) contextPtr, digest, &len) == 1) {
+		s.assignHex (digest, len);
+	}
+
+	return (s);
 }
 
 void AgentControl::writePrefs () {
@@ -835,7 +1050,9 @@ void AgentControl::writePrefs () {
 	i = agentMap.begin ();
 	end = agentMap.end ();
 	while (i != end) {
-		items.push_back (i->second.toPrefsJsonString ());
+		if (! i->second.id.empty ()) {
+			items.push_back (i->second.toPrefsJsonString ());
+		}
 		++i;
 	}
 	SDL_UnlockMutex (agentMapMutex);
@@ -847,13 +1064,15 @@ void AgentControl::readPrefs () {
 	App *app;
 	StringList items;
 	StringList::iterator i, end;
+	StdString val;
 	std::map<StdString, Agent>::iterator pos;
 	Agent agent;
+	Json *json;
 	int result;
 
 	app = App::getInstance ();
-	app->prefsMap.find (App::prefsAgentStatus, &items);
 
+	app->prefsMap.find (App::prefsAgentStatus, &items);
 	SDL_LockMutex (agentMapMutex);
 	i = items.begin ();
 	end = items.end ();
@@ -871,65 +1090,74 @@ void AgentControl::readPrefs () {
 		++i;
 	}
 	SDL_UnlockMutex (agentMapMutex);
-}
 
-void AgentControl::addQueueCommand (const StdString &queueId, AgentControl::CommandContext *ctx) {
-	std::map<StdString, AgentControl::CommandContextQueue>::iterator i;
-	AgentControl::CommandContextQueue *q;
-	bool shouldinvoke;
-
-	shouldinvoke = false;
-	SDL_LockMutex (commandQueueMutex);
-	i = commandQueueMap.find (queueId);
-	if (i == commandQueueMap.end ()) {
-		commandQueueMap.insert (std::pair<StdString, AgentControl::CommandContextQueue> (queueId, AgentControl::CommandContextQueue ()));
-		i = commandQueueMap.find (queueId);
-	}
-	if (i != commandQueueMap.end ()) {
-		ctx->queueId.assign (queueId);
-		q = &(i->second);
-		if (q->size () <= 0) {
-			shouldinvoke = true;
-		}
-		q->push (ctx);
-	}
-	SDL_UnlockMutex (commandQueueMutex);
-
-	if (shouldinvoke) {
-		processQueueCommand (queueId);
-	}
-}
-
-void AgentControl::processQueueCommand (const StdString &queueId, bool removeTop) {
-	App *app;
-	std::map<StdString, AgentControl::CommandContextQueue>::iterator i;
-	AgentControl::CommandContextQueue *q;
-	AgentControl::CommandContext *ctx, *sendctx;
-
-	app = App::getInstance ();
-	sendctx = NULL;
-	SDL_LockMutex (commandQueueMutex);
-	i = commandQueueMap.find (queueId);
-	if (i != commandQueueMap.end ()) {
-		q = &(i->second);
-		if (removeTop && (! q->empty ())) {
-			q->pop ();
-		}
-
-		if (q->empty ()) {
-			commandQueueMap.erase (i);
-		}
-		else {
-			ctx = q->front ();
-			if (! ctx->isActive) {
-				sendctx = ctx;
-				sendctx->isActive = true;
+	app->prefsMap.find (App::prefsServerAdminSecrets, &items);
+	SDL_LockMutex (adminSecretMutex);
+	adminSecretList.clear ();
+	i = items.begin ();
+	end = items.end ();
+	while (i != end) {
+		json = new Json ();
+		if (json->parse (*i) == Result::SUCCESS) {
+			val = json->getString (SECRET_KEY, "");
+			if (! val.empty ()) {
+				adminSecretList.push_back (getStringHash (val));
 			}
 		}
+		delete (json);
+		++i;
 	}
-	SDL_UnlockMutex (commandQueueMutex);
+	SDL_UnlockMutex (adminSecretMutex);
+}
 
-	if (sendctx) {
-		app->network.sendHttpPost (sendctx->url, sendctx->command->toString (), AgentControl::sendHttpPostComplete, sendctx);
+CommandList *AgentControl::findCommandList (const StdString &listName, bool createNew) {
+	std::map<StdString, CommandList *>::iterator pos;
+	CommandList *cmd;
+
+	pos = commandMap.find (listName);
+	if (pos != commandMap.end ()) {
+		return (pos->second);
 	}
+	if (! createNew) {
+		return (NULL);
+	}
+
+	cmd = new CommandList (listName);
+	commandMap.insert (std::pair<StdString, CommandList *> (listName, cmd));
+	return (cmd);
+}
+
+std::map<StdString, Agent>::iterator AgentControl::findAgent (const StdString &agentId, bool createNew) {
+	std::map<StdString, Agent>::iterator pos;
+	Agent item;
+
+	pos = agentMap.find (agentId);
+	if (pos != agentMap.end ()) {
+		return (pos);
+	}
+	if (! createNew) {
+		return (agentMap.end ());
+	}
+
+	item.id.assign (agentId);
+	agentMap.insert (std::pair<StdString, Agent> (agentId, item));
+	return (agentMap.find (agentId));
+}
+
+std::map<StdString, Agent>::iterator AgentControl::findAgent (const StdString &invokeHostname, int invokePort) {
+	std::map<StdString, Agent>::iterator i, end;
+
+	i = agentMap.begin ();
+	end = agentMap.end ();
+	while (i != end) {
+		if (i->second.invokeHostname.equals (invokeHostname) && (i->second.invokeTcpPort1 == invokePort)) {
+			return (i);
+		}
+		if (i->second.urlHostname.equals (invokeHostname) && (i->second.tcpPort1 == invokePort)) {
+			return (i);
+		}
+		++i;
+	}
+
+	return (end);
 }

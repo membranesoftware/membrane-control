@@ -61,6 +61,7 @@ public:
 	float maxCharacterHeight;
 	float descenderHeight;
 	bool isUnderlined;
+	bool isObscured;
 
 	// Remove characters from the end of a string value as needed for a Label to fit in the specified maximum width, including space for an optional truncate suffix
 	static void truncateText (StdString *text, int fontType, float maxWidth, const StdString &truncateSuffix = StdString (""));
@@ -76,6 +77,9 @@ public:
 
 	// Set the label's underline state
 	void setUnderlined (bool enable);
+
+	// Set the label's obscured state. If enabled, the label renders using spacer characters to conceal its value.
+	void setObscured (bool enable);
 
 	// Return the provided y position value, adjusted as appropriate for the label's line height
 	float getLinePosition (float targetY);

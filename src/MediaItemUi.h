@@ -79,8 +79,8 @@ public:
 	static void removeActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void createStreamButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void createStreamActionClosed (void *uiPtr, Widget *widgetPtr);
-	static void createMediaStreamComplete (void *uiPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand);
-	static void removeStreamComplete (void *uiPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand);
+	static void createMediaStreamComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
+	static void removeStreamComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
 
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
@@ -135,8 +135,6 @@ private:
 	float cardMaxImageWidth;
 	TimelineBar *timelineBar;
 	WidgetHandle thumbnailSizeMenu;
-	WidgetHandle actionWidget;
-	WidgetHandle actionTarget;
 	HashMap streamServerAgentMap;
 	int streamCount;
 };

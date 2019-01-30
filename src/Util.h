@@ -43,13 +43,6 @@ public:
 	static const float aspectRatioMatchEpsilon;
 	static const StdString serverUrl;
 
-	// Return a randomly chosen int value. The range, if provided, is inclusive.
-	static int randomInt (void);
-	static int randomInt (int i1, int i2);
-
-	// Return a randomly chosen float value within the provided inclusive range.
-	static float randomFloat (float f1, float f2);
-
 	// Return a direction value that has been normalized to the 0-360 degree range
 	static float normalizeDirection (float direction);
 

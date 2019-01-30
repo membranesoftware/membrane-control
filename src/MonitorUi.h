@@ -193,8 +193,6 @@ private:
 	Button *writePlaylistButton;
 	Button *addPlaylistItemButton;
 	StdString searchKey;
-	WidgetHandle actionWidget;
-	WidgetHandle actionTarget;
 	WidgetHandle emptyStateWindow;
 	WidgetHandle selectedStreamWindow;
 	WidgetHandle selectedPlaylistWindow;

@@ -51,6 +51,7 @@ public:
 	StdString selectedItemValue;
 	StdString selectedItemData;
 	bool isInverseColor;
+	bool hasItemData;
 
 	// Set a callback that should be invoked when the combo box's value changes
 	void setValueChangeCallback (Widget::EventCallback callback, void *callbackData);

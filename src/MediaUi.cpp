@@ -148,8 +148,6 @@ int MediaUi::doLoad () {
 
 void MediaUi::doUnload () {
 	thumbnailSizeMenu.clear ();
-	actionWidget.clear ();
-	actionTarget.clear ();
 	emptyStateWindow.clear ();
 	mediaServerResultOffsetMap.clear ();
 	mediaServerSetSizeMap.clear ();
@@ -202,7 +200,6 @@ void MediaUi::doResetSecondaryToolbar (Toolbar *toolbar) {
 
 void MediaUi::doClearPopupWidgets () {
 	thumbnailSizeMenu.destroyAndClear ();
-	actionWidget.destroyAndClear ();
 }
 
 void MediaUi::doResume () {
@@ -214,7 +211,6 @@ void MediaUi::doResume () {
 	searchField->setValue (searchKey);
 	cardView->setViewSize (app->windowWidth - app->rightBarWidth, app->windowHeight - app->topBarHeight - app->bottomBarHeight);
 	cardView->position.assign (0.0f, app->topBarHeight);
-	actionTarget.clear ();
 }
 
 void MediaUi::doPause () {
@@ -223,7 +219,6 @@ void MediaUi::doPause () {
 
 	app = App::getInstance ();
 	app->prefsMap.insert (App::prefsMediaImageSize, cardLayout);
-	actionTarget.clear ();
 
 	items.clear ();
 	cardView->processItems (MediaUi::appendExpandedAgentId, &items);
@@ -262,8 +257,6 @@ void MediaUi::doUpdate (int msElapsed) {
 
 	app = App::getInstance ();
 	thumbnailSizeMenu.compact ();
-	actionWidget.compact ();
-	actionTarget.compact ();
 	emptyStateWindow.compact ();
 
 	if (recordReceiveCount > 0) {
@@ -287,7 +280,7 @@ void MediaUi::doUpdate (int msElapsed) {
 					params->set ("searchKey", searchKey);
 					params->set ("resultOffset", offset);
 					params->set ("maxResults", MediaUi::pageSize);
-					app->agentControl.writeLinkCommand (app->createCommandJson ("FindItems", SystemInterface::Constant_Media, params), *i);
+					app->agentControl.writeLinkCommand (app->createCommand ("FindItems", SystemInterface::Constant_Media, params), *i);
 					offset += MediaUi::pageSize;
 					mediaServerResultOffsetMap.insert (*i, offset);
 				}
@@ -407,9 +400,9 @@ void MediaUi::handleLinkClientConnect (const StdString &agentId) {
 		params = new Json ();
 		params->set ("searchKey", searchKey);
 		params->set ("maxResults", MediaUi::pageSize);
-		app->agentControl.writeLinkCommand (app->createCommandJson ("FindItems", SystemInterface::Constant_Media, params), agentId);
+		app->agentControl.writeLinkCommand (app->createCommand ("FindItems", SystemInterface::Constant_Media, params), agentId);
 
-		app->agentControl.writeLinkCommand (app->createCommandJson ("FindItems", SystemInterface::Constant_Stream), agentId);
+		app->agentControl.writeLinkCommand (app->createCommand ("FindItems", SystemInterface::Constant_Stream), agentId);
 	}
 }
 
@@ -485,7 +478,7 @@ void MediaUi::loadSearchResults () {
 	params = new Json ();
 	params->set ("searchKey", searchKey);
 	params->set ("maxResults", MediaUi::pageSize);
-	app->agentControl.writeLinkCommand (app->createCommandJson ("FindItems", SystemInterface::Constant_Media, params));
+	app->agentControl.writeLinkCommand (app->createCommand ("FindItems", SystemInterface::Constant_Media, params));
 }
 
 void MediaUi::thumbnailSizeButtonClicked (void *uiPtr, Widget *widgetPtr) {
@@ -616,11 +609,14 @@ void MediaUi::resetMediaCardLayout (void *uiPtr, Widget *widgetPtr) {
 }
 
 void MediaUi::reloadButtonClicked (void *uiPtr, Widget *widgetPtr) {
+	App *app;
 	MediaUi *ui;
 
+	app = App::getInstance ();
 	ui = (MediaUi *) uiPtr;
 	ui->cardView->processRowItems (0, MediaUi::reloadAgent, ui);
 	ui->loadSearchResults ();
+	app->agentControl.writeLinkCommand (app->createCommand ("FindItems", SystemInterface::Constant_Stream));
 }
 
 void MediaUi::reloadAgent (void *uiPtr, Widget *widgetPtr) {
@@ -702,7 +698,7 @@ void MediaUi::mediaLibraryScanActionClicked (void *uiPtr, Widget *widgetPtr) {
 		return;
 	}
 
-	result = app->agentControl.invokeCommand (target->agentId, app->createCommand ("ScanMediaItems", SystemInterface::Constant_Media), NULL, NULL, NULL, target->agentId);
+	result = app->agentControl.invokeCommand (target->agentId, app->createCommand ("ScanMediaItems", SystemInterface::Constant_Media));
 	if (result != Result::SUCCESS) {
 		app->showSnackbar (app->uiText.getText (UiTextString::internalError));
 	}

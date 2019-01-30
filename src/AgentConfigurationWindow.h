@@ -38,6 +38,7 @@
 #include "Label.h"
 #include "Image.h"
 #include "Button.h"
+#include "Toggle.h"
 #include "RecordStore.h"
 #include "ActionWindow.h"
 #include "Panel.h"
@@ -52,6 +53,13 @@ public:
 	// Read-only data members
 	StdString agentId;
 	Json agentConfiguration;
+	bool isExpanded;
+
+	// Set a callback that should be invoked when the expand toggle's checked state changes
+	void setExpandStateChangeCallback (Widget::EventCallback callback, void *callbackData);
+
+	// Set the window's expand state, then execute any expand state change callback that might be configured unless shouldSkipStateChangeCallback is true
+	void setExpanded (bool expanded, bool shouldSkipStateChangeCallback = false);
 
 	// Invoke a command on the target agent to load its configuration fields
 	void loadConfiguration ();
@@ -62,8 +70,9 @@ public:
 	// Callback functions
 	static void applyButtonClicked (void *windowPtr, Widget *widgetPtr);
 	static void actionOptionChanged (void *windowPtr, Widget *widgetPtr);
-	static void invokeGetAgentConfigurationComplete (void *windowPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand);
-	static void invokeUpdateAgentConfigurationComplete (void *windowPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand);
+	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
+	static void invokeGetAgentConfigurationComplete (void *windowPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
+	static void invokeUpdateAgentConfigurationComplete (void *windowPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
 	static StdString mediaScanPeriodSliderValueName (float sliderValue);
 
 protected:
@@ -74,17 +83,17 @@ protected:
 	void refreshLayout ();
 
 private:
-	// Populate widgets as appropriate for the window's initial state
-	void populate ();
-
 	// Populate widgets as appropriate for fields in an AgentConfiguration command and return a Result value
 	int populateConfiguration (Json *command);
 
 	StdString agentPlatform;
 	Image *iconImage;
 	Label *titleLabel;
+	Toggle *expandToggle;
 	ActionWindow *actionWindow;
 	Button *applyButton;
+	Widget::EventCallback expandStateChangeCallback;
+	void *expandStateChangeCallbackData;
 };
 
 #endif

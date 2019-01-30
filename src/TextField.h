@@ -45,9 +45,17 @@ public:
 	float fieldWidth;
 	bool isEditing;
 	bool isInverseColor;
+	bool isPromptErrorColor;
+	bool isObscured;
 
 	// Set the text field's inverse color state. If enabled, the text field renders using an inverse color scheme.
 	void setInverseColor (bool inverse);
+
+	// Set the text field's prompt error color state. If enabled, the text field shows its prompt text in the UiConfiguration error color.
+	void setPromptErrorColor (bool enable);
+
+	// Set the text field's obscured state. If enabled, the text field renders using spacer characters to conceal its value.
+	void setObscured (bool enable);
 
 	// Return the text field's value
 	StdString getValue ();

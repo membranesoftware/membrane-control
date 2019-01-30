@@ -47,6 +47,7 @@
 ComboBox::ComboBox ()
 : Panel ()
 , isInverseColor (false)
+, hasItemData (false)
 , valueChangeCallback (NULL)
 , valueChangeCallbackData (NULL)
 , isExpanded (false)
@@ -150,7 +151,7 @@ void ComboBox::setValue (const StdString &value, bool shouldSkipChangeCallback) 
 }
 
 StdString ComboBox::getValue () {
-	if (! selectedItemData.empty ()) {
+	if (hasItemData) {
 		return (selectedItemData);
 	}
 
@@ -180,6 +181,10 @@ void ComboBox::addItem (const StdString &itemValue, const StdString &itemData) {
 	item.itemData.assign (itemData);
 	item.label = labelwindow;
 	itemList.push_back (item);
+
+	if (! itemData.empty ()) {
+		hasItemData = true;
+	}
 	refreshLayout ();
 }
 

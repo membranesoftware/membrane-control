@@ -31,6 +31,7 @@
 #ifndef SYSTEM_INTERFACE_H
 #define SYSTEM_INTERFACE_H
 
+#include <stdint.h>
 #include <map>
 #include <list>
 #include <vector>
@@ -44,6 +45,7 @@ public:
   static const int Command_AgentConfiguration = 45;
   static const int Command_AgentContact = 33;
   static const int Command_AgentStatus = 1;
+  static const int Command_AuthorizationRequired = 62;
   static const int Command_Authorize = 19;
   static const int Command_AuthorizeResult = 13;
   static const int Command_CancelTask = 28;
@@ -67,6 +69,7 @@ public:
   static const int Command_GetStatus = 8;
   static const int Command_GetThumbnailImage = 5;
   static const int Command_IntentState = 36;
+  static const int Command_LinkSuccess = 63;
   static const int Command_MediaDisplayIntentState = 51;
   static const int Command_MediaItem = 16;
   static const int Command_MediaServerStatus = 9;
@@ -81,6 +84,7 @@ public:
   static const int Command_ReportStatus = 2;
   static const int Command_ScanMediaItems = 58;
   static const int Command_ServerError = 20;
+  static const int Command_SetAdminSecret = 61;
   static const int Command_SetIntentActive = 38;
   static const int Command_ShowWebUrl = 34;
   static const int Command_ShutdownAgent = 43;
@@ -103,6 +107,7 @@ public:
   static const int ParamFlag_Url = 64;
   static const int ParamFlag_RangedNumber = 128;
   static const int ParamFlag_Command = 256;
+  static const int ParamFlag_EnumValue = 512;
   static const int Constant_MaxCommandPriority;
   static const char *Constant_CreateTimePrefixField;
   static const char *Constant_AgentIdPrefixField;
@@ -137,9 +142,10 @@ public:
 		StdString agentId;
 		StdString userId;
 		int priority;
+		int64_t createTime;
 		int64_t startTime;
 		int64_t duration;
-		Prefix (): priority (0), startTime (0), duration (0) { }
+		Prefix (): priority (0), createTime (0), startTime (0), duration (0) { }
 	};
 
 	struct Param {
@@ -163,14 +169,24 @@ public:
 
 	typedef void (*GetParamsFunction) (std::list<SystemInterface::Param> *destList);
 	typedef void (*PopulateDefaultFieldsFunction) (Json *destObject);
+	typedef void (*HashUpdateFunction) (void *contextPtr, unsigned char *data, int dataLength);
+	typedef StdString (*HashDigestFunction) (void *contextPtr);
+	typedef void (*HashFieldsFunction) (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
 
 	StdString lastError;
 	std::map<StdString, SystemInterface::Command> commandMap;
 	std::map<StdString, SystemInterface::GetParamsFunction> getParamsMap;
 	std::map<StdString, SystemInterface::PopulateDefaultFieldsFunction> populateDefaultFieldsMap;
+	std::map<StdString, SystemInterface::HashFieldsFunction> hashFieldsMap;
 
 	// Return a newly created Json object containing a command item, or NULL if the command could not be created. commandParams can be NULL if not needed, causing the resulting command to contain empty parameter fields. If commandParams is not NULL, this method becomes responsible for freeing the object when it's no longer needed.
 	Json *createCommand (const SystemInterface::Prefix &prefix, const char *commandName, int commandType, Json *commandParams);
+
+	// Populate a command's authorization prefix field using the provided values and hash functions. Returns a boolean value indicating if the field was successfully generated.
+	bool setCommandAuthorization (Json *command, const StdString &authSecret, const StdString &authToken, SystemInterface::HashUpdateFunction hashUpdateFn, SystemInterface::HashDigestFunction hashDigestFn, void *hashContextPtr);
+
+	// Return the authorization hash generated from the provided values and functions. If authToken is not provided, any available prefix auth token is used.
+	StdString getCommandAuthorizationHash (Json *command, const StdString &authSecret, const StdString &authToken, SystemInterface::HashUpdateFunction hashUpdateFn, SystemInterface::HashDigestFunction hashDigestFn, void *hashContextPtr);
 
 	// Find command data for the specified name and store fields into the provided struct. Returns a boolean value indicating if the command was found.
 	bool getCommand (const StdString &name, SystemInterface::Command *command);
@@ -180,6 +196,9 @@ public:
 
 	// Populate default fields in an object, as appropriate for the specified type name. Returns a boolean value indicating if the type was found.
 	bool populateDefaultFields (const StdString &typeName, Json *destObject);
+
+	// Update a hash digest using fields in an object, as appropriate for the specified type name
+	void hashFields (const StdString &typeName, Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
 
 	// Return a boolean value indicating if the provided fields are valid according to rules appearing in a Param list. If the fields are found to be invalid, this method sets the lastError value.
 	bool fieldsValid (Json *fields, std::list<SystemInterface::Param> *paramList);
@@ -281,6 +300,7 @@ public:
   static void getParams_ReportContact (std::list<SystemInterface::Param> *destList);
   static void getParams_ReportStatus (std::list<SystemInterface::Param> *destList);
   static void getParams_ServerError (std::list<SystemInterface::Param> *destList);
+  static void getParams_SetAdminSecret (std::list<SystemInterface::Param> *destList);
   static void getParams_SetIntentActive (std::list<SystemInterface::Param> *destList);
   static void getParams_ShowWebUrl (std::list<SystemInterface::Param> *destList);
   static void getParams_StreamItem (std::list<SystemInterface::Param> *destList);
@@ -329,6 +349,7 @@ public:
   static void populateDefaultFields_ReportContact (Json *destObject);
   static void populateDefaultFields_ReportStatus (Json *destObject);
   static void populateDefaultFields_ServerError (Json *destObject);
+  static void populateDefaultFields_SetAdminSecret (Json *destObject);
   static void populateDefaultFields_SetIntentActive (Json *destObject);
   static void populateDefaultFields_ShowWebUrl (Json *destObject);
   static void populateDefaultFields_StreamItem (Json *destObject);
@@ -340,5 +361,54 @@ public:
   static void populateDefaultFields_WatchEvents (Json *destObject);
   static void populateDefaultFields_WatchTasks (Json *destObject);
   static void populateDefaultFields_WebDisplayIntentState (Json *destObject);
+  static void hashFields_AgentConfiguration (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_AgentContact (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_AgentStatus (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_Authorize (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_AuthorizeResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_CancelTask (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_CommandResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_CreateCacheStream (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_CreateMediaDisplayIntent (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_CreateMediaStream (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_CreateWebDisplayIntent (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_EmptyObject (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_EventRecord (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_FindItems (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_FindMediaResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_FindStreamsResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_GetHlsHtml5Interface (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_GetHlsManifest (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_GetHlsSegment (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_GetMedia (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_GetThumbnailImage (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_IntentState (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_MediaDisplayIntentState (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_MediaDisplayItem (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_MediaItem (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_MediaServerConfiguration (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_MediaServerStatus (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_MonitorServerConfiguration (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_MonitorServerStatus (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_PlayCacheStream (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_PlayMedia (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_ReadEvents (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_RemoveIntent (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_RemoveStream (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_ReportContact (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_ReportStatus (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_ServerError (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_SetAdminSecret (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_SetIntentActive (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_ShowWebUrl (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_StreamItem (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_StreamServerConfiguration (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_StreamServerStatus (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_TaskItem (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_UpdateAgentConfiguration (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_UpdateIntentState (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_WatchEvents (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_WatchTasks (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_WebDisplayIntentState (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
 };
 #endif

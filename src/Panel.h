@@ -53,6 +53,29 @@ public:
 		HORIZONTAL = 2
 	};
 
+	// Read-write data members
+	Color bgColor;
+	Color borderColor;
+
+	// Read-only data members
+	float maxWidgetX, maxWidgetY;
+	int maxWidgetZLevel;
+	float viewOriginX, viewOriginY;
+	bool isViewOriginBoundEnabled;
+	float minViewOriginX, minViewOriginY;
+	float maxViewOriginX, maxViewOriginY;
+	float widthPadding, heightPadding;
+	bool isAlphaBlended;
+	float alpha;
+	float alphaTarget;
+	int alphaTransitionDuration;
+	bool isFilledBg;
+	bool isBordered;
+	bool isFixedSize;
+	bool isMouseDragScrollEnabled;
+	bool isWaiting;
+	int layout;
+
 	// Set the panel's alpha blend option. If enabled, the panel's fill bg and border are drawn with alpha blending of the specified amount.
 	void setAlphaBlend (bool enable, float blendAlpha = 1.0f);
 
@@ -109,28 +132,6 @@ public:
 	// Execute operations appropriate to sync widget state with records present in the provided RecordStore object, which has been locked prior to invocation
 	void syncRecordStore (RecordStore *store);
 
-	// Read-write data members
-	Color bgColor;
-	Color borderColor;
-
-	// Read-only data members
-	float maxWidgetX, maxWidgetY;
-	int maxWidgetZLevel;
-	float viewOriginX, viewOriginY;
-	bool isViewOriginBoundEnabled;
-	float minViewOriginX, minViewOriginY;
-	float maxViewOriginX, maxViewOriginY;
-	float widthPadding, heightPadding;
-	bool isAlphaBlended;
-	float alpha;
-	float alphaTarget;
-	int alphaTransitionDuration;
-	bool isFilledBg;
-	bool isBordered;
-	bool isFixedSize;
-	bool isMouseDragScrollEnabled;
-	bool isWaiting;
-
 protected:
 	// Execute operations to update object state as appropriate for an elapsed millisecond time period and origin position
 	virtual void doUpdate (int msElapsed, float originX, float originY);
@@ -159,7 +160,6 @@ protected:
 	// Check if the widget list is correctly sorted for drawing by z-level, and sort the list if not. This method should only be invoked while holding a lock on widgetListMutex.
 	void sortWidgetList ();
 
-	int layout;
 	bool isMouseInputStarted;
 	int lastMouseLeftUpCount, lastMouseLeftDownCount;
 	int lastMouseRightUpCount, lastMouseRightDownCount;

@@ -177,8 +177,6 @@ int MonitorUi::doLoad () {
 
 void MonitorUi::doUnload () {
 	selectedAgentMap.clear ();
-	actionTarget.clear ();
-	actionWidget.destroyAndClear ();
 	emptyStateWindow.destroyAndClear ();
 	selectedStreamWindow.clear ();
 	selectedPlaylistWindow.clear ();
@@ -283,7 +281,6 @@ void MonitorUi::doResetSecondaryToolbar (Toolbar *toolbar) {
 }
 
 void MonitorUi::doClearPopupWidgets () {
-	actionWidget.destroyAndClear ();
 	commandPopup.destroyAndClear ();
 	commandPopupSource.clear ();
 }
@@ -300,7 +297,6 @@ void MonitorUi::doResume () {
 	app->setNextBackgroundTexturePath ("ui/MonitorUi/bg");
 	cardView->setViewSize (app->windowWidth - app->rightBarWidth, app->windowHeight - app->topBarHeight - app->bottomBarHeight);
 	cardView->position.assign (0.0f, app->topBarHeight);
-	actionTarget.clear ();
 
 	searchField->setValue (searchKey);
 
@@ -417,8 +413,6 @@ void MonitorUi::doUpdate (int msElapsed) {
 	int64_t now;
 
 	app = App::getInstance ();
-	actionWidget.compact ();
-	actionTarget.compact ();
 	emptyStateWindow.compact ();
 	selectedPlaylistWindow.compact ();
 	commandPopup.compact ();
@@ -450,7 +444,7 @@ void MonitorUi::doUpdate (int msElapsed) {
 					params->set ("searchKey", streamSearchKey);
 					params->set ("resultOffset", offset);
 					params->set ("maxResults", MonitorUi::pageSize);
-					app->agentControl.writeLinkCommand (app->createCommandJson ("FindItems", SystemInterface::Constant_Stream, params), *i);
+					app->agentControl.writeLinkCommand (app->createCommand ("FindItems", SystemInterface::Constant_Stream, params), *i);
 					offset += MonitorUi::pageSize;
 					streamServerResultOffsetMap.insert (*i, offset);
 				}
@@ -671,7 +665,7 @@ void MonitorUi::handleLinkClientConnect (const StdString &agentId) {
 		params = new Json ();
 		params->set ("searchKey", streamSearchKey);
 		params->set ("maxResults", MonitorUi::pageSize);
-		app->agentControl.writeLinkCommand (app->createCommandJson ("FindItems", SystemInterface::Constant_Stream, params), agentId);
+		app->agentControl.writeLinkCommand (app->createCommand ("FindItems", SystemInterface::Constant_Stream, params), agentId);
 	}
 }
 
@@ -970,7 +964,7 @@ void MonitorUi::loadSearchResults () {
 	params = new Json ();
 	params->set ("searchKey", searchKey);
 	params->set ("maxResults", MonitorUi::pageSize);
-	app->agentControl.writeLinkCommand (app->createCommandJson ("FindItems", SystemInterface::Constant_Stream, params));
+	app->agentControl.writeLinkCommand (app->createCommand ("FindItems", SystemInterface::Constant_Stream, params));
 }
 
 void MonitorUi::commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr) {
@@ -1147,13 +1141,13 @@ void MonitorUi::stopButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	i = ui->selectedAgentMap.begin ();
 	while (ui->selectedAgentMap.hasNext (&i)) {
 		id = ui->selectedAgentMap.next (&i);
-		result = app->agentControl.invokeCommand (id, app->createCommand ("ClearDisplay", SystemInterface::Constant_Monitor), NULL, NULL, NULL, id);
+		result = app->agentControl.invokeCommand (id, app->createCommand ("ClearDisplay", SystemInterface::Constant_Monitor));
 		if (result != Result::SUCCESS) {
 			Log::write (Log::DEBUG, "Failed to invoke ClearDisplay command; err=%i agentId=\"%s\"", result, id.c_str ());
 		}
 		else {
 			++count;
-			app->agentControl.refreshAgentStatus (id, id);
+			app->agentControl.refreshAgentStatus (id);
 		}
 	}
 
@@ -1196,13 +1190,13 @@ void MonitorUi::playButtonClicked (void *uiPtr, Widget *widgetPtr) {
 		params->set ("streamUrl", streamurl);
 		params->set ("streamId", streamwindow->streamId);
 		params->set ("startPosition", streamwindow->selectedTimestamp / 1000.0f);
-		result = app->agentControl.invokeCommand (id, app->createCommand ("PlayMedia", SystemInterface::Constant_Monitor, params), NULL, NULL, NULL, id);
+		result = app->agentControl.invokeCommand (id, app->createCommand ("PlayMedia", SystemInterface::Constant_Monitor, params));
 		if (result != Result::SUCCESS) {
 			Log::write (Log::DEBUG, "Failed to invoke PlayMedia command; err=%i agentId=\"%s\"", result, id.c_str ());
 		}
 		else {
 			++count;
-			app->agentControl.refreshAgentStatus (id, id);
+			app->agentControl.refreshAgentStatus (id);
 		}
 	}
 
@@ -1253,13 +1247,13 @@ void MonitorUi::writePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	i = ui->selectedAgentMap.begin ();
 	while (ui->selectedAgentMap.hasNext (&i)) {
 		id = ui->selectedAgentMap.next (&i);
-		result = app->agentControl.invokeCommand (id, playlistwindow->getCreateCommand (), NULL, NULL, NULL, id);
+		result = app->agentControl.invokeCommand (id, playlistwindow->getCreateCommand ());
 		if (result != Result::SUCCESS) {
 			Log::write (Log::DEBUG, "Failed to invoke StreamPlaylistWindow create command; err=%i agentId=\"%s\"", result, id.c_str ());
 		}
 		else {
 			++count;
-			app->agentControl.refreshAgentStatus (id, id);
+			app->agentControl.refreshAgentStatus (id);
 		}
 	}
 

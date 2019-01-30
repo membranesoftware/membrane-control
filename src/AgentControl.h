@@ -35,23 +35,21 @@
 
 #include <map>
 #include <list>
-#include <queue>
+#include <vector>
 #include "SDL2/SDL.h"
 #include "StdString.h"
+#include "StringList.h"
 #include "Json.h"
-#include "SharedBuffer.h"
 #include "RecordStore.h"
-#include "HashMap.h"
 #include "Agent.h"
 #include "LinkClient.h"
+#include "CommandList.h"
 #include "Ui.h"
 
 class AgentControl {
 public:
 	AgentControl ();
 	~AgentControl ();
-
-	typedef void (*InvokeCommandCallback) (void *data, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand);
 
 	static const StdString localHostname;
 
@@ -82,15 +80,23 @@ public:
 	// Remove a previously requested link client connection
 	void disconnectLinkClient (const StdString &agentId);
 
-	// Write a command to the specified link client. An empty agentId value causes the command to be written to all connected link clients.
+	// Write a command to the specified link client. An empty agentId value causes the command to be written to all connected link clients. This method becomes responsible for deleting the command object when it's no longer needed.
 	void writeLinkCommand (Json *command, const StdString &agentId = StdString (""));
-	void writeLinkCommand (const StdString &commandJson, const StdString &agentId = StdString (""));
 
 	// Return a boolean value indicating if the specified link client is connected
 	bool isLinkClientConnected (const StdString &agentId);
 
 	// Return the number of active link client connections
 	int getLinkClientCount ();
+
+	// Return a boolean value indicating if an agent has been contacted at the specified hostname and port
+	bool isContacted (const StdString &invokeHostname, int invokePort);
+
+	// Return a boolean value indicating if the specified hostname and port is currently being contacted
+	bool isContacting (const StdString &invokeHostname, int invokePort);
+
+	// Return a boolean value indicating if the specified hostname and port has failed contact due to missing authorization credentials
+	bool isUnauthorized (const StdString &invokeHostname, int invokePort);
 
 	// Return a string containing the specified agent's display name, or an empty string if no such agent was found
 	StdString getAgentDisplayName (const StdString &agentId);
@@ -104,8 +110,8 @@ public:
 	// Return a string containing the specified agent's link URL, or an empty string if no such agent was found
 	StdString getAgentLinkUrl (const StdString &agentId);
 
-	// Store record data from a received AgentStatus command, optionally resetting its invoke hostname and port as part of the operation
-	void storeAgentStatus (Json *agentStatusCommand, const StdString &agentInvokeHostname = StdString (""), int agentInvokeTcpPort1 = 0);
+	// Store record data from a received AgentStatus command
+	void storeAgentStatus (Json *agentStatusCommand, const StdString &invokeHostname = StdString (""), int invokeTcpPort = 0);
 
 	// Send a network message to attempt contact with an agent at the specified address
 	void contactAgent (const StdString &hostname, int tcpPort);
@@ -115,50 +121,62 @@ public:
 
 	// Invoke the GetStatus command from the specified agent and update its record if successful
 	void refreshAgentStatus (const StdString &agentId, const StdString &queueId = StdString (""));
+	void refreshAgentStatus (const StdString &invokeHostname, int invokeTcpPort, const StdString &queueId = StdString (""));
 
 	// Remove any previously stored records associated with the specified agent
 	void removeAgent (const StdString &agentId);
 
-	// Invoke a command from a remote agent, gather response data, and invoke the provided callback when complete. A non-empty queueId value indicates that the command should be executed serially with others of the same name. This class becomes responsible for freeing the submitted command object when it's no longer needed. Returns a result value indicating if the command was accepted. If successful, the method stores a jobId value in the provided pointer.
-	int invokeCommand (const StdString &agentId, Json *command, AgentControl::InvokeCommandCallback callback = NULL, void *callbackData = NULL, int64_t *jobId = NULL, const StdString &queueId = StdString (""));
-	int invokeCommand (const StdString &hostname, int tcpPort, Json *command, AgentControl::InvokeCommandCallback callback = NULL, void *callbackData = NULL, int64_t *jobId = NULL, const StdString &queueId = StdString (""));
+	// Invoke a command from a remote agent, gather response data, and execute the provided callback when complete. A non-empty queueId value indicates that the command should be executed serially with others of the same queueId. This class becomes responsible for freeing the submitted command object when it's no longer needed. Returns a result value indicating if the command was accepted.
+	int invokeCommand (const StdString &hostname, int tcpPort, Json *command, CommandList::InvokeCallback callback = NULL, void *callbackData = NULL, const StdString &queueId = StdString (""));
+	int invokeCommand (const StdString &agentId, Json *command, CommandList::InvokeCallback callback = NULL, void *callbackData = NULL, const StdString &queueId = StdString (""));
 
 	// Parse the provided message data as a command payload received from a remote agent
 	void receiveMessage (const char *messageData, int messageLength);
 
+	// Add an entry to the list of secrets
+	void addAdminSecret (const StdString &entryName, const StdString &entrySecret);
+
+	// Remove an entry from the list of secrets
+	void removeAdminSecret (const StdString &entryName);
+
+	// Return the secret value associated with the specified entry name, or an empty string if the entry wasn't found
+	StdString getAdminSecret (const StdString &entryName);
+
+	// Clear the provided list and populate it with entry names from the list of secrets
+	void getAdminSecretNames (StringList *destList);
+
+	// Set authorization prefix fields in the provided command object using the specified secret and an optional token, then store the associated authorization path in the provided string. Returns a boolean value indicating if the authorization fields were successfully applied.
+	bool setCommandAuthorization (Json *command, int secretIndex, const StdString &authToken = StdString (""), StdString *authPath = NULL);
+
 	// Return the base invoke URL associated with the provided hostname / port pair
-	StdString getHostInvokeUrl (const StdString &hostname, int tcpPort);
+	StdString getHostInvokeUrl (const StdString &hostname, int tcpPort, const StdString &path = StdString ("/"));
+
+	// Return the map key associated with the provided hostname / port pair
+	StdString getMapKey (const StdString &hostname, int tcpPort);
+
+	// Return a hash value computed from the provided source string, or an empty string if the hash operation failed
+	StdString getStringHash (const StdString &sourceString);
 
 	// Callback functions
-	static void sendHttpPostComplete (void *contextPtr, const StdString &targetUrl, int statusCode, SharedBuffer *responseData);
 	static void linkClientConnect (void *agentControlPtr, LinkClient *client);
 	static void linkClientDisconnect (void *agentControlPtr, LinkClient *client, const StdString &errorDescription);
 	static void linkClientCommand (void *agentControlPtr, LinkClient *client, Json *command);
-	static void invokeGetStatusComplete (void *agentControlPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand);
-	static void invokeLinkServerGetStatusComplete (void *agentControlPtr, int64_t jobId, int jobResult, const StdString &agentId, Json *command, Json *responseCommand);
+	static void invokeGetStatusComplete (void *agentControlPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
+	static void hashUpdate (void *contextPtr, unsigned char *data, int dataLength);
+	static StdString hashDigest (void *contextPtr);
 
 private:
-	struct CommandContext {
-		StdString agentId;
-		StdString queueId;
-		StdString url;
-		Json *command;
-		int64_t jobId;
-		AgentControl::InvokeCommandCallback callback;
-		void *callbackData;
-		bool isActive;
-		CommandContext (): agentId (""), queueId (""), url (""), command (NULL), jobId (0), callback (NULL), callbackData (NULL), isActive (false) { }
-	};
-	typedef std::queue<AgentControl::CommandContext *> CommandContextQueue;
-
-	// Destroy the provided CommandContext object
-	void destroyCommandContext (AgentControl::CommandContext *ctx);
-
 	// Remove all items from the link client map
 	void clearLinkClients ();
 
-	// Remove all items from the command queue map
-	void clearCommandQueues ();
+	// Update link clients as appropriate for an elapsed millisecond time period
+	void updateLinkClients (int msElapsed);
+
+	// Remove all items from the command map
+	void clearCommandMap ();
+
+	// Update the command map as appropriate for an elapsed millisecond time period
+	void updateCommandMap (int msElapsed);
 
 	// Write an application preferences value containing cached agent status data
 	void writePrefs ();
@@ -166,27 +184,26 @@ private:
 	// Read previously cached agent status data from preferences
 	void readPrefs ();
 
-	// Add a CommandContext for execution in serial within the specified queue
-	void addQueueCommand (const StdString &queueId, AgentControl::CommandContext *ctx);
+	// Return the CommandList object of the specified name, or NULL if the object wasn't found. If createNew is true, create the named list if it doesn't already exist. This method should be invoked only while holding a lock on commandMapMutex.
+	CommandList *findCommandList (const StdString &listName, bool createNew = false);
 
-	// If the specified command queue is populated but not executing a request, execute the next stored item. If removeTop is true, remove the top item from the queue before attempting to execute the next one.
-	void processQueueCommand (const StdString &queueId, bool removeTop = false);
+	// Return an iterator positioned at the specified agentMap entry, or at the map end if the entry wasn't found. If createNew is true, create the entry if it doesn't already exist. This method should be invoked only while holding a lock on agentMapMutex.
+	std::map<StdString, Agent>::iterator findAgent (const StdString &agentId, bool createNew = false);
+	std::map<StdString, Agent>::iterator findAgent (const StdString &invokeHostname, int invokePort);
 
 	bool isStarted;
 	std::map<StdString, LinkClient *> linkClientMap;
 	std::list<LinkClient *> linkClientCloseList;
 	SDL_mutex *linkClientMutex;
-	std::map<StdString, AgentControl::CommandContextQueue> commandQueueMap;
-	SDL_mutex *commandQueueMutex;
 
 	std::map<StdString, Agent> agentMap;
 	SDL_mutex *agentMapMutex;
 
-	// A map of agent ID values to link URLs
-	HashMap agentLinkUrlMap;
+	std::map<StdString, CommandList *> commandMap;
+	SDL_mutex *commandMapMutex;
 
-	// A map of network job ID values to associated hostname:port pairs
-	HashMap agentContactHostnameMap;
+	std::vector<StdString> adminSecretList;
+	SDL_mutex *adminSecretMutex;
 };
 
 #endif
