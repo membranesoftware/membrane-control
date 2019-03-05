@@ -40,6 +40,7 @@
 #include "CardView.h"
 #include "Toolbar.h"
 #include "AdminSecretWindow.h"
+#include "HelpWindow.h"
 #include "Ui.h"
 
 class ServerUi : public Ui {
@@ -56,21 +57,15 @@ public:
 	ServerUi ();
 	~ServerUi ();
 
-	// Return text that should be used to identify the UI in a set of breadcrumb actions, or an empty string if no such title exists
-	StdString getBreadcrumbTitle ();
-
-	// Return a newly created Sprite object that should be used to identify the UI in a set of breadcrumb actions, or NULL if no such Sprite exists. If a Sprite is returned by this method, the caller becomes responsible for destroying it when no longer needed.
-	Sprite *getBreadcrumbSprite ();
-
 	// Set fields in the provided HelpWindow widget as appropriate for the UI's help content
-	void setHelpWindowContent (Widget *helpWindowPtr);
+	void setHelpWindowContent (HelpWindow *helpWindow);
 
 	// Callback functions
 	static void processAgentStatus (void *uiPtr, Json *record, const StdString &recordId);
 	static void reloadButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void reloadAgent (void *uiPtr, Widget *widgetPtr);
 	static void countServerContactWindows (void *uiPtr, Widget *widgetPtr);
-	static void findDeletedServerContactWindows (void *uiPtr, Widget *widgetPtr);
+	static void findDeletedWindows (void *uiPtr, Widget *widgetPtr);
 	static void serverContactWindowStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void broadcastButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void addressToggleStateChanged (void *uiPtr, Widget *widgetPtr);
@@ -88,17 +83,14 @@ protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
 	StdString getSpritePath ();
 
+	// Return a newly created widget for use as a main toolbar breadcrumb item
+	Widget *createBreadcrumbWidget ();
+
 	// Load subclass-specific resources and return a result value
 	int doLoad ();
 
 	// Unload subclass-specific resources
 	void doUnload ();
-
-	// Add subclass-specific items to the provided main toolbar object
-	void doResetMainToolbar (Toolbar *toolbar);
-
-	// Add subclass-specific items to the provided secondary toolbar object
-	void doResetSecondaryToolbar (Toolbar *toolbar);
 
 	// Remove and destroy any subclass-specific popup widgets that have been created by the UI
 	void doClearPopupWidgets ();
@@ -118,8 +110,14 @@ protected:
 	// Reload subclass-specific interface resources as needed to account for a new application window size
 	void doResize ();
 
-	// Execute subclass-specific operations to sync state with records present in the provided RecordStore object, which has been locked prior to invocation
-	void doSyncRecordStore (RecordStore *store);
+	// Add subclass-specific items to the provided main toolbar object
+	void doAddMainToolbarItems (Toolbar *toolbar);
+
+	// Add subclass-specific items to the provided secondary toolbar object
+	void doAddSecondaryToolbarItems (Toolbar *toolbar);
+
+	// Execute subclass-specific operations to sync state with records present in the application's RecordStore object, which has been locked prior to invocation
+	void doSyncRecordStore ();
 
 private:
 	CardView *cardView;

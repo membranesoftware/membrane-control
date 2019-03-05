@@ -28,38 +28,16 @@
 * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 * POSSIBILITY OF SUCH DAMAGE.
 */
-// Utility functions
+// Utility methods for operating system functions
 
-#ifndef UTIL_H
-#define UTIL_H
+#ifndef OS_UTIL_H
+#define OS_UTIL_H
 
-#include <map>
-#include "SDL2/SDL_rwops.h"
 #include "StdString.h"
 
-class Util {
+class OsUtil {
 public:
 	static const char *monthNames[];
-	static const float aspectRatioMatchEpsilon;
-	static const StdString serverUrl;
-
-	// Return a direction value that has been normalized to the 0-360 degree range
-	static float normalizeDirection (float direction);
-
-	// Return the distance between the provided pair of coordinate positions
-	static float getDistance (float x1, float y1, float x2, float y2);
-
-	// Return the distance value held by the provided direction vector
-	static float getDistance (float dx, float dy);
-
-	// Compute vector positions for the specified direction and store them using the provided pointers
-	static void getDirectionVector (float direction, float scale, float *dx, float *dy);
-
-	// Return the direction value indicated by the provided vector, in degrees
-	static float getVectorDirection (float dx, float dy);
-
-	// Parse a hex string and store the resulting numeric value using the provided pointer. Returns a Result value.
-	static int parseHexString (const char *str, int *intValue);
 
 	// Return the current time in milliseconds since the epoch
 	static int64_t getTime ();
@@ -72,7 +50,7 @@ public:
 		HOURS = 3,
 		DAYS = 4
 	};
-	static StdString getDurationString (int64_t duration, int minUnitType = Util::MILLISECONDS);
+	static StdString getDurationString (int64_t duration, int minUnitType = OsUtil::MILLISECONDS);
 
 	// Return a string containing a value representing the specified millisecond duration in readable format
 	static StdString getDurationDisplayString (int64_t duration);
@@ -98,19 +76,6 @@ public:
 	// Return a string containing text representing the specified storage numbers in readable format
 	static StdString getStorageAmountDisplayString (int64_t bytesFree, int64_t bytesTotal);
 
-	// Return a string containing the name of the specified aspect ratio, or an empty string if no such name was found.
-	static StdString getAspectRatioDisplayString (int width, int height);
-	static StdString getAspectRatioDisplayString (float ratio);
-
-	// Return a string containing text representing the specified bitrate in readable format
-	static StdString getBitrateDisplayString (int64_t bitsPerSecond);
-
-	// Return a string containing the name of the specified frame size, or an empty string if no such name was found.
-	static StdString getFrameSizeName (int width, int height);
-
-	// Return a string containing the provided address, removing its port suffix if it matches the specified default
-	static StdString getAddressDisplayString (const StdString &address, int defaultPort);
-
 	// Return a string containing a base path with the provided name appended as a sub-path
 	static StdString getAppendPath (const StdString &basePath, const StdString &appendName);
 
@@ -128,33 +93,18 @@ public:
 	static StdString getEnvValue (const StdString &key, const char *defaultValue);
 	static bool getEnvValue (const StdString &key, bool defaultValue);
 
-	// Write a value to an SDL_RWops object. Returns a Result value.
-	static int writeValue (SDL_RWops *dest, Uint64 value);
-
-	// Read a value from an SDL_RWops object and store it in the provided pointer. Returns a Result value.
-	static int readValue (SDL_RWops *src, Uint64 *value);
-
-	// Launch the system's default browser to open the specified URL. Returns a Result value.
-	static int openUrl (const StdString &url);
-
-	// Return the URL that should be used for viewing the specified help topic ID
-	static StdString getHelpUrl (const StdString &topicId);
-	static StdString getHelpUrl (const char *topicId);
-
-	// Return the URL that should be used for downloading the specified application
-	static StdString getApplicationUrl (const StdString &applicationId);
-
-	// Return the URL that should be used for viewing information about the specified feature
-	static StdString getFeatureUrl (const StdString &featureId);
-
-	// Return the URL that should be used for application feedback, optionally appending an ID value that specifies the application version
-	static StdString getFeedbackUrl (bool shouldIncludeVersion = false);
-
-	// Return the URL that should be used for updates targeting the specified application ID, or the current application if no ID value is provided
-	static StdString getUpdateUrl (const StdString &applicationId = StdString (""));
+	// Return the language identifier from the environment, or the specified default if no such value was found
+	static StdString getEnvLanguage (const StdString &defaultValue);
+	static StdString getEnvLanguage (const char *defaultValue);
 
 	// Return a string containing the provided text, prepended with a protocol prefix "protocol://" if one isn't already present
 	static StdString getProtocolString (const StdString &sourceText, const StdString &protocol = StdString ("http"));
+
+	// Return a string containing the provided address, removing its port suffix if it matches the specified default
+	static StdString getAddressDisplayString (const StdString &address, int defaultPort);
+
+	// Launch the system's default browser to open the specified URL. Returns a Result value.
+	static int openUrl (const StdString &url);
 };
 
 #endif

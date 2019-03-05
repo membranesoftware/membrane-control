@@ -57,13 +57,14 @@ public:
 	StdString agentDisplayName;
 	StdString applicationId;
 	bool isRecordLoaded;
+	bool isRecordDeleted;
 	float menuPositionY;
 
 	// Set a callback function that should be invoked when the window's menu button is pressed
 	void setMenuClickCallback (Widget::EventCallback callback, void *callbackData);
 
-	// Execute operations appropriate to sync widget state with records present in the provided RecordStore object, which has been locked prior to invocation
-	void syncRecordStore (RecordStore *store);
+	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
+	void syncRecordStore ();
 
 	// Return a boolean value indicating if the provided Widget is a member of this class
 	static bool isWidgetType (Widget *widget);

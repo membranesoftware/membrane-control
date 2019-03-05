@@ -35,7 +35,6 @@
 #include "StdString.h"
 #include "App.h"
 #include "UiText.h"
-#include "Util.h"
 #include "Widget.h"
 #include "Color.h"
 #include "Json.h"
@@ -58,7 +57,7 @@ SnackbarWindow::SnackbarWindow (float maxWidth)
 {
 	UiConfiguration *uiconfig;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 
 	backgroundPanel = (Panel *) addWidget (new Panel ());
 	backgroundPanel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
@@ -165,7 +164,7 @@ void SnackbarWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y, w;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 
 	x = backgroundPanel->widthPadding;
 	y = backgroundPanel->heightPadding;

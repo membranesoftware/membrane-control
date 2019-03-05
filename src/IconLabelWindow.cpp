@@ -34,7 +34,6 @@
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
-#include "Util.h"
 #include "Sprite.h"
 #include "Widget.h"
 #include "Color.h"
@@ -55,7 +54,7 @@ IconLabelWindow::IconLabelWindow (Sprite *iconSprite, const StdString &iconText,
 {
 	UiConfiguration *uiconfig;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	setPadding (uiconfig->paddingSize, 0.0f);
 
 	normalTextColor.assign (iconTextColor);
@@ -80,7 +79,7 @@ void IconLabelWindow::setText (const StdString &text) {
 	if (isTextChangeHighlightEnabled) {
 		if ((! label->text.empty ()) && (! text.equals (label->text))) {
 			label->textColor.assign (highlightTextColor);
-			label->textColor.rotate (normalTextColor, App::getInstance ()->uiConfig.longColorRotateDuration);
+			label->textColor.translate (normalTextColor, App::instance->uiConfig.longColorTranslateDuration);
 		}
 	}
 	label->setText (text);
@@ -131,7 +130,7 @@ void IconLabelWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y, h;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 

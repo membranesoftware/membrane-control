@@ -47,6 +47,9 @@ public:
 	// Reset the toolbar's width
 	void setWidth (float toolbarWidth);
 
+	// Return a boolean value indicating if the toolbar contains no items
+	bool empty ();
+
 	// Remove all items, overlays, and corner widgets from the bar
 	void clearAll ();
 

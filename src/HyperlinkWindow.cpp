@@ -35,7 +35,7 @@
 #include "StdString.h"
 #include "App.h"
 #include "UiText.h"
-#include "Util.h"
+#include "OsUtil.h"
 #include "Widget.h"
 #include "Panel.h"
 #include "Label.h"
@@ -54,8 +54,8 @@ HyperlinkWindow::HyperlinkWindow (const StdString &linkText, const StdString &li
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
-	uitext = &(App::getInstance ()->uiText);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 
 	label = (Label *) addWidget (new Label (linkText, fontType, uiconfig->linkTextColor));
 	label->isInputSuspended = true;
@@ -108,7 +108,6 @@ void HyperlinkWindow::refreshLayout () {
 
 void HyperlinkWindow::windowClicked (void *windowPtr, Widget *widgetPtr) {
 	HyperlinkWindow *window;
-	App *app;
 	int result;
 
 	window = (HyperlinkWindow *) windowPtr;
@@ -116,13 +115,12 @@ void HyperlinkWindow::windowClicked (void *windowPtr, Widget *widgetPtr) {
 		return;
 	}
 
-	app = App::getInstance ();
-	result = Util::openUrl (window->url);
+	result = OsUtil::openUrl (window->url);
 	if (result != Result::SUCCESS) {
-		app->showSnackbar (app->uiText.getText (UiTextString::openHelpUrlError));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::openHelpUrlError));
 	}
 	else {
-		app->showSnackbar (StdString::createSprintf ("%s - %s", app->uiText.getText (UiTextString::launchedWebBrowser).capitalized ().c_str (), window->url.c_str ()));
+		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::launchedWebBrowser).capitalized ().c_str (), window->url.c_str ()));
 	}
 }
 
@@ -131,9 +129,9 @@ void HyperlinkWindow::windowMouseEntered (void *windowPtr, Widget *widgetPtr) {
 	UiConfiguration *uiconfig;
 
 	window = (HyperlinkWindow *) windowPtr;
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	window->label->setUnderlined (false);
-	window->label->textColor.rotate (uiconfig->lightPrimaryTextColor, uiconfig->shortColorRotateDuration);
+	window->label->textColor.translate (uiconfig->lightPrimaryTextColor, uiconfig->shortColorTranslateDuration);
 }
 
 void HyperlinkWindow::windowMouseExited (void *windowPtr, Widget *widgetPtr) {
@@ -141,7 +139,7 @@ void HyperlinkWindow::windowMouseExited (void *windowPtr, Widget *widgetPtr) {
 	UiConfiguration *uiconfig;
 
 	window = (HyperlinkWindow *) windowPtr;
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	window->label->setUnderlined (true);
-	window->label->textColor.rotate (uiconfig->linkTextColor, uiconfig->shortColorRotateDuration);
+	window->label->textColor.translate (uiconfig->linkTextColor, uiconfig->shortColorTranslateDuration);
 }

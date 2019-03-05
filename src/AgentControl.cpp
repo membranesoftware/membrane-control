@@ -38,7 +38,7 @@
 #include "App.h"
 #include "Result.h"
 #include "Log.h"
-#include "Util.h"
+#include "OsUtil.h"
 #include "StdString.h"
 #include "Json.h"
 #include "SystemInterface.h"
@@ -304,7 +304,7 @@ void AgentControl::connectLinkClient (const StdString &agentId) {
 
 	url = getAgentLinkUrl (agentId);
 	if (url.empty ()) {
-		Log::write (Log::WARNING, "Failed to connect link client, URL not found; agentId=\"%s\"", agentId.c_str ());
+		Log::warning ("Failed to connect link client, URL not found; agentId=\"%s\"", agentId.c_str ());
 		return;
 	}
 
@@ -335,18 +335,15 @@ void AgentControl::disconnectLinkClient (const StdString &agentId) {
 }
 
 void AgentControl::linkClientConnect (void *agentControlPtr, LinkClient *client) {
-	App::getInstance ()->handleLinkClientConnect (client->agentId);
+	App::instance->handleLinkClientConnect (client->agentId);
 }
 
 void AgentControl::linkClientDisconnect (void *agentControlPtr, LinkClient *client, const StdString &errorDescription) {
-	App::getInstance ()->handleLinkClientDisconnect (client->agentId, errorDescription);
+	App::instance->handleLinkClientDisconnect (client->agentId, errorDescription);
 }
 
 void AgentControl::linkClientCommand (void *agentControlPtr, LinkClient *client, Json *command) {
-	App *app;
-
-	app = App::getInstance ();
-	app->handleLinkClientCommand (client->agentId, command);
+	App::instance->handleLinkClientCommand (client->agentId, command);
 }
 
 void AgentControl::writeLinkCommand (Json *command, const StdString &agentId) {
@@ -558,7 +555,7 @@ StdString AgentControl::getAgentLinkUrl (const StdString &agentId) {
 }
 
 StdString AgentControl::getHostInvokeUrl (const StdString &hostname, int tcpPort, const StdString &path) {
-	return (StdString::createSprintf ("%s://%s:%i%s%s", App::getInstance ()->isHttpsEnabled ? "https" : "http", hostname.c_str (), tcpPort, path.startsWith ("/") ? "" : "/", path.c_str ()));
+	return (StdString::createSprintf ("%s://%s:%i%s%s", App::instance->isHttpsEnabled ? "https" : "http", hostname.c_str (), tcpPort, path.startsWith ("/") ? "" : "/", path.c_str ()));
 }
 
 StdString AgentControl::getMapKey (const StdString &hostname, int tcpPort) {
@@ -572,21 +569,21 @@ StdString AgentControl::getStringHash (const StdString &sourceString) {
 
 	ctx = EVP_MD_CTX_create ();
 	if (! ctx) {
-		Log::write (Log::ERR, "Failed to compute string hash; err=EVP_MD_CTX_create failed");
+		Log::err ("Failed to compute string hash; err=EVP_MD_CTX_create failed");
 		return (StdString (""));
 	}
 
 	len = 0;
 	if (EVP_DigestInit_ex (ctx, EVP_sha256 (), NULL) != 1) {
-		Log::write (Log::ERR, "Failed to compute string hash; err=EVP_DigestInit_ex failed");
+		Log::err ("Failed to compute string hash; err=EVP_DigestInit_ex failed");
 	}
 	else {
 		if (EVP_DigestUpdate (ctx, sourceString.c_str (), sourceString.length ()) != 1) {
-			Log::write (Log::ERR, "Failed to compute string hash; err=EVP_DigestUpdate failed");
+			Log::err ("Failed to compute string hash; err=EVP_DigestUpdate failed");
 		}
 		else {
 			if (EVP_DigestFinal_ex (ctx, digest, &len) != 1) {
-				Log::write (Log::ERR, "Failed to compute string hash; err=EVP_DigestFinal_ex failed");
+				Log::err ("Failed to compute string hash; err=EVP_DigestFinal_ex failed");
 			}
 		}
 	}
@@ -600,10 +597,7 @@ StdString AgentControl::getStringHash (const StdString &sourceString) {
 }
 
 void AgentControl::contactAgent (const StdString &hostname, int tcpPort) {
-	App *app;
-
-	app = App::getInstance ();
-	invokeCommand (hostname, tcpPort, app->createCommand ("GetStatus", SystemInterface::Constant_DefaultCommandType), AgentControl::invokeGetStatusComplete, this);
+	invokeCommand (hostname, tcpPort, App::instance->createCommand (SystemInterface::Command_GetStatus, SystemInterface::Constant_DefaultCommandType), AgentControl::invokeGetStatusComplete, this);
 }
 
 void AgentControl::retryAgents () {
@@ -631,18 +625,12 @@ void AgentControl::retryAgents () {
 }
 
 void AgentControl::refreshAgentStatus (const StdString &agentId, const StdString &queueId) {
-	App *app;
-
-	app = App::getInstance ();
-	invokeCommand (agentId, app->createCommand ("GetStatus", SystemInterface::Constant_DefaultCommandType), AgentControl::invokeGetStatusComplete, this, queueId);
+	invokeCommand (agentId, App::instance->createCommand (SystemInterface::Command_GetStatus, SystemInterface::Constant_DefaultCommandType), AgentControl::invokeGetStatusComplete, this, queueId);
 }
 
 void AgentControl::refreshAgentStatus (const StdString &invokeHostname, int invokeTcpPort, const StdString &queueId) {
-	App *app;
 	StdString agentid;
 	std::map<StdString, Agent>::iterator pos;
-
-	app = App::getInstance ();
 
 	SDL_LockMutex (agentMapMutex);
 	pos = findAgent (invokeHostname, invokeTcpPort);
@@ -653,7 +641,7 @@ void AgentControl::refreshAgentStatus (const StdString &invokeHostname, int invo
 	if (agentid.empty ()) {
 		return;
 	}
-	invokeCommand (agentid, app->createCommand ("GetStatus", SystemInterface::Constant_DefaultCommandType), AgentControl::invokeGetStatusComplete, this, queueId);
+	invokeCommand (agentid, App::instance->createCommand (SystemInterface::Command_GetStatus, SystemInterface::Constant_DefaultCommandType), AgentControl::invokeGetStatusComplete, this, queueId);
 }
 
 void AgentControl::removeAgent (const StdString &agentId) {
@@ -735,50 +723,46 @@ int AgentControl::invokeCommand (const StdString &agentId, Json *command, Comman
 }
 
 void AgentControl::broadcastContactMessage () {
-	App *app;
 	Json *params, *cmd;
 	StdString msg;
 
-	app = App::getInstance ();
 	params = new Json ();
-	params->set ("destination", StdString::createSprintf ("udp://%s:%i", urlHostname.c_str (), app->network.datagramPort));
-	cmd = app->createCommand ("ReportContact", SystemInterface::Constant_DefaultCommandType, params);
+	params->set ("destination", StdString::createSprintf ("udp://%s:%i", urlHostname.c_str (), App::instance->network.datagramPort));
+	cmd = App::instance->createCommand (SystemInterface::Command_ReportContact, SystemInterface::Constant_DefaultCommandType, params);
 	if (! cmd) {
 		return;
 	}
 	msg = cmd->toString ();
 	delete (cmd);
-	app->network.sendBroadcastDatagram (agentDatagramPort, msg.createBuffer ());
+	App::instance->network.sendBroadcastDatagram (agentDatagramPort, msg.createBuffer ());
 }
 
 void AgentControl::receiveMessage (const char *messageData, int messageLength) {
-	App *app;
 	Json *command;
 	int commandid;
 
-	app = App::getInstance ();
-	if (! app->systemInterface.parseCommand (StdString (messageData, messageLength), &command)) {
+	if (! App::instance->systemInterface.parseCommand (StdString (messageData, messageLength), &command)) {
 		return;
 	}
 
-	commandid = app->systemInterface.getCommandId (command);
+	commandid = App::instance->systemInterface.getCommandId (command);
 	switch (commandid) {
-		case SystemInterface::Command_AgentStatus: {
+		case SystemInterface::CommandId_AgentStatus: {
 			AgentControl *agentcontrol;
 
-			agentcontrol = &(app->agentControl);
+			agentcontrol = &(App::instance->agentControl);
 			agentcontrol->storeAgentStatus (command);
 			break;
 		}
-		case SystemInterface::Command_AgentContact: {
+		case SystemInterface::CommandId_AgentContact: {
 			AgentControl *agentcontrol;
 			SystemInterface *interface;
 			StdString agentid, hostname;
 			int port;
 			bool found;
 
-			agentcontrol = &(app->agentControl);
-			interface = &(app->systemInterface);
+			agentcontrol = &(App::instance->agentControl);
+			interface = &(App::instance->systemInterface);
 			agentid = interface->getCommandStringParam (command, "id", "");
 			SDL_LockMutex (agentcontrol->agentMapMutex);
 			found = (agentcontrol->agentMap.count (agentid) > 0);
@@ -798,30 +782,26 @@ void AgentControl::receiveMessage (const char *messageData, int messageLength) {
 }
 
 void AgentControl::invokeGetStatusComplete (void *agentControlPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand) {
-	App *app;
 	AgentControl *agentcontrol;
 
-	app = App::getInstance ();
 	agentcontrol = (AgentControl *) agentControlPtr;
 
 	if (responseCommand) {
 		agentcontrol->storeAgentStatus (responseCommand, invokeHostname, invokeTcpPort);
-		app->shouldSyncRecordStore = true;
+		App::instance->shouldSyncRecordStore = true;
 	}
 }
 
 void AgentControl::storeAgentStatus (Json *agentStatusCommand, const StdString &invokeHostname, int invokeTcpPort) {
-	App *app;
 	SystemInterface *interface;
 	int commandid;
-	StdString recordid;
+	StdString recordid, removeid;
 	Agent agent;
 	std::map<StdString, Agent>::iterator pos;
 
-	app = App::getInstance ();
-	interface = &(app->systemInterface);
+	interface = &(App::instance->systemInterface);
 	commandid = interface->getCommandId (agentStatusCommand);
-	if (commandid != SystemInterface::Command_AgentStatus) {
+	if (commandid != SystemInterface::CommandId_AgentStatus) {
 		return;
 	}
 
@@ -831,10 +811,15 @@ void AgentControl::storeAgentStatus (Json *agentStatusCommand, const StdString &
 	}
 	recordStore.addRecord (agentStatusCommand, recordid);
 
+	removeid.assign ("");
 	SDL_LockMutex (agentMapMutex);
 	pos = findAgent (recordid);
 	if ((pos == agentMap.end ()) && (! invokeHostname.empty ()) && (invokeTcpPort > 0)) {
 		pos = findAgent (invokeHostname, invokeTcpPort);
+		if ((pos != agentMap.end ()) && (! recordid.equals (pos->first))) {
+			removeid.assign (pos->first);
+			pos = agentMap.end ();
+		}
 	}
 	if (pos == agentMap.end ()) {
 		pos = findAgent (recordid, true);
@@ -845,26 +830,28 @@ void AgentControl::storeAgentStatus (Json *agentStatusCommand, const StdString &
 	}
 
 	pos->second.id.assign (recordid);
-	pos->second.lastStatusTime = Util::getTime ();
+	pos->second.lastStatusTime = OsUtil::getTime ();
 	pos->second.readCommand (agentStatusCommand);
 	SDL_UnlockMutex (agentMapMutex);
+
+	if (! removeid.empty ()) {
+		removeAgent (removeid);
+	}
+
 	writePrefs ();
 }
 
 void AgentControl::addAdminSecret (const StdString &entryName, const StdString &entrySecret) {
-	App *app;
 	StringList items;
 	Json *json;
 
-	app = App::getInstance ();
-
-	app->prefsMap.find (App::prefsServerAdminSecrets, &items);
+	App::instance->prefsMap.find (App::prefsServerAdminSecrets, &items);
 	json = new Json ();
 	json->set (NAME_KEY, entryName);
 	json->set (SECRET_KEY, entrySecret);
 	items.push_back (json->toString ());
 	delete (json);
-	app->prefsMap.insert (App::prefsServerAdminSecrets, &items);
+	App::instance->prefsMap.insert (App::prefsServerAdminSecrets, &items);
 
 	SDL_LockMutex (adminSecretMutex);
 	adminSecretList.push_back (getStringHash (entrySecret));
@@ -872,15 +859,13 @@ void AgentControl::addAdminSecret (const StdString &entryName, const StdString &
 }
 
 void AgentControl::removeAdminSecret (const StdString &entryName) {
-	App *app;
 	StringList items, writeitems;
 	StringList::iterator i, end;
 	StdString val;
 	Json *json;
 	bool shouldwrite;
 
-	app = App::getInstance ();
-	app->prefsMap.find (App::prefsServerAdminSecrets, &items);
+	App::instance->prefsMap.find (App::prefsServerAdminSecrets, &items);
 	shouldwrite = false;
 	i = items.begin ();
 	end = items.end ();
@@ -902,7 +887,7 @@ void AgentControl::removeAdminSecret (const StdString &entryName) {
 	}
 
 	if (shouldwrite) {
-		app->prefsMap.insert (App::prefsServerAdminSecrets, &writeitems);
+		App::instance->prefsMap.insert (App::prefsServerAdminSecrets, &writeitems);
 		SDL_LockMutex (adminSecretMutex);
 		adminSecretList.clear ();
 		i = writeitems.begin ();
@@ -923,14 +908,12 @@ void AgentControl::removeAdminSecret (const StdString &entryName) {
 }
 
 StdString AgentControl::getAdminSecret (const StdString &entryName) {
-	App *app;
 	StringList items;
 	StringList::iterator i, end;
 	StdString result;
 	Json *json;
 
-	app = App::getInstance ();
-	app->prefsMap.find (App::prefsServerAdminSecrets, &items);
+	App::instance->prefsMap.find (App::prefsServerAdminSecrets, &items);
 	i = items.begin ();
 	end = items.end ();
 	while (i != end) {
@@ -952,14 +935,12 @@ StdString AgentControl::getAdminSecret (const StdString &entryName) {
 }
 
 void AgentControl::getAdminSecretNames (StringList *destList) {
-	App *app;
 	StringList items;
 	StringList::iterator i, end;
 	StdString name;
 	Json *json;
 
-	app = App::getInstance ();
-	app->prefsMap.find (App::prefsServerAdminSecrets, &items);
+	App::instance->prefsMap.find (App::prefsServerAdminSecrets, &items);
 	destList->clear ();
 	i = items.begin ();
 	end = items.end ();
@@ -977,7 +958,6 @@ void AgentControl::getAdminSecretNames (StringList *destList) {
 }
 
 bool AgentControl::setCommandAuthorization (Json *command, int secretIndex, const StdString &authToken, StdString *authPath) {
-	App *app;
 	EVP_MD_CTX *ctx;
 	StdString secret;
 	int len;
@@ -987,15 +967,14 @@ bool AgentControl::setCommandAuthorization (Json *command, int secretIndex, cons
 		return (false);
 	}
 
-	app = App::getInstance ();
 	ctx = EVP_MD_CTX_create ();
 	if (! ctx) {
-		Log::write (Log::ERR, "Failed to set command authorization; err=EVP_MD_CTX_create failed");
+		Log::err ("Failed to set command authorization; err=EVP_MD_CTX_create failed");
 		return (false);
 	}
 	if (EVP_DigestInit_ex (ctx, EVP_sha256 (), NULL) != 1) {
 		EVP_MD_CTX_destroy (ctx);
-		Log::write (Log::ERR, "Failed to set command authorization; err=EVP_DigestInit_ex failed");
+		Log::err ("Failed to set command authorization; err=EVP_DigestInit_ex failed");
 		return (false);
 	}
 
@@ -1016,7 +995,7 @@ bool AgentControl::setCommandAuthorization (Json *command, int secretIndex, cons
 			secret.erase (len);
 		}
 
-		result = app->systemInterface.setCommandAuthorization (command, secret, authToken, AgentControl::hashUpdate, AgentControl::hashDigest, ctx);
+		result = App::instance->systemInterface.setCommandAuthorization (command, secret, authToken, AgentControl::hashUpdate, AgentControl::hashDigest, ctx);
 	}
 	SDL_UnlockMutex (adminSecretMutex);
 	EVP_MD_CTX_destroy (ctx);
@@ -1041,11 +1020,9 @@ StdString AgentControl::hashDigest (void *contextPtr) {
 }
 
 void AgentControl::writePrefs () {
-	App *app;
 	std::map<StdString, Agent>::iterator i, end;
 	StringList items;
 
-	app = App::getInstance ();
 	SDL_LockMutex (agentMapMutex);
 	i = agentMap.begin ();
 	end = agentMap.end ();
@@ -1057,11 +1034,10 @@ void AgentControl::writePrefs () {
 	}
 	SDL_UnlockMutex (agentMapMutex);
 
-	app->prefsMap.insert (App::prefsAgentStatus, &items);
+	App::instance->prefsMap.insert (App::prefsAgentStatus, &items);
 }
 
 void AgentControl::readPrefs () {
-	App *app;
 	StringList items;
 	StringList::iterator i, end;
 	StdString val;
@@ -1070,9 +1046,7 @@ void AgentControl::readPrefs () {
 	Json *json;
 	int result;
 
-	app = App::getInstance ();
-
-	app->prefsMap.find (App::prefsAgentStatus, &items);
+	App::instance->prefsMap.find (App::prefsAgentStatus, &items);
 	SDL_LockMutex (agentMapMutex);
 	i = items.begin ();
 	end = items.end ();
@@ -1091,7 +1065,7 @@ void AgentControl::readPrefs () {
 	}
 	SDL_UnlockMutex (agentMapMutex);
 
-	app->prefsMap.find (App::prefsServerAdminSecrets, &items);
+	App::instance->prefsMap.find (App::prefsServerAdminSecrets, &items);
 	SDL_LockMutex (adminSecretMutex);
 	adminSecretList.clear ();
 	i = items.begin ();

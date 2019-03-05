@@ -35,12 +35,11 @@
 
 #include "StdString.h"
 #include "Json.h"
-#include "RecordStore.h"
 #include "WidgetHandle.h"
 #include "Toolbar.h"
-#include "TimelineBar.h"
 #include "Button.h"
-#include "HashMap.h"
+#include "HelpWindow.h"
+#include "TimelineWindow.h"
 #include "StreamWindow.h"
 #include "IconCardWindow.h"
 #include "CardView.h"
@@ -60,11 +59,8 @@ public:
 		THUMBNAIL_SIZE_BUTTON = 4
 	};
 
-	// Return text that should be used to identify the UI in a set of breadcrumb actions, or an empty string if no such title exists
-	StdString getBreadcrumbTitle ();
-
 	// Set fields in the provided HelpWindow widget as appropriate for the UI's help content
-	void setHelpWindowContent (Widget *helpWindowPtr);
+	void setHelpWindowContent (HelpWindow *helpWindow);
 
 	// Set a callback that should be invoked when a ThumbnailWindow item is clicked on the UI
 	void setThumbnailClickCallback (Widget::EventCallback callback, void *callbackData);
@@ -78,13 +74,16 @@ public:
 	static void thumbnailClicked (void *uiPtr, Widget *widgetPtr);
 	static void thumbnailMouseEntered (void *uiPtr, Widget *widgetPtr);
 	static void thumbnailMouseExited (void *uiPtr, Widget *widgetPtr);
-	static void timelineBarPositionHovered (void *uiPtr, Widget *widgetPtr);
-	static void timelineBarPositionClicked (void *uiPtr, Widget *widgetPtr);
+	static void timelineWindowPositionHovered (void *uiPtr, Widget *widgetPtr);
+	static void timelineWindowPositionClicked (void *uiPtr, Widget *widgetPtr);
 	static bool matchThumbnailIndex (void *intPtr, Widget *widgetPtr);
 
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
 	StdString getSpritePath ();
+
+	// Return a newly created widget for use as a main toolbar breadcrumb item
+	Widget *createBreadcrumbWidget ();
 
 	// Load subclass-specific resources and return a result value
 	int doLoad ();
@@ -93,10 +92,10 @@ protected:
 	void doUnload ();
 
 	// Add subclass-specific items to the provided main toolbar object
-	void doResetMainToolbar (Toolbar *toolbar);
+	void doAddMainToolbarItems (Toolbar *toolbar);
 
 	// Add subclass-specific items to the provided secondary toolbar object
-	void doResetSecondaryToolbar (Toolbar *toolbar);
+	void doAddSecondaryToolbarItems (Toolbar *toolbar);
 
 	// Remove and destroy any subclass-specific popup widgets that have been created by the UI
 	void doClearPopupWidgets ();
@@ -116,8 +115,8 @@ protected:
 	// Reload subclass-specific interface resources as needed to account for a new application window size
 	void doResize ();
 
-	// Execute subclass-specific operations to sync state with records present in the provided RecordStore object, which has been locked prior to invocation
-	void doSyncRecordStore (RecordStore *store);
+	// Execute subclass-specific operations to sync state with records present in the application's RecordStore object, which has been locked prior to invocation
+	void doSyncRecordStore ();
 
 private:
 	// Execute actions appropriate when the view button is clicked
@@ -125,14 +124,12 @@ private:
 
 	WidgetHandle sourceStreamWindow;
 	StdString captionText;
-
 	CardView *cardView;
 	int cardLayout;
 	float cardMaxImageWidth;
-	TimelineBar *timelineBar;
+	TimelineWindow *timelineWindow;
 	WidgetHandle thumbnailSizeMenu;
 	int lastTimelineHoverPosition;
-
 	Widget::EventCallback thumbnailClickCallback;
 	void *thumbnailClickCallbackData;
 };

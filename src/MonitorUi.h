@@ -35,12 +35,12 @@
 
 #include "StdString.h"
 #include "Json.h"
-#include "RecordStore.h"
 #include "WidgetHandle.h"
 #include "Toolbar.h"
 #include "Button.h"
 #include "HashMap.h"
 #include "CardView.h"
+#include "HelpWindow.h"
 #include "TextFieldWindow.h"
 #include "StreamWindow.h"
 #include "StreamPlaylistWindow.h"
@@ -71,14 +71,8 @@ public:
 		CACHE_BUTTON = 15
 	};
 
-	// Return text that should be used to identify the UI in a set of breadcrumb actions, or an empty string if no such title exists
-	StdString getBreadcrumbTitle ();
-
-	// Return a newly created Sprite object that should be used to identify the UI in a set of breadcrumb actions, or NULL if no such Sprite exists. If a Sprite is returned by this method, the caller becomes responsible for destroying it when no longer needed.
-	Sprite *getBreadcrumbSprite ();
-
 	// Set fields in the provided HelpWindow widget as appropriate for the UI's help content
-	void setHelpWindowContent (Widget *helpWindowPtr);
+	void setHelpWindowContent (HelpWindow *helpWindow);
 
 	// Execute operations appropriate when an agent control link client becomes connected
 	void handleLinkClientConnect (const StdString &agentId);
@@ -132,6 +126,9 @@ protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
 	StdString getSpritePath ();
 
+	// Return a newly created widget for use as a main toolbar breadcrumb item
+	Widget *createBreadcrumbWidget ();
+
 	// Load subclass-specific resources and return a result value
 	int doLoad ();
 
@@ -139,10 +136,10 @@ protected:
 	void doUnload ();
 
 	// Add subclass-specific items to the provided main toolbar object
-	void doResetMainToolbar (Toolbar *toolbar);
+	void doAddMainToolbarItems (Toolbar *toolbar);
 
 	// Add subclass-specific items to the provided secondary toolbar object
-	void doResetSecondaryToolbar (Toolbar *toolbar);
+	void doAddSecondaryToolbarItems (Toolbar *toolbar);
 
 	// Remove and destroy any subclass-specific popup widgets that have been created by the UI
 	void doClearPopupWidgets ();
@@ -162,8 +159,8 @@ protected:
 	// Reload subclass-specific interface resources as needed to account for a new application window size
 	void doResize ();
 
-	// Execute subclass-specific operations to sync state with records present in the provided RecordStore object, which has been locked prior to invocation
-	void doSyncRecordStore (RecordStore *store);
+	// Execute subclass-specific operations to sync state with records present in the application's RecordStore object, which has been locked prior to invocation
+	void doSyncRecordStore ();
 
 private:
 	// Return a newly created StreamPlaylistWindow widget, suitable for use as a card view item

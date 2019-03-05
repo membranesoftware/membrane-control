@@ -35,7 +35,6 @@
 
 #include <vector>
 #include "StdString.h"
-#include "Sprite.h"
 #include "Image.h"
 #include "ImageWindow.h"
 #include "Label.h"
@@ -89,8 +88,8 @@ public:
 	// Set the window's selected state, along with the timestamp it should show if selected
 	void setSelected (bool selected, float timestamp = 0.0f);
 
-	// Execute operations appropriate to sync widget state with records present in the provided RecordStore object, which has been locked prior to invocation
-	void syncRecordStore (RecordStore *store);
+	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
+	void syncRecordStore ();
 
 	// Return a boolean value indicating if the provided Widget is a member of this class
 	static bool isWidgetType (Widget *widget);

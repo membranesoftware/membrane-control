@@ -34,7 +34,6 @@
 #define JSON_H
 
 #include <stdarg.h>
-#include <map>
 #include <vector>
 #include <list>
 #include "StdString.h"
@@ -67,6 +66,9 @@ public:
 	// Replace the Json object's content with a copy of the provided source object
 	void copy (Json *sourceJson);
 
+	// Return a boolean value indicating if the object's content matches that of another
+	bool deepEquals (Json *other);
+
 	// Store a list of currently available map keys in the provided list, optionally clearing the list before doing so
 	void getKeys (std::vector<StdString> *keyVector, bool shouldClear = false);
 	void getKeys (StringList *destList, bool shouldClear = false);
@@ -74,6 +76,10 @@ public:
 	// Return a boolean value indicating if the specified key exists in the object
 	bool exists (const StdString &key) const;
 	bool exists (const char *key) const;
+
+	// Return a boolean value indicating if the specified key exists and is a null value
+	bool isNull (const StdString &key) const;
+	bool isNull (const char *key) const;
 
 	// Return a boolean value indicating if the specified key exists and is a number
 	bool isNumber (const StdString &key) const;
@@ -199,6 +205,9 @@ private:
 
 	// Return a newly created json_value object containing a copy of the provided source value's data
 	json_value *copyJsonValue (json_value *sourceValue);
+
+	// Return a boolean value indicating if a value's content matches that of a value from another object
+	bool deepEqualsValue (json_value *thisValue, json_value *otherValue);
 
 	json_value *json;
 	bool shouldFreeJson;

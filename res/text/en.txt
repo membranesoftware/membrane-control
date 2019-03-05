@@ -178,7 +178,6 @@ streamDataPathPromptWindows (example: C:\stream_data)
 agentEnabledDescription The server does not respond to commands unless enabled.
 agentDisplayNameDescription The name to show for this server in control interfaces.
 agentDisplayNamePrompt (Enter a name)
-mediaUiThumbnailSizeTooltip Set the display size for media items
 mediaUiSearchTooltip Show only media items matching this search filter
 mediaUiEmptyAgentStatusTitle No media library available
 mediaUiEmptyAgentStatusText Return to the main menu and open "Servers" to contact a computer running Membrane Media Library.
@@ -198,11 +197,11 @@ exitTooltip Close this application
 moreHelpTopics more help topics
 configureTooltip Set configuration parameters for this server
 reloadTooltip Refresh server state
-mainUiWelcomeSnackbarText Welcome to Membrane Control. Need information to get started?
 mainUiHelpTitle Membrane Control
 mainUiHelpText This application connects to other computers running Membrane Server, allowing you to access and control any resources they offer. The main menu shows Membrane Control's primary functions, each of which can be launched using its "OPEN" button.
 mainUiServersHelpActionText No Membrane Servers have been contacted. Open the "Servers" interface to locate other computers offering this service on the network.
 mainUiShowAllTooltip If enabled: Show all functions, even those that haven't yet established required server connections.
+mainUiNextBannerTooltip Show the next news item
 openHelpUrlError An error occurred in launching the web browser. For help, see: https://membranesoftware.com/
 openAboutUrlError An error occurred in launching the web browser. For information, see: https://membranesoftware.com/i/about-membrane-control
 openFeedbackUrlError An error occurred in launching the web browser. To send feedback, see: https://membranesoftware.com/contact
@@ -310,8 +309,13 @@ setAdminPassword set admin password
 adminPasswordNamePrompt (Enter a name)
 adminPasswordPrompt (Enter a password)
 emptyAdminSecretListText (No passwords stored)
-normalVideoQualityDescription Normal (match original)
-highVideoQualityDescription High
+normalVideoQualityDescription Normal
+highVideoQualityDescription High-compression
 lowVideoQualityDescription Low
 lowestVideoQualityDescription Lowest
-videoQualityDescription High quality: less storage space consumed. Lower qualities: grainier picture, much less storage space consumed.
+videoQualityDescription High-compression: less storage space consumed, slower stream creation time. Low/Lowest: grainier picture, much less storage space consumed, faster stream creation time.
+firstLaunchBannerMessage Welcome to Membrane Control. Need information to get started?
+helpKeyBannerMessage Pressing Ctrl-h opens Membrane Control's help window.
+freeApplicationBannerMessage Membrane Control is free to download, requires no signup or account creation, and contains no ads or in-app purchases. Tell your friends!
+membraneSoftwareBannerMessage This application is brought to you by Membrane Software, creator of free applications for the computer users of the world.
+donateBannerMessage Membrane Control is supported by donations from users like you. If you get utility and enjoyment from this application, please think about contributing money to support its development. Any amount helps!

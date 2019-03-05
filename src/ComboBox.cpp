@@ -30,6 +30,7 @@
 */
 #include "Config.h"
 #include <stdlib.h>
+#include <math.h>
 #include "App.h"
 #include "Result.h"
 #include "Log.h"
@@ -61,7 +62,7 @@ ComboBox::ComboBox ()
 
 	widgetType.assign ("ComboBox");
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 
 	normalBgColor.assign (uiconfig->lightBackgroundColor);
 	normalBorderColor.assign (uiconfig->mediumBackgroundColor);
@@ -91,7 +92,7 @@ void ComboBox::setInverseColor (bool inverse) {
 		return;
 	}
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	isInverseColor = inverse;
 	if (isInverseColor) {
 		normalBgColor.assign (uiconfig->darkInverseBackgroundColor);
@@ -218,14 +219,14 @@ void ComboBox::refreshLayout () {
 	float x, y;
 	bool show;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	if (isFocused) {
-		bgColor.rotate (focusBgColor, uiconfig->shortColorRotateDuration);
-		borderColor.rotate (focusBorderColor, uiconfig->shortColorRotateDuration);
+		bgColor.translate (focusBgColor, uiconfig->shortColorTranslateDuration);
+		borderColor.translate (focusBorderColor, uiconfig->shortColorTranslateDuration);
 	}
 	else {
-		bgColor.rotate (normalBgColor, uiconfig->shortColorRotateDuration);
-		borderColor.rotate (normalBorderColor, uiconfig->shortColorRotateDuration);
+		bgColor.translate (normalBgColor, uiconfig->shortColorTranslateDuration);
+		borderColor.translate (normalBorderColor, uiconfig->shortColorTranslateDuration);
 	}
 
 	x = 0.0f;
@@ -244,14 +245,14 @@ void ComboBox::refreshLayout () {
 		if (show) {
 			label->position.assign (x, y);
 			if (isFocused) {
-				label->bgColor.rotate (focusBgColor, uiconfig->shortColorRotateDuration);
-				label->borderColor.rotate (focusBorderColor, uiconfig->shortColorRotateDuration);
-				label->rotateTextColor (focusItemTextColor, uiconfig->shortColorRotateDuration);
+				label->bgColor.translate (focusBgColor, uiconfig->shortColorTranslateDuration);
+				label->borderColor.translate (focusBorderColor, uiconfig->shortColorTranslateDuration);
+				label->translateTextColor (focusItemTextColor, uiconfig->shortColorTranslateDuration);
 			}
 			else {
-				label->bgColor.rotate (normalBgColor, uiconfig->shortColorRotateDuration);
-				label->borderColor.rotate (normalBorderColor, uiconfig->shortColorRotateDuration);
-				label->rotateTextColor (normalItemTextColor, uiconfig->shortColorRotateDuration);
+				label->bgColor.translate (normalBgColor, uiconfig->shortColorTranslateDuration);
+				label->borderColor.translate (normalBorderColor, uiconfig->shortColorTranslateDuration);
+				label->translateTextColor (normalItemTextColor, uiconfig->shortColorTranslateDuration);
 			}
 			y += label->height;
 			label->isVisible = true;
@@ -275,7 +276,6 @@ void ComboBox::setFocused (bool focused) {
 }
 
 void ComboBox::doProcessMouseState (const Widget::MouseState &mouseState) {
-	App *app;
 	Panel *panel;
 	bool shouldunexpand;
 	int x, y, x1, x2, y1, y2;
@@ -291,9 +291,8 @@ void ComboBox::doProcessMouseState (const Widget::MouseState &mouseState) {
 
 			panel = (Panel *) expandPanel.widget;
 			if ((! shouldunexpand) && panel) {
-				app = App::getInstance ();
-				x = app->input.mouseX;
-				y = app->input.mouseY;
+				x = App::instance->input.mouseX;
+				y = App::instance->input.mouseY;
 				x1 = (int) panel->drawX;
 				y1 = (int) panel->drawY;
 				x2 = x1 + (int) panel->width;
@@ -317,7 +316,6 @@ void ComboBox::doProcessMouseState (const Widget::MouseState &mouseState) {
 }
 
 void ComboBox::expand () {
-	App *app;
 	UiConfiguration *uiconfig;
 	Panel *panel;
 	std::list<ComboBox::Item>::iterator i, end;
@@ -332,8 +330,7 @@ void ComboBox::expand () {
 		return;
 	}
 
-	app = App::getInstance ();
-	uiconfig = &(app->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	panel = new Panel ();
 	panel->setFillBg (true, normalBgColor);
 	panel->setBorder (true, normalBorderColor);
@@ -349,7 +346,7 @@ void ComboBox::expand () {
 			label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (i->value, UiConfiguration::CAPTION, normalItemTextColor)), x, y);
 			label->setFillBg (true, normalBgColor);
 			label->setWindowWidth (maxTextWidth + (uiconfig->paddingSize * 2.0f), true);
-			label->setMouseoverHighlight (true, normalItemTextColor, normalBgColor, focusItemTextColor, focusBgColor, uiconfig->shortColorRotateDuration);
+			label->setMouseoverHighlight (true, normalItemTextColor, normalBgColor, focusItemTextColor, focusBgColor, uiconfig->shortColorTranslateDuration);
 			label->setMouseClickCallback (ComboBox::expandItemClicked, this);
 			y += label->height;
 		}
@@ -362,10 +359,10 @@ void ComboBox::expand () {
 	expandDrawY = drawY;
 
 	y = expandDrawY + height;
-	if ((y + panel->height) >= app->windowHeight) {
+	if ((y + panel->height) >= App::instance->windowHeight) {
 		y = expandDrawY - panel->height;
 	}
-	app->rootPanel->addWidget (panel, expandDrawX, y, app->rootPanel->maxWidgetZLevel + 1);
+	App::instance->rootPanel->addWidget (panel, expandDrawX, y, App::instance->rootPanel->maxWidgetZLevel + 1);
 
 	isExpanded = true;
 }

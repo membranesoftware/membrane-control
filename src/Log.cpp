@@ -45,12 +45,12 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include "SDL2/SDL.h"
+#include "App.h"
 #include "Result.h"
 #include "StdString.h"
-#include "Util.h"
+#include "OsUtil.h"
 #include "Log.h"
 
-static Log *logInstance = NULL;
 const char *Log::levelNames[Log::NUM_LEVELS] = { "ERR", "WARNING", "NOTICE", "INFO", "DEBUG", "DEBUG1", "DEBUG2", "DEBUG3", "DEBUG4" };
 
 Log::Log ()
@@ -68,21 +68,6 @@ Log::~Log () {
 	if (mutex) {
 		SDL_DestroyMutex (mutex);
 		mutex = NULL;
-	}
-}
-
-Log *Log::getInstance () {
-	if (! logInstance) {
-		logInstance = new Log ();
-	}
-
-	return (logInstance);
-}
-
-void Log::freeInstance () {
-	if (logInstance) {
-		delete (logInstance);
-		logInstance = NULL;
 	}
 }
 
@@ -183,23 +168,6 @@ int Log::setFileOutput (bool enable, const StdString &filename) {
 	return (setFileOutput (enable, filename.c_str ()));
 }
 
-void Log::write (int level, const char *str, ...) {
-	Log *log;
-	va_list ap;
-
-	log = Log::getInstance ();
-	va_start (ap, str);
-	log->voutput (level, str, ap);
-	va_end (ap);
-}
-
-void Log::write (int level, const char *str, va_list args) {
-	Log *log;
-
-	log = Log::getInstance ();
-	log->voutput (level, str, args);
-}
-
 void Log::voutput (int level, const char *str, va_list args) {
 	FILE *fp;
 	int64_t now;
@@ -220,9 +188,8 @@ void Log::voutput (int level, const char *str, va_list args) {
 		}
 	}
 
-	now = Util::getTime ();
-
-	text.appendSprintf ("[%s]", Util::getTimestampString (now, true).c_str ());
+	now = OsUtil::getTime ();
+	text.appendSprintf ("[%s]", OsUtil::getTimestampString (now, true).c_str ());
 	if (level != Log::NO_LEVEL) {
 		text.appendSprintf ("[%s]", Log::levelNames[level]);
 	}
@@ -253,12 +220,94 @@ void Log::voutput (int level, const char *str, va_list args) {
 	SDL_UnlockMutex (mutex);
 }
 
-void Log::printf (const char *str, ...) {
-	Log *log;
+void Log::write (int level, const char *str, ...) {
 	va_list ap;
 
-	log = Log::getInstance ();
 	va_start (ap, str);
-	log->voutput (Log::NO_LEVEL, str, ap);
+	App::instance->log.voutput (level, str, ap);
+	va_end (ap);
+}
+
+void Log::write (int level, const char *str, va_list args) {
+	App::instance->log.voutput (level, str, args);
+}
+
+void Log::printf (const char *str, ...) {
+	va_list ap;
+
+	va_start (ap, str);
+	App::instance->log.voutput (Log::NO_LEVEL, str, ap);
+	va_end (ap);
+}
+
+void Log::err (const char *str, ...) {
+	va_list ap;
+
+	va_start (ap, str);
+	App::instance->log.voutput (Log::ERR, str, ap);
+	va_end (ap);
+}
+
+void Log::warning (const char *str, ...) {
+	va_list ap;
+
+	va_start (ap, str);
+	App::instance->log.voutput (Log::WARNING, str, ap);
+	va_end (ap);
+}
+
+void Log::notice (const char *str, ...) {
+	va_list ap;
+
+	va_start (ap, str);
+	App::instance->log.voutput (Log::NOTICE, str, ap);
+	va_end (ap);
+}
+
+void Log::info (const char *str, ...) {
+	va_list ap;
+
+	va_start (ap, str);
+	App::instance->log.voutput (Log::INFO, str, ap);
+	va_end (ap);
+}
+
+void Log::debug (const char *str, ...) {
+	va_list ap;
+
+	va_start (ap, str);
+	App::instance->log.voutput (Log::DEBUG, str, ap);
+	va_end (ap);
+}
+
+void Log::debug1 (const char *str, ...) {
+	va_list ap;
+
+	va_start (ap, str);
+	App::instance->log.voutput (Log::DEBUG1, str, ap);
+	va_end (ap);
+}
+
+void Log::debug2 (const char *str, ...) {
+	va_list ap;
+
+	va_start (ap, str);
+	App::instance->log.voutput (Log::DEBUG2, str, ap);
+	va_end (ap);
+}
+
+void Log::debug3 (const char *str, ...) {
+	va_list ap;
+
+	va_start (ap, str);
+	App::instance->log.voutput (Log::DEBUG3, str, ap);
+	va_end (ap);
+}
+
+void Log::debug4 (const char *str, ...) {
+	va_list ap;
+
+	va_start (ap, str);
+	App::instance->log.voutput (Log::DEBUG4, str, ap);
 	va_end (ap);
 }

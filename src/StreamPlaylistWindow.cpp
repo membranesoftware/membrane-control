@@ -32,11 +32,10 @@
 #include <stdlib.h>
 #include <list>
 #include "Result.h"
-#include "Log.h"
 #include "StdString.h"
 #include "App.h"
 #include "UiText.h"
-#include "Util.h"
+#include "OsUtil.h"
 #include "Widget.h"
 #include "Color.h"
 #include "Image.h"
@@ -45,7 +44,6 @@
 #include "Json.h"
 #include "Panel.h"
 #include "Label.h"
-#include "TextArea.h"
 #include "Toggle.h"
 #include "ToggleWindow.h"
 #include "Slider.h"
@@ -91,14 +89,12 @@ StreamPlaylistWindow::StreamPlaylistWindow ()
 , listChangeCallback (NULL)
 , listChangeCallbackData (NULL)
 {
-	App *app;
 	UiConfiguration *uiconfig;
 
-	app = App::getInstance ();
-	uiconfig = &(app->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
-	windowWidth = app->windowWidth * StreamPlaylistWindow::windowWidthMultiplier;
+	windowWidth = App::instance->windowWidth * StreamPlaylistWindow::windowWidthMultiplier;
 
 	populate ();
 	refreshLayout ();
@@ -126,13 +122,11 @@ StreamPlaylistWindow *StreamPlaylistWindow::castWidget (Widget *widget) {
 }
 
 void StreamPlaylistWindow::populate () {
-	App *app;
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
-	app = App::getInstance ();
-	uiconfig = &(app->uiConfig);
-	uitext = &(app->uiText);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 
 	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::PROGRAM_ICON)));
 	nameLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::HEADLINE, uiconfig->primaryTextColor)));
@@ -215,7 +209,7 @@ void StreamPlaylistWindow::populate () {
 	playDurationMinSlider->setValue (60.0f, true);
 	playDurationMaxSlider->setValue (300.0f, true);
 	startPositionValueLabel->setText (StdString::createSprintf ("%i%%", (int) startPositionMinSlider->value));
-	playDurationValueLabel->setText (StdString::createSprintf ("%s - %s", Util::getDurationDisplayString ((int64_t) playDurationMinSlider->value * 1000).c_str (), Util::getDurationDisplayString ((int64_t) playDurationMaxSlider->value * 1000).c_str ()));
+	playDurationValueLabel->setText (StdString::createSprintf ("%s - %s", OsUtil::getDurationDisplayString ((int64_t) playDurationMinSlider->value * 1000).c_str (), OsUtil::getDurationDisplayString ((int64_t) playDurationMaxSlider->value * 1000).c_str ()));
 }
 
 void StreamPlaylistWindow::setSelectStateChangeCallback (Widget::EventCallback callback, void *callbackData) {
@@ -329,10 +323,7 @@ void StreamPlaylistWindow::setExpanded (bool expanded, bool shouldSkipStateChang
 }
 
 void StreamPlaylistWindow::doRefresh () {
-	App *app;
-
-	app = App::getInstance ();
-	windowWidth = app->windowWidth * StreamPlaylistWindow::windowWidthMultiplier;
+	windowWidth = App::instance->windowWidth * StreamPlaylistWindow::windowWidthMultiplier;
 	itemListView->setViewWidth (windowWidth - (widthPadding * 2.0f));
 	Panel::doRefresh ();
 }
@@ -341,7 +332,7 @@ void StreamPlaylistWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y, x0, y0, x2, y2;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x0 = widthPadding;
 	y0 = heightPadding;
 	x = x0;
@@ -432,7 +423,7 @@ void StreamPlaylistWindow::resetNameLabel () {
 	UiConfiguration *uiconfig;
 	float w;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	if (isExpanded) {
 		w = expandToggle->position.x;
 	}
@@ -484,7 +475,7 @@ void StreamPlaylistWindow::itemListChanged (void *windowPtr, Widget *widgetPtr) 
 	int count;
 
 	window = (StreamPlaylistWindow *) windowPtr;
-	uitext = &(App::getInstance ()->uiText);
+	uitext = &(App::instance->uiText);
 	count = window->itemListView->getItemCount ();
 	window->itemCountLabel->setText (StdString::createSprintf ("%i", count));
 	window->itemCountLabel->tooltipText.assign (uitext->getCountText (count, UiTextString::streamPlaylistItem, UiTextString::streamPlaylistItems));
@@ -511,7 +502,7 @@ void StreamPlaylistWindow::addItem (const StdString &streamUrl, const StdString 
 	item->streamId.assign (streamId);
 	item->mediaName.assign (mediaName);
 	item->startPosition = startPosition;
-	itemListView->addItem (StdString::createSprintf ("%s %s", Util::getDurationString (startPosition * 1000.0f, Util::HOURS).c_str (), mediaName.c_str ()), item, StreamPlaylistWindow::freeItem);
+	itemListView->addItem (StdString::createSprintf ("%s %s", OsUtil::getDurationString (startPosition * 1000.0f, OsUtil::HOURS).c_str (), mediaName.c_str ()), item, StreamPlaylistWindow::freeItem);
 }
 
 void StreamPlaylistWindow::freeItem (void *itemPtr) {
@@ -524,10 +515,10 @@ void StreamPlaylistWindow::startPositionSliderValueHovered (void *windowPtr, Wid
 	float min, max;
 
 	window = (StreamPlaylistWindow *) windowPtr;
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 
 	if (window->startPositionMinSlider->isHovering || window->startPositionMaxSlider->isHovering) {
-		window->startPositionValueLabel->rotateTextColor (uiconfig->raisedButtonTextColor, uiconfig->shortColorRotateDuration);
+		window->startPositionValueLabel->translateTextColor (uiconfig->raisedButtonTextColor, uiconfig->shortColorTranslateDuration);
 		if (window->startPositionMinSlider->isHovering) {
 			min = window->startPositionMinSlider->hoverValue;
 		}
@@ -545,7 +536,7 @@ void StreamPlaylistWindow::startPositionSliderValueHovered (void *windowPtr, Wid
 		}
 	}
 	else {
-		window->startPositionValueLabel->rotateTextColor (uiconfig->lightPrimaryTextColor, uiconfig->shortColorRotateDuration);
+		window->startPositionValueLabel->translateTextColor (uiconfig->lightPrimaryTextColor, uiconfig->shortColorTranslateDuration);
 		min = window->startPositionMinSlider->value;
 		max = window->startPositionMaxSlider->value;
 	}
@@ -588,10 +579,10 @@ void StreamPlaylistWindow::playDurationSliderValueHovered (void *windowPtr, Widg
 	float min, max;
 
 	window = (StreamPlaylistWindow *) windowPtr;
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 
 	if (window->playDurationMinSlider->isHovering || window->playDurationMaxSlider->isHovering) {
-		window->playDurationValueLabel->rotateTextColor (uiconfig->raisedButtonTextColor, uiconfig->shortColorRotateDuration);
+		window->playDurationValueLabel->translateTextColor (uiconfig->raisedButtonTextColor, uiconfig->shortColorTranslateDuration);
 		if (window->playDurationMinSlider->isHovering) {
 			min = window->playDurationMinSlider->hoverValue;
 		}
@@ -609,7 +600,7 @@ void StreamPlaylistWindow::playDurationSliderValueHovered (void *windowPtr, Widg
 		}
 	}
 	else {
-		window->playDurationValueLabel->rotateTextColor (uiconfig->lightPrimaryTextColor, uiconfig->shortColorRotateDuration);
+		window->playDurationValueLabel->translateTextColor (uiconfig->lightPrimaryTextColor, uiconfig->shortColorTranslateDuration);
 		min = window->playDurationMinSlider->value;
 		max = window->playDurationMaxSlider->value;
 	}
@@ -617,10 +608,10 @@ void StreamPlaylistWindow::playDurationSliderValueHovered (void *windowPtr, Widg
 	min *= 1000.0f;
 	max *= 1000.0f;
 	if ((int64_t) min == (int64_t) max) {
-		window->playDurationValueLabel->setText (StdString::createSprintf ("%s", Util::getDurationDisplayString ((int64_t) min).c_str ()));
+		window->playDurationValueLabel->setText (StdString::createSprintf ("%s", OsUtil::getDurationDisplayString ((int64_t) min).c_str ()));
 	}
 	else {
-		window->playDurationValueLabel->setText (StdString::createSprintf ("%s - %s", Util::getDurationDisplayString ((int64_t) min).c_str (), Util::getDurationDisplayString ((int64_t) max).c_str ()));
+		window->playDurationValueLabel->setText (StdString::createSprintf ("%s - %s", OsUtil::getDurationDisplayString ((int64_t) min).c_str (), OsUtil::getDurationDisplayString ((int64_t) max).c_str ()));
 	}
 	window->refresh ();
 }
@@ -638,10 +629,10 @@ void StreamPlaylistWindow::playDurationSliderValueChanged (void *windowPtr, Widg
 	min *= 1000.0f;
 	max *= 1000.0f;
 	if ((int64_t) min == (int64_t) max) {
-		window->playDurationValueLabel->setText (StdString::createSprintf ("%s", Util::getDurationDisplayString ((int64_t) min).c_str ()));
+		window->playDurationValueLabel->setText (StdString::createSprintf ("%s", OsUtil::getDurationDisplayString ((int64_t) min).c_str ()));
 	}
 	else {
-		window->playDurationValueLabel->setText (StdString::createSprintf ("%s - %s", Util::getDurationDisplayString ((int64_t) min).c_str (), Util::getDurationDisplayString ((int64_t) max).c_str ()));
+		window->playDurationValueLabel->setText (StdString::createSprintf ("%s - %s", OsUtil::getDurationDisplayString ((int64_t) min).c_str (), OsUtil::getDurationDisplayString ((int64_t) max).c_str ()));
 	}
 	window->refresh ();
 }
@@ -761,5 +752,5 @@ Json *StreamPlaylistWindow::getCreateCommand () {
 	obj->set ("minItemDisplayDuration", (int) playDurationMinSlider->value);
 	obj->set ("maxItemDisplayDuration", (int) playDurationMaxSlider->value);
 
-	return (App::getInstance ()->createCommand ("CreateMediaDisplayIntent", SystemInterface::Constant_Monitor, obj));
+	return (App::instance->createCommand (SystemInterface::Command_CreateMediaDisplayIntent, SystemInterface::Constant_Monitor, obj));
 }

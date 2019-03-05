@@ -30,6 +30,7 @@
 */
 #include "Config.h"
 #include <stdlib.h>
+#include <math.h>
 #include <list>
 #include "App.h"
 #include "Result.h"
@@ -56,7 +57,7 @@ TextArea::TextArea (int fontType, const Color &textColor, int maxTextLineLength,
 	UiConfiguration *uiconfig;
 
 	widgetType.assign ("TextArea");
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	if (maxLineLength <= 0) {
 		maxLineLength = uiconfig->textAreaMediumLineLength;
 	}
@@ -196,7 +197,7 @@ void TextArea::refreshLayout () {
 	Label *label;
 	float x, y, dh;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	dh = 0.0f;
 	x = widthPadding;
 	y = heightPadding;

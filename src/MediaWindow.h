@@ -34,16 +34,11 @@
 #define MEDIA_WINDOW_H
 
 #include "StdString.h"
-#include "StringList.h"
-#include "RecordStore.h"
 #include "Json.h"
-#include "Image.h"
 #include "Label.h"
 #include "LabelWindow.h"
 #include "ImageWindow.h"
-#include "Button.h"
 #include "TextArea.h"
-#include "HashMap.h"
 #include "Panel.h"
 
 class MediaWindow : public Panel {
@@ -80,8 +75,8 @@ public:
 	// Return a boolean value indicating if the window is configured to load thumbnail images
 	bool hasThumbnails ();
 
-	// Execute operations appropriate to sync widget state with records present in the provided RecordStore object, which has been locked prior to invocation
-	void syncRecordStore (RecordStore *store);
+	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
+	void syncRecordStore ();
 
 	// Return a boolean value indicating if the provided Widget is a member of this class
 	static bool isWidgetType (Widget *widget);

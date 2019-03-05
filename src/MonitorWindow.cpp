@@ -35,7 +35,7 @@
 #include "StdString.h"
 #include "App.h"
 #include "UiText.h"
-#include "Util.h"
+#include "OsUtil.h"
 #include "Widget.h"
 #include "SystemInterface.h"
 #include "UiConfiguration.h"
@@ -97,7 +97,7 @@ MonitorWindow::MonitorWindow (const StdString &agentId)
 {
 	UiConfiguration *uiconfig;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
@@ -130,8 +130,8 @@ void MonitorWindow::populate () {
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
-	uitext = &(App::getInstance ()->uiText);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 
 	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::DISPLAY_ICON)));
 	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::HEADLINE, uiconfig->primaryTextColor));
@@ -183,15 +183,17 @@ void MonitorWindow::populate () {
 	expandToggle->setMouseHoverTooltip (uitext->getText (UiTextString::expandToggleTooltip));
 }
 
-void MonitorWindow::syncRecordStore (RecordStore *store) {
+void MonitorWindow::syncRecordStore () {
+	RecordStore *store;
 	SystemInterface *interface;
 	UiText *uitext;
 	Json *record, serverstatus;
 	StdString displayname, intentname, text;
 	int intentlen, displaylen, count;
 
-	interface = &(App::getInstance ()->systemInterface);
-	record = store->findRecord (agentId, SystemInterface::Command_AgentStatus);
+	store = &(App::instance->agentControl.recordStore);
+	interface = &(App::instance->systemInterface);
+	record = store->findRecord (agentId, SystemInterface::CommandId_AgentStatus);
 	if (! record) {
 		return;
 	}
@@ -199,7 +201,7 @@ void MonitorWindow::syncRecordStore (RecordStore *store) {
 		return;
 	}
 
-	uitext = &(App::getInstance ()->uiText);
+	uitext = &(App::instance->uiText);
 	agentName.assign (interface->getCommandAgentName (record));
 	nameLabel->setText (agentName);
 	agentTaskCount = interface->getCommandNumberParam (record, "taskCount", (int) 0);
@@ -258,21 +260,21 @@ void MonitorWindow::syncRecordStore (RecordStore *store) {
 		taskCountIcon->isVisible = false;
 	}
 
-	storageIcon->setText (Util::getStorageAmountDisplayString (serverstatus.getNumber ("freeStorage", (int64_t) 0), serverstatus.getNumber ("totalStorage", (int64_t) 0)));
+	storageIcon->setText (OsUtil::getStorageAmountDisplayString (serverstatus.getNumber ("freeStorage", (int64_t) 0), serverstatus.getNumber ("totalStorage", (int64_t) 0)));
 
 	count = serverstatus.getNumber ("streamCount", (int) 0);
 	streamCountIcon->setText (StdString::createSprintf ("%i", count));
 	streamCountIcon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::cachedStream, UiTextString::cachedStreams));
 
 	statsWindow->setItem (uitext->getText (UiTextString::uptime).capitalized (), interface->getCommandStringParam (record, "uptime", ""));
-	statsWindow->setItem (uitext->getText (UiTextString::address).capitalized (), Util::getAddressDisplayString (interface->getCommandAgentAddress (record), SystemInterface::Constant_DefaultTcpPort1));
+	statsWindow->setItem (uitext->getText (UiTextString::address).capitalized (), OsUtil::getAddressDisplayString (interface->getCommandAgentAddress (record), SystemInterface::Constant_DefaultTcpPort1));
 	statsWindow->setItem (uitext->getText (UiTextString::version).capitalized (), interface->getCommandStringParam (record, "version", ""));
 	if (menuClickCallback) {
 		menuButton->isVisible = true;
 	}
 
 	refreshLayout ();
-	Panel::syncRecordStore (store);
+	Panel::syncRecordStore ();
 }
 
 void MonitorWindow::setMenuClickCallback (Widget::EventCallback callback, void *callbackData) {
@@ -415,7 +417,7 @@ void MonitorWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y, x0, y0, x2, y2;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	x0 = x;
@@ -533,11 +535,9 @@ void MonitorWindow::expandToggleStateChanged (void *windowPtr, Widget *widgetPtr
 }
 
 void MonitorWindow::addCacheButton (Sprite *sprite, Widget::EventCallback clickCallback, Widget::EventCallback mouseEnterCallback, Widget::EventCallback mouseExitCallback, void *callbackData) {
-	App *app;
 	UiConfiguration *uiconfig;
 
-	app = App::getInstance ();
-	uiconfig = &(app->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 
 	if (cacheButton) {
 		cacheButton->isDestroyed = true;
@@ -551,7 +551,7 @@ void MonitorWindow::addCacheButton (Sprite *sprite, Widget::EventCallback clickC
 	cacheButton->setMouseClickCallback (MonitorWindow::cacheButtonClicked, this);
 	cacheButton->setMouseEnterCallback (MonitorWindow::cacheButtonMouseEntered, this);
 	cacheButton->setMouseExitCallback (MonitorWindow::cacheButtonMouseExited, this);
-	cacheButton->setMouseHoverTooltip (app->uiText.getText (UiTextString::monitorUiViewCacheTooltip));
+	cacheButton->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::monitorUiViewCacheTooltip));
 
 	if (isExpanded) {
 		cacheButton->isVisible = true;
@@ -598,11 +598,9 @@ void MonitorWindow::cacheButtonMouseExited (void *windowPtr, Widget *widgetPtr) 
 }
 
 void MonitorWindow::addStreamButton (Sprite *sprite, Widget::EventCallback clickCallback, Widget::EventCallback mouseEnterCallback, Widget::EventCallback mouseExitCallback, void *callbackData) {
-	App *app;
 	UiConfiguration *uiconfig;
 
-	app = App::getInstance ();
-	uiconfig = &(app->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 
 	if (streamButton) {
 		streamButton->isDestroyed = true;
@@ -616,7 +614,7 @@ void MonitorWindow::addStreamButton (Sprite *sprite, Widget::EventCallback click
 	streamButton->setMouseClickCallback (MonitorWindow::streamButtonClicked, this);
 	streamButton->setMouseEnterCallback (MonitorWindow::streamButtonMouseEntered, this);
 	streamButton->setMouseExitCallback (MonitorWindow::streamButtonMouseExited, this);
-	streamButton->setMouseHoverTooltip (app->uiText.getText (UiTextString::monitorUiAddCacheStreamTooltip));
+	streamButton->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::monitorUiAddCacheStreamTooltip));
 
 	if (isExpanded) {
 		streamButton->isVisible = true;
@@ -663,11 +661,9 @@ void MonitorWindow::streamButtonMouseExited (void *windowPtr, Widget *widgetPtr)
 }
 
 void MonitorWindow::addPlaylistButton (Sprite *sprite, Widget::EventCallback clickCallback, Widget::EventCallback mouseEnterCallback, Widget::EventCallback mouseExitCallback, void *callbackData) {
-	App *app;
 	UiConfiguration *uiconfig;
 
-	app = App::getInstance ();
-	uiconfig = &(app->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 
 	if (playlistButton) {
 		playlistButton->isDestroyed = true;
@@ -681,7 +677,7 @@ void MonitorWindow::addPlaylistButton (Sprite *sprite, Widget::EventCallback cli
 	playlistButton->setMouseClickCallback (MonitorWindow::playlistButtonClicked, this);
 	playlistButton->setMouseEnterCallback (MonitorWindow::playlistButtonMouseEntered, this);
 	playlistButton->setMouseExitCallback (MonitorWindow::playlistButtonMouseExited, this);
-	playlistButton->setMouseHoverTooltip (app->uiText.getText (UiTextString::monitorUiAddCachePlaylistTooltip));
+	playlistButton->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::monitorUiAddCachePlaylistTooltip));
 
 	if (isExpanded) {
 		playlistButton->isVisible = true;

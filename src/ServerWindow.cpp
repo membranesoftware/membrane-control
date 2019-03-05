@@ -35,7 +35,7 @@
 #include "StdString.h"
 #include "App.h"
 #include "UiText.h"
-#include "Util.h"
+#include "OsUtil.h"
 #include "Sprite.h"
 #include "SpriteGroup.h"
 #include "Widget.h"
@@ -60,6 +60,7 @@ ServerWindow::ServerWindow (const StdString &agentId)
 : Panel ()
 , agentId (agentId)
 , isRecordLoaded (false)
+, isRecordDeleted (false)
 , menuPositionY (0.0f)
 , iconImage (NULL)
 , nameLabel (NULL)
@@ -72,8 +73,8 @@ ServerWindow::ServerWindow (const StdString &agentId)
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
-	uitext = &(App::getInstance ()->uiText);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
@@ -127,7 +128,8 @@ void ServerWindow::setMenuClickCallback (Widget::EventCallback callback, void *c
 	menuClickCallbackData = callbackData;
 }
 
-void ServerWindow::syncRecordStore (RecordStore *store) {
+void ServerWindow::syncRecordStore () {
+	RecordStore *store;
 	SystemInterface *interface;
 	UiConfiguration *uiconfig;
 	UiText *uitext;
@@ -136,15 +138,18 @@ void ServerWindow::syncRecordStore (RecordStore *store) {
 	Color color;
 	int icontype;
 
-	interface = &(App::getInstance ()->systemInterface);
-	record = store->findRecord (agentId, SystemInterface::Command_AgentStatus);
+	store = &(App::instance->agentControl.recordStore);
+	interface = &(App::instance->systemInterface);
+	record = store->findRecord (agentId, SystemInterface::CommandId_AgentStatus);
 	if (! record) {
+		isRecordDeleted = true;
 		return;
 	}
 
-	uiconfig = &(App::getInstance ()->uiConfig);
-	uitext = &(App::getInstance ()->uiText);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 
+	isRecordDeleted = false;
 	version = interface->getCommandStringParam (record, "version", "");
 	platform = interface->getCommandStringParam (record, "platform", "");
 	if (! version.empty ()) {
@@ -168,7 +173,7 @@ void ServerWindow::syncRecordStore (RecordStore *store) {
 	statsWindow->setItem (uitext->getText (UiTextString::status).capitalized (), s);
 	statsWindow->setItemTextColor (uitext->getText (UiTextString::status).capitalized (), color);
 
-	statsWindow->setItem (uitext->getText (UiTextString::address).capitalized (), Util::getAddressDisplayString (interface->getCommandAgentAddress (record), SystemInterface::Constant_DefaultTcpPort1));
+	statsWindow->setItem (uitext->getText (UiTextString::address).capitalized (), OsUtil::getAddressDisplayString (interface->getCommandAgentAddress (record), SystemInterface::Constant_DefaultTcpPort1));
 	statsWindow->setItem (uitext->getText (UiTextString::version).capitalized (), interface->getCommandStringParam (record, "version", ""));
 	statsWindow->setItem (uitext->getText (UiTextString::platform).capitalized (), interface->getCommandStringParam (record, "platform", ""));
 	statsWindow->setItem (uitext->getText (UiTextString::uptime).capitalized (), interface->getCommandStringParam (record, "uptime", ""));
@@ -179,7 +184,7 @@ void ServerWindow::syncRecordStore (RecordStore *store) {
 
 	icontype = UiConfiguration::SERVER_ICON;
 	if (interface->getCommandObjectParam (record, "streamServerStatus", &serverstatus)) {
-		statsWindow->setItem (uitext->getText (UiTextString::storage).capitalized (), Util::getStorageAmountDisplayString (serverstatus.getNumber ("freeStorage", (int64_t) 0), serverstatus.getNumber ("totalStorage", (int64_t) 0)));
+		statsWindow->setItem (uitext->getText (UiTextString::storage).capitalized (), OsUtil::getStorageAmountDisplayString (serverstatus.getNumber ("freeStorage", (int64_t) 0), serverstatus.getNumber ("totalStorage", (int64_t) 0)));
 	}
 	if (interface->getCommandObjectParam (record, "mediaServerStatus", &serverstatus)) {
 		icontype = UiConfiguration::LARGE_MEDIA_ICON;
@@ -190,7 +195,7 @@ void ServerWindow::syncRecordStore (RecordStore *store) {
 	}
 	if (interface->getCommandObjectParam (record, "monitorServerStatus", &serverstatus)) {
 		icontype = UiConfiguration::DISPLAY_ICON;
-		statsWindow->setItem (uitext->getText (UiTextString::storage).capitalized (), Util::getStorageAmountDisplayString (serverstatus.getNumber ("freeStorage", (int64_t) 0), serverstatus.getNumber ("totalStorage", (int64_t) 0)));
+		statsWindow->setItem (uitext->getText (UiTextString::storage).capitalized (), OsUtil::getStorageAmountDisplayString (serverstatus.getNumber ("freeStorage", (int64_t) 0), serverstatus.getNumber ("totalStorage", (int64_t) 0)));
 		statsWindow->setItem (uitext->getText (UiTextString::cachedStreams).capitalized (), StdString::createSprintf ("%i", serverstatus.getNumber ("streamCount", (int) 0)));
 		statsWindow->setItem (uitext->getText (UiTextString::program).capitalized (), serverstatus.getString ("intentName", ""));
 		statsWindow->setItem (uitext->getText (UiTextString::displayStatus).capitalized (), uitext->getMonitorStatusText (&serverstatus));
@@ -203,14 +208,14 @@ void ServerWindow::syncRecordStore (RecordStore *store) {
 	isRecordLoaded = true;
 
 	refreshLayout ();
-	Panel::syncRecordStore (store);
+	Panel::syncRecordStore ();
 }
 
 void ServerWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y, x0, y0, x2, y2;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	x0 = x;

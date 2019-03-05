@@ -55,8 +55,8 @@ public:
 	// Set a function that should be invoked when the window's delete action is clicked
 	void setDeleteCallback (Widget::EventCallback callback, void *callbackData);
 
-	// Execute operations appropriate to sync widget state with records present in the provided RecordStore object, which has been locked prior to invocation
-	void syncRecordStore (RecordStore *store);
+	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
+	void syncRecordStore ();
 
 	// Callback functions
 	static void deleteButtonClicked (void *windowPtr, Widget *widgetPtr);

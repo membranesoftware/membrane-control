@@ -35,7 +35,7 @@
 
 #include <stdint.h>
 #include <map>
-#include "SDL2/SDL_render.h"
+#include "SDL2/SDL.h"
 #include "ft2build.h"
 #include FT_FREETYPE_H
 #include "StdString.h"

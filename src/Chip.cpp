@@ -49,7 +49,7 @@ Chip::Chip (const StdString &chipText, Sprite *iconSprite, bool shouldDestroySpr
 
 	widgetType.assign ("Chip");
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize / 2.0f);
 	setFillBg (true, uiconfig->mediumPrimaryColor);
 
@@ -74,7 +74,7 @@ StdString Chip::toStringDetail () {
 void Chip::setText (const StdString &text) {
 	UiConfiguration *uiconfig;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	if (text.empty ()) {
 		if (textLabel) {
 			textLabel->isDestroyed = true;
@@ -107,7 +107,7 @@ void Chip::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x = uiconfig->paddingSize;
 	y = uiconfig->paddingSize;
 

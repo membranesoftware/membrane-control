@@ -63,12 +63,6 @@ public:
 
 	static const char *levelNames[];
 
-	// Return the singleton instance of this class, creating it if necessary
-	static Log *getInstance ();
-
-	// Free the singleton instance of this class
-	static void freeInstance ();
-
 	// Set the log's level, causing it to write messages of that level and below
 	void setLevel (int level);
 
@@ -83,15 +77,42 @@ public:
 	int setFileOutput (bool enable, const char *filename);
 	int setFileOutput (bool enable, const StdString &filename);
 
+	// Write a message to the log using the provided va_list and args
+	void voutput (int level, const char *str, va_list args);
+
 	// Write a message to the default log instance using the specified parameters
 	static void write (int level, const char *str, ...) __attribute__((format(printf, 2, 3)));
 	static void write (int level, const char *str, va_list args);
 
-	// Write a message to the default log instance using the default level
+	// Write a message to the default log instance without specifying a level
 	static void printf (const char *str, ...) __attribute__((format(printf, 1, 2)));
 
-	// Write a message to the log using the provided va_list and args
-	void voutput (int level, const char *str, va_list args);
+	// Write a message to the default log instance at the ERR level
+	static void err (const char *str, ...) __attribute__((format(printf, 1, 2)));
+
+	// Write a message to the default log instance at the WARNING level
+	static void warning (const char *str, ...) __attribute__((format(printf, 1, 2)));
+
+	// Write a message to the default log instance at the NOTICE level
+	static void notice (const char *str, ...) __attribute__((format(printf, 1, 2)));
+
+	// Write a message to the default log instance at the INFO level
+	static void info (const char *str, ...) __attribute__((format(printf, 1, 2)));
+
+	// Write a message to the default log instance at the DEBUG level
+	static void debug (const char *str, ...) __attribute__((format(printf, 1, 2)));
+
+	// Write a message to the default log instance at the DEBUG1 level
+	static void debug1 (const char *str, ...) __attribute__((format(printf, 1, 2)));
+
+	// Write a message to the default log instance at the DEBUG2 level
+	static void debug2 (const char *str, ...) __attribute__((format(printf, 1, 2)));
+
+	// Write a message to the default log instance at the DEBUG3 level
+	static void debug3 (const char *str, ...) __attribute__((format(printf, 1, 2)));
+
+	// Write a message to the default log instance at the DEBUG4 level
+	static void debug4 (const char *str, ...) __attribute__((format(printf, 1, 2)));
 
 protected:
 	bool isStderrOutputEnabled;

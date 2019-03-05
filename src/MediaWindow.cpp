@@ -31,12 +31,12 @@
 #include "Config.h"
 #include <stdlib.h>
 #include <math.h>
-#include "SDL2/SDL.h"
 #include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
-#include "Util.h"
+#include "OsUtil.h"
+#include "MediaUtil.h"
 #include "Widget.h"
 #include "Sprite.h"
 #include "SpriteGroup.h"
@@ -49,7 +49,6 @@
 #include "Json.h"
 #include "SystemInterface.h"
 #include "UiConfiguration.h"
-#include "MediaUi.h"
 #include "MediaWindow.h"
 
 MediaWindow::MediaWindow (Json *mediaItem, int layoutType, float maxMediaImageWidth)
@@ -70,8 +69,8 @@ MediaWindow::MediaWindow (Json *mediaItem, int layoutType, float maxMediaImageWi
 	SystemInterface *interface;
 	UiConfiguration *uiconfig;
 
-	interface = &(App::getInstance ()->systemInterface);
-	uiconfig = &(App::getInstance ()->uiConfig);
+	interface = &(App::instance->systemInterface);
+	uiconfig = &(App::instance->uiConfig);
 
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 	mediaId = interface->getCommandStringParam (mediaItem, "id", "");
@@ -130,17 +129,17 @@ bool MediaWindow::hasThumbnails () {
 	return ((! agentId.empty ()) && (! thumbnailPath.empty ()) && (thumbnailCount > 0) && (mediaWidth > 0) && (mediaHeight > 0));
 }
 
-void MediaWindow::syncRecordStore (RecordStore *store) {
-	App *app;
+void MediaWindow::syncRecordStore () {
+	RecordStore *store;
 	SystemInterface *interface;
 	UiConfiguration *uiconfig;
 	Json *mediaitem, *agentstatus, serverstatus, *streamitem, *params;
 	StdString agentid, recordid, agentname;
 
-	app = App::getInstance ();
-	interface = &(app->systemInterface);
-	uiconfig = &(app->uiConfig);
-	mediaitem = store->findRecord (mediaId, SystemInterface::Command_MediaItem);
+	store = &(App::instance->agentControl.recordStore);
+	interface = &(App::instance->systemInterface);
+	uiconfig = &(App::instance->uiConfig);
+	mediaitem = store->findRecord (mediaId, SystemInterface::CommandId_MediaItem);
 	if (! mediaitem) {
 		return;
 	}
@@ -198,7 +197,7 @@ void MediaWindow::syncRecordStore (RecordStore *store) {
 		params = new Json ();
 		params->set ("id", mediaId);
 		params->set ("thumbnailIndex", (thumbnailCount / 4));
-		mediaImage->setLoadUrl (app->agentControl.getAgentSecondaryUrl (agentId, app->createCommand ("GetThumbnailImage", SystemInterface::Constant_Media, params), thumbnailPath), uiconfig->coreSprites.getSprite (UiConfiguration::LOADING_IMAGE_ICON));
+		mediaImage->setLoadUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetThumbnailImage, SystemInterface::Constant_Media, params), thumbnailPath), uiconfig->coreSprites.getSprite (UiConfiguration::LOADING_IMAGE_ICON));
 	}
 
 	refreshLayout ();
@@ -208,16 +207,16 @@ bool MediaWindow::matchStreamSourceId (void *idStringPtr, Json *record) {
 	StdString *id;
 	SystemInterface *interface;
 
-	interface = &(App::getInstance ()->systemInterface);
+	interface = &(App::instance->systemInterface);
 	if (interface->isRecordClosed (record)) {
 		return (false);
 	}
-	if (interface->getCommandId (record) != SystemInterface::Command_StreamItem) {
+	if (interface->getCommandId (record) != SystemInterface::CommandId_StreamItem) {
 		return (false);
 	}
 
 	id = (StdString *) idStringPtr;
-	return (id->equals (App::getInstance ()->systemInterface.getCommandStringParam (record, "sourceId", "")));
+	return (id->equals (App::instance->systemInterface.getCommandStringParam (record, "sourceId", "")));
 }
 
 void MediaWindow::refreshLayout () {
@@ -226,8 +225,8 @@ void MediaWindow::refreshLayout () {
 	StdString text;
 	float x, y;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
-	uitext = &(App::getInstance ()->uiText);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 	mouseoverLabel->isVisible = false;
 	x = 0.0f;
 	y = 0.0f;
@@ -261,7 +260,7 @@ void MediaWindow::refreshLayout () {
 			detailNameLabel->position.assign (x, y);
 			detailNameLabel->isVisible = true;
 
-			text.sprintf ("%ix%i  %s  %s  %s", mediaWidth, mediaHeight, Util::getBitrateDisplayString (mediaBitrate).c_str (), Util::getByteCountDisplayString (mediaSize).c_str (), Util::getDurationDisplayString (mediaDuration).c_str ());
+			text.sprintf ("%ix%i  %s  %s  %s", mediaWidth, mediaHeight, MediaUtil::getBitrateDisplayString (mediaBitrate).c_str (), OsUtil::getByteCountDisplayString (mediaSize).c_str (), OsUtil::getDurationDisplayString (mediaDuration).c_str ());
 			if (! streamAgentName.empty ()) {
 				text.appendSprintf ("\n%s: %s", uitext->getText (UiTextString::streamServer).capitalized ().c_str (), streamAgentName.c_str ());
 			}

@@ -33,18 +33,26 @@
 #ifndef MAIN_UI_H
 #define MAIN_UI_H
 
+#include <map>
+#include <vector>
 #include "StdString.h"
-#include "Json.h"
-#include "RecordStore.h"
+#include "SharedBuffer.h"
+#include "HashMap.h"
+#include "SequenceList.h"
 #include "WidgetHandle.h"
-#include "Toolbar.h"
-#include "Toggle.h"
 #include "CardView.h"
+#include "HelpWindow.h"
 #include "Ui.h"
 
 class MainUi : public Ui {
 public:
 	static const int uiLaunchWindowTypes[];
+	static const StdString announcementIconType;
+	static const StdString updateIconType;
+	static const StdString textMessageIconType;
+	static const StdString videoMessageIconType;
+	static const StdString openUrlActionType;
+	static const StdString helpActionType;
 
 	// Constants to use for sprite indexes
 	enum {
@@ -57,19 +65,28 @@ public:
 		MASTER_ICON = 6,
 		INTENT_ICON = 7,
 		SHOW_ALL_ENABLED_BUTTON = 8,
-		SHOW_ALL_DISABLED_BUTTON = 9
+		SHOW_ALL_DISABLED_BUTTON = 9,
+		ANNOUNCEMENT_ICON = 10,
+		NEXT_ITEM_BUTTON = 11,
+		UPDATE_ICON = 12,
+		TEXT_MESSAGE_ICON = 13,
+		VIDEO_MESSAGE_ICON = 14
 	};
 
 	MainUi ();
 	~MainUi ();
 
 	// Set fields in the provided HelpWindow widget as appropriate for the UI's help content
-	void setHelpWindowContent (Widget *helpWindowPtr);
+	void setHelpWindowContent (HelpWindow *helpWindow);
 
 	// Callback functions
+	static void helpActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void uiOpenClicked (void *uiPtr, Widget *widgetPtr);
 	static void showAllToggleStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void nextBannerButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static bool matchUiType (void *intPtr, Widget *widgetPtr);
+	static void getApplicationNewsComplete (void *uiPtr, const StdString &targetUrl, int statusCode, SharedBuffer *responseData);
+	static void openUrlActionClicked (void *uiPtr, Widget *widgetPtr);
 
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
@@ -82,7 +99,10 @@ protected:
 	void doUnload ();
 
 	// Add subclass-specific items to the provided main toolbar object
-	void doResetMainToolbar (Toolbar *toolbar);
+	void doAddMainToolbarItems (Toolbar *toolbar);
+
+	// Add subclass-specific items to the provided secondary toolbar object
+	void doAddSecondaryToolbarItems (Toolbar *toolbar);
 
 	// Remove and destroy any subclass-specific popup widgets that have been created by the UI
 	void doClearPopupWidgets ();
@@ -102,15 +122,35 @@ protected:
 	// Reload subclass-specific interface resources as needed to account for a new application window size
 	void doResize ();
 
-	// Execute subclass-specific operations to sync state with records present in the provided RecordStore object, which has been locked prior to invocation
-	void doSyncRecordStore (RecordStore *store);
+	// Execute subclass-specific operations to sync state with records present in the application's RecordStore object, which has been locked prior to invocation
+	void doSyncRecordStore ();
 
 private:
+	struct Banner {
+		StdString messageText;
+		StdString iconType;
+		StdString actionText;
+		StdString actionType;
+		StdString actionTarget;
+	};
+
+	// Update the banner window with content from the next available item
+	void showNextBanner ();
+
+	// Reset the contents of bannerVector to contain all appropriate items (static items and items loaded from preferences)
+	void resetBanners ();
+
+	HashMap bannerIconTypeMap;
+	std::map<StdString, Widget::EventCallback> bannerActionCallbackMap;
+	SequenceList<MainUi::Banner> bannerList;
+	MainUi::Banner activeBanner;
 	CardView *cardView;
-	Toggle *showAllToggle;
-	int welcomeClock;
+	WidgetHandle showAllToggle;
+	WidgetHandle bannerWindow;
+	WidgetHandle bannerActionButton;
 	bool shouldResetShowAll;
 	int readyItemCount;
+	int bannerClock;
 };
 
 #endif

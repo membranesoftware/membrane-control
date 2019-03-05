@@ -62,7 +62,7 @@ Toggle::Toggle (Sprite *uncheckedButtonSprite, Sprite *checkedButtonSprite)
 
 	// TODO: Add an indeterminate toggle state (for use when disabled)
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	if (uncheckedButtonSprite && checkedButtonSprite) {
 		uncheckedButton = (Button *) addWidget (new Button (StdString (""), uncheckedButtonSprite));
 		checkedButton = (Button *) addWidget (new Button (StdString (""), checkedButtonSprite));

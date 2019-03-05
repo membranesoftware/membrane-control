@@ -176,7 +176,7 @@ int Network::start (int requestThreadCount) {
 	}
 
 	if (requestThreadCount <= 0) {
-		Log::write (Log::WARNING, "Invalid preferences value %s %i, ignored", App::prefsNetworkThreads.c_str (), requestThreadCount);
+		Log::warning ("Invalid preferences value %s %i, ignored", App::prefsNetworkThreads.c_str (), requestThreadCount);
 		requestThreadCount = Network::defaultRequestThreadCount;
 	}
 	httpRequestThreadCount = requestThreadCount;
@@ -186,10 +186,10 @@ int Network::start (int requestThreadCount) {
 		versionrequested = MAKEWORD (2, 2);
 		result = WSAStartup (versionrequested, &wsadata);
 		if (result != 0) {
-			Log::write (Log::ERR, "Network start failed; err=\"WSAStartup: %i\"", result);
+			Log::err ("Network start failed; err=\"WSAStartup: %i\"", result);
 			return (Result::ERROR_SOCKET_OPERATION_FAILED);
 		}
-		Log::write (Log::DEBUG, "WSAStartup; wsaVersion=%i.%i", HIBYTE (wsadata.wVersion), LOBYTE (wsadata.wVersion));
+		Log::debug ("WSAStartup; wsaVersion=%i.%i", HIBYTE (wsadata.wVersion), LOBYTE (wsadata.wVersion));
 		isWsaStarted = true;
 	}
 #endif
@@ -209,7 +209,7 @@ int Network::start (int requestThreadCount) {
 #if PLATFORM_LINUX || PLATFORM_MACOS
 	proto = getprotobyname ("udp");
 	if (! proto) {
-		Log::write (Log::ERR, "Network start failed; err=\"getprotobyname: %s\"", strerror (errno));
+		Log::err ("Network start failed; err=\"getprotobyname: %s\"", strerror (errno));
 		return (Result::ERROR_SOCKET_OPERATION_FAILED);
 	}
 	datagramSocket = socket (PF_INET, SOCK_DGRAM, proto->p_proto);
@@ -219,19 +219,19 @@ int Network::start (int requestThreadCount) {
 	datagramSocket = socket (AF_INET, SOCK_DGRAM, 0);
 #endif
 	if (datagramSocket < 0) {
-		Log::write (Log::ERR, "Network start failed; err=\"socket: %s\"", strerror (errno));
+		Log::err ("Network start failed; err=\"socket: %s\"", strerror (errno));
 		return (Result::ERROR_SOCKET_OPERATION_FAILED);
 	}
 
 	sockopt = 1;
 	if (setsockopt (datagramSocket, SOL_SOCKET, SO_REUSEADDR, &sockopt, sizeof (sockopt)) < 0) {
-		Log::write (Log::ERR, "Network start failed; err=\"setsockopt SO_REUSEADDR: %s\"", strerror (errno));
+		Log::err ("Network start failed; err=\"setsockopt SO_REUSEADDR: %s\"", strerror (errno));
 		return (Result::ERROR_SOCKET_OPERATION_FAILED);
 	}
 
 	sockopt = 1;
 	if (setsockopt (datagramSocket, SOL_SOCKET, SO_BROADCAST, &sockopt, sizeof (sockopt)) < 0) {
-		Log::write (Log::ERR, "Network start failed; err=\"setsockopt SO_BROADCAST: %s\"", strerror (errno));
+		Log::err ("Network start failed; err=\"setsockopt SO_BROADCAST: %s\"", strerror (errno));
 		return (Result::ERROR_SOCKET_OPERATION_FAILED);
 	}
 
@@ -239,27 +239,27 @@ int Network::start (int requestThreadCount) {
 	saddr.sin_family = AF_INET;
 	saddr.sin_addr.s_addr = htonl (INADDR_ANY);
 	if (bind (datagramSocket, (struct sockaddr *) (&saddr), sizeof (struct sockaddr_in)) < 0) {
-		Log::write (Log::ERR, "Network start failed; err=\"bind: %s\"", strerror (errno));
+		Log::err ("Network start failed; err=\"bind: %s\"", strerror (errno));
 		return (Result::ERROR_SOCKET_OPERATION_FAILED);
 	}
 
 	memset (&saddr, 0, sizeof (struct sockaddr_in));
 	namelen = sizeof (struct sockaddr_in);
 	if (getsockname (datagramSocket, (struct sockaddr *) &saddr, &namelen) < 0) {
-		Log::write (Log::ERR, "Network start failed; err=\"getsockname: %s\"", strerror (errno));
+		Log::err ("Network start failed; err=\"getsockname: %s\"", strerror (errno));
 		return (Result::ERROR_SOCKET_OPERATION_FAILED);
 	}
 	datagramPort = (int) ntohs (saddr.sin_port);
 
 	datagramReceiveThread = SDL_CreateThread (Network::runDatagramReceiveThread, "runDatagramReceiveThread", (void *) this);
 	if (! datagramReceiveThread) {
-		Log::write (Log::ERR, "Network start failed; err=\"thread create failed\"");
+		Log::err ("Network start failed; err=\"thread create failed\"");
 		return (Result::ERROR_THREAD_CREATE_FAILED);
 	}
 
 	datagramSendThread = SDL_CreateThread (Network::runDatagramSendThread, "runDatagramSendThread", (void *) this);
 	if (! datagramSendThread) {
-		Log::write (Log::ERR, "Network start failed; err=\"thread create failed\"");
+		Log::err ("Network start failed; err=\"thread create failed\"");
 		return (Result::ERROR_THREAD_CREATE_FAILED);
 	}
 
@@ -273,7 +273,7 @@ int Network::start (int requestThreadCount) {
 	}
 
 	isStarted = true;
-	Log::write (Log::DEBUG, "Network start; datagramSocket=%i datagramPort=%i httpRequestThreadCount=%i", datagramSocket, datagramPort, httpRequestThreadCount);
+	Log::debug ("Network start; datagramSocket=%i datagramPort=%i httpRequestThreadCount=%i", datagramSocket, datagramPort, httpRequestThreadCount);
 
 	return (Result::SUCCESS);
 }
@@ -281,7 +281,7 @@ int Network::start (int requestThreadCount) {
 void Network::stop () {
 #if PLATFORM_WINDOWS
 	if (isWsaStarted) {
-		Log::write (Log::DEBUG, "WSACleanup");
+		Log::debug ("WSACleanup");
 		isWsaStarted = false;
 		WSACleanup ();
 	}
@@ -338,7 +338,7 @@ int Network::resetInterfaces () {
 
 	fd = socket (AF_INET, SOCK_DGRAM, IPPROTO_IP);
 	if (fd < 0) {
-		Log::write (Log::ERR, "Failed to detect network interfaces; err=\"socket: %s\"", strerror (errno));
+		Log::err ("Failed to detect network interfaces; err=\"socket: %s\"", strerror (errno));
 		close (fd);
 		return (Result::ERROR_SOCKET_OPERATION_FAILED);
 	}
@@ -346,7 +346,7 @@ int Network::resetInterfaces () {
 	conf.ifc_len = sizeof (confbuf);
 	conf.ifc_buf = confbuf;
 	if (ioctl (fd, SIOCGIFCONF, &conf) < 0) {
-		Log::write (Log::ERR, "Failed to detect network interfaces; err=\"ioctl SIOCGIFCONF: %s\"", strerror (errno));
+		Log::err ("Failed to detect network interfaces; err=\"ioctl SIOCGIFCONF: %s\"", strerror (errno));
 		close (fd);
 		return (Result::ERROR_SOCKET_OPERATION_FAILED);
 	}
@@ -362,23 +362,23 @@ int Network::resetInterfaces () {
 
 		name.assign (req.ifr_name);
 		if (ioctl (fd, SIOCGIFADDR, &req) < 0) {
-			Log::write (Log::WARNING, "Failed to read network interface; name=\"%s\" err=\"ioctl SIOCGIFADDR: %s\"", name.c_str (), strerror (errno));
+			Log::warning ("Failed to read network interface; name=\"%s\" err=\"ioctl SIOCGIFADDR: %s\"", name.c_str (), strerror (errno));
 			continue;
 		}
 		if (req.ifr_addr.sa_family != AF_INET) {
-			Log::write (Log::DEBUG, "Skip network interface (not AF_INET); name=\"%s\"", name.c_str ());
+			Log::debug ("Skip network interface (not AF_INET); name=\"%s\"", name.c_str ());
 			continue;
 		}
 
 		addr = (struct sockaddr_in *) &(req.ifr_addr);
 		if (! inet_ntop (AF_INET, &(addr->sin_addr), addrbuf, sizeof (addrbuf))) {
-			Log::write (Log::WARNING, "Failed to read network interface; name=\"%s\" err=\"inet_ntop: %s\"", name.c_str (), strerror (errno));
+			Log::warning ("Failed to read network interface; name=\"%s\" err=\"inet_ntop: %s\"", name.c_str (), strerror (errno));
 			continue;
 		}
 		interface.address.assign (addrbuf);
 
 		if (ioctl (fd, SIOCGIFFLAGS, &req) < 0) {
-			Log::write (Log::WARNING, "Failed to read network interface; name=\"%s\" err=\"ioctl SIOCGIFFLAGS: %s\"", name.c_str (), strerror (errno));
+			Log::warning ("Failed to read network interface; name=\"%s\" err=\"ioctl SIOCGIFFLAGS: %s\"", name.c_str (), strerror (errno));
 			continue;
 		}
 		interface.isUp = (req.ifr_flags & IFF_UP) ? true : false;
@@ -391,12 +391,12 @@ int Network::resetInterfaces () {
 			}
 			else {
 				if (ioctl (fd, SIOCGIFBRDADDR, &req) < 0) {
-					Log::write (Log::WARNING, "Failed to read network interface; name=\"%s\" err=\"ioctl SIOCGIFBRDADDR: %s\"", name.c_str (), strerror (errno));
+					Log::warning ("Failed to read network interface; name=\"%s\" err=\"ioctl SIOCGIFBRDADDR: %s\"", name.c_str (), strerror (errno));
 					continue;
 				}
 				addr = (struct sockaddr_in *) &(req.ifr_broadaddr);
 				if (! inet_ntop (AF_INET, &(addr->sin_addr), addrbuf, sizeof (addrbuf))) {
-					Log::write (Log::WARNING, "Failed to read network interface; name=\"%s\" err=\"inet_ntop: %s\"", name.c_str (), strerror (errno));
+					Log::warning ("Failed to read network interface; name=\"%s\" err=\"inet_ntop: %s\"", name.c_str (), strerror (errno));
 					continue;
 				}
 				interface.broadcastAddress.assign (addrbuf);
@@ -405,7 +405,7 @@ int Network::resetInterfaces () {
 
 		interface.id = id;
 		++id;
-		Log::write (Log::DEBUG, "Detected network interface; id=%i name=\"%s\" isUp=%s isBroadcast=%s isLoopback=%s address=%s broadcastAddress=%s", interface.id, name.c_str (), BOOL_STRING (interface.isUp), BOOL_STRING (interface.isBroadcast), BOOL_STRING (interface.isLoopback), interface.address.c_str (), interface.broadcastAddress.c_str ());
+		Log::debug ("Detected network interface; id=%i name=\"%s\" isUp=%s isBroadcast=%s isLoopback=%s address=%s broadcastAddress=%s", interface.id, name.c_str (), BOOL_STRING (interface.isUp), BOOL_STRING (interface.isBroadcast), BOOL_STRING (interface.isLoopback), interface.address.c_str (), interface.broadcastAddress.c_str ());
 		interfaceMap.insert (std::pair<StdString, Network::Interface> (name, interface));
 	}
 
@@ -422,7 +422,7 @@ int Network::resetInterfaces () {
 
 	result = getifaddrs (&ifp);
 	if (result != 0) {
-		Log::write (Log::WARNING, "Failed to detect network interfaces; err=\"getifaddrs: %s\"", strerror (errno));
+		Log::warning ("Failed to detect network interfaces; err=\"getifaddrs: %s\"", strerror (errno));
 		return (Result::ERROR_SOCKET_OPERATION_FAILED);
 	}
 
@@ -432,14 +432,14 @@ int Network::resetInterfaces () {
 		name.assign (item->ifa_name);
 
 		if (item->ifa_addr->sa_family != AF_INET) {
-			Log::write (Log::DEBUG, "Skip network interface (not AF_INET); name=\"%s\"", name.c_str ());
+			Log::debug ("Skip network interface (not AF_INET); name=\"%s\"", name.c_str ());
 			item = item->ifa_next;
 			continue;
 		}
 
 		addr = (struct sockaddr_in *) item->ifa_addr;
 		if (! inet_ntop (AF_INET, &(addr->sin_addr), addrbuf, sizeof (addrbuf))) {
-			Log::write (Log::WARNING, "Failed to read network interface; name=\"%s\" err=\"inet_ntop: %s\"", name.c_str (), strerror (errno));
+			Log::warning ("Failed to read network interface; name=\"%s\" err=\"inet_ntop: %s\"", name.c_str (), strerror (errno));
 			item = item->ifa_next;
 			continue;
 		}
@@ -457,7 +457,7 @@ int Network::resetInterfaces () {
 				// TODO: Check if this should use ifa_broadaddr instead
 				addr = (struct sockaddr_in *) item->ifa_dstaddr;
 				if (! inet_ntop (AF_INET, &(addr->sin_addr), addrbuf, sizeof (addrbuf))) {
-					Log::write (Log::WARNING, "Failed to read network interface; name=\"%s\" err=\"inet_ntop: %s\"", name.c_str (), strerror (errno));
+					Log::warning ("Failed to read network interface; name=\"%s\" err=\"inet_ntop: %s\"", name.c_str (), strerror (errno));
 					item = item->ifa_next;
 					continue;
 				}
@@ -467,7 +467,7 @@ int Network::resetInterfaces () {
 
 		interface.id = id;
 		++id;
-		Log::write (Log::DEBUG, "Detected network interface; id=%i name=\"%s\" isUp=%s isBroadcast=%s isLoopback=%s address=%s broadcastAddress=%s", interface.id, name.c_str (), BOOL_STRING (interface.isUp), BOOL_STRING (interface.isBroadcast), BOOL_STRING (interface.isLoopback), interface.address.c_str (), interface.broadcastAddress.c_str ());
+		Log::debug ("Detected network interface; id=%i name=\"%s\" isUp=%s isBroadcast=%s isLoopback=%s address=%s broadcastAddress=%s", interface.id, name.c_str (), BOOL_STRING (interface.isUp), BOOL_STRING (interface.isBroadcast), BOOL_STRING (interface.isLoopback), interface.address.c_str (), interface.broadcastAddress.c_str ());
 		interfaceMap.insert (std::pair<StdString, Network::Interface> (name, interface));
 
 		item = item->ifa_next;
@@ -489,7 +489,7 @@ int Network::resetInterfaces () {
 	retval = 0;
 	table = (MIB_IPADDRTABLE *) malloc (sizeof (MIB_IPADDRTABLE));
 	if (! table) {
-		Log::write (Log::ERR, "Failed to detect network interfaces (out of memory)");
+		Log::err ("Failed to detect network interfaces (out of memory)");
 		return (Result::ERROR_OUT_OF_MEMORY);
 	}
 
@@ -498,7 +498,7 @@ int Network::resetInterfaces () {
 		free (table);
 		table = (MIB_IPADDRTABLE *) malloc (sz);
 		if (! table) {
-			Log::write (Log::ERR, "Failed to detect network interfaces (out of memory)");
+			Log::err ("Failed to detect network interfaces (out of memory)");
 			return (Result::ERROR_OUT_OF_MEMORY);
 		}
 
@@ -507,7 +507,7 @@ int Network::resetInterfaces () {
 
 	if (retval != NO_ERROR) {
 		free (table);
-		Log::write (Log::ERR, "Failed to detect network interfaces (GetIpAddrTable); result=%i", (int) retval);
+		Log::err ("Failed to detect network interfaces (GetIpAddrTable); result=%i", (int) retval);
 		return (Result::ERROR_SYSTEM_OPERATION_FAILED);
 	}
 
@@ -531,7 +531,7 @@ int Network::resetInterfaces () {
 
 		interface.id = id;
 		++id;
-		Log::write (Log::DEBUG, "Detected network interface; id=%i name=\"%s\" isUp=%s isBroadcast=%s isLoopback=%s address=%s broadcastAddress=%s", interface.id, name.c_str (), BOOL_STRING (interface.isUp), BOOL_STRING (interface.isBroadcast), BOOL_STRING (interface.isLoopback), interface.address.c_str (), interface.broadcastAddress.c_str ());
+		Log::debug ("Detected network interface; id=%i name=\"%s\" isUp=%s isBroadcast=%s isLoopback=%s address=%s broadcastAddress=%s", interface.id, name.c_str (), BOOL_STRING (interface.isUp), BOOL_STRING (interface.isBroadcast), BOOL_STRING (interface.isLoopback), interface.address.c_str (), interface.broadcastAddress.c_str ());
 		interfaceMap.insert (std::pair<StdString, Network::Interface> (name, interface));
 	}
 
@@ -628,7 +628,7 @@ int Network::runDatagramSendThread (void *networkPtr) {
 		SDL_UnlockMutex (network->datagramSendMutex);
 
 		if (! item.messageData) {
-			Log::write (Log::WARNING, "Discard queued datagram (no message data provided)");
+			Log::warning ("Discard queued datagram (no message data provided)");
 		}
 		else {
 			if (item.isBroadcast) {
@@ -816,7 +816,6 @@ int Network::runHttpRequestThread (void *networkPtr) {
 }
 
 int Network::sendHttpRequest (Network::HttpRequestContext *item, int *statusCode, SharedBuffer **responseBuffer) {
-	App *app;
 	CURL *curl;
 	CURLcode code;
 	SharedBuffer *buffer;
@@ -828,7 +827,6 @@ int Network::sendHttpRequest (Network::HttpRequestContext *item, int *statusCode
 		return (Result::ERROR_LIBCURL_OPERATION_FAILED);
 	}
 
-	app = App::getInstance ();
 	result = Result::SUCCESS;
 	code = CURLE_UNKNOWN_OPTION;
 	buffer = new SharedBuffer ();
@@ -840,8 +838,11 @@ int Network::sendHttpRequest (Network::HttpRequestContext *item, int *statusCode
 	curl_easy_setopt (curl, CURLOPT_NOPROGRESS, 0);
 	curl_easy_setopt (curl, CURLOPT_PROGRESSFUNCTION, Network::curlProgress);
 	curl_easy_setopt (curl, CURLOPT_URL, item->url.c_str ());
+	if (! httpUserAgent.empty ()) {
+		curl_easy_setopt (curl, CURLOPT_USERAGENT, httpUserAgent.c_str ());
+	}
 
-	if (app->isHttpsEnabled && item->url.startsWith ("https://")) {
+	if (App::instance->isHttpsEnabled && item->url.startsWith ("https://")) {
 		curl_easy_setopt (curl, CURLOPT_USE_SSL, CURLUSESSL_ALL);
 
 		// TODO: Possibly enable certificate validation (currently disabled to allow use of self-signed certificates)
@@ -903,10 +904,7 @@ size_t Network::curlWrite (char *ptr, size_t size, size_t nmemb, void *userdata)
 }
 
 int Network::curlProgress (void *clientp, double dltotal, double dlnow, double ultotal, double ulnow) {
-	App *app;
-
-	app = App::getInstance ();
-	if (app->isShuttingDown || app->isShutdown) {
+	if (App::instance->isShuttingDown || App::instance->isShutdown) {
 		return (-1);
 	}
 

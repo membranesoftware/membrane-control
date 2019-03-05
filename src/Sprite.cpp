@@ -32,7 +32,6 @@
 #include <stdlib.h>
 #include <vector>
 #include "SDL2/SDL.h"
-#include "SDL2/SDL_render.h"
 #include "Result.h"
 #include "Log.h"
 #include "StdString.h"
@@ -59,7 +58,7 @@ Sprite *Sprite::copy () {
 	std::vector<Sprite::TextureData>::iterator i, end;
 	int result;
 
-	resource = &(App::getInstance ()->resource);
+	resource = &(App::instance->resource);
 	sprite = new Sprite ();
 	i = textureList.begin ();
 	end = textureList.end ();
@@ -93,7 +92,7 @@ int Sprite::load (const StdString &path, int imageScale) {
 	bool found;
 
 	result = Result::SUCCESS;
-	resource = &(App::getInstance ()->resource);
+	resource = &(App::instance->resource);
 	i = 0;
 	maxWidth = 0;
 	maxHeight = 0;
@@ -142,7 +141,7 @@ int Sprite::addTexture (SDL_Texture *texture, const StdString &loadPath) {
 	item.texture = texture;
 	item.loadPath.assign (loadPath);
 	if (SDL_QueryTexture (item.texture, NULL, NULL, &(item.width), &(item.height)) != 0) {
-		Log::write (Log::ERR, "Failed to query sprite texture; path=\"%s\" err=\"%s\"", item.loadPath.c_str (), SDL_GetError ());
+		Log::err ("Failed to query sprite texture; path=\"%s\" err=\"%s\"", item.loadPath.c_str (), SDL_GetError ());
 		return (Result::ERROR_SDL_OPERATION_FAILED);
 	}
 
@@ -162,7 +161,7 @@ void Sprite::unload () {
 	Resource *resource;
 	std::vector<Sprite::TextureData>::iterator i, end;
 
-	resource = &(App::getInstance ()->resource);
+	resource = &(App::instance->resource);
 	i = textureList.begin ();
 	end = textureList.end ();
 	while (i != end) {

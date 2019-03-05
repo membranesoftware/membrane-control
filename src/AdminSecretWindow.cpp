@@ -36,7 +36,6 @@
 #include "StdString.h"
 #include "App.h"
 #include "UiText.h"
-#include "Util.h"
 #include "Sprite.h"
 #include "SpriteGroup.h"
 #include "Widget.h"
@@ -72,8 +71,8 @@ AdminSecretWindow::AdminSecretWindow ()
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
-	uitext = &(App::getInstance ()->uiText);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
@@ -165,7 +164,7 @@ void AdminSecretWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y, x0, y0, x2, y2;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	x0 = x;
@@ -232,14 +231,12 @@ void AdminSecretWindow::listChanged (void *windowPtr, Widget *widgetPtr) {
 
 void AdminSecretWindow::listItemDeleted (void *windowPtr, Widget *widgetPtr) {
 	ListView *listview;
-	App *app;
 	StdString name;
 
 	listview = (ListView *) widgetPtr;
-	app = App::getInstance ();
 	name = listview->getItemText (listview->focusItemIndex);
 	if (! name.empty ()) {
-		app->agentControl.removeAdminSecret (name);
+		App::instance->agentControl.removeAdminSecret (name);
 	}
 	listview->removeItem (listview->focusItemIndex);
 }
@@ -253,8 +250,8 @@ ActionWindow *AdminSecretWindow::createAddActionWindow () {
 	StdString name;
 	int i, len;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
-	uitext = &(App::getInstance ()->uiText);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 	action = new ActionWindow ();
 	action->setInverseColor (true);
 	action->setTitleText (uitext->getText (UiTextString::createAdminPassword).capitalized ());
@@ -287,15 +284,13 @@ ActionWindow *AdminSecretWindow::createAddActionWindow () {
 }
 
 void AdminSecretWindow::addItem (ActionWindow *actionWindow) {
-	App *app;
 	UiText *uitext;
 	StdString name, password;
 	EVP_MD_CTX *ctx;
 	unsigned char digest[EVP_MAX_MD_SIZE];
 	unsigned int len;
 
-	app = App::getInstance ();
-	uitext = &(app->uiText);
+	uitext = &(App::instance->uiText);
 	name = actionWindow->getStringValue (uitext->getText (UiTextString::name).capitalized (), StdString (""));
 	password = actionWindow->getStringValue (uitext->getText (UiTextString::password).capitalized (), StdString (""));
 	if (name.empty () || password.empty ()) {
@@ -305,21 +300,21 @@ void AdminSecretWindow::addItem (ActionWindow *actionWindow) {
 	ctx = EVP_MD_CTX_create ();
 	if (! ctx) {
 		password.wipe ();
-		Log::write (Log::ERR, "Failed to store admin secret; err=EVP_MD_CTX_create failed");
+		Log::err ("Failed to store admin secret; err=EVP_MD_CTX_create failed");
 		return;
 	}
 
 	len = 0;
 	if (EVP_DigestInit_ex (ctx, EVP_sha256 (), NULL) != 1) {
-		Log::write (Log::ERR, "Failed to store admin secret; err=EVP_DigestInit_ex failed");
+		Log::err ("Failed to store admin secret; err=EVP_DigestInit_ex failed");
 	}
 	else {
 		if (EVP_DigestUpdate (ctx, password.c_str (), password.length ()) != 1) {
-			Log::write (Log::ERR, "Failed to store admin secret; err=EVP_DigestUpdate failed");
+			Log::err ("Failed to store admin secret; err=EVP_DigestUpdate failed");
 		}
 		else {
 			if (EVP_DigestFinal_ex (ctx, digest, &len) != 1) {
-				Log::write (Log::ERR, "Failed to store admin secret; err=EVP_DigestFinal_ex failed");
+				Log::err ("Failed to store admin secret; err=EVP_DigestFinal_ex failed");
 			}
 		}
 	}
@@ -330,17 +325,15 @@ void AdminSecretWindow::addItem (ActionWindow *actionWindow) {
 		return;
 	}
 
-	app->agentControl.addAdminSecret (name, StdString::createHex (digest, len));
+	App::instance->agentControl.addAdminSecret (name, StdString::createHex (digest, len));
 	itemListView->addItem (name);
 	refreshLayout ();
 }
 
 void AdminSecretWindow::readItems () {
-	App *app;
 	StringList items;
 
-	app = App::getInstance ();
-	app->agentControl.getAdminSecretNames (&items);
+	App::instance->agentControl.getAdminSecretNames (&items);
 	itemListView->setItems (&items, true);
 	refreshLayout ();
 }

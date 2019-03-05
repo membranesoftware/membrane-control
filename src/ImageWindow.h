@@ -56,8 +56,8 @@ public:
 	// Set a source URL that should be used to load the image window's content, as well as an optional sprite that should be shown while the load is in progress
 	void setLoadUrl (const StdString &loadUrl, Sprite *loadingSprite = NULL);
 
-	// Set a path that should be used to load the image window's content from application resources
-	void setLoadResourcePath (const StdString &loadPath);
+	// Set a path that should be used to load the image window's content from application resources. If shouldLoadNow is true, load the image resource immediately. Otherwise, queue a task to load the resource on the next render cycle.
+	void setLoadResourcePath (const StdString &loadPath, bool shouldLoadNow = false);
 
 	// Return a boolean value indicating if the image window's load URL is empty
 	bool isLoadUrlEmpty ();

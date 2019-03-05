@@ -42,17 +42,20 @@
 
 LabelWindow::LabelWindow (Label *label)
 : Panel ()
+, isCrawlEnabled (false)
 , label (label)
 , isFixedWidth (false)
 , isWidthCentered (false)
 , windowWidth (0.0f)
 , isMouseoverHighlightEnabled (false)
-, mouseoverColorRotateDuration (0)
+, mouseoverColorTranslateDuration (0)
+, crawlStage (0)
+, crawlClock (0)
 {
 	UiConfiguration *uiconfig;
 
 	addWidget (label);
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 }
 
@@ -76,12 +79,22 @@ void LabelWindow::setWindowWidth (float fixedWidth, bool isLabelCentered) {
 	refreshLayout ();
 }
 
+void LabelWindow::setFitWidth () {
+	isFixedWidth = false;
+	isWidthCentered = false;
+	refreshLayout ();
+}
+
 void LabelWindow::setTextColor (const Color &color) {
 	label->textColor.assign (color);
 }
 
-void LabelWindow::rotateTextColor (const Color &color, int duration) {
-	label->textColor.rotate (color, duration);
+void LabelWindow::translateTextColor (const Color &targetColor, int durationMs) {
+	label->textColor.translate (targetColor, durationMs);
+}
+
+void LabelWindow::translateTextColor (const Color &startColor, const Color &targetColor, int durationMs) {
+	label->textColor.translate (startColor, targetColor, durationMs);
 }
 
 StdString LabelWindow::getText () const {
@@ -98,19 +111,30 @@ void LabelWindow::setFont (int fontType) {
 	refreshLayout ();
 }
 
-void LabelWindow::setMouseoverHighlight (bool enable, const Color &normalTextColor, const Color &normalBgColor, const Color &highlightTextColor, const Color &highlightBgColor, int colorRotateDuration) {
+void LabelWindow::setMouseoverHighlight (bool enable, const Color &normalTextColor, const Color &normalBgColor, const Color &highlightTextColor, const Color &highlightBgColor, int colorTranslateDuration) {
 	isMouseoverHighlightEnabled = enable;
 	if (isMouseoverHighlightEnabled) {
 		mouseoverNormalTextColor = normalTextColor;
 		mouseoverNormalBgColor = normalBgColor;
 		mouseoverHighlightTextColor = highlightTextColor;
 		mouseoverHighlightBgColor = highlightBgColor;
-		mouseoverColorRotateDuration = colorRotateDuration;
-		if (mouseoverColorRotateDuration < 1) {
-			mouseoverColorRotateDuration = 1;
+		mouseoverColorTranslateDuration = colorTranslateDuration;
+		if (mouseoverColorTranslateDuration < 1) {
+			mouseoverColorTranslateDuration = 1;
 		}
 
 		setFillBg (true, mouseoverNormalBgColor);
+	}
+}
+
+void LabelWindow::setCrawl (bool enable) {
+	if (isCrawlEnabled == enable) {
+		return;
+	}
+	isCrawlEnabled = enable;
+	label->position.assignX (widthPadding);
+	if (isCrawlEnabled) {
+		crawlStage = 0;
 	}
 }
 
@@ -118,12 +142,41 @@ void LabelWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 	Panel::doProcessMouseState (mouseState);
 	if (isMouseoverHighlightEnabled) {
 		if (mouseState.isEntered) {
-			label->textColor.rotate (mouseoverHighlightTextColor, mouseoverColorRotateDuration);
-			bgColor.rotate (mouseoverHighlightBgColor, mouseoverColorRotateDuration);
+			label->textColor.translate (mouseoverHighlightTextColor, mouseoverColorTranslateDuration);
+			bgColor.translate (mouseoverHighlightBgColor, mouseoverColorTranslateDuration);
 		}
 		else {
-			label->textColor.rotate (mouseoverNormalTextColor, mouseoverColorRotateDuration);
-			bgColor.rotate (mouseoverNormalBgColor, mouseoverColorRotateDuration);
+			label->textColor.translate (mouseoverNormalTextColor, mouseoverColorTranslateDuration);
+			bgColor.translate (mouseoverNormalBgColor, mouseoverColorTranslateDuration);
+		}
+	}
+}
+
+void LabelWindow::doUpdate (int msElapsed, float originX, float originY) {
+	Panel::doUpdate (msElapsed, originX, originY);
+
+	if (isCrawlEnabled) {
+		switch (crawlStage) {
+			case 0: {
+				crawlClock = 7000;
+				crawlStage = 1;
+				break;
+			}
+			case 1: {
+				crawlClock -= msElapsed;
+				if (crawlClock <= 0) {
+					crawlStage = 2;
+					label->position.translateX (-(label->width), 100 * (int) label->text.length ());
+				}
+				break;
+			}
+			case 2: {
+				if (! label->position.isTranslating) {
+					crawlStage = 0;
+					label->position.assignX (widthPadding);
+				}
+				break;
+			}
 		}
 	}
 }

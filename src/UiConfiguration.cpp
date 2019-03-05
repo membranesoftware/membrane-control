@@ -37,18 +37,17 @@
 #include "StdString.h"
 #include "App.h"
 #include "Resource.h"
-#include "Util.h"
 #include "Font.h"
 #include "UiConfiguration.h"
 
 UiConfiguration::UiConfiguration ()
 : paddingSize (12.0f)
 , marginSize (12.0f)
-, shortColorRotateDuration (120)
-, longColorRotateDuration (768)
+, shortColorTranslateDuration (120)
+, longColorTranslateDuration (768)
 , mouseHoverThreshold (1000)
 , blinkDuration (486)
-, backgroundTransitionDuration (140)
+, backgroundCrossFadeDuration (140)
 , lightPrimaryColor (Color::getByteValue (0x51), Color::getByteValue (0x4A), Color::getByteValue (0xAC))
 , mediumPrimaryColor (Color::getByteValue (0x18), Color::getByteValue (0x22), Color::getByteValue (0x7C))
 , darkPrimaryColor (Color::getByteValue (0x00), Color::getByteValue (0x00), Color::getByteValue (0x4F))
@@ -143,7 +142,7 @@ int UiConfiguration::load (float fontScale) {
 		return (Result::SUCCESS);
 	}
 
-	resource = &(App::getInstance ()->resource);
+	resource = &(App::instance->resource);
 
 	for (i = 0; i < UiConfiguration::NUM_FONT_TYPES; ++i) {
 		sz = (int) (fontScale * (float) fontBaseSizes[i]);
@@ -174,7 +173,7 @@ void UiConfiguration::unload () {
 	Resource *resource;
 	int i;
 
-	resource = &(App::getInstance ()->resource);
+	resource = &(App::instance->resource);
 	isLoaded = false;
 
 	for (i = 0; i < UiConfiguration::NUM_FONT_TYPES; ++i) {
@@ -196,7 +195,7 @@ int UiConfiguration::reloadFonts (float fontScale) {
 		return (Result::ERROR_INVALID_PARAM);
 	}
 
-	resource = &(App::getInstance ()->resource);
+	resource = &(App::instance->resource);
 
 	for (i = 0; i < UiConfiguration::NUM_FONT_TYPES; ++i) {
 		sz = (int) (fontScale * (float) fontBaseSizes[i]);
@@ -213,13 +212,13 @@ int UiConfiguration::reloadFonts (float fontScale) {
 		fonts[i] = font;
 		fontSizes[i] = sz;
 	}
-	Log::write (Log::DEBUG, "Fonts reloaded; fontScale=%.2f captionFontSize=%i bodyFontSize=%i buttonFontSize=%i titleFontSize=%i headlineFontSize=%i", fontScale, fontSizes[UiConfiguration::CAPTION], fontSizes[UiConfiguration::BODY], fontSizes[UiConfiguration::BUTTON], fontSizes[UiConfiguration::TITLE], fontSizes[UiConfiguration::HEADLINE]);
+	Log::debug ("Fonts reloaded; fontScale=%.2f captionFontSize=%i bodyFontSize=%i buttonFontSize=%i titleFontSize=%i headlineFontSize=%i", fontScale, fontSizes[UiConfiguration::CAPTION], fontSizes[UiConfiguration::BODY], fontSizes[UiConfiguration::BUTTON], fontSizes[UiConfiguration::TITLE], fontSizes[UiConfiguration::HEADLINE]);
 
 	return (Result::SUCCESS);
 }
 
 void UiConfiguration::resetScale () {
-	switch (App::getInstance ()->imageScale) {
+	switch (App::instance->imageScale) {
 		case 0: {
 			paddingSize = 6.0f;
 			marginSize = 6.0f;

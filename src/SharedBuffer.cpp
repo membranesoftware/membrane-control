@@ -31,7 +31,6 @@
 #include "Config.h"
 #include <stdlib.h>
 #include "SDL2/SDL.h"
-#include "Result.h"
 #include "Log.h"
 #include "Buffer.h"
 #include "SharedBuffer.h"

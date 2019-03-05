@@ -30,20 +30,18 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include <stdio.h>
-#include "App.h"
-#include "Result.h"
-#include "Log.h"
+#include <math.h>
 #include "Position.h"
 
 Position::Position (float x, float y)
 : x (x)
 , y (y)
+, isTranslating (false)
 , translateTargetX (0.0f)
 , translateTargetY (0.0f)
 , translateDx (0.0f)
 , translateDy (0.0f)
-, isTranslating (false)
+, translateDuration (0)
 {
 }
 
@@ -55,13 +53,6 @@ void Position::update (int msElapsed) {
 	float dx, dy;
 
 	if (! isTranslating) {
-		return;
-	}
-
-	dx = translateTargetX - x;
-	dy = translateTargetY - y;
-	if ((fabs (dx) <= CONFIG_FLOAT_EPSILON) && (fabs (dy) <= CONFIG_FLOAT_EPSILON)) {
-		isTranslating = false;
 		return;
 	}
 
@@ -89,6 +80,10 @@ void Position::update (int msElapsed) {
 		if (y > translateTargetY) {
 			y = translateTargetY;
 		}
+	}
+
+	if (FLOAT_EQUALS (x, translateTargetX) && FLOAT_EQUALS (translateTargetY, y)) {
+		isTranslating = false;
 	}
 }
 
@@ -154,18 +149,57 @@ void Position::translate (float targetX, float targetY, int durationMs) {
 	float dx, dy;
 
 	if (durationMs <= 0) {
+		assign (targetX, targetY);
 		return;
 	}
 
 	dx = targetX - x;
 	dy = targetY - y;
 	if ((fabs (dx) <= CONFIG_FLOAT_EPSILON) && (fabs (dy) <= CONFIG_FLOAT_EPSILON)) {
+		isTranslating = false;
+		return;
+	}
+
+	if (isTranslating && FLOAT_EQUALS (translateTargetX, targetX) && FLOAT_EQUALS (translateTargetY, targetY) && (translateDuration == durationMs)) {
 		return;
 	}
 
 	isTranslating = true;
 	translateTargetX = targetX;
 	translateTargetY = targetY;
-	translateDx = dx / durationMs;
-	translateDy = dy / durationMs;
+	translateDuration = durationMs;
+	translateDx = dx / (float) durationMs;
+	translateDy = dy / (float) durationMs;
+}
+
+void Position::translate (const Position &targetPosition, int durationMs) {
+	translate (targetPosition.x, targetPosition.y, durationMs);
+}
+
+void Position::translate (float startX, float startY, float targetX, float targetY, int durationMs) {
+	assign (startX, startY);
+	translate (targetX, targetY, durationMs);
+}
+
+void Position::translate (const Position &startPosition, const Position &targetPosition, int durationMs) {
+	assign (startPosition);
+	translate (targetPosition.x, targetPosition.y, durationMs);
+}
+
+void Position::translateX (float targetX, int durationMs) {
+	translate (targetX, y, durationMs);
+}
+
+void Position::translateX (float startX, float targetX, int durationMs) {
+	assignX (startX);
+	translate (targetX, y, durationMs);
+}
+
+void Position::translateY (float targetY, int durationMs) {
+	translate (x, targetY, durationMs);
+}
+
+void Position::translateY (float startY, float targetY, int durationMs) {
+	assignY (startY);
+	translate (x, targetY, durationMs);
 }

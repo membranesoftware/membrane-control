@@ -31,17 +31,15 @@
 #include "Config.h"
 #include <stdlib.h>
 #include "Result.h"
-#include "Log.h"
 #include "StdString.h"
 #include "App.h"
 #include "UiText.h"
-#include "Util.h"
+#include "UiConfiguration.h"
+#include "OsUtil.h"
 #include "Widget.h"
 #include "Color.h"
-#include "Json.h"
 #include "Panel.h"
 #include "Label.h"
-#include "UiConfiguration.h"
 #include "LogoWindow.h"
 
 LogoWindow::LogoWindow ()
@@ -51,18 +49,16 @@ LogoWindow::LogoWindow ()
 , timeLabel (NULL)
 , lastDisplayTime (0)
 {
-	App *app;
 	UiConfiguration *uiconfig;
 
-	app = App::getInstance ();
-	uiconfig = &(app->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	logoImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::APP_LOGO)));
 	logoImage->setDrawColor (true, uiconfig->mediumSecondaryColor);
 
-	dateLabel = (Label *) addWidget (new Label (Util::getDateString (), UiConfiguration::CAPTION, uiconfig->inverseTextColor));
+	dateLabel = (Label *) addWidget (new Label (OsUtil::getDateString (), UiConfiguration::CAPTION, uiconfig->inverseTextColor));
 	timeLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CAPTION, uiconfig->inverseTextColor));
-	timeLabel->setText (Util::getTimeString ());
-	if (! app->prefsMap.find (App::prefsShowClock, false)) {
+	timeLabel->setText (OsUtil::getTimeString ());
+	if (! App::instance->prefsMap.find (App::prefsShowClock, false)) {
 		dateLabel->isVisible = false;
 		timeLabel->isVisible = false;
 	}
@@ -79,12 +75,9 @@ StdString LogoWindow::toStringDetail () {
 }
 
 void LogoWindow::doRefresh () {
-	App *app;
-
-	app = App::getInstance ();
-	if (app->prefsMap.find (App::prefsShowClock, false)) {
-		dateLabel->setText (Util::getDateString ());
-		timeLabel->setText (Util::getTimeString ());
+	if (App::instance->prefsMap.find (App::prefsShowClock, false)) {
+		dateLabel->setText (OsUtil::getDateString ());
+		timeLabel->setText (OsUtil::getTimeString ());
 		dateLabel->isVisible = true;
 		timeLabel->isVisible = true;
 	}
@@ -100,7 +93,7 @@ void LogoWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x = 0.0f;
 	y = 0.0f;
 	logoImage->position.assign (x, y);
@@ -124,12 +117,12 @@ void LogoWindow::doUpdate (int msElapsed, float originX, float originY) {
 	Panel::doUpdate (msElapsed, originX, originY);
 
 	if (dateLabel->isVisible || timeLabel->isVisible) {
-		t = Util::getTime ();
+		t = OsUtil::getTime ();
 		t /= 1000;
 		if (lastDisplayTime != t) {
 			lastDisplayTime = t;
-			dateLabel->setText (Util::getDateString (t * 1000));
-			timeLabel->setText (Util::getTimeString (t * 1000));
+			dateLabel->setText (OsUtil::getDateString (t * 1000));
+			timeLabel->setText (OsUtil::getTimeString (t * 1000));
 			refreshLayout ();
 		}
 	}

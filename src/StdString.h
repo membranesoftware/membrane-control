@@ -38,14 +38,6 @@
 #include <list>
 #include "Buffer.h"
 
-#if CONFIG_INT_WIDTH == 32
-#define PRINTF_LX "%llx"
-#define PRINTF_LU "%llu"
-#else
-#define PRINTF_LX "%lx"
-#define PRINTF_LU "%lu"
-#endif
-
 class StdString : public std::string {
 public:
 	// Default constructor that creates an empty string
@@ -165,20 +157,24 @@ public:
 	// Overwrite all characters in the string and clear its contents
 	void wipe ();
 
+	// Parse the string's content as an integer and store its value in the provided pointer. Returns a boolean value indicating if the parse was successful.
+	bool parseInt (int *value);
+
+	// Parse the string's content as a hex integer and store its value in the provided pointer. Returns a boolean value indicating if the parse was successful.
+	bool parseHex (int *value);
+
+	// Parse the string's content as a float and store its value in the provided pointer. Returns a boolean value indicating if the parse was successful.
+	bool parseFloat (float *value);
+	bool parseFloat (double *value);
+
+	// Parse the string's content as a network address and store its component values in the provided pointers. Returns a boolean value indicating if the parse was successful. If no port value is found in the address, assign the specified default port value to portValue.
+	bool parseAddress (StdString *hostnameValue = NULL, int *portValue = NULL, int defaultPortValue = 0);
+
 	// Return a newly created string with content generated from a format string
 	static StdString createSprintf (const char *str, ...) __attribute__((format(printf, 1, 2)));
 
 	// Return a newly created string with hex number content generated from the provided data
 	static StdString createHex (const unsigned char *hexData, int hexDataLength);
-
-	// Parse the provided string as an integer and store its value in the provided pointer. Returns a boolean value indicating if the parse was successful.
-	static bool parseInt (const char *str, int *value);
-
-	// Parse the provided string as a float and store its value in the provided pointer. Returns a boolean value indicating if the parse was successful.
-	static bool parseFloat (const char *str, float *value);
-
-	// Parse the provided string as a network address and store its component values in the provided pointers. Returns a boolean value indicating if the parse was successful. If no port value is found in the address, assign the specified default port value to portValue.
-	static bool parseAddress (const char *str, StdString *hostnameValue = NULL, int *portValue = NULL, int defaultPortValue = 0);
 };
 
 #endif

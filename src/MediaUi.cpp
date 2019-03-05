@@ -36,11 +36,12 @@
 #include "App.h"
 #include "Resource.h"
 #include "SpriteGroup.h"
-#include "Util.h"
-#include "AgentControl.h"
+#include "OsUtil.h"
 #include "Button.h"
 #include "Menu.h"
+#include "Chip.h"
 #include "SystemInterface.h"
+#include "RecordStore.h"
 #include "CardView.h"
 #include "MediaWindow.h"
 #include "ActionWindow.h"
@@ -78,52 +79,40 @@ StdString MediaUi::getSpritePath () {
 	return (StdString ("ui/MediaUi/sprite"));
 }
 
-StdString MediaUi::getBreadcrumbTitle () {
-	return (App::getInstance ()->uiText.getText (UiTextString::media).capitalized ());
+Widget *MediaUi::createBreadcrumbWidget () {
+	return (new Chip (App::instance->uiText.getText (UiTextString::media).capitalized (), sprites.getSprite (MediaUi::BREADCRUMB_ICON)));
 }
 
-Sprite *MediaUi::getBreadcrumbSprite () {
-	return (sprites.getSprite (MediaUi::BREADCRUMB_ICON)->copy ());
-}
-
-void MediaUi::setHelpWindowContent (Widget *helpWindowPtr) {
-	App *app;
-	HelpWindow *help;
+void MediaUi::setHelpWindowContent (HelpWindow *helpWindow) {
 	UiText *uitext;
 
-	help = (HelpWindow *) helpWindowPtr;
-	app = App::getInstance ();
-	uitext = &(app->uiText);
-
-	help->setHelpText (uitext->getText (UiTextString::mediaUiHelpTitle), uitext->getText (UiTextString::mediaUiHelpText));
+	uitext = &(App::instance->uiText);
+	helpWindow->setHelpText (uitext->getText (UiTextString::mediaUiHelpTitle), uitext->getText (UiTextString::mediaUiHelpText));
 	if (agentCount <= 0) {
-		help->addAction (uitext->getText (UiTextString::mediaUiHelpAction1Text), uitext->getText (UiTextString::learnMore).capitalized (), Util::getHelpUrl ("servers"));
+		helpWindow->addAction (uitext->getText (UiTextString::mediaUiHelpAction1Text), uitext->getText (UiTextString::learnMore).capitalized (), App::getHelpUrl ("servers"));
 	}
 	else {
-		help->addAction (uitext->getText (UiTextString::mediaUiHelpAction2Text));
-		help->addAction (uitext->getText (UiTextString::mediaUiHelpAction3Text), uitext->getText (UiTextString::learnMore).capitalized (), Util::getHelpUrl ("media-streaming"));
+		helpWindow->addAction (uitext->getText (UiTextString::mediaUiHelpAction2Text));
+		helpWindow->addAction (uitext->getText (UiTextString::mediaUiHelpAction3Text), uitext->getText (UiTextString::learnMore).capitalized (), App::getHelpUrl ("media-streaming"));
 	}
 
-	help->addTopicLink (uitext->getText (UiTextString::mediaStreaming).capitalized (), Util::getHelpUrl ("media-streaming"));
-	help->addTopicLink (uitext->getText (UiTextString::searchForHelp).capitalized (), Util::getHelpUrl (""));
+	helpWindow->addTopicLink (uitext->getText (UiTextString::mediaStreaming).capitalized (), App::getHelpUrl ("media-streaming"));
+	helpWindow->addTopicLink (uitext->getText (UiTextString::searchForHelp).capitalized (), App::getHelpUrl (""));
 }
 
 int MediaUi::doLoad () {
-	App *app;
 	int layout;
-
-	app = App::getInstance ();
 
 	agentCount = 0;
 	mediaCount = 0;
 	findMediaComplete = false;
 
-	cardView = (CardView *) addWidget (new CardView (app->windowWidth - app->rightBarWidth, app->windowHeight - app->topBarHeight - app->bottomBarHeight));
+	cardView = (CardView *) addWidget (new CardView (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight));
 	cardView->isKeyboardScrollEnabled = true;
 	cardView->setRowItemMarginSize (1, 0.0f);
-	cardView->position.assign (0.0f, app->topBarHeight);
+	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 
-	layout = app->prefsMap.find (App::prefsMediaImageSize, (int) MediaWindow::LOW_DETAIL);
+	layout = App::instance->prefsMap.find (App::prefsMediaImageSize, (int) MediaWindow::LOW_DETAIL);
 	switch (layout) {
 		case MediaWindow::LOW_DETAIL: {
 			MediaUi::smallThumbnailActionClicked (this, NULL);
@@ -154,36 +143,30 @@ void MediaUi::doUnload () {
 	mediaServerRecordCountMap.clear ();
 }
 
-void MediaUi::doResetMainToolbar (Toolbar *toolbar) {
-	App *app;
+void MediaUi::doAddMainToolbarItems (Toolbar *toolbar) {
 	Button *button;
 
-	app = App::getInstance ();
 	button = new Button (StdString (""), sprites.getSprite (MediaUi::THUMBNAIL_SIZE_BUTTON));
 	button->setInverseColor (true);
 	button->setMouseClickCallback (MediaUi::thumbnailSizeButtonClicked, this);
-	button->setMouseHoverTooltip (app->uiText.getText (UiTextString::mediaUiThumbnailSizeTooltip));
+	button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::thumbnailImageSizeTooltip));
 	toolbar->addRightItem (button);
 
-	button = new Button (StdString (""), app->uiConfig.coreSprites.getSprite (UiConfiguration::RELOAD_BUTTON));
+	button = new Button (StdString (""), App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::RELOAD_BUTTON));
 	button->setInverseColor (true);
 	button->setMouseClickCallback (MediaUi::reloadButtonClicked, this);
-	button->setMouseHoverTooltip (app->uiText.getText (UiTextString::reloadTooltip));
+	button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::reloadTooltip));
 	toolbar->addRightItem (button);
-
-	addMainToolbarBackButton (toolbar);
 }
 
-void MediaUi::doResetSecondaryToolbar (Toolbar *toolbar) {
-	App *app;
+void MediaUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
-	app = App::getInstance ();
-	uiconfig = &(app->uiConfig);
-	uitext = &(app->uiText);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 
-	searchField = new TextFieldWindow (app->windowWidth * 0.37f, uitext->getText (UiTextString::enterSearchKeyPrompt));
+	searchField = new TextFieldWindow (App::instance->windowWidth * 0.37f, uitext->getText (UiTextString::enterSearchKeyPrompt));
 	searchField->setPadding (uiconfig->paddingSize, 0.0f);
 	searchField->setButtonsEnabled (false, false, true, true);
 	searchField->setEditCallback (MediaUi::searchFieldEdited, this);
@@ -194,8 +177,6 @@ void MediaUi::doResetSecondaryToolbar (Toolbar *toolbar) {
 	searchButton->setMouseClickCallback (MediaUi::searchButtonClicked, this);
 	searchButton->setMouseHoverTooltip (uitext->getText (UiTextString::mediaUiSearchTooltip));
 	toolbar->addLeftItem (searchButton);
-
-	toolbar->isVisible = true;
 }
 
 void MediaUi::doClearPopupWidgets () {
@@ -203,30 +184,25 @@ void MediaUi::doClearPopupWidgets () {
 }
 
 void MediaUi::doResume () {
-	App *app;
-
-	app = App::getInstance ();
-	app->setNextBackgroundTexturePath ("ui/MediaUi/bg");
+	App::instance->setNextBackgroundTexturePath ("ui/MediaUi/bg");
 
 	searchField->setValue (searchKey);
-	cardView->setViewSize (app->windowWidth - app->rightBarWidth, app->windowHeight - app->topBarHeight - app->bottomBarHeight);
-	cardView->position.assign (0.0f, app->topBarHeight);
+	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
+	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 }
 
 void MediaUi::doPause () {
-	App *app;
 	StringList items;
 
-	app = App::getInstance ();
-	app->prefsMap.insert (App::prefsMediaImageSize, cardLayout);
+	App::instance->prefsMap.insert (App::prefsMediaImageSize, cardLayout);
 
 	items.clear ();
 	cardView->processItems (MediaUi::appendExpandedAgentId, &items);
 	if (items.empty ()) {
-		app->prefsMap.remove (App::prefsMediaUiExpandedAgents);
+		App::instance->prefsMap.remove (App::prefsMediaUiExpandedAgents);
 	}
 	else {
-		app->prefsMap.insert (App::prefsMediaUiExpandedAgents, &items);
+		App::instance->prefsMap.insert (App::prefsMediaUiExpandedAgents, &items);
 	}
 }
 
@@ -240,29 +216,24 @@ void MediaUi::appendExpandedAgentId (void *stringListPtr, Widget *widgetPtr) {
 }
 
 void MediaUi::doRefresh () {
-	App *app;
-
-	app = App::getInstance ();
-	cardView->setViewSize (app->windowWidth - app->rightBarWidth, app->windowHeight - app->topBarHeight - app->bottomBarHeight);
-	cardView->position.assign (0.0f, app->topBarHeight);
+	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
+	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 }
 
 void MediaUi::doUpdate (int msElapsed) {
-	App *app;
 	StringList idlist;
 	StringList::iterator i, end;
 	Json *params;
 	int offset, setsize, recordcount;
 	int64_t now;
 
-	app = App::getInstance ();
 	thumbnailSizeMenu.compact ();
 	emptyStateWindow.compact ();
 
 	if (recordReceiveCount > 0) {
-		now = Util::getTime ();
+		now = OsUtil::getTime ();
 		if ((recordReceiveCount > 16) || (now >= nextRecordSyncTime)) {
-			app->shouldSyncRecordStore = true;
+			App::instance->shouldSyncRecordStore = true;
 			recordReceiveCount = 0;
 		}
 	}
@@ -280,7 +251,7 @@ void MediaUi::doUpdate (int msElapsed) {
 					params->set ("searchKey", searchKey);
 					params->set ("resultOffset", offset);
 					params->set ("maxResults", MediaUi::pageSize);
-					app->agentControl.writeLinkCommand (app->createCommand ("FindItems", SystemInterface::Constant_Media, params), *i);
+					App::instance->agentControl.writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindItems, SystemInterface::Constant_Media, params), *i);
 					offset += MediaUi::pageSize;
 					mediaServerResultOffsetMap.insert (*i, offset);
 				}
@@ -291,31 +262,31 @@ void MediaUi::doUpdate (int msElapsed) {
 }
 
 void MediaUi::doResize () {
-	App *app;
-
-	app = App::getInstance ();
-	cardView->setViewSize (app->windowWidth - app->rightBarWidth, app->windowHeight - app->topBarHeight - app->bottomBarHeight);
-	cardView->position.assign (0.0f, app->topBarHeight);
+	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
+	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
+	searchField->setWindowWidth (App::instance->windowWidth * 0.37f);
 }
 
-void MediaUi::doSyncRecordStore (RecordStore *store) {
+void MediaUi::doSyncRecordStore () {
+	RecordStore *store;
 	IconCardWindow *window;
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
+	store = &(App::instance->agentControl.recordStore);
 	agentCount = 0;
 	store->processAgentRecords ("mediaServerStatus", MediaUi::processAgentStatus, this);
 
 	mediaCount = 0;
-	store->processCommandRecords (SystemInterface::Command_MediaItem, MediaUi::processMediaItem, this);
+	store->processCommandRecords (SystemInterface::CommandId_MediaItem, MediaUi::processMediaItem, this);
 
 	window = (IconCardWindow *) emptyStateWindow.widget;
-	uiconfig = &(App::getInstance ()->uiConfig);
-	uitext = &(App::getInstance ()->uiText);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 	if (agentCount <= 0) {
 		if (! window) {
 			window = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SERVER_ICON), uitext->getText (UiTextString::mediaUiEmptyAgentStatusTitle), StdString (""), uitext->getText (UiTextString::mediaUiEmptyAgentStatusText));
-			window->setLink (uitext->getText (UiTextString::learnMore).capitalized (), Util::getHelpUrl ("servers"));
+			window->setLink (uitext->getText (UiTextString::learnMore).capitalized (), App::getHelpUrl ("servers"));
 			emptyStateWindow.assign (window);
 
 			window->itemId.assign (cardView->getAvailableItemId ());
@@ -325,7 +296,7 @@ void MediaUi::doSyncRecordStore (RecordStore *store) {
 	else if ((mediaCount <= 0) && findMediaComplete) {
 		if (! window) {
 			window = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::ERROR_ICON), uitext->getText (UiTextString::mediaUiEmptyMediaStatusTitle), StdString (""), uitext->getText (UiTextString::mediaUiEmptyMediaStatusText));
-			window->setLink (uitext->getText (UiTextString::learnMore).capitalized (), Util::getHelpUrl ("servers"));
+			window->setLink (uitext->getText (UiTextString::learnMore).capitalized (), App::getHelpUrl ("servers"));
 			emptyStateWindow.assign (window);
 
 			window->itemId.assign (cardView->getAvailableItemId ());
@@ -339,25 +310,23 @@ void MediaUi::doSyncRecordStore (RecordStore *store) {
 		}
 	}
 
-	cardView->syncRecordStore (store);
+	cardView->syncRecordStore ();
 	cardView->refresh ();
 }
 
 void MediaUi::processAgentStatus (void *uiPtr, Json *record, const StdString &recordId) {
-	App *app;
 	MediaUi *ui;
 	MediaLibraryWindow *window;
 	StringList items;
 
 	ui = (MediaUi *) uiPtr;
-	app = App::getInstance ();
 	++(ui->agentCount);
 	if (! ui->cardView->contains (recordId)) {
 		window = new MediaLibraryWindow (recordId);
 		window->setMenuClickCallback (MediaUi::mediaLibraryMenuClicked, ui);
 		window->setExpandStateChangeCallback (MediaUi::agentExpandStateChanged, ui);
 
-		app->prefsMap.find (App::prefsMediaUiExpandedAgents, &items);
+		App::instance->prefsMap.find (App::prefsMediaUiExpandedAgents, &items);
 		if (items.contains (recordId)) {
 			window->setExpanded (true, true);
 		}
@@ -376,7 +345,7 @@ void MediaUi::processMediaItem (void *uiPtr, Json *record, const StdString &reco
 	ui = (MediaUi *) uiPtr;
 	++(ui->mediaCount);
 	if (! ui->cardView->contains (recordId)) {
-		interface = &(App::getInstance ()->systemInterface);
+		interface = &(App::instance->systemInterface);
 		agentid = interface->getCommandAgentId (record);
 		if (ui->mediaServerResultOffsetMap.exists (agentid)) {
 			window = new MediaWindow (record, ui->cardLayout, ui->cardMaxImageWidth);
@@ -388,10 +357,7 @@ void MediaUi::processMediaItem (void *uiPtr, Json *record, const StdString &reco
 }
 
 void MediaUi::handleLinkClientConnect (const StdString &agentId) {
-	App *app;
 	Json *params;
-
-	app = App::getInstance ();
 
 	if (! mediaServerResultOffsetMap.exists (agentId)) {
 		mediaServerResultOffsetMap.insert (agentId, MediaUi::pageSize);
@@ -400,41 +366,39 @@ void MediaUi::handleLinkClientConnect (const StdString &agentId) {
 		params = new Json ();
 		params->set ("searchKey", searchKey);
 		params->set ("maxResults", MediaUi::pageSize);
-		app->agentControl.writeLinkCommand (app->createCommand ("FindItems", SystemInterface::Constant_Media, params), agentId);
+		App::instance->agentControl.writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindItems, SystemInterface::Constant_Media, params), agentId);
 
-		app->agentControl.writeLinkCommand (app->createCommand ("FindItems", SystemInterface::Constant_Stream), agentId);
+		App::instance->agentControl.writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindItems, SystemInterface::Constant_Stream), agentId);
 	}
 }
 
 void MediaUi::handleLinkClientCommand (const StdString &agentId, int commandId, Json *command) {
-	App *app;
 	SystemInterface *interface;
 	UiConfiguration *uiconfig;
 
-	app = App::getInstance ();
-	interface = &(app->systemInterface);
-	uiconfig = &(app->uiConfig);
+	interface = &(App::instance->systemInterface);
+	uiconfig = &(App::instance->uiConfig);
 
 	switch (commandId) {
-		case SystemInterface::Command_FindMediaResult: {
+		case SystemInterface::CommandId_FindMediaResult: {
 			mediaServerSetSizeMap.insert (agentId, interface->getCommandNumberParam (command, "setSize", (int) 0));
 			findMediaComplete = true;
 			break;
 		}
-		case SystemInterface::Command_MediaItem: {
-			app->agentControl.recordStore.addRecord (command);
+		case SystemInterface::CommandId_MediaItem: {
+			App::instance->agentControl.recordStore.addRecord (command);
 			mediaServerRecordCountMap.insert (agentId, mediaServerRecordCountMap.find (agentId, 0) + 1);
 			++recordReceiveCount;
-			nextRecordSyncTime = Util::getTime () + uiconfig->recordSyncDelayDuration;
+			nextRecordSyncTime = OsUtil::getTime () + uiconfig->recordSyncDelayDuration;
 			break;
 		}
-		case SystemInterface::Command_FindStreamsResult: {
+		case SystemInterface::CommandId_FindStreamsResult: {
 			break;
 		}
-		case SystemInterface::Command_StreamItem: {
-			app->agentControl.recordStore.addRecord (command);
+		case SystemInterface::CommandId_StreamItem: {
+			App::instance->agentControl.recordStore.addRecord (command);
 			++recordReceiveCount;
-			nextRecordSyncTime = Util::getTime () + uiconfig->recordSyncDelayDuration;
+			nextRecordSyncTime = OsUtil::getTime () + uiconfig->recordSyncDelayDuration;
 			break;
 		}
 	}
@@ -457,12 +421,10 @@ void MediaUi::searchButtonClicked (void *uiPtr, Widget *widgetPtr) {
 }
 
 void MediaUi::loadSearchResults () {
-	App *app;
 	StringList idlist;
 	StringList::iterator i, end;
 	Json *params;
 
-	app = App::getInstance ();
 	mediaServerResultOffsetMap.getKeys (&idlist, true);
 	i = idlist.begin ();
 	end = idlist.end ();
@@ -472,13 +434,13 @@ void MediaUi::loadSearchResults () {
 		mediaServerRecordCountMap.insert (*i, (int) 0);
 		++i;
 	}
-	app->agentControl.recordStore.removeRecords (SystemInterface::Command_MediaItem);
+	App::instance->agentControl.recordStore.removeRecords (SystemInterface::CommandId_MediaItem);
 	cardView->removeRowItems (1);
 
 	params = new Json ();
 	params->set ("searchKey", searchKey);
 	params->set ("maxResults", MediaUi::pageSize);
-	app->agentControl.writeLinkCommand (app->createCommand ("FindItems", SystemInterface::Constant_Media, params));
+	App::instance->agentControl.writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindItems, SystemInterface::Constant_Media, params));
 }
 
 void MediaUi::thumbnailSizeButtonClicked (void *uiPtr, Widget *widgetPtr) {
@@ -489,14 +451,12 @@ void MediaUi::thumbnailSizeButtonClicked (void *uiPtr, Widget *widgetPtr) {
 }
 
 void MediaUi::handleThumbnailSizeButtonClick (Widget *buttonWidget) {
-	App *app;
 	UiText *uitext;
 	Menu *menu;
 
-	app = App::getInstance ();
-	uitext = &(app->uiText);
+	uitext = &(App::instance->uiText);
 
-	suspendMouseHover ();
+	App::instance->uiStack.suspendMouseHover ();
 	if (thumbnailSizeMenu.widget) {
 		thumbnailSizeMenu.widget->isDestroyed = true;
 		thumbnailSizeMenu.clear ();
@@ -504,8 +464,8 @@ void MediaUi::handleThumbnailSizeButtonClick (Widget *buttonWidget) {
 	}
 
 	clearPopupWidgets ();
-	menu = (Menu *) app->rootPanel->addWidget (new Menu ());
-	menu->zLevel = app->rootPanel->maxWidgetZLevel + 1;
+	menu = (Menu *) App::instance->rootPanel->addWidget (new Menu ());
+	menu->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
 	menu->isClickDestroyEnabled = true;
 	menu->addItem (uitext->getText (UiTextString::small).capitalized (), sprites.getSprite (MediaUi::SMALL_THUMBNAIL_BUTTON), MediaUi::smallThumbnailActionClicked, this, 0, cardLayout == MediaWindow::LOW_DETAIL);
 	menu->addItem (uitext->getText (UiTextString::medium).capitalized (), sprites.getSprite (MediaUi::MEDIUM_THUMBNAIL_BUTTON), MediaUi::mediumThumbnailActionClicked, this, 0, cardLayout == MediaWindow::MEDIUM_DETAIL);
@@ -524,7 +484,7 @@ void MediaUi::smallThumbnailActionClicked (void *uiPtr, Widget *widgetPtr) {
 		return;
 	}
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	y0 = ui->cardView->viewOriginY;
 	h0 = ui->cardView->maxWidgetY;
 	ui->cardLayout = MediaWindow::LOW_DETAIL;
@@ -551,7 +511,7 @@ void MediaUi::mediumThumbnailActionClicked (void *uiPtr, Widget *widgetPtr) {
 		return;
 	}
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	y0 = ui->cardView->viewOriginY;
 	h0 = ui->cardView->maxWidgetY;
 	ui->cardLayout = MediaWindow::MEDIUM_DETAIL;
@@ -560,7 +520,7 @@ void MediaUi::mediumThumbnailActionClicked (void *uiPtr, Widget *widgetPtr) {
 		ui->cardMaxImageWidth = 1.0f;
 	}
 	ui->cardView->processItems (MediaUi::resetMediaCardLayout, ui);
-	ui->cardView->setRowItemMarginSize (1, App::getInstance ()->uiConfig.marginSize / 2.0f);
+	ui->cardView->setRowItemMarginSize (1, App::instance->uiConfig.marginSize / 2.0f);
 	ui->cardView->setVerticalScrollSpeed (ui->cardView->height * 0.2f);
 	if (h0 > 0.0f) {
 		ui->cardView->setViewOrigin (0.0f, (y0 * ui->cardView->maxWidgetY) / h0);
@@ -578,7 +538,7 @@ void MediaUi::largeThumbnailActionClicked (void *uiPtr, Widget *widgetPtr) {
 		return;
 	}
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	y0 = ui->cardView->viewOriginY;
 	h0 = ui->cardView->maxWidgetY;
 	ui->cardLayout = MediaWindow::HIGH_DETAIL;
@@ -587,7 +547,7 @@ void MediaUi::largeThumbnailActionClicked (void *uiPtr, Widget *widgetPtr) {
 		ui->cardMaxImageWidth = 1.0f;
 	}
 	ui->cardView->processItems (MediaUi::resetMediaCardLayout, ui);
-	ui->cardView->setRowItemMarginSize (1, App::getInstance ()->uiConfig.marginSize);
+	ui->cardView->setRowItemMarginSize (1, App::instance->uiConfig.marginSize);
 	ui->cardView->setVerticalScrollSpeed (ui->cardView->height * 0.3f);
 	if (h0 > 0.0f) {
 		ui->cardView->setViewOrigin (0.0f, (y0 * ui->cardView->maxWidgetY) / h0);
@@ -609,29 +569,24 @@ void MediaUi::resetMediaCardLayout (void *uiPtr, Widget *widgetPtr) {
 }
 
 void MediaUi::reloadButtonClicked (void *uiPtr, Widget *widgetPtr) {
-	App *app;
 	MediaUi *ui;
 
-	app = App::getInstance ();
 	ui = (MediaUi *) uiPtr;
 	ui->cardView->processRowItems (0, MediaUi::reloadAgent, ui);
 	ui->loadSearchResults ();
-	app->agentControl.writeLinkCommand (app->createCommand ("FindItems", SystemInterface::Constant_Stream));
+	App::instance->agentControl.writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindItems, SystemInterface::Constant_Stream));
 }
 
 void MediaUi::reloadAgent (void *uiPtr, Widget *widgetPtr) {
-	App *app;
 	MediaLibraryWindow *medialibrarywindow;
 
-	app = App::getInstance ();
 	medialibrarywindow = MediaLibraryWindow::castWidget (widgetPtr);
 	if (medialibrarywindow) {
-		app->agentControl.refreshAgentStatus (medialibrarywindow->agentId);
+		App::instance->agentControl.refreshAgentStatus (medialibrarywindow->agentId);
 	}
 }
 
 void MediaUi::mediaWindowClicked (void *uiPtr, Widget *widgetPtr) {
-	MediaItemUi *itemui;
 	MediaWindow *target;
 
 	target = MediaWindow::castWidget (widgetPtr);
@@ -639,8 +594,7 @@ void MediaUi::mediaWindowClicked (void *uiPtr, Widget *widgetPtr) {
 		return;
 	}
 
-	itemui = new MediaItemUi (target);
-	App::getInstance ()->pushUi (itemui);
+	App::instance->uiStack.pushUi (new MediaItemUi (target));
 }
 
 void MediaUi::agentExpandStateChanged (void *uiPtr, Widget *widgetPtr) {
@@ -652,7 +606,6 @@ void MediaUi::agentExpandStateChanged (void *uiPtr, Widget *widgetPtr) {
 
 void MediaUi::mediaLibraryMenuClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
-	App *app;
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 	MediaLibraryWindow *target;
@@ -661,9 +614,8 @@ void MediaUi::mediaLibraryMenuClicked (void *uiPtr, Widget *widgetPtr) {
 
 	ui = (MediaUi *) uiPtr;
 	target = (MediaLibraryWindow *) widgetPtr;
-	app = App::getInstance ();
-	uiconfig = &(app->uiConfig);
-	uitext = &(app->uiText);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 
 	show = true;
 	if (Menu::isWidgetType (ui->actionWidget.widget) && (ui->actionTarget.widget == target)) {
@@ -675,34 +627,32 @@ void MediaUi::mediaLibraryMenuClicked (void *uiPtr, Widget *widgetPtr) {
 		return;
 	}
 
-	action = (Menu *) app->rootPanel->addWidget (new Menu ());
+	action = (Menu *) App::instance->rootPanel->addWidget (new Menu ());
 	ui->actionWidget.assign (action);
 	ui->actionTarget.assign (target);
 
 	action->addItem (uitext->getText (UiTextString::scanForMedia).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::UPDATE_BUTTON), MediaUi::mediaLibraryScanActionClicked, ui);
-	action->zLevel = app->rootPanel->maxWidgetZLevel + 1;
+	action->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
 	action->isClickDestroyEnabled = true;
 	action->position.assign (target->drawX + target->menuPositionX, target->drawY + target->menuPositionY);
 }
 
 void MediaUi::mediaLibraryScanActionClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
-	App *app;
 	MediaLibraryWindow *target;
 	int result;
 
 	ui = (MediaUi *) uiPtr;
-	app = App::getInstance ();
 	target = MediaLibraryWindow::castWidget (ui->actionTarget.widget);
 	if (! target) {
 		return;
 	}
 
-	result = app->agentControl.invokeCommand (target->agentId, app->createCommand ("ScanMediaItems", SystemInterface::Constant_Media));
+	result = App::instance->agentControl.invokeCommand (target->agentId, App::instance->createCommand (SystemInterface::Command_ScanMediaItems, SystemInterface::Constant_Media));
 	if (result != Result::SUCCESS) {
-		app->showSnackbar (app->uiText.getText (UiTextString::internalError));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
 	}
 	else {
-		app->showSnackbar (app->uiText.getText (UiTextString::scanForMediaStartedMessage));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::scanForMediaStartedMessage));
 	}
 }

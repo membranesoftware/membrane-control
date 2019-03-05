@@ -58,6 +58,9 @@ public:
 	typedef void (*DatagramCallback) (void *callbackData, const char *messageData, int messageLength);
 	typedef void (*HttpRequestCallback) (void *callbackData, const StdString &targetUrl, int statusCode, SharedBuffer *responseData);
 
+	// Read-write data members
+	StdString httpUserAgent;
+
 	// Read-only data members
 	bool isStarted;
 	bool isStopped;

@@ -30,12 +30,7 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include <math.h>
-#include "SDL2/SDL_video.h"
-#include "Result.h"
-#include "Log.h"
 #include "StdString.h"
 #include "Color.h"
 
@@ -43,8 +38,8 @@ Color::Color (float r, float g, float b)
 : r (r)
 , g (g)
 , b (b)
-, isRotating (false)
-, rotateDuration (0)
+, isTranslating (false)
+, translateDuration (0)
 , targetR (0.0f)
 , targetG (0.0f)
 , targetB (0.0f)
@@ -85,14 +80,14 @@ void Color::normalize () {
 }
 
 StdString Color::toString () {
-	return (StdString::createSprintf ("{color: r=%.2f g=%.2f b=%.2f rByte=%i gByte=%i bByte=%i isRotating=%s deltaR=%.2f deltaG=%.2f deltaB=%.2f}", r, g, b, rByte, gByte, bByte, BOOL_STRING (isRotating), deltaR, deltaG, deltaB));
+	return (StdString::createSprintf ("{color: r=%.2f g=%.2f b=%.2f rByte=%i gByte=%i bByte=%i isTranslating=%s deltaR=%.2f deltaG=%.2f deltaB=%.2f}", r, g, b, rByte, gByte, bByte, BOOL_STRING (isTranslating), deltaR, deltaG, deltaB));
 }
 
 void Color::assign (float r, float g, float b) {
 	this->r = r;
 	this->g = g;
 	this->b = b;
-	isRotating = false;
+	isTranslating = false;
 	normalize ();
 }
 
@@ -142,7 +137,7 @@ void Color::blend (const Color &sourceColor, float alpha) {
 void Color::update (int msElapsed) {
 	int matchcount;
 
-	if (isRotating) {
+	if (isTranslating) {
 		matchcount = 0;
 
 		r += (deltaR * (float) msElapsed);
@@ -189,48 +184,67 @@ void Color::update (int msElapsed) {
 
 		normalize ();
 		if (matchcount >= 3) {
-			isRotating = false;
+			isTranslating = false;
 		}
 	}
 }
 
-void Color::rotate (float rotateTargetR, float rotateTargetG, float rotateTargetB, int durationMs) {
+void Color::translate (float translateTargetR, float translateTargetG, float translateTargetB, int durationMs) {
 	float dr, dg, db;
 
+	if (translateTargetR < 0.0f) {
+		translateTargetR = 0.0f;
+	}
+	else if (translateTargetR > 1.0f) {
+		translateTargetR = 1.0f;
+	}
+	if (translateTargetG < 0.0f) {
+		translateTargetG = 0.0f;
+	}
+	else if (translateTargetG > 1.0f) {
+		translateTargetG = 1.0f;
+	}
+	if (translateTargetB < 0.0f) {
+		translateTargetB = 0.0f;
+	}
+	else if (translateTargetB > 1.0f) {
+		translateTargetB = 1.0f;
+	}
+
 	if (durationMs <= 0) {
-		assign (rotateTargetR, rotateTargetG, rotateTargetB);
+		assign (translateTargetR, translateTargetG, translateTargetB);
 		return;
 	}
 
-	dr = rotateTargetR - r;
-	dg = rotateTargetG - g;
-	db = rotateTargetB - b;
+	dr = translateTargetR - r;
+	dg = translateTargetG - g;
+	db = translateTargetB - b;
 	if ((fabs (dr) < CONFIG_FLOAT_EPSILON) && (fabs (dg) < CONFIG_FLOAT_EPSILON) && (fabs (db) < CONFIG_FLOAT_EPSILON)) {
-		isRotating = false;
+		isTranslating = false;
 		return;
 	}
 
-	if (isRotating && FLOAT_EQUALS (rotateTargetR, targetR) && FLOAT_EQUALS (rotateTargetG, targetG) && FLOAT_EQUALS (rotateTargetB, targetB) && (rotateDuration == durationMs)) {
+	if (isTranslating && FLOAT_EQUALS (translateTargetR, targetR) && FLOAT_EQUALS (translateTargetG, targetG) && FLOAT_EQUALS (translateTargetB, targetB) && (translateDuration == durationMs)) {
 		return;
 	}
 
-	isRotating = true;
-	rotateDuration = durationMs;
-	targetR = rotateTargetR;
-	targetG = rotateTargetG;
-	targetB = rotateTargetB;
+	isTranslating = true;
+	translateDuration = durationMs;
+	targetR = translateTargetR;
+	targetG = translateTargetG;
+	targetB = translateTargetB;
 	deltaR = dr / ((float) durationMs);
 	deltaG = dg / ((float) durationMs);
 	deltaB = db / ((float) durationMs);
 }
 
-void Color::rotate (const Color &targetColor, int durationMs) {
-	rotate (targetColor.r, targetColor.g, targetColor.b, durationMs);
+void Color::translate (const Color &targetColor, int durationMs) {
+	translate (targetColor.r, targetColor.g, targetColor.b, durationMs);
 }
 
-void Color::rotate (const Color &startColor, const Color &targetColor, int durationMs) {
+void Color::translate (const Color &startColor, const Color &targetColor, int durationMs) {
 	assign (startColor);
-	rotate (targetColor.r, targetColor.g, targetColor.b, durationMs);
+	translate (targetColor.r, targetColor.g, targetColor.b, durationMs);
 }
 
 bool Color::equals (const Color &other) const {

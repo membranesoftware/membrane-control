@@ -42,8 +42,14 @@ public:
 	LabelWindow (Label *label);
 	virtual ~LabelWindow ();
 
+	// Read-only data members
+	bool isCrawlEnabled;
+
 	// Set a fixed size for the window. If the window's label does not fill the provided width, it is optionally centered inside a larger background space.
 	void setWindowWidth (float fixedWidth, bool isLabelCentered = false);
+
+	// Set the window to adjust width as needed to fit its text content
+	void setFitWidth ();
 
 	// Set the amount of size padding that should be applied to the window
 	void setPadding (float widthPadding, float heightPadding);
@@ -51,8 +57,9 @@ public:
 	// Set the label's text color
 	void setTextColor (const Color &color);
 
-	// Execute a rotation operation for the label's text color
-	void rotateTextColor (const Color &color, int duration);
+	// Execute a translation operation for the label's text color
+	void translateTextColor (const Color &targetColor, int durationMs);
+	void translateTextColor (const Color &startColor, const Color &targetColor, int durationMs);
 
 	// Return the text string shown in the window's label
 	StdString getText () const;
@@ -64,7 +71,10 @@ public:
 	void setFont (int fontType);
 
 	// Set the label window's mouseover highlight option. If enabled, the window changes background and text color during mouseover events.
-	void setMouseoverHighlight (bool enable, const Color &normalTextColor = Color (), const Color &normalBgColor = Color (), const Color &highlightTextColor = Color (), const Color &highlightBgColor = Color (), int colorRotateDuration = 0);
+	void setMouseoverHighlight (bool enable, const Color &normalTextColor = Color (), const Color &normalBgColor = Color (), const Color &highlightTextColor = Color (), const Color &highlightBgColor = Color (), int colorTranslateDuration = 0);
+
+	// Set the label window's crawl option. If enabled, the window crawls its text content as needed when text width exceeds window width.
+	void setCrawl (bool enable);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
@@ -72,6 +82,9 @@ protected:
 
 	// Execute operations appropriate when the widget receives new mouse state
 	void doProcessMouseState (const Widget::MouseState &mouseState);
+
+	// Execute operations to update object state as appropriate for an elapsed millisecond time period and origin position
+	void doUpdate (int msElapsed, float originX, float originY);
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
 	void refreshLayout ();
@@ -86,7 +99,9 @@ private:
 	Color mouseoverNormalBgColor;
 	Color mouseoverHighlightTextColor;
 	Color mouseoverHighlightBgColor;
-	int mouseoverColorRotateDuration;
+	int mouseoverColorTranslateDuration;
+	int crawlStage;
+	int crawlClock;
 };
 
 #endif

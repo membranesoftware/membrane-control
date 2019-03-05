@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include <math.h>
 #include <map>
 #include <vector>
 #include <list>
@@ -43,7 +44,7 @@
 #include "StdString.h"
 #include "Json.h"
 
-Json::Json () 
+Json::Json ()
 : json (NULL)
 , shouldFreeJson (false)
 , isJsonBuilder (false)
@@ -157,6 +158,29 @@ void Json::getKeys (StringList *destList, bool shouldClear) {
 	for (i = 0; i < len; ++i) {
 		destList->push_back (StdString (json->u.object.values[i].name, json->u.object.values[i].name_length));
 	}
+}
+
+bool Json::isNull (const StdString &key) const {
+	int i, len;
+	json_object_entry *entry;
+
+	if (! json) {
+		return (false);
+	}
+
+	len = json->u.object.length;
+	for (i = 0; i < len; ++i) {
+		entry = &(json->u.object.values[i]);
+		if (key.equals (0, key.length (), entry->name, 0, entry->name_length)) {
+			return ((entry->value->type == json_null) ? true : false);
+		}
+	}
+
+	return (false);
+}
+
+bool Json::isNull (const char *key) const {
+	return (isNull (StdString (key)));
 }
 
 bool Json::isNumber (const StdString &key) const {
@@ -348,6 +372,97 @@ json_value *Json::copyJsonValue (json_value *sourceValue) {
 	}
 
 	return (value);
+}
+
+bool Json::deepEquals (Json *other) {
+	if (! other->json) {
+		return (false);
+	}
+
+	return (deepEqualsValue (json, other->json));
+}
+
+bool Json::deepEqualsValue (json_value *thisValue, json_value *otherValue) {
+	std::map<StdString, int> keymap;
+	std::map<StdString, int>::iterator pos;
+	int i, len;
+	bool result;
+
+	if (thisValue->type != otherValue->type) {
+		return (false);
+	}
+
+	result = false;
+	switch (thisValue->type) {
+		case json_integer: {
+			result = (thisValue->u.integer == otherValue->u.integer);
+			break;
+		}
+		case json_double: {
+			result = FLOAT_EQUALS (thisValue->u.dbl, otherValue->u.dbl);
+			break;
+		}
+		case json_boolean: {
+			result = (thisValue->u.boolean == otherValue->u.boolean);
+			break;
+		}
+		case json_string: {
+			result = StdString (thisValue->u.string.ptr, thisValue->u.string.length).equals (StdString (otherValue->u.string.ptr, otherValue->u.string.length));
+			break;
+		}
+		case json_array: {
+			len = thisValue->u.array.length;
+			if (len != (int) otherValue->u.array.length) {
+				result = false;
+				break;
+			}
+
+			result = true;
+			for (i = 0; i < len; ++i) {
+				if (! deepEqualsValue (thisValue->u.array.values[i], otherValue->u.array.values[i])) {
+					result = false;
+					break;
+				}
+			}
+			break;
+		}
+		case json_object: {
+			len = thisValue->u.object.length;
+			if (len != (int) otherValue->u.object.length) {
+				result = false;
+				break;
+			}
+			if (len == 0) {
+				result = true;
+				break;
+			}
+
+			keymap.clear ();
+			for (i = 0; i < len; ++i) {
+				keymap.insert (std::pair<StdString, int> (StdString (thisValue->u.object.values[i].name, thisValue->u.object.values[i].name_length), i));
+			}
+
+			result = true;
+			for (i = 0; i < len; ++i) {
+				pos = keymap.find (StdString (otherValue->u.object.values[i].name, otherValue->u.object.values[i].name_length));
+				if (pos == keymap.end ()) {
+					result = false;
+					break;
+				}
+				if (! deepEqualsValue (thisValue->u.object.values[pos->second].value, otherValue->u.object.values[i].value)) {
+					result = false;
+					break;
+				}
+			}
+			break;
+		}
+		default: {
+			result = true;
+			break;
+		}
+	}
+
+	return (result);
 }
 
 int Json::getNumber (const StdString &key, int defaultValue) const {
@@ -1053,7 +1168,7 @@ void Json::set (const StdString &key, std::list<int64_t> *value) {
 	i = value->begin ();
 	end = value->end ();
 	while (i != end) {
-		json_array_push (a, json_integer_new (*i));
+		json_array_push (a, json_double_new ((double) *i));
 		++i;
 	}
 
@@ -1212,13 +1327,13 @@ StdString Json::toString () {
 	if (len <= 0) {
 		return (StdString (""));
 	}
-	
+
 	buf = (char *) malloc (len);
 	if (! buf) {
-		Log::write (Log::ERR, "Out of memory in Json::toString; len=%i", len);
+		Log::err ("Out of memory in Json::toString; len=%i", len);
 		return (StdString (""));
 	}
-	
+
 	json_serialize_ex (buf, json, opts);
 	s.assign (buf);
 	free (buf);

@@ -78,7 +78,7 @@ bool Ipv4Address::parse (const StdString &text) {
 		else {
 			if (c == '.') {
 				s.assign (startpos, ptr - startpos);
-				if (! StdString::parseInt (s.c_str (), &octets[i])) {
+				if (! s.parseInt (&octets[i])) {
 					break;
 				}
 				startpos = NULL;
@@ -99,7 +99,7 @@ bool Ipv4Address::parse (const StdString &text) {
 
 	if (startpos && (i == 3)) {
 		s.assign (startpos);
-		if (StdString::parseInt (s.c_str (), &octets[i])) {
+		if (s.parseInt (&octets[i])) {
 			if ((octets[i] >= 0) && (octets[i] <= 255)) {
 				result = true;
 			}

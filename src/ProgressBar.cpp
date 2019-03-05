@@ -30,6 +30,7 @@
 */
 #include "Config.h"
 #include <stdlib.h>
+#include <math.h>
 #include "SDL2/SDL.h"
 #include "App.h"
 #include "Result.h"
@@ -60,7 +61,7 @@ ProgressBar::ProgressBar (float barWidth, float barHeight)
 
 	widgetType.assign ("ProgressBar");
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	width = barWidth;
 	height = barHeight;
 	bgColor.assign (uiconfig->lightPrimaryColor);
@@ -188,17 +189,15 @@ void ProgressBar::doUpdate (int msElapsed, float originX, float originY) {
 }
 
 void ProgressBar::doDraw () {
-	App *app;
 	SDL_Rect rect;
 	float x1, x2, w;
 
-	app = App::getInstance ();
 	rect.x = (int) drawX;
 	rect.y = (int) drawY;
 	rect.w = (int) width;
 	rect.h = (int) height;
-	SDL_SetRenderDrawColor (app->render, bgColor.rByte, bgColor.gByte, bgColor.bByte, 255);
-	SDL_RenderFillRect (app->render, &rect);
+	SDL_SetRenderDrawColor (App::instance->render, bgColor.rByte, bgColor.gByte, bgColor.bByte, 255);
+	SDL_RenderFillRect (App::instance->render, &rect);
 
 	x1 = floorf (fillStart);
 	x2 = floorf (fillEnd);
@@ -206,8 +205,8 @@ void ProgressBar::doDraw () {
 	if (w > 0.0f) {
 		rect.x = (int) (drawX + x1);
 		rect.w = (int) w;
-		SDL_SetRenderDrawColor (app->render, fillColor.rByte, fillColor.gByte, fillColor.bByte, 255);
-		SDL_RenderFillRect (app->render, &rect);
+		SDL_SetRenderDrawColor (App::instance->render, fillColor.rByte, fillColor.gByte, fillColor.bByte, 255);
+		SDL_RenderFillRect (App::instance->render, &rect);
 	}
 }
 

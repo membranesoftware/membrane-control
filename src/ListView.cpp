@@ -64,8 +64,8 @@ ListView::ListView (float viewWidth, int minItemHeight, int itemFontType, const 
 
 	widgetType.assign ("ListView");
 
-	uiconfig = &(App::getInstance ()->uiConfig);
-	uitext = &(App::getInstance ()->uiText);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 	setFillBg (true, uiconfig->lightBackgroundColor);
 
 	if (! titleText.empty ()) {
@@ -201,7 +201,7 @@ void ListView::addItem (const StdString &itemText, void *itemData, Widget::FreeF
 	Panel *panel;
 	UiConfiguration *uiconfig;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 
 	item.text.assign (itemText);
 	item.data = itemData;
@@ -251,7 +251,7 @@ void ListView::refreshLayout () {
 	std::vector<ListView::Item>::iterator i, end;
 	int sz;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x = 0.0f;
 	y = 0.0f;
 	if (titleLabel) {
@@ -388,7 +388,7 @@ void ListView::doRefresh () {
 	float h;
 	std::vector<ListView::Item>::iterator i, end;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	if (titleLabel) {
 		titleLabel->setWindowWidth (viewWidth);
 	}

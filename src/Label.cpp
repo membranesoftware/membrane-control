@@ -82,7 +82,7 @@ Label::~Label () {
 	}
 
 	if (textFont) {
-		resource = &(App::getInstance ()->resource);
+		resource = &(App::instance->resource);
 		resource->unloadFont (textFontName, textFontSize);
 		textFont = NULL;
 	}
@@ -112,7 +112,7 @@ void Label::setUnderlined (bool enable) {
 		return;
 	}
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	isUnderlined = enable;
 	underlineMargin = uiconfig->textUnderlineMargin;
 	if (isUnderlined) {
@@ -132,7 +132,6 @@ void Label::setObscured (bool enable) {
 }
 
 void Label::doDraw () {
-	App *app;
 	Font::Glyph *glyph;
 	std::list<Font::Glyph *>::iterator i, end;
 	std::list<int>::iterator ki, kend;
@@ -146,7 +145,6 @@ void Label::doDraw () {
 		return;
 	}
 
-	app = App::getInstance ();
 	x = 0;
 	y = 0;
 	kerning = 0;
@@ -171,11 +169,11 @@ void Label::doDraw () {
 		else {
 			rect.x = x + (int) drawX + glyph->leftBearing + kerning;
 			rect.y = y + (int) drawY + maxGlyphTopBearing - glyph->topBearing;
-			if (((rect.x + glyph->advanceWidth) >= 0) && (rect.x < app->windowWidth) && ((rect.y + maxGlyphTopBearing) >= 0) && (rect.y < app->windowHeight)) {
+			if (((rect.x + glyph->advanceWidth) >= 0) && (rect.x < App::instance->windowWidth) && ((rect.y + maxGlyphTopBearing) >= 0) && (rect.y < App::instance->windowHeight)) {
 				rect.w = glyph->width;
 				rect.h = glyph->height;
 				SDL_SetTextureColorMod (glyph->texture, textColor.rByte, textColor.gByte, textColor.bByte);
-				SDL_RenderCopy (app->render, glyph->texture, NULL, &rect);
+				SDL_RenderCopy (App::instance->render, glyph->texture, NULL, &rect);
 			}
 
 			x += glyph->advanceWidth;
@@ -195,8 +193,8 @@ void Label::doDraw () {
 
 	if (isUnderlined) {
 		y = (int) (drawY + maxGlyphTopBearing + underlineMargin);
-		SDL_SetRenderDrawColor (app->render, textColor.rByte, textColor.gByte, textColor.bByte, 255);
-		SDL_RenderDrawLine (app->render, (int) drawX, y, (int) (drawX + width), y);
+		SDL_SetRenderDrawColor (App::instance->render, textColor.rByte, textColor.gByte, textColor.bByte, 255);
+		SDL_RenderDrawLine (App::instance->render, (int) drawX, y, (int) (drawX + width), y);
 	}
 	SDL_UnlockMutex (textMutex);
 }
@@ -204,7 +202,7 @@ void Label::doDraw () {
 void Label::doRefresh () {
 	UiConfiguration *uiconfig;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	if (textFont && (textFontType >= 0)) {
 		if ((! textFontName.equals (uiconfig->fontNames[textFontType])) || (textFontSize != uiconfig->fontSizes[textFontType])) {
 			setText (text, textFontType, true);
@@ -225,11 +223,11 @@ void Label::setText (const StdString &labelText, int fontType, bool forceFontRel
 	float x;
 	char *buf, c, lastc;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	font = NULL;
 	if (fontType >= 0) {
 		if (forceFontReload || (! textFont) || (textFontType != fontType)) {
-			resource = &(App::getInstance ()->resource);
+			resource = &(App::instance->resource);
 			font = resource->loadFont (uiconfig->fontNames[fontType], uiconfig->fontSizes[fontType]);
 			if (font) {
 				if (textFont) {
@@ -378,7 +376,7 @@ void Label::flowRight (float *positionX, float positionY, float *rightExtent, fl
 	UiConfiguration *uiconfig;
 	float pos;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	position.assign (*positionX, getLinePosition (positionY));
 	*positionX += width + uiconfig->marginSize;
 	if (rightExtent) {
@@ -399,7 +397,7 @@ void Label::flowDown (float positionX, float *positionY, float *rightExtent, flo
 	UiConfiguration *uiconfig;
 	float x, y;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	y = *positionY;
 	position.assign (positionX, getLinePosition (y));
 	*positionY += maxLineHeight + uiconfig->marginSize;

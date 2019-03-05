@@ -35,7 +35,6 @@
 #include "StdString.h"
 #include "App.h"
 #include "UiText.h"
-#include "Util.h"
 #include "Sprite.h"
 #include "SpriteGroup.h"
 #include "Widget.h"
@@ -66,8 +65,8 @@ ServerContactWindow::ServerContactWindow (const StdString &displayName, const St
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
-	uitext = &(App::getInstance ()->uiText);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
@@ -119,25 +118,23 @@ void ServerContactWindow::setStateChangeCallback (Widget::EventCallback callback
 }
 
 void ServerContactWindow::doUpdate (int msElapsed, float originX, float originY) {
-	App *app;
 	UiText *uitext;
 	int curlayout;
 
 	Panel::doUpdate (msElapsed, originX, originY);
 
-	app = App::getInstance ();
-	uitext = &(app->uiText);
+	uitext = &(App::instance->uiText);
 	curlayout = layout;
-	if (app->agentControl.isContacted (agentHostname, agentPort)) {
+	if (App::instance->agentControl.isContacted (agentHostname, agentPort)) {
 		curlayout = ServerContactWindow::IDLE;
 		isDeleted = true;
 	}
-	else if (app->agentControl.isContacting (agentHostname, agentPort)) {
+	else if (App::instance->agentControl.isContacting (agentHostname, agentPort)) {
 		curlayout = ServerContactWindow::CONTACTING;
 	}
 	else {
 		if (curlayout == ServerContactWindow::CONTACTING) {
-			if (app->agentControl.isUnauthorized (agentHostname, agentPort)) {
+			if (App::instance->agentControl.isUnauthorized (agentHostname, agentPort)) {
 				curlayout = ServerContactWindow::UNAUTHORIZED;
 			}
 			else {
@@ -194,7 +191,7 @@ void ServerContactWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y, y0, x2, y2;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	y0 = y;

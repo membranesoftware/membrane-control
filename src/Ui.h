@@ -35,15 +35,14 @@
 
 #include "SDL2/SDL.h"
 #include "StdString.h"
-#include "StringList.h"
+#include "Json.h"
 #include "Widget.h"
 #include "WidgetHandle.h"
 #include "Panel.h"
+#include "Toolbar.h"
 #include "Sprite.h"
 #include "SpriteGroup.h"
-#include "Json.h"
-#include "RecordStore.h"
-#include "Toolbar.h"
+#include "HelpWindow.h"
 
 class Ui {
 public:
@@ -62,35 +61,11 @@ public:
 	// Decrease the object's refcount. If this reduces the refcount to zero or less, delete the object.
 	void release ();
 
-	// Return text that should be used to identify the UI in a set of breadcrumb actions, or an empty string if no such title exists
-	virtual StdString getBreadcrumbTitle ();
-
-	// Return a newly created Sprite object that should be used to identify the UI in a set of breadcrumb actions, or NULL if no such Sprite exists. If a Sprite is returned by this method, the caller becomes responsible for destroying it when no longer needed.
-	virtual Sprite *getBreadcrumbSprite ();
-
-	// Execute operations appropriate when an agent control link client becomes connected
-	virtual void handleLinkClientConnect (const StdString &agentId);
-
-	// Execute operations appropriate when an agent control link client becomes disconnected
-	virtual void handleLinkClientDisconnect (const StdString &agentId, const StdString &errorDescription);
-
-	// Execute actions appropriate for a command received from an agent control link client
-	virtual void handleLinkClientCommand (const StdString &agentId, int commandId, Json *command);
-
-	// Set fields in the provided HelpWindow widget as appropriate for the UI's help content
-	virtual void setHelpWindowContent (Widget *helpWindowPtr);
-
 	// Load resources as needed to prepare the UI and return a result value
 	int load ();
 
 	// Free resources allocated by any previous load operation
 	void unload ();
-
-	// Change the provided main toolbar object to contain items appropriate for the UI
-	void resetMainToolbar (Toolbar *toolbar);
-
-	// Change the provided secondary toolbar object to contain items appropriate for the UI
-	void resetSecondaryToolbar (Toolbar *toolbar);
 
 	// Remove and destroy any popup widgets that have been created by the UI
 	void clearPopupWidgets ();
@@ -116,43 +91,45 @@ public:
 	// Reload interface resources as needed to account for a new application window size
 	void resize ();
 
-	// Execute operations to sync state with records present in the provided RecordStore object, which has been locked prior to invocation
-	void syncRecordStore (RecordStore *store);
-
 	// Add a widget to the UI. Returns the widget pointer.
 	Widget *addWidget (Widget *widget, float positionX = 0.0f, float positionY = 0.0f, int zLevel = 0);
 
-	// Return a boolean value indicating if one of the UI's side windows is open
-	bool isSideWindowOpen ();
+	// Change the provided main toolbar object to contain items appropriate for the UI
+	void addMainToolbarItems (Toolbar *toolbar);
+
+	// Change the provided secondary toolbar object to contain items appropriate for the UI
+	void addSecondaryToolbarItems (Toolbar *toolbar);
+
+	// Set fields in the provided HelpWindow widget as appropriate for the UI's help content
+	virtual void setHelpWindowContent (HelpWindow *helpWindow);
+
+	// Execute operations appropriate when an agent control link client becomes connected
+	virtual void handleLinkClientConnect (const StdString &agentId);
+
+	// Execute operations appropriate when an agent control link client becomes disconnected
+	virtual void handleLinkClientDisconnect (const StdString &agentId, const StdString &errorDescription);
+
+	// Execute actions appropriate for a command received from an agent control link client
+	virtual void handleLinkClientCommand (const StdString &agentId, int commandId, Json *command);
+
+	// Execute operations to sync state with records present in the application's RecordStore object, which has been locked prior to invocation
+	void syncRecordStore ();
 
 	// Callback functions
-	static void backButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void mainMenuButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void newsButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void settingsActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void aboutActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void updateActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void feedbackActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void helpActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void exitActionClicked (void *uiPtr, Widget *widgetPtr);
-	static bool matchOpenTaskItem (void *ptr, Json *record);
 	static bool keyEvent (void *uiPtr, SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
 
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
 	virtual StdString getSpritePath ();
 
+	// Return a newly created widget for use as a main toolbar breadcrumb item
+	virtual Widget *createBreadcrumbWidget ();
+
 	// Load subclass-specific resources and return a result value
 	virtual int doLoad ();
 
 	// Unload subclass-specific resources
 	virtual void doUnload ();
-
-	// Add subclass-specific items to the provided main toolbar object
-	virtual void doResetMainToolbar (Toolbar *toolbar);
-
-	// Add subclass-specific items to the provided secondary toolbar object
-	virtual void doResetSecondaryToolbar (Toolbar *toolbar);
 
 	// Remove and destroy any subclass-specific popup widgets that have been created by the UI
 	virtual void doClearPopupWidgets ();
@@ -175,20 +152,14 @@ protected:
 	// Reload subclass-specific interface resources as needed to account for a new application window size
 	virtual void doResize ();
 
-	// Execute subclass-specific operations to sync state with records present in the provided RecordStore object, which has been locked prior to invocation
-	virtual void doSyncRecordStore (RecordStore *store);
+	// Add subclass-specific items to the provided main toolbar object
+	virtual void doAddMainToolbarItems (Toolbar *toolbar);
 
-	// Execute operations appropriate when mouseHoverWidget has held its current value beyond the hover threshold
-	void activateMouseHover ();
+	// Add subclass-specific items to the provided secondary toolbar object
+	virtual void doAddSecondaryToolbarItems (Toolbar *toolbar);
 
-	// Deactivate any previously activated mouse hover widgets
-	void deactivateMouseHover ();
-
-	// Deactivate the mouse hover widget and prevent reactivation until a new mouse hover widget is acquired
-	void suspendMouseHover ();
-
-	// Add a back button to the provided toolbar and associate it with a click handler that pops the top UI from the application
-	void addMainToolbarBackButton (Toolbar *toolbar);
+	// Execute subclass-specific operations to sync state with records present in the application's RecordStore object, which has been locked prior to invocation
+	virtual void doSyncRecordStore ();
 
 	// Set the link client connection state that should be maintained for agents with ID values appearing in linkAgentIds
 	void setLinkConnected (bool connected);
@@ -197,30 +168,12 @@ protected:
 	void addLinkAgent (const StdString &agentId);
 
 	SpriteGroup sprites;
-	WidgetHandle breadcrumbChip;
-	WidgetHandle tooltip;
-	WidgetHandle darkenPanel;
-	WidgetHandle mainMenu;
-	WidgetHandle settingsWindow;
-	WidgetHandle helpWindow;
-	WidgetHandle mouseHoverWidget;
 	WidgetHandle actionWidget;
 	WidgetHandle actionTarget;
-	int mouseHoverClock;
-	bool isMouseHoverActive;
-	bool isMouseHoverSuspended;
+	WidgetHandle breadcrumbWidget;
 	StringList linkAgentIds;
 
 private:
-	// Execute actions appropriate when the main menu button has been clicked
-	void handleMainMenuButtonClick (Widget *buttonWidget);
-
-	// Toggle the visible state of the settings window
-	void toggleSettingsWindow ();
-
-	// Toggle the visible state of the help window
-	void toggleHelpWindow ();
-
 	int refcount;
 	SDL_mutex *refcountMutex;
 };

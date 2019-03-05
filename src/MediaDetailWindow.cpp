@@ -31,11 +31,11 @@
 #include "Config.h"
 #include <stdlib.h>
 #include "Result.h"
-#include "Log.h"
 #include "StdString.h"
 #include "App.h"
 #include "UiText.h"
-#include "Util.h"
+#include "OsUtil.h"
+#include "MediaUtil.h"
 #include "Widget.h"
 #include "Color.h"
 #include "Image.h"
@@ -44,13 +44,11 @@
 #include "Json.h"
 #include "Panel.h"
 #include "Label.h"
-#include "TextArea.h"
 #include "Button.h"
 #include "Toggle.h"
 #include "StatsWindow.h"
 #include "SystemInterface.h"
 #include "UiConfiguration.h"
-#include "MediaItemUi.h"
 #include "MediaDetailWindow.h"
 
 MediaDetailWindow::MediaDetailWindow (const StdString &recordId)
@@ -69,7 +67,7 @@ MediaDetailWindow::MediaDetailWindow (const StdString &recordId)
 {
 	UiConfiguration *uiconfig;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
@@ -102,8 +100,8 @@ void MediaDetailWindow::populate () {
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
-	uitext = &(App::getInstance ()->uiText);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 
 	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LARGE_MEDIA_ICON)));
 	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::TITLE, uiconfig->primaryTextColor));
@@ -119,17 +117,17 @@ void MediaDetailWindow::populate () {
 	statsWindow->setPadding (uiconfig->paddingSize, 0.0f);
 }
 
-void MediaDetailWindow::syncRecordStore (RecordStore *store) {
-	App *app;
+void MediaDetailWindow::syncRecordStore () {
+	RecordStore *store;
 	SystemInterface *interface;
 	UiText *uitext;
 	Json *record;
 	StdString text, rationame, framesizename;
 
-	app = App::getInstance ();
-	interface = &(app->systemInterface);
-	uitext = &(app->uiText);
-	record = store->findRecord (recordId, SystemInterface::Command_MediaItem);
+	store = &(App::instance->agentControl.recordStore);
+	interface = &(App::instance->systemInterface);
+	uitext = &(App::instance->uiText);
+	record = store->findRecord (recordId, SystemInterface::CommandId_MediaItem);
 	if (! record) {
 		return;
 	}
@@ -146,12 +144,12 @@ void MediaDetailWindow::syncRecordStore (RecordStore *store) {
 	mediaName.assign (interface->getCommandStringParam (record, "name", ""));
 	nameLabel->setText (mediaName);
 
-	statsWindow->setItem (uitext->getText (UiTextString::server).capitalized (), app->agentControl.getAgentDisplayName (agentId));
+	statsWindow->setItem (uitext->getText (UiTextString::server).capitalized (), App::instance->agentControl.getAgentDisplayName (agentId));
 
 	if ((mediaWidth > 0) && (mediaHeight > 0)) {
 		text.sprintf ("%ix%i", mediaWidth, mediaHeight);
-		rationame = Util::getAspectRatioDisplayString (mediaWidth, mediaHeight);
-		framesizename = Util::getFrameSizeName (mediaWidth, mediaHeight);
+		rationame = MediaUtil::getAspectRatioDisplayString (mediaWidth, mediaHeight);
+		framesizename = MediaUtil::getFrameSizeName (mediaWidth, mediaHeight);
 		if ((! rationame.empty ()) || (! framesizename.empty ())) {
 			text.append (" (");
 			if (! rationame.empty ()) {
@@ -174,26 +172,26 @@ void MediaDetailWindow::syncRecordStore (RecordStore *store) {
 	}
 
 	if (mediaBitrate > 0.0f) {
-		statsWindow->setItem (uitext->getText (UiTextString::bitrate).capitalized (), Util::getBitrateDisplayString (mediaBitrate));
+		statsWindow->setItem (uitext->getText (UiTextString::bitrate).capitalized (), MediaUtil::getBitrateDisplayString (mediaBitrate));
 	}
 
 	if (mediaSize > 0) {
-		statsWindow->setItem (uitext->getText (UiTextString::fileSize).capitalized (), Util::getByteCountDisplayString (mediaSize));
+		statsWindow->setItem (uitext->getText (UiTextString::fileSize).capitalized (), OsUtil::getByteCountDisplayString (mediaSize));
 	}
 
 	if (mediaDuration > 0.0f) {
-		statsWindow->setItem (uitext->getText (UiTextString::duration).capitalized (), Util::getDurationDisplayString (mediaDuration));
+		statsWindow->setItem (uitext->getText (UiTextString::duration).capitalized (), OsUtil::getDurationDisplayString (mediaDuration));
 	}
 
 	refreshLayout ();
-	Panel::syncRecordStore (store);
+	Panel::syncRecordStore ();
 }
 
 void MediaDetailWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y, x0, x2, y2;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	x0 = x;

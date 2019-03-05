@@ -35,7 +35,6 @@
 #include "StdString.h"
 #include "App.h"
 #include "UiText.h"
-#include "Util.h"
 #include "Widget.h"
 #include "Panel.h"
 #include "Label.h"
@@ -59,18 +58,16 @@ TaskWindow::TaskWindow (const StdString &taskId)
 , deleteCallback (NULL)
 , deleteCallbackData (NULL)
 {
-	App *app;
 	UiConfiguration *uiconfig;
 
-	app = App::getInstance ();
-	uiconfig = &(app->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->darkBackgroundColor);
 
 	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::TASK_IN_PROGRESS_ICON)));
 	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::BODY, uiconfig->primaryTextColor));
 	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
-	progressBar = (ProgressBar *) addWidget (new ProgressBar (((float) app->windowWidth) * 0.16f, uiconfig->progressBarHeight));
+	progressBar = (ProgressBar *) addWidget (new ProgressBar (((float) App::instance->windowWidth) * 0.16f, uiconfig->progressBarHeight));
 
 	deleteButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::DELETE_BUTTON)));
 	deleteButton->setMouseClickCallback (TaskWindow::deleteButtonClicked, this);
@@ -93,15 +90,17 @@ void TaskWindow::setDeleteCallback (Widget::EventCallback callback, void *callba
 	deleteCallbackData = callbackData;
 }
 
-void TaskWindow::syncRecordStore (RecordStore *store) {
+void TaskWindow::syncRecordStore () {
+	RecordStore *store;
 	SystemInterface *interface;
 	UiConfiguration *uiconfig;
 	Json *record;
 	float pct;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
-	interface = &(App::getInstance ()->systemInterface);
-	record = store->findRecord (taskId, SystemInterface::Command_TaskItem);
+	store = &(App::instance->agentControl.recordStore);
+	uiconfig = &(App::instance->uiConfig);
+	interface = &(App::instance->systemInterface);
+	record = store->findRecord (taskId, SystemInterface::CommandId_TaskItem);
 	if (! record) {
 		return;
 	}
@@ -127,7 +126,7 @@ void TaskWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y, x0, y0, x2, y2;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	x0 = x;

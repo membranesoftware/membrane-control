@@ -37,7 +37,7 @@
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
-#include "Util.h"
+#include "OsUtil.h"
 #include "Widget.h"
 #include "Sprite.h"
 #include "Color.h"
@@ -47,7 +47,6 @@
 #include "Button.h"
 #include "TextArea.h"
 #include "Json.h"
-#include "SystemInterface.h"
 #include "UiConfiguration.h"
 #include "ThumbnailWindow.h"
 
@@ -64,7 +63,7 @@ ThumbnailWindow::ThumbnailWindow (int thumbnailIndex, float thumbnailTimestamp, 
 {
 	UiConfiguration *uiconfig;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
 	mediaImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LOADING_IMAGE_ICON))));
@@ -77,7 +76,7 @@ ThumbnailWindow::ThumbnailWindow (int thumbnailIndex, float thumbnailTimestamp, 
 	timestampLabel->setAlphaBlend (true, uiconfig->scrimBackgroundAlpha);
 	timestampLabel->isVisible = false;
 	if (thumbnailTimestamp >= 0.0f) {
-		timestampLabel->setText (Util::getDurationString ((int64_t) thumbnailTimestamp, Util::HOURS));
+		timestampLabel->setText (OsUtil::getDurationString ((int64_t) thumbnailTimestamp, OsUtil::HOURS));
 	}
 
 	setLayout (layoutType, maxMediaImageWidth);
@@ -156,13 +155,13 @@ void ThumbnailWindow::setHighlighted (bool highlighted) {
 		return;
 	}
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	isHighlighted = highlighted;
 	if (isHighlighted) {
-		timestampLabel->rotateTextColor (uiconfig->mediumSecondaryColor, uiconfig->shortColorRotateDuration);
+		timestampLabel->translateTextColor (uiconfig->mediumSecondaryColor, uiconfig->shortColorTranslateDuration);
 	}
 	else {
-		timestampLabel->rotateTextColor (uiconfig->inverseTextColor, uiconfig->shortColorRotateDuration);
+		timestampLabel->translateTextColor (uiconfig->inverseTextColor, uiconfig->shortColorTranslateDuration);
 	}
 	refreshLayout ();
 }

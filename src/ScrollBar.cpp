@@ -30,6 +30,7 @@
 */
 #include "Config.h"
 #include <stdlib.h>
+#include <math.h>
 #include <list>
 #include "Result.h"
 #include "Log.h"
@@ -65,7 +66,7 @@ ScrollBar::ScrollBar (float maxScrollTrackLength)
 
 	widgetType.assign ("ScrollBar");
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 
 	setFillBg (true, 0.0f, 0.0f, 0.0f);
 	setBorder (true, uiconfig->darkBackgroundColor);
@@ -200,7 +201,7 @@ void ScrollBar::doUpdate (int msElapsed, float originX, float originY) {
 	Panel::doUpdate (msElapsed, originX, originY);
 
 	if (isFollowingMouse) {
-		input = &(App::getInstance ()->input);
+		input = &(App::instance->input);
 		if (! input->isMouseLeftButtonDown) {
 			isFollowingMouse = false;
 		}
@@ -224,8 +225,8 @@ void ScrollBar::doProcessMouseState (const Widget::MouseState &mouseState) {
 	UiConfiguration *uiconfig;
 	float val, dy;
 
-	input = &(App::getInstance ()->input);
-	uiconfig = &(App::getInstance ()->uiConfig);
+	input = &(App::instance->input);
+	uiconfig = &(App::instance->uiConfig);
 
 	if (! isFollowingMouse) {
 		if (mouseState.isEntered && mouseState.isLeftClicked) {
@@ -249,10 +250,10 @@ void ScrollBar::doProcessMouseState (const Widget::MouseState &mouseState) {
 	}
 
 	if (mouseState.isEntered || isFollowingMouse) {
-		arrowPanel->bgColor.rotate (uiconfig->lightPrimaryColor, uiconfig->shortColorRotateDuration);
+		arrowPanel->bgColor.translate (uiconfig->lightPrimaryColor, uiconfig->shortColorTranslateDuration);
 	}
 	else {
-		arrowPanel->bgColor.rotate (uiconfig->mediumPrimaryColor, uiconfig->shortColorRotateDuration);
+		arrowPanel->bgColor.translate (uiconfig->mediumPrimaryColor, uiconfig->shortColorTranslateDuration);
 	}
 }
 

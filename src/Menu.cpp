@@ -58,7 +58,7 @@ Menu::Menu ()
 
 	widgetType.assign ("Menu");
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	setFillBg (true, uiconfig->lightBackgroundColor);
 
 	focusBackgroundPanel = (Panel *) addWidget (new Panel ());
@@ -91,7 +91,7 @@ void Menu::addItem (const StdString &name, Sprite *sprite, Widget::EventCallback
 	Image *image;
 	float w;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 
 	item.isChoice = true;
 
@@ -135,7 +135,7 @@ void Menu::addDivider () {
 	Menu::Item item;
 	Panel *panel;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 
 	item.isDivider = true;
 	panel = new Panel ();
@@ -213,7 +213,7 @@ void Menu::refreshLayout () {
 	Panel *panel;
 	float x0, x, y, w, h, maxw, maxh, padw, padh;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x0 = uiconfig->paddingSize + selectionMarginSize;
 	maxw = 0.0f;
 	maxh = 0.0f;

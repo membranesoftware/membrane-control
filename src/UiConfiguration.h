@@ -141,11 +141,11 @@ public:
 	// Read-only data members; read-write access is permissible by the Ui class and its subclasses
 	float paddingSize;
 	float marginSize;
-	int shortColorRotateDuration; // ms
-	int longColorRotateDuration; // ms
+	int shortColorTranslateDuration; // ms
+	int longColorTranslateDuration; // ms
 	int mouseHoverThreshold;
 	int blinkDuration; // ms
-	int backgroundTransitionDuration; // ms
+	int backgroundCrossFadeDuration; // ms
 	StdString fontNames[UiConfiguration::NUM_FONT_TYPES];
 	int fontBaseSizes[UiConfiguration::NUM_FONT_TYPES];
 	int fontSizes[UiConfiguration::NUM_FONT_TYPES];

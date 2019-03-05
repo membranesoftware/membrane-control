@@ -58,6 +58,9 @@ public:
 	// Set the window's text field obscure option
 	void setObscured (bool enable);
 
+	// Set the window's width
+	void setWindowWidth (float fixedWidth);
+
 	// Set the window to use a fixed height of the specified value, replacing default window behavior that computes height as needed to contain its elements
 	void setWindowHeight (float fixedHeight);
 

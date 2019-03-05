@@ -77,9 +77,9 @@ int SpriteGroup::load (const StdString &path, int imageScale) {
 		return (Result::SUCCESS);
 	}
 
-	resource = &(App::getInstance ()->resource);
+	resource = &(App::instance->resource);
 	if (imageScale < 0) {
-		imageScale = App::getInstance ()->imageScale;
+		imageScale = App::instance->imageScale;
 	}
 	result = Result::SUCCESS;
 	i = 0;
@@ -127,9 +127,9 @@ void SpriteGroup::resize (int imageScale) {
 	Sprite *sprite;
 	int result, index;
 
-	resource = &(App::getInstance ()->resource);
+	resource = &(App::instance->resource);
 	if (imageScale < 0) {
-		imageScale = App::getInstance ()->imageScale;
+		imageScale = App::instance->imageScale;
 	}
 	index = 0;
 	i = spriteList.begin ();
@@ -140,7 +140,7 @@ void SpriteGroup::resize (int imageScale) {
 			sprite->unload ();
 			result = sprite->load (StdString::createSprintf ("%s/%03i", loadPath.c_str (), index), imageScale);
 			if (result != Result::SUCCESS) {
-				Log::write (Log::ERR, "Failed to reload textures; path=\"%s\" index=%i err=%i", loadPath.c_str (), index, result);
+				Log::err ("Failed to reload textures; path=\"%s\" index=%i err=%i", loadPath.c_str (), index, result);
 			}
 		}
 

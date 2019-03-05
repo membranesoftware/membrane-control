@@ -28,21 +28,22 @@
 * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 * POSSIBILITY OF SUCH DAMAGE.
 */
-// Widget that shows a horizontal bar with time position indicators
+// Panel that shows a horizontal bar with time position indicators
 
-#ifndef TIMELINE_BAR_H
-#define TIMELINE_BAR_H
+#ifndef TIMELINE_WINDOW_H
+#define TIMELINE_WINDOW_H
 
 #include <list>
+#include <vector>
 #include "StdString.h"
 #include "LabelWindow.h"
 #include "Panel.h"
 
-class TimelineBar : public Panel {
+class TimelineWindow : public Panel {
 public:
 	// recordId must reference a MediaItem or StreamItem record
-	TimelineBar (float barWidth, const StdString &recordId);
-	virtual ~TimelineBar ();
+	TimelineWindow (float barWidth, const StdString &recordId);
+	virtual ~TimelineWindow ();
 
 	// Read-only data members
 	StdString recordId;
@@ -61,15 +62,18 @@ public:
 	// Set the bar to highlight the marker at the specified index. A negative index value indicates that any existing highlight should be cleared.
 	void setHighlightedMarker (int markerIndex);
 
-	// Execute operations appropriate to sync widget state with records present in the provided RecordStore object, which has been locked prior to invocation
-	void syncRecordStore (RecordStore *store);
+	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
+	void syncRecordStore ();
 
 protected:
+	// Return a string that should be included as part of the toString method's output
+	StdString toStringDetail ();
+
 	// Reset the panel's widget layout as appropriate for its content and configuration
-	virtual void refreshLayout ();
+	void refreshLayout ();
 
 	// Execute operations appropriate when the widget receives new mouse state
-	virtual void doProcessMouseState (const Widget::MouseState &mouseState);
+	void doProcessMouseState (const Widget::MouseState &mouseState);
 
 private:
 	static const int guideSegmentCount;

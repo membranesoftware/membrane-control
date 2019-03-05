@@ -64,8 +64,8 @@ public:
 	// Invoke a command on the target agent to load its configuration fields
 	void loadConfiguration ();
 
-	// Execute operations appropriate to sync widget state with records present in the provided RecordStore object, which has been locked prior to invocation
-	void syncRecordStore (RecordStore *store);
+	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
+	void syncRecordStore ();
 
 	// Callback functions
 	static void applyButtonClicked (void *windowPtr, Widget *widgetPtr);

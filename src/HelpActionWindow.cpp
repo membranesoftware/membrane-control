@@ -28,22 +28,18 @@
 * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 * POSSIBILITY OF SUCH DAMAGE.
 */
-// HelpActionWindow.h - Panel that shows an action item, for display on the help window
-
 #include "Config.h"
 #include <stdlib.h>
+#include <math.h>
 #include "Result.h"
-#include "Log.h"
 #include "StdString.h"
 #include "App.h"
 #include "UiText.h"
-#include "Util.h"
 #include "Widget.h"
 #include "Panel.h"
 #include "Label.h"
 #include "LabelWindow.h"
 #include "TextArea.h"
-#include "Button.h"
 #include "Image.h"
 #include "UiConfiguration.h"
 #include "HyperlinkWindow.h"
@@ -58,7 +54,7 @@ HelpActionWindow::HelpActionWindow (float windowWidth, const StdString &helpActi
 {
 	UiConfiguration *uiconfig;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 
 	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::INFO_ICON)));
 
@@ -87,7 +83,7 @@ void HelpActionWindow::setWindowWidth (float windowWidthValue) {
 		return;
 	}
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	windowWidth = windowWidthValue;
 	actionText->setMaxLineWidth (windowWidth - iconImage->width - (uiconfig->paddingSize * 2.0f));
 	refreshLayout ();
@@ -97,7 +93,7 @@ void HelpActionWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y, h;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x = 0.0f;
 	y = 0.0f;
 	iconImage->position.assign (x, y);

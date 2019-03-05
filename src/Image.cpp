@@ -29,11 +29,11 @@
 * POSSIBILITY OF SUCH DAMAGE.
 */
 #include "Config.h"
-#include "SDL2/SDL.h"
-#include "SDL2/SDL_render.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
+#include "SDL2/SDL.h"
 #include "App.h"
 #include "Result.h"
 #include "Log.h"
@@ -118,6 +118,24 @@ void Image::setDrawColor (bool enable, const Color &color) {
 	}
 }
 
+void Image::translateAlpha (float startAlpha, float targetAlpha, int durationMs) {
+	if (startAlpha < 0.0f) {
+		startAlpha = 0.0f;
+	}
+	else if (startAlpha > 1.0f) {
+		startAlpha = 1.0f;
+	}
+	if (targetAlpha < 0.0f) {
+		targetAlpha = 0.0f;
+	}
+	else if (targetAlpha > 1.0f) {
+		targetAlpha = 1.0f;
+	}
+
+	drawAlpha = startAlpha;
+	translateAlphaValue.translateX (startAlpha, targetAlpha, durationMs);
+}
+
 void Image::resetSize () {
 	SDL_Texture *texture;
 	int tw, th;
@@ -146,6 +164,11 @@ void Image::doUpdate (int msElapsed, float originX, float originY) {
 			}
 		}
 	}
+
+	if (translateAlphaValue.isTranslating) {
+		translateAlphaValue.update (msElapsed);
+		drawAlpha = translateAlphaValue.x;
+	}
 }
 
 void Image::doRefresh () {
@@ -155,11 +178,9 @@ void Image::doRefresh () {
 }
 
 void Image::doDraw () {
-	App *app;
 	SDL_Texture *texture;
 	SDL_Rect rect;
 
-	app = App::getInstance ();
 	texture = spriteHandle.getTexture ();
 	rect.x = (int) drawX;
 	rect.y = (int) drawY;
@@ -170,7 +191,7 @@ void Image::doDraw () {
 	if (isDrawColorEnabled) {
 		SDL_SetTextureColorMod (texture, drawColor.rByte, drawColor.gByte, drawColor.bByte);
 	}
-	SDL_RenderCopy (app->render, texture, NULL, &rect);
+	SDL_RenderCopy (App::instance->render, texture, NULL, &rect);
 	if (isDrawColorEnabled) {
 		SDL_SetTextureColorMod (texture, 255, 255, 255);
 	}

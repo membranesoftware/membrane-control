@@ -30,6 +30,7 @@
 */
 #include "Config.h"
 #include <stdlib.h>
+#include <math.h>
 #include <list>
 #include <map>
 #include "App.h"
@@ -57,7 +58,7 @@ CardView::CardView (float viewWidth, float viewHeight)
 
 	widgetType.assign ("CardView");
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	itemMarginSize = uiconfig->marginSize;
 	scrollBar = (ScrollBar *) addWidget (new ScrollBar (viewHeight - (uiconfig->paddingSize * 2.0f)));
 	scrollBar->setPositionChangeCallback (CardView::scrollBarPositionChanged, this);
@@ -85,7 +86,7 @@ CardView::~CardView () {
 void CardView::setViewSize (float viewWidth, float viewHeight) {
 	UiConfiguration *uiconfig;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	setFixedSize (true, viewWidth, viewHeight);
 	scrollBar->setMaxTrackLength (viewHeight - (uiconfig->paddingSize * 2.0f));
 	cardAreaWidth = width - scrollBar->width - uiconfig->paddingSize - (uiconfig->marginSize * 0.25f);
@@ -105,7 +106,7 @@ void CardView::setRowHeader (int row, const StdString &headerText, int headerFon
 	std::map<int, CardView::Row>::iterator pos;
 	LabelWindow *label;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	label = (LabelWindow *) addWidget (new LabelWindow (new Label (headerText, headerFontType, color)));
 	label->isVisible = false;
 	label->zLevel = 1;
@@ -139,7 +140,7 @@ void CardView::doProcessMouseState (const Widget::MouseState &mouseState) {
 	ScrollView::doProcessMouseState (mouseState);
 	if (! FLOAT_EQUALS (y, viewOriginY)) {
 		scrollBar->setPosition (viewOriginY, true);
-		scrollBar->position.assignY (viewOriginY + App::getInstance ()->uiConfig.paddingSize);
+		scrollBar->position.assignY (viewOriginY + App::instance->uiConfig.paddingSize);
 	}
 }
 
@@ -151,7 +152,7 @@ bool CardView::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool is
 	result = ScrollView::doProcessKeyEvent (keycode, isShiftDown, isControlDown);
 	if (! FLOAT_EQUALS (y, viewOriginY)) {
 		scrollBar->setPosition (viewOriginY, true);
-		scrollBar->position.assignY (viewOriginY + App::getInstance ()->uiConfig.paddingSize);
+		scrollBar->position.assignY (viewOriginY + App::instance->uiConfig.paddingSize);
 	}
 
 	return (result);
@@ -170,12 +171,10 @@ bool CardView::contains (const char *itemId) {
 }
 
 StdString CardView::getAvailableItemId () {
-	App *app;
 	StdString id;
 
-	app = App::getInstance ();
 	while (true) {
-		id.sprintf ("CardView_item_%lli", (long long int) app->getUniqueId ());
+		id.sprintf ("CardView_item_%lli", (long long int) App::instance->getUniqueId ());
 		if (! contains (id)) {
 			break;
 		}
@@ -325,7 +324,7 @@ void CardView::scrollToItem (const StdString &itemId) {
 	}
 
 	widget = pos->widget;
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	setViewOrigin (0.0f, widget->position.y - (height / 2.0f) + (widget->height / 2.0f));
 	scrollBar->setPosition (viewOriginY, true);
 	scrollBar->position.assignY (viewOriginY + uiconfig->paddingSize);
@@ -340,7 +339,7 @@ void CardView::refreshLayout () {
 	float x, y, x0, rowh, rowmargin;
 	int row;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	if (! isSorted) {
 		doSort ();
 	}
@@ -585,7 +584,7 @@ void CardView::scrollBarPositionChanged (void *windowPtr, Widget *widgetPtr) {
 
 	window = (CardView *) windowPtr;
 	scrollbar = (ScrollBar *) widgetPtr;
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 
 	window->setViewOrigin (0.0f, scrollbar->scrollPosition);
 	scrollbar->position.assignY (window->viewOriginY + uiconfig->paddingSize);

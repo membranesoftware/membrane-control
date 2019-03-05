@@ -37,10 +37,6 @@
 #include "SDL2/SDL.h"
 #include "StdString.h"
 #include "Position.h"
-#include "Json.h"
-#include "RecordStore.h"
-
-class Ui;
 
 class Widget {
 public:
@@ -98,8 +94,8 @@ public:
 	// Refresh the widget's layout as appropriate for the current set of UiConfiguration values
 	void refresh ();
 
-	// Execute operations appropriate to sync widget state with records present in the provided RecordStore object, which has been locked prior to invocation
-	virtual void syncRecordStore (RecordStore *store);
+	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
+	virtual void syncRecordStore ();
 
 	// Set the isDestroyed state for all child widgets, causing them to be removed during the next update cycle
 	virtual void destroyAllChildWidgets ();

@@ -30,12 +30,13 @@
 */
 #include "Config.h"
 #include <stdlib.h>
+#include <math.h>
 #include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
 #include "UiText.h"
-#include "Util.h"
+#include "OsUtil.h"
 #include "Widget.h"
 #include "Color.h"
 #include "Image.h"
@@ -51,7 +52,6 @@
 #include "SliderWindow.h"
 #include "SystemInterface.h"
 #include "UiConfiguration.h"
-#include "WebKioskUi.h"
 #include "WebPlaylistWindow.h"
 
 const float WebPlaylistWindow::windowWidthMultiplier = 0.45f;
@@ -85,15 +85,13 @@ WebPlaylistWindow::WebPlaylistWindow ()
 , urlListChangeCallback (NULL)
 , urlListChangeCallbackData (NULL)
 {
-	App *app;
 	UiConfiguration *uiconfig;
 
-	app = App::getInstance ();
-	uiconfig = &(app->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
-	windowWidth = app->windowWidth * WebPlaylistWindow::windowWidthMultiplier;
+	windowWidth = App::instance->windowWidth * WebPlaylistWindow::windowWidthMultiplier;
 
 	populate ();
 	refreshLayout ();
@@ -124,8 +122,8 @@ void WebPlaylistWindow::populate () {
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
-	uitext = &(App::getInstance ()->uiText);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 
 	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::PROGRAM_ICON)));
 	nameLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::HEADLINE, uiconfig->primaryTextColor)));
@@ -276,7 +274,7 @@ void WebPlaylistWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y, x0, y0, x2, y2;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x0 = widthPadding;
 	y0 = heightPadding;
 	x = x0;
@@ -341,7 +339,7 @@ void WebPlaylistWindow::resetNameLabel () {
 	UiConfiguration *uiconfig;
 	float w;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	if (isExpanded) {
 		w = expandToggle->position.x;
 	}
@@ -355,10 +353,7 @@ void WebPlaylistWindow::resetNameLabel () {
 }
 
 void WebPlaylistWindow::doRefresh () {
-	App *app;
-
-	app = App::getInstance ();
-	windowWidth = app->windowWidth * WebPlaylistWindow::windowWidthMultiplier;
+	windowWidth = App::instance->windowWidth * WebPlaylistWindow::windowWidthMultiplier;
 	urlListView->setViewWidth (windowWidth - (widthPadding * 2.0f));
 	Panel::doRefresh ();
 }
@@ -402,7 +397,7 @@ void WebPlaylistWindow::urlListChanged (void *windowPtr, Widget *widgetPtr) {
 	int count;
 
 	window = (WebPlaylistWindow *) windowPtr;
-	uitext = &(App::getInstance ()->uiText);
+	uitext = &(App::instance->uiText);
 	count = window->urlListView->getItemCount ();
 	window->urlCountLabel->setText (StdString::createSprintf ("%i", count));
 	window->urlCountLabel->tooltipText.assign (uitext->getCountText (count, UiTextString::webPlaylistItem, UiTextString::webPlaylistItems));
@@ -428,19 +423,19 @@ void WebPlaylistWindow::menuButtonClicked (void *windowPtr, Widget *widgetPtr) {
 
 StdString WebPlaylistWindow::itemDisplayDurationSliderValueName (float sliderValue) {
 	if (FLOAT_EQUALS (sliderValue, 0.0f)) {
-		return (StdString::createSprintf ("%s - %s", App::getInstance ()->uiText.getText (UiTextString::slowest).capitalized ().c_str (), Util::getDurationDisplayString (WebPlaylistWindow::itemDisplayDurations[0] * 1000).c_str ()));
+		return (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::slowest).capitalized ().c_str (), OsUtil::getDurationDisplayString (WebPlaylistWindow::itemDisplayDurations[0] * 1000).c_str ()));
 	}
 	if (FLOAT_EQUALS (sliderValue, 0.25f)) {
-		return (StdString::createSprintf ("%s - %s", App::getInstance ()->uiText.getText (UiTextString::slow).capitalized ().c_str (), Util::getDurationDisplayString (WebPlaylistWindow::itemDisplayDurations[1] * 1000).c_str ()));
+		return (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::slow).capitalized ().c_str (), OsUtil::getDurationDisplayString (WebPlaylistWindow::itemDisplayDurations[1] * 1000).c_str ()));
 	}
 	if (FLOAT_EQUALS (sliderValue, 0.5f)) {
-		return (StdString::createSprintf ("%s - %s", App::getInstance ()->uiText.getText (UiTextString::medium).capitalized ().c_str (), Util::getDurationDisplayString (WebPlaylistWindow::itemDisplayDurations[2] * 1000).c_str ()));
+		return (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::medium).capitalized ().c_str (), OsUtil::getDurationDisplayString (WebPlaylistWindow::itemDisplayDurations[2] * 1000).c_str ()));
 	}
 	if (FLOAT_EQUALS (sliderValue, 0.75f)) {
-		return (StdString::createSprintf ("%s - %s", App::getInstance ()->uiText.getText (UiTextString::fast).capitalized ().c_str (), Util::getDurationDisplayString (WebPlaylistWindow::itemDisplayDurations[3] * 1000).c_str ()));
+		return (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::fast).capitalized ().c_str (), OsUtil::getDurationDisplayString (WebPlaylistWindow::itemDisplayDurations[3] * 1000).c_str ()));
 	}
 	if (FLOAT_EQUALS (sliderValue, 1.0f)) {
-		return (StdString::createSprintf ("%s - %s", App::getInstance ()->uiText.getText (UiTextString::fastest).capitalized ().c_str (), Util::getDurationDisplayString (WebPlaylistWindow::itemDisplayDurations[4] * 1000).c_str ()));
+		return (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::fastest).capitalized ().c_str (), OsUtil::getDurationDisplayString (WebPlaylistWindow::itemDisplayDurations[4] * 1000).c_str ()));
 	}
 
 	return (StdString (""));
@@ -545,5 +540,5 @@ Json *WebPlaylistWindow::getCreateCommand () {
 	obj->set ("minItemDisplayDuration", getItemDisplayDuration ());
 	obj->set ("maxItemDisplayDuration", getItemDisplayDuration ());
 
-	return (App::getInstance ()->createCommand ("CreateWebDisplayIntent", SystemInterface::Constant_Monitor, obj));
+	return (App::instance->createCommand (SystemInterface::Command_CreateWebDisplayIntent, SystemInterface::Constant_Monitor, obj));
 }

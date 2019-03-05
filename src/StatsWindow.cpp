@@ -35,7 +35,6 @@
 #include "StdString.h"
 #include "App.h"
 #include "UiText.h"
-#include "Util.h"
 #include "Widget.h"
 #include "Color.h"
 #include "Json.h"
@@ -51,7 +50,7 @@ StatsWindow::StatsWindow ()
 {
 	UiConfiguration *uiconfig;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 }
 
@@ -93,7 +92,7 @@ void StatsWindow::setItem (const StdString &itemName, const StdString &itemValue
 		return;
 	}
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	found = false;
 	i = itemList.begin ();
 	end = itemList.end ();
@@ -104,7 +103,7 @@ void StatsWindow::setItem (const StdString &itemName, const StdString &itemValue
 			if (! label->text.equals (itemValue)) {
 				if (! label->text.empty ()) {
 					label->textColor.assign (uiconfig->primaryTextColor);
-					label->textColor.rotate (uiconfig->lightPrimaryTextColor, uiconfig->longColorRotateDuration);
+					label->textColor.translate (uiconfig->lightPrimaryTextColor, uiconfig->longColorTranslateDuration);
 				}
 				label->setText (itemValue);
 				refreshLayout ();
@@ -168,7 +167,7 @@ void StatsWindow::refreshLayout () {
 	Label *label;
 	float x, y, w;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	w = 0.0f;

@@ -131,7 +131,7 @@ bool StdString::startsWith (const char *value) const {
 }
 
 bool StdString::endsWith (const StdString &value) const {
-	return (find (value) == (length () - value.length ()));
+	return ((value.length () <= length ()) && (find (value) == (length () - value.length ())));
 }
 
 bool StdString::endsWith (const char *value) const {
@@ -243,6 +243,10 @@ void StdString::replace (const StdString &oldText, const StdString &newText) {
 	size_t curpos, pos, oldtextlen, newtextlen;
 
 	oldtextlen = oldText.length ();
+	if (oldtextlen <= 0) {
+		return;
+	}
+
 	newtextlen = newText.length ();
 	curpos = 0;
 	while (true) {
@@ -467,10 +471,14 @@ StdString StdString::createHex (const unsigned char *hexData, int hexDataLength)
 	return (s);
 }
 
-bool StdString::parseInt (const char *str, int *value) {
+bool StdString::parseInt (int *value) {
 	char *s, c;
 
-	s = (char *) str;
+	if (length () <= 0) {
+		return (false);
+	}
+
+	s = (char *) c_str ();
 	c = *s;
 	while (c) {
 		if (! isdigit (c) && (c != '-')) {
@@ -482,16 +490,60 @@ bool StdString::parseInt (const char *str, int *value) {
 	}
 
 	if (value) {
-		*value = atoi (str);
+		*value = atoi (c_str ());
 	}
 
 	return (true);
 }
 
-bool StdString::parseFloat (const char *str, float *value) {
+bool StdString::parseHex (int *value) {
+	int i;
 	char *s, c;
 
-	s = (char *) str;
+	if (length () <= 0) {
+		return (false);
+	}
+
+	i = 0;
+	s = (char *) c_str ();
+	while (1) {
+		c = *s;
+		if (! c) {
+			break;
+		}
+
+		i <<= 4;
+		if ((c >= '0') && (c <= '9')) {
+			i |= ((c - '0') & 0x0F);
+		}
+		else if ((c >= 'a') && (c <= 'f')) {
+			i |= ((c - 'a' + 10) & 0x0F);
+		}
+		else if ((c >= 'A') && (c <= 'F')) {
+			i |= ((c - 'A' + 10) & 0x0F);
+		}
+		else {
+			return (false);
+		}
+
+		++s;
+	}
+
+	if (value) {
+		*value = i;
+	}
+
+	return (true);
+}
+
+bool StdString::parseFloat (float *value) {
+	char *s, c;
+
+	if (length () <= 0) {
+		return (false);
+	}
+
+	s = (char *) c_str ();
 	c = *s;
 	while (c) {
 		if ((! isdigit (c)) && (c != '.') && (c != '-')) {
@@ -503,36 +555,60 @@ bool StdString::parseFloat (const char *str, float *value) {
 	}
 
 	if (value) {
-		*value = strtof (str, NULL);
+		*value = strtof (c_str (), NULL);
 	}
 
 	return (true);
 }
 
-bool StdString::parseAddress (const char *str, StdString *hostnameValue, int *portValue, int defaultPortValue) {
-	StdString s, hostname;
+bool StdString::parseFloat (double *value) {
+	char *s, c;
+
+	if (length () <= 0) {
+		return (false);
+	}
+
+	s = (char *) c_str ();
+	c = *s;
+	while (c) {
+		if ((! isdigit (c)) && (c != '.') && (c != '-')) {
+			return (false);
+		}
+
+		++s;
+		c = *s;
+	}
+
+	if (value) {
+		*value = strtod (c_str (), NULL);
+	}
+
+	return (true);
+}
+
+bool StdString::parseAddress (StdString *hostnameValue, int *portValue, int defaultPortValue) {
+	StdString hostname;
 	int port;
 	size_t pos;
 
-	s.assign (str);
-	if (s.empty ()) {
+	if (length () <= 0) {
 		return (false);
 	}
 
 	port = defaultPortValue;
-	pos = s.find (":");
+	pos = find (":");
 	if (pos == StdString::npos) {
-		hostname.assign (s);
+		hostname.assign (c_str ());
 	}
 	else {
-		if (! StdString::parseInt (s.substr (pos + 1).c_str (), &port)) {
+		if (! StdString (substr (pos + 1)).parseInt (&port)) {
 			return (false);
 		}
 		if ((port <= 0) || (port > 65535)) {
 			return (false);
 		}
 
-		hostname.assign (s.substr (0, pos));
+		hostname.assign (substr (0, pos));
 	}
 
 	if (hostnameValue) {
@@ -560,6 +636,9 @@ void StdString::assignBuffer (Buffer *buffer) {
 void StdString::assignHex (const unsigned char *hexData, int hexDataLength) {
 	unsigned char *d, *end;
 
+	if ((! hexData) || (hexDataLength <= 0)) {
+		return;
+	}
 	assign ("");
 	d = (unsigned char *) hexData;
 	end = d + hexDataLength;
@@ -589,9 +668,18 @@ void StdString::split (const char *delimiter, std::list<StdString> *destList) {
 void StdString::split (const StdString &delimiter, std::list<StdString> *destList) {
 	size_t curpos, pos, delimlen, len;
 
+	if (! destList) {
+		return;
+	}
+
 	destList->clear ();
 	curpos = 0;
 	delimlen = delimiter.length ();
+	if (delimlen <= 0) {
+		destList->push_back (StdString (c_str ()));
+		return;
+	}
+
 	len = length ();
 	while (true) {
 		if (curpos >= len) {

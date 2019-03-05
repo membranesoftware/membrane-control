@@ -46,7 +46,7 @@ RowView::RowView ()
 	UiConfiguration *uiconfig;
 
 	widgetType.assign ("RowView");
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 
 	setPadding (uiconfig->paddingSize, 0.0f);
 	refreshLayout ();
@@ -68,7 +68,7 @@ void RowView::refreshLayout () {
 	Widget *item;
 	float x;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x = uiconfig->paddingSize;
 
 	i = itemList.begin ();

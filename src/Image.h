@@ -33,8 +33,9 @@
 #ifndef IMAGE_H
 #define IMAGE_H
 
-#include "SDL2/SDL_surface.h"
+#include "SDL2/SDL.h"
 #include "StdString.h"
+#include "Position.h"
 #include "Color.h"
 #include "Sprite.h"
 #include "SpriteHandle.h"
@@ -65,6 +66,9 @@ public:
 	// Set the image's draw color option. If enabled, the image renders its texture with a filter of the specified color.
 	void setDrawColor (bool enable, const Color &color = Color ());
 
+	// Begin an operation to change the image's draw alpha value over time
+	void translateAlpha (float startAlpha, float targetAlpha, int durationMs);
+
 	// Return a boolean value indicating if the image uses the specified Sprite object
 	bool hasSprite (Sprite *sprite) const;
 
@@ -86,6 +90,7 @@ protected:
 
 	bool isDrawColorEnabled;
 	Color drawColor;
+	Position translateAlphaValue;
 	SpriteHandle spriteHandle;
 	bool shouldDestroySprite;
 	float drawScale;

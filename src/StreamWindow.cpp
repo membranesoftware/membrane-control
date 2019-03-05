@@ -36,7 +36,8 @@
 #include "StdString.h"
 #include "App.h"
 #include "UiText.h"
-#include "Util.h"
+#include "OsUtil.h"
+#include "MediaUtil.h"
 #include "Widget.h"
 #include "Sprite.h"
 #include "Color.h"
@@ -80,11 +81,11 @@ StreamWindow::StreamWindow (Json *streamItem, int layoutType, float maxStreamIma
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
-	uitext = &(App::getInstance ()->uiText);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
-	interface = &(App::getInstance ()->systemInterface);
+	interface = &(App::instance->systemInterface);
 	streamId = interface->getCommandStringParam (streamItem, "id", "");
 	agentId = interface->getCommandAgentId (streamItem);
 	streamName = interface->getCommandStringParam (streamItem, "name", "");
@@ -235,7 +236,6 @@ void StreamWindow::setViewButtonClickCallback (Widget::EventCallback callback, v
 }
 
 void StreamWindow::setThumbnailIndex (int index) {
-	App *app;
 	UiConfiguration *uiconfig;
 	Json *params;
 
@@ -243,14 +243,13 @@ void StreamWindow::setThumbnailIndex (int index) {
 		return;
 	}
 
-	app = App::getInstance ();
-	uiconfig = &(app->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	thumbnailIndex = index;
 	if (! thumbnailPath.empty ()) {
 		params = new Json ();
 		params->set ("id", streamId);
 		params->set ("thumbnailIndex", thumbnailIndex);
-		streamImage->setLoadUrl (app->agentControl.getAgentSecondaryUrl (agentId, app->createCommand ("GetThumbnailImage", SystemInterface::Constant_Stream, params), thumbnailPath), uiconfig->coreSprites.getSprite (UiConfiguration::LOADING_IMAGE_ICON));
+		streamImage->setLoadUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetThumbnailImage, SystemInterface::Constant_Stream, params), thumbnailPath), uiconfig->coreSprites.getSprite (UiConfiguration::LOADING_IMAGE_ICON));
 	}
 }
 
@@ -263,7 +262,7 @@ void StreamWindow::setSelected (bool selected, float timestamp) {
 		selectedTimestamp = timestamp;
 		selectPanel->isVisible = true;
 
-		timestampLabel->setText (Util::getDurationString ((int64_t) selectedTimestamp, Util::HOURS));
+		timestampLabel->setText (OsUtil::getDurationString ((int64_t) selectedTimestamp, OsUtil::HOURS));
 		selectPanel->refresh ();
 	}
 
@@ -282,14 +281,14 @@ void StreamWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 	}
 }
 
-void StreamWindow::syncRecordStore (RecordStore *store) {
-	App *app;
+void StreamWindow::syncRecordStore () {
+	RecordStore *store;
 	SystemInterface *interface;
 	Json *record, *agentstatus, serverstatus;
 
-	app = App::getInstance ();
-	interface = &(app->systemInterface);
-	record = store->findRecord (streamId, SystemInterface::Command_StreamItem);
+	store = &(App::instance->agentControl.recordStore);
+	interface = &(App::instance->systemInterface);
+	record = store->findRecord (streamId, SystemInterface::CommandId_StreamItem);
 	if (! record) {
 		return;
 	}
@@ -311,7 +310,7 @@ void StreamWindow::syncRecordStore (RecordStore *store) {
 	interface->getCommandNumberArrayParam (record, "segmentPositions", &segmentPositions, true);
 	duration = interface->getCommandNumberParam (record, "duration", (int64_t) 0);
 
-	detailText->setText (StdString::createSprintf ("%ix%i  %s  %s", frameWidth, frameHeight, Util::getBitrateDisplayString (bitrate).c_str (), Util::getDurationDisplayString (duration).c_str ()));
+	detailText->setText (StdString::createSprintf ("%ix%i  %s  %s", frameWidth, frameHeight, MediaUtil::getBitrateDisplayString (bitrate).c_str (), OsUtil::getDurationDisplayString (duration).c_str ()));
 
 	if (streamImage->isLoadUrlEmpty () && (segmentCount > 0) && (! thumbnailPath.empty ())) {
 		setThumbnailIndex (segmentCount / 8);
@@ -324,7 +323,7 @@ void StreamWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x = 0.0f;
 	y = 0.0f;
 	streamImage->position.assign (x, y);

@@ -31,11 +31,10 @@
 #include "Config.h"
 #include <stdlib.h>
 #include "Result.h"
-#include "Log.h"
 #include "StdString.h"
 #include "App.h"
 #include "UiText.h"
-#include "Util.h"
+#include "OsUtil.h"
 #include "SystemInterface.h"
 #include "UiConfiguration.h"
 #include "Widget.h"
@@ -51,7 +50,6 @@
 #include "Toggle.h"
 #include "StatsWindow.h"
 #include "IconLabelWindow.h"
-#include "MediaUi.h"
 #include "MediaLibraryWindow.h"
 
 MediaLibraryWindow::MediaLibraryWindow (const StdString &agentId)
@@ -82,7 +80,7 @@ MediaLibraryWindow::MediaLibraryWindow (const StdString &agentId)
 {
 	UiConfiguration *uiconfig;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
@@ -115,8 +113,8 @@ void MediaLibraryWindow::populate () {
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
-	uitext = &(App::getInstance ()->uiText);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 
 	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LARGE_MEDIA_ICON)));
 	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::HEADLINE, uiconfig->primaryTextColor));
@@ -167,14 +165,16 @@ void MediaLibraryWindow::populate () {
 	expandToggle->setMouseHoverTooltip (uitext->getText (UiTextString::expandToggleTooltip));
 }
 
-void MediaLibraryWindow::syncRecordStore (RecordStore *store) {
+void MediaLibraryWindow::syncRecordStore () {
+	RecordStore *store;
 	SystemInterface *interface;
 	UiText *uitext;
 	Json *record, mediaserverstatus, streamserverstatus;
 	int count;
 
-	interface = &(App::getInstance ()->systemInterface);
-	record = store->findRecord (agentId, SystemInterface::Command_AgentStatus);
+	store = &(App::instance->agentControl.recordStore);
+	interface = &(App::instance->systemInterface);
+	record = store->findRecord (agentId, SystemInterface::CommandId_AgentStatus);
 	if (! record) {
 		return;
 	}
@@ -185,7 +185,7 @@ void MediaLibraryWindow::syncRecordStore (RecordStore *store) {
 		return;
 	}
 
-	uitext = &(App::getInstance ()->uiText);
+	uitext = &(App::instance->uiText);
 	agentName.assign (interface->getCommandAgentName (record));
 	nameLabel->setText (agentName);
 	agentTaskCount = interface->getCommandNumberParam (record, "taskCount", (int) 0);
@@ -201,7 +201,7 @@ void MediaLibraryWindow::syncRecordStore (RecordStore *store) {
 		taskCountIcon->isVisible = false;
 	}
 
-	storageIcon->setText (Util::getStorageAmountDisplayString (streamserverstatus.getNumber ("freeStorage", (int64_t) 0), streamserverstatus.getNumber ("totalStorage", (int64_t) 0)));
+	storageIcon->setText (OsUtil::getStorageAmountDisplayString (streamserverstatus.getNumber ("freeStorage", (int64_t) 0), streamserverstatus.getNumber ("totalStorage", (int64_t) 0)));
 
 	count = mediaserverstatus.getNumber ("mediaCount", (int) 0);
 	mediaCountIcon->setText (StdString::createSprintf ("%i", count));
@@ -212,14 +212,14 @@ void MediaLibraryWindow::syncRecordStore (RecordStore *store) {
 	streamCountIcon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::videoStream, UiTextString::videoStreams));
 
 	statsWindow->setItem (uitext->getText (UiTextString::uptime).capitalized (), interface->getCommandStringParam (record, "uptime", ""));
-	statsWindow->setItem (uitext->getText (UiTextString::address).capitalized (), Util::getAddressDisplayString (interface->getCommandAgentAddress (record), SystemInterface::Constant_DefaultTcpPort1));
+	statsWindow->setItem (uitext->getText (UiTextString::address).capitalized (), OsUtil::getAddressDisplayString (interface->getCommandAgentAddress (record), SystemInterface::Constant_DefaultTcpPort1));
 	statsWindow->setItem (uitext->getText (UiTextString::version).capitalized (), interface->getCommandStringParam (record, "version", ""));
 	if (menuClickCallback) {
 		menuButton->isVisible = true;
 	}
 
 	refreshLayout ();
-	Panel::syncRecordStore (store);
+	Panel::syncRecordStore ();
 }
 
 void MediaLibraryWindow::setMenuClickCallback (Widget::EventCallback callback, void *callbackData) {
@@ -289,7 +289,7 @@ void MediaLibraryWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y, x0, y0, x2, y2;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	x0 = x;

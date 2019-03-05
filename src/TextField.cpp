@@ -62,7 +62,7 @@ TextField::TextField (float fieldWidth, const StdString &promptText)
 
 	widgetType.assign ("TextField");
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 
 	normalBgColor.assign (uiconfig->lightBackgroundColor);
 	normalBorderColor.assign (uiconfig->mediumBackgroundColor);
@@ -106,7 +106,7 @@ void TextField::setInverseColor (bool inverse) {
 		return;
 	}
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	isInverseColor = inverse;
 	if (isInverseColor) {
 		normalBgColor.assign (uiconfig->darkInverseBackgroundColor);
@@ -157,7 +157,7 @@ void TextField::setPromptErrorColor (bool enable) {
 	if (isPromptErrorColor == enable) {
 		return;
 	}
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	isPromptErrorColor = enable;
 	if (isPromptErrorColor) {
 		promptTextColor.assign (uiconfig->errorTextColor);
@@ -245,7 +245,7 @@ void TextField::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y, w;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	valueLabel->position.assign (x, valueLabel->getLinePosition (y - (heightPadding / 2.0f)));
@@ -268,8 +268,8 @@ void TextField::refreshLayout () {
 	cursorPanel->position.assign (x, (height / 2.0f) - (cursorPanel->height / 2.0f));
 
 	if (isEditing) {
-		bgColor.rotate (editBgColor, uiconfig->shortColorRotateDuration);
-		borderColor.rotate (editBorderColor, uiconfig->shortColorRotateDuration);
+		bgColor.translate (editBgColor, uiconfig->shortColorTranslateDuration);
+		borderColor.translate (editBorderColor, uiconfig->shortColorTranslateDuration);
 		if (valueLabel->text.empty ()) {
 			if (promptLabel) {
 				promptLabel->isVisible = true;
@@ -280,18 +280,18 @@ void TextField::refreshLayout () {
 			if (promptLabel) {
 				promptLabel->isVisible = false;
 			}
-			valueLabel->textColor.rotate (editValueTextColor, uiconfig->shortColorRotateDuration);
+			valueLabel->textColor.translate (editValueTextColor, uiconfig->shortColorTranslateDuration);
 			valueLabel->isVisible = true;
 		}
 	}
 	else {
 		if (isFocused) {
-			bgColor.rotate (focusBgColor, uiconfig->shortColorRotateDuration);
-			borderColor.rotate (focusBorderColor, uiconfig->shortColorRotateDuration);
+			bgColor.translate (focusBgColor, uiconfig->shortColorTranslateDuration);
+			borderColor.translate (focusBorderColor, uiconfig->shortColorTranslateDuration);
 		}
 		else {
-			bgColor.rotate (normalBgColor, uiconfig->shortColorRotateDuration);
-			borderColor.rotate (normalBorderColor, uiconfig->shortColorRotateDuration);
+			bgColor.translate (normalBgColor, uiconfig->shortColorTranslateDuration);
+			borderColor.translate (normalBorderColor, uiconfig->shortColorTranslateDuration);
 		}
 
 		if (valueLabel->text.empty ()) {
@@ -305,7 +305,7 @@ void TextField::refreshLayout () {
 				promptLabel->isVisible = false;
 			}
 
-			valueLabel->textColor.rotate (normalValueTextColor, uiconfig->shortColorRotateDuration);
+			valueLabel->textColor.translate (normalValueTextColor, uiconfig->shortColorTranslateDuration);
 			valueLabel->isVisible = true;
 		}
 	}
@@ -346,7 +346,7 @@ bool TextField::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool i
 		return (true);
 	}
 
-	c = App::getInstance ()->input.getKeyCharacter (keycode, isShiftDown);
+	c = App::instance->input.getKeyCharacter (keycode, isShiftDown);
 	if (c > 0) {
 		val = valueLabel->text;
 		val.append (1, c);
@@ -362,14 +362,13 @@ void TextField::doUpdate (int msElapsed, float originX, float originY) {
 
 	Panel::doUpdate (msElapsed, originX, originY);
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	if (isEditing && (uiconfig->blinkDuration > 0)) {
 		cursorClock -= msElapsed;
 		if (cursorClock <= 0) {
 			cursorPanel->isVisible = (! cursorPanel->isVisible);
-			while (cursorClock <= 0) {
-				cursorClock += uiconfig->blinkDuration;
-			}
+			cursorClock %= uiconfig->blinkDuration;
+			cursorClock += uiconfig->blinkDuration;
 		}
 	}
 	else {

@@ -34,8 +34,6 @@
 #include <map>
 #include "Result.h"
 #include "Log.h"
-#include "App.h"
-#include "Util.h"
 #include "StdString.h"
 #include "Buffer.h"
 #include "Json.h"

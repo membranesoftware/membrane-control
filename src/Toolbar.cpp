@@ -30,6 +30,7 @@
 */
 #include "Config.h"
 #include <stdlib.h>
+#include <math.h>
 #include <map>
 #include <list>
 #include "Result.h"
@@ -55,7 +56,7 @@ Toolbar::Toolbar (float toolbarWidth)
 
 	widgetType.assign ("Toolbar");
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->darkPrimaryColor);
 
@@ -77,6 +78,17 @@ void Toolbar::setWidth (float toolbarWidth) {
 	}
 	barWidth = toolbarWidth;
 	refreshLayout ();
+}
+
+bool Toolbar::empty () {
+	if ((! leftItemList.empty ()) || (! rightItemList.empty ())) {
+		return (false);
+	}
+	if (leftCorner.widget || rightCorner.widget || leftOverlay.widget || rightOverlay.widget) {
+		return (false);
+	}
+
+	return (true);
 }
 
 void Toolbar::clearAll () {
@@ -143,7 +155,7 @@ void Toolbar::addRightSpacer () {
 	UiConfiguration *uiconfig;
 	Panel *panel;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	panel = new Panel ();
 	panel->setFixedSize (true, uiconfig->marginSize, 2.0f);
 	addRightItem (panel);
@@ -191,15 +203,15 @@ void Toolbar::refreshLayout () {
 	Widget *widget;
 	float x, y, h;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
-	if (leftCorner.widget) {
+	if (leftCorner.widget && (! leftCorner.widget->isDestroyed)) {
 		leftCorner.widget->position.assign (x, y);
 		x += leftCorner.widget->width + uiconfig->marginSize;
 	}
 
-	if (leftOverlay.widget) {
+	if (leftOverlay.widget && (! leftOverlay.widget->isDestroyed)) {
 		leftOverlay.widget->position.assign (x, 0.0f);
 	}
 	i = leftItemList.begin ();
@@ -208,24 +220,26 @@ void Toolbar::refreshLayout () {
 		widget = *i;
 		++i;
 
-		if (leftOverlay.widget) {
-			widget->isVisible = false;
-		}
-		else {
-			widget->position.assign (x, y);
-			widget->isVisible = true;
-			x += widget->width + uiconfig->marginSize;
+		if (! widget->isDestroyed) {
+			if (leftOverlay.widget && (! leftOverlay.widget->isDestroyed)) {
+				widget->isVisible = false;
+			}
+			else {
+				widget->position.assign (x, y);
+				widget->isVisible = true;
+				x += widget->width + uiconfig->marginSize;
+			}
 		}
 	}
 
 	x = barWidth - widthPadding;
-	if (rightCorner.widget) {
+	if (rightCorner.widget && (! rightCorner.widget->isDestroyed)) {
 		x -= rightCorner.widget->width;
 		rightCorner.widget->position.assign (x, y);
 		x -= uiconfig->marginSize;
 	}
 
-	if (rightOverlay.widget) {
+	if (rightOverlay.widget && (! rightOverlay.widget->isDestroyed)) {
 		x -= rightOverlay.widget->width;
 		rightOverlay.widget->position.assign (x, 0.0f);
 		x -= uiconfig->marginSize;
@@ -236,14 +250,16 @@ void Toolbar::refreshLayout () {
 		widget = *i;
 		++i;
 
-		if (rightOverlay.widget) {
-			widget->isVisible = false;
-		}
-		else {
-			x -= widget->width;
-			widget->position.assign (x, y);
-			widget->isVisible = true;
-			x -= uiconfig->marginSize;
+		if (! widget->isDestroyed) {
+			if (rightOverlay.widget) {
+				widget->isVisible = false;
+			}
+			else {
+				x -= widget->width;
+				widget->position.assign (x, y);
+				widget->isVisible = true;
+				x -= uiconfig->marginSize;
+			}
 		}
 	}
 
@@ -264,14 +280,14 @@ void Toolbar::refreshLayout () {
 	end = leftItemList.end ();
 	while (i != end) {
 		widget = *i;
-		widget->position.assign (widget->position.x, (h / 2.0f) - (widget->height / 2.0f));
+		widget->position.assignY ((h / 2.0f) - (widget->height / 2.0f));
 		++i;
 	}
 	i = rightItemList.begin ();
 	end = rightItemList.end ();
 	while (i != end) {
 		widget = *i;
-		widget->position.assign (widget->position.x, (h / 2.0f) - (widget->height / 2.0f));
+		widget->position.assignY ((h / 2.0f) - (widget->height / 2.0f));
 		++i;
 	}
 }
@@ -351,14 +367,21 @@ void Toolbar::doUpdate (int msElapsed, float originX, float originY) {
 
 float Toolbar::getLeftWidth () {
 	UiConfiguration *uiconfig;
-	std::list<Widget *>::reverse_iterator item;
+	std::list<Widget *>::reverse_iterator i, end;
 	float w;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	w = barWidth;
 	if (! rightItemList.empty ()) {
-		item = rightItemList.rbegin ();
-		w = (*item)->position.x;
+		i = rightItemList.rbegin ();
+		end = rightItemList.rend ();
+		while (i != end) {
+			if (! (*i)->isDestroyed) {
+				w = (*i)->position.x;
+				break;
+			}
+			++i;
+		}
 	}
 
 	if (leftCorner.widget) {

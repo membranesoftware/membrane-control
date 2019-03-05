@@ -34,8 +34,7 @@
 #include <string.h>
 #include <math.h>
 #include <map>
-#include "SDL2/SDL_render.h"
-#include "SDL2/SDL_surface.h"
+#include "SDL2/SDL.h"
 #include "ft2build.h"
 #include FT_FREETYPE_H
 #include "Result.h"
@@ -66,15 +65,13 @@ Font::~Font () {
 }
 
 void Font::clearGlyphMap () {
-	App *app;
 	std::map<char, Font::Glyph>::iterator i, end;
 
-	app = App::getInstance ();
 	i = glyphMap.begin ();
 	end = glyphMap.end ();
 	while (i != end) {
 		if (i->second.texture) {
-			app->resource.unloadTexture (i->second.texturePath);
+			App::instance->resource.unloadTexture (i->second.texturePath);
 			i->second.texture = NULL;
 		}
 		++i;
@@ -83,7 +80,6 @@ void Font::clearGlyphMap () {
 }
 
 int Font::load (Buffer *fontData, int pointSize) {
-	App *app;
 	Font::Glyph glyph;
 	FT_GlyphSlot slot;
 	SDL_Surface *surface;
@@ -94,15 +90,14 @@ int Font::load (Buffer *fontData, int pointSize) {
 	Uint32 *pixels, *dest, color, rmask, gmask, bmask, amask;
 	std::map<char, Font::Glyph>::iterator i, end;
 
-	app = App::getInstance ();
 	result = FT_New_Memory_Face (freetype, (FT_Byte *) fontData->data, fontData->length, 0, &face);
 	if (result != 0) {
-		Log::write (Log::ERR, "Failed to load font; name=\"%s\" err=\"FT_New_Memory_Face: %i\"", name.c_str (), result);
+		Log::err ("Failed to load font; name=\"%s\" err=\"FT_New_Memory_Face: %i\"", name.c_str (), result);
 		return (Result::ERROR_FREETYPE_OPERATION_FAILED);
 	}
 	result = FT_Set_Char_Size (face, pointSize << 6, 0, 100, 0);
 	if (result != 0) {
-		Log::write (Log::ERR, "Failed to load font; name=\"%s\" err=\"FT_Set_Char_Size: %i\"", name.c_str (), result);
+		Log::err ("Failed to load font; name=\"%s\" err=\"FT_Set_Char_Size: %i\"", name.c_str (), result);
 		return (Result::ERROR_FREETYPE_OPERATION_FAILED);
 	}
 
@@ -119,7 +114,7 @@ int Font::load (Buffer *fontData, int pointSize) {
 		charindex = FT_Get_Char_Index (face, c);
 		result = FT_Load_Glyph (face, charindex, FT_LOAD_RENDER);
 		if (result != 0) {
-			Log::write (Log::WARNING, "Failed to load font character; name=\"%s\" index=\"%c\" err=\"FT_Load_Glyph: %i\"", name.c_str (), c, result);
+			Log::warning ("Failed to load font character; name=\"%s\" index=\"%c\" err=\"FT_Load_Glyph: %i\"", name.c_str (), c, result);
 			continue;
 		}
 
@@ -127,13 +122,13 @@ int Font::load (Buffer *fontData, int pointSize) {
 		w = slot->bitmap.width;
 		h = slot->bitmap.rows;
 		if ((w <= 0) || (h <= 0)) {
-			Log::write (Log::WARNING, "Failed to load font character; name=\"%s\" index=\"%c\" err=\"Invalid bitmap dimensions %ix%i\"", name.c_str (), c, w, h);
+			Log::warning ("Failed to load font character; name=\"%s\" index=\"%c\" err=\"Invalid bitmap dimensions %ix%i\"", name.c_str (), c, w, h);
 			continue;
 		}
 
 		pixels = (Uint32 *) malloc (w * h * sizeof (Uint32));
 		if (! pixels) {
-			Log::write (Log::WARNING, "Failed to load font character; name=\"%s\" index=\"%c\" err=\"Out of memory, bitmap dimensions %ix%i\"", name.c_str (), c, w, h);
+			Log::warning ("Failed to load font character; name=\"%s\" index=\"%c\" err=\"Out of memory, bitmap dimensions %ix%i\"", name.c_str (), c, w, h);
 			continue;
 		}
 
@@ -174,17 +169,17 @@ int Font::load (Buffer *fontData, int pointSize) {
 #endif
 		surface = SDL_CreateRGBSurfaceFrom (pixels, w, h, 32, w * sizeof (Uint32), rmask, gmask, bmask, amask);
 		if (! surface) {
-			Log::write (Log::WARNING, "Failed to load font character; name=\"%s\" index=\"%c\" err=\"SDL_CreateRGBSurfaceFrom, %s\"", name.c_str (), c, SDL_GetError ());
+			Log::warning ("Failed to load font character; name=\"%s\" index=\"%c\" err=\"SDL_CreateRGBSurfaceFrom, %s\"", name.c_str (), c, SDL_GetError ());
 			free (pixels);
 			continue;
 		}
 
 		glyph.texturePath.sprintf ("*_Font_%s_%i_%i", name.c_str (), pointSize, (int) c);
-		glyph.texture = app->resource.createTexture (glyph.texturePath, surface);
+		glyph.texture = App::instance->resource.createTexture (glyph.texturePath, surface);
 		SDL_FreeSurface (surface);
 		free (pixels);
 		if (! glyph.texture) {
-			Log::write (Log::WARNING, "Failed to load font character; name=\"%s\" index=\"%c\" err=\"SDL_CreateTextureFromSurface, %s\"", name.c_str (), c, SDL_GetError ());
+			Log::warning ("Failed to load font character; name=\"%s\" index=\"%c\" err=\"SDL_CreateTextureFromSurface, %s\"", name.c_str (), c, SDL_GetError ());
 			continue;
 		}
 

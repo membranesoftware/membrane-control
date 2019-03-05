@@ -35,7 +35,6 @@
 #include "StdString.h"
 #include "App.h"
 #include "UiText.h"
-#include "Util.h"
 #include "Widget.h"
 #include "Panel.h"
 #include "Label.h"
@@ -55,7 +54,7 @@ IconCardWindow::IconCardWindow (Sprite *iconSprite, const StdString &cardName, c
 {
 	UiConfiguration *uiconfig;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
@@ -83,7 +82,7 @@ StdString IconCardWindow::toStringDetail () {
 void IconCardWindow::setDetailText (const StdString &text) {
 	UiConfiguration *uiconfig;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	if (text.empty ()) {
 		if (detailText) {
 			detailText->isDestroyed = true;
@@ -112,7 +111,7 @@ void IconCardWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y, ymin;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	ymin = 0.0f;

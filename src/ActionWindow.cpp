@@ -34,7 +34,6 @@
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
-#include "Util.h"
 #include "Widget.h"
 #include "Color.h"
 #include "Panel.h"
@@ -66,8 +65,8 @@ ActionWindow::ActionWindow ()
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
-	uitext = &(App::getInstance ()->uiText);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->lightBackgroundColor);
@@ -138,7 +137,7 @@ void ActionWindow::setInverseColor (bool inverse) {
 	if (isInverseColor == inverse) {
 		return;
 	}
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	isInverseColor = inverse;
 	if (isInverseColor) {
 		if (isFilledBg) {
@@ -241,7 +240,7 @@ void ActionWindow::doAddOption (int itemType, const StdString &optionName, Widge
 	UiConfiguration *uiconfig;
 	std::list<ActionWindow::Item>::iterator item;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	addWidget (optionWidget);
 	item = findItem (optionName, true);
 	if (item != itemList.end ()) {
@@ -314,21 +313,21 @@ int ActionWindow::getNumberValue (const StdString &optionName, int defaultValue)
 	switch (item->type) {
 		case ActionWindow::COMBO_BOX: {
 			s = ((ComboBox *) item->optionWidget)->getValue ();
-			if (StdString::parseFloat (s.c_str (), &val)) {
+			if (s.parseFloat (&val)) {
 				return ((int) val);
 			}
 			break;
 		}
 		case ActionWindow::TEXT_FIELD: {
 			s = ((TextField *) item->optionWidget)->getValue ();
-			if (StdString::parseFloat (s.c_str (), &val)) {
+			if (s.parseFloat (&val)) {
 				return ((int) val);
 			}
 			break;
 		}
 		case ActionWindow::TEXT_FIELD_WINDOW: {
 			s = ((TextFieldWindow *) item->optionWidget)->getValue ();
-			if (StdString::parseFloat (s.c_str (), &val)) {
+			if (s.parseFloat (&val)) {
 				return ((int) val);
 			}
 			break;
@@ -354,21 +353,21 @@ float ActionWindow::getNumberValue (const StdString &optionName, float defaultVa
 	switch (item->type) {
 		case ActionWindow::COMBO_BOX: {
 			s = ((ComboBox *) item->optionWidget)->getValue ();
-			if (StdString::parseFloat (s.c_str (), &val)) {
+			if (s.parseFloat (&val)) {
 				return (val);
 			}
 			break;
 		}
 		case ActionWindow::TEXT_FIELD: {
 			s = ((TextField *) item->optionWidget)->getValue ();
-			if (StdString::parseFloat (s.c_str (), &val)) {
+			if (s.parseFloat (&val)) {
 				return (val);
 			}
 			break;
 		}
 		case ActionWindow::TEXT_FIELD_WINDOW: {
 			s = ((TextFieldWindow *) item->optionWidget)->getValue ();
-			if (StdString::parseFloat (s.c_str (), &val)) {
+			if (s.parseFloat (&val)) {
 				return (val);
 			}
 			break;
@@ -435,7 +434,7 @@ void ActionWindow::refreshLayout () {
 	std::list<ActionWindow::Item>::iterator i, end;
 	float x, y, x0, x2, y2, w, h;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	x0 = x;
@@ -548,7 +547,7 @@ void ActionWindow::verifyOptions () {
 	StdString s;
 	bool windowvalid, optionvalid;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	windowvalid = true;
 	i = itemList.begin ();
 	end = itemList.end ();
@@ -594,11 +593,11 @@ void ActionWindow::verifyOptions () {
 		}
 
 		if (optionvalid) {
-			i->nameLabel->textColor.rotate (isInverseColor ? uiconfig->inverseTextColor : uiconfig->primaryTextColor, uiconfig->shortColorRotateDuration);
+			i->nameLabel->textColor.translate (isInverseColor ? uiconfig->inverseTextColor : uiconfig->primaryTextColor, uiconfig->shortColorTranslateDuration);
 		}
 		else {
 			windowvalid = false;
-			i->nameLabel->textColor.rotate (uiconfig->errorTextColor, uiconfig->shortColorRotateDuration);
+			i->nameLabel->textColor.translate (uiconfig->errorTextColor, uiconfig->shortColorTranslateDuration);
 		}
 		++i;
 	}

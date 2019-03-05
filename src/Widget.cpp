@@ -38,8 +38,6 @@
 #include "StdString.h"
 #include "Input.h"
 #include "UiConfiguration.h"
-#include "AgentControl.h"
-#include "RecordStore.h"
 #include "Widget.h"
 
 const int Widget::minZLevel = -10;
@@ -136,7 +134,7 @@ void Widget::update (int msElapsed, float originX, float originY) {
 	float x, y;
 
 #if ENABLE_TEST_KEYS
-	if (App::getInstance ()->isUiPaused) {
+	if (App::instance->isUiPaused) {
 		return;
 	}
 #endif
@@ -227,7 +225,7 @@ void Widget::setFixedCenter (bool enable) {
 	}
 }
 
-void Widget::syncRecordStore (RecordStore *store) {
+void Widget::syncRecordStore () {
 	// Default implementation does nothing
 }
 
@@ -242,7 +240,7 @@ Widget *Widget::findMouseHoverWidget (float mouseX, float mouseY) {
 
 bool Widget::processKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown) {
 #if ENABLE_TEST_KEYS
-	if (App::getInstance ()->isUiPaused) {
+	if (App::instance->isUiPaused) {
 		return (false);
 	}
 #endif
@@ -265,7 +263,7 @@ bool Widget::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isCo
 
 void Widget::processMouseState (const Widget::MouseState &mouseState) {
 #if ENABLE_TEST_KEYS
-	if (App::getInstance ()->isUiPaused) {
+	if (App::instance->isUiPaused) {
 		return;
 	}
 #endif
@@ -399,7 +397,7 @@ void Widget::flowRight (float *positionX, float positionY, float *rightExtent, f
 	UiConfiguration *uiconfig;
 	float pos;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	position.assign (*positionX, positionY);
 	*positionX += width + uiconfig->marginSize;
 	if (rightExtent) {
@@ -420,7 +418,7 @@ void Widget::flowDown (float positionX, float *positionY, float *rightExtent, fl
 	UiConfiguration *uiconfig;
 	float pos;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	position.assign (positionX, *positionY);
 	*positionY += height + uiconfig->marginSize;
 	if (rightExtent) {
@@ -440,7 +438,7 @@ void Widget::flowDown (float positionX, float *positionY, float *rightExtent, fl
 void Widget::flowLeft (float *positionX) {
 	UiConfiguration *uiconfig;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	*positionX -= width;
 	position.assignX (*positionX);
 	*positionX -= uiconfig->marginSize;

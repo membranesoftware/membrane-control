@@ -40,9 +40,10 @@ public:
 	Color (float r = 0.0f, float g = 0.0f, float b = 0.0f);
 	~Color ();
 
+	// Read-only data members
 	float r, g, b;
 	uint8_t rByte, gByte, bByte;
-	bool isRotating;
+	bool isTranslating;
 
 	// Return a string description of the color
 	StdString toString ();
@@ -65,9 +66,9 @@ public:
 	void update (int msElapsed);
 
 	// Begin an operation to change the color's value over time
-	void rotate (float rotateTargetR, float rotateTargetG, float rotateTargetB, int durationMs);
-	void rotate (const Color &targetColor, int durationMs);
-	void rotate (const Color &startColor, const Color &targetColor, int durationMs);
+	void translate (float translateTargetR, float translateTargetG, float translateTargetB, int durationMs);
+	void translate (const Color &targetColor, int durationMs);
+	void translate (const Color &startColor, const Color &targetColor, int durationMs);
 
 	// Return a boolean value indicating if the color holds values equal to another
 	bool equals (const Color &other) const;
@@ -76,7 +77,7 @@ private:
 	// Clip the r, g, and b data members to valid ranges, and reset dependent data members
 	void normalize ();
 
-	int rotateDuration;
+	int translateDuration;
 	float targetR, targetG, targetB;
 	float deltaR, deltaG, deltaB;
 };

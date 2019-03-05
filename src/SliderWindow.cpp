@@ -54,7 +54,7 @@ SliderWindow::SliderWindow (Slider *slider)
 {
 	UiConfiguration *uiconfig;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	normalValueTextColor.assign (uiconfig->lightPrimaryTextColor);
 	hoverValueTextColor.assign (uiconfig->raisedButtonTextColor);
 
@@ -82,7 +82,7 @@ void SliderWindow::setInverseColor (bool inverse) {
 	if (isInverseColor == inverse) {
 		return;
 	}
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	isInverseColor = inverse;
 	slider->setInverseColor (isInverseColor);
 	if (isInverseColor) {
@@ -105,15 +105,15 @@ void SliderWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	valueLabel->position.assign (x, y);
 	if (isHovering) {
-		valueLabel->textColor.rotate (hoverValueTextColor, uiconfig->shortColorRotateDuration);
+		valueLabel->textColor.translate (hoverValueTextColor, uiconfig->shortColorTranslateDuration);
 	}
 	else {
-		valueLabel->textColor.rotate (normalValueTextColor, uiconfig->shortColorRotateDuration);
+		valueLabel->textColor.translate (normalValueTextColor, uiconfig->shortColorTranslateDuration);
 	}
 
 	y += valueLabel->maxLineHeight;

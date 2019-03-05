@@ -30,12 +30,13 @@
 */
 #include "Config.h"
 #include <stdlib.h>
+#include <math.h>
 #include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
 #include "UiText.h"
-#include "Util.h"
+#include "OsUtil.h"
 #include "Sprite.h"
 #include "SpriteGroup.h"
 #include "Widget.h"
@@ -71,8 +72,8 @@ AgentConfigurationWindow::AgentConfigurationWindow (const StdString &agentId)
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
-	uitext = &(App::getInstance ()->uiText);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
@@ -137,7 +138,7 @@ void AgentConfigurationWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y, x0, y0, x2, y2;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	x0 = x;
@@ -179,46 +180,44 @@ void AgentConfigurationWindow::refreshLayout () {
 	}
 }
 
-void AgentConfigurationWindow::syncRecordStore (RecordStore *store) {
+void AgentConfigurationWindow::syncRecordStore () {
+	RecordStore *store;
 	SystemInterface *interface;
 	Json *record;
 
-	interface = &(App::getInstance ()->systemInterface);
-	record = store->findRecord (agentId, SystemInterface::Command_AgentStatus);
+	store = &(App::instance->agentControl.recordStore);
+	interface = &(App::instance->systemInterface);
+	record = store->findRecord (agentId, SystemInterface::CommandId_AgentStatus);
 	if (! record) {
 		return;
 	}
 
 	agentPlatform = interface->getCommandStringParam (record, "platform", "");
-	Panel::syncRecordStore (store);
+	Panel::syncRecordStore ();
 }
 
 void AgentConfigurationWindow::loadConfiguration () {
-	App *app;
 	int result;
 
 	if (isWaiting) {
 		return;
 	}
 
-	app = App::getInstance ();
 	retain ();
-	result = app->agentControl.invokeCommand (agentId, app->createCommand ("GetAgentConfiguration", SystemInterface::Constant_DefaultCommandType), AgentConfigurationWindow::invokeGetAgentConfigurationComplete, this);
+	result = App::instance->agentControl.invokeCommand (agentId, App::instance->createCommand (SystemInterface::Command_GetAgentConfiguration, SystemInterface::Constant_DefaultCommandType), AgentConfigurationWindow::invokeGetAgentConfigurationComplete, this);
 	if (result != Result::SUCCESS) {
 		release ();
-		Log::write (Log::DEBUG, "Failed to invoke GetAgentConfiguration command; err=%i agentId=\"%s\"", result, agentId.c_str ());
-		app->showSnackbar (app->uiText.getText (UiTextString::internalError));
+		Log::debug ("Failed to invoke GetAgentConfiguration command; err=%i agentId=\"%s\"", result, agentId.c_str ());
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
 		return;
 	}
 	setWaiting (true);
 }
 
 void AgentConfigurationWindow::invokeGetAgentConfigurationComplete (void *windowPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand) {
-	App *app;
 	AgentConfigurationWindow *window;
 	int result;
 
-	app = App::getInstance ();
 	window = (AgentConfigurationWindow *) windowPtr;
 	if (window->isDestroyed) {
 		window->release ();
@@ -226,24 +225,23 @@ void AgentConfigurationWindow::invokeGetAgentConfigurationComplete (void *window
 	}
 
 	if (invokeResult != Result::SUCCESS) {
-		Log::write (Log::DEBUG, "Failed to invoke GetAgentConfiguration command; err=%i agentId=\"%s\"", invokeResult, agentId.c_str ());
-		app->showSnackbar (app->uiText.getText (UiTextString::getAgentConfigurationServerContactError));
+		Log::debug ("Failed to invoke GetAgentConfiguration command; err=%i agentId=\"%s\"", invokeResult, agentId.c_str ());
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::getAgentConfigurationServerContactError));
 	}
 	else {
 		result = window->populateConfiguration (responseCommand);
 		if (result != Result::SUCCESS) {
-			Log::write (Log::DEBUG, "Failed to invoke GetAgentConfiguration command; err=%i agentId=\"%s\"", result, agentId.c_str ());
-			app->showSnackbar (app->uiText.getText (UiTextString::internalError));
+			Log::debug ("Failed to invoke GetAgentConfiguration command; err=%i agentId=\"%s\"", result, agentId.c_str ());
+			App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
 		}
 	}
 
 	window->setWaiting (false);
 	window->release ();
-	app->shouldRefreshUi = true;
+	App::instance->shouldRefreshUi = true;
 }
 
 int AgentConfigurationWindow::populateConfiguration (Json *command) {
-	App *app;
 	SystemInterface *interface;
 	UiConfiguration *uiconfig;
 	UiText *uitext;
@@ -254,12 +252,11 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 	StdString prompt;
 	int i, numperiods, period;
 
-	app = App::getInstance ();
-	interface = &(app->systemInterface);
-	uiconfig = &(app->uiConfig);
-	uitext = &(app->uiText);
+	interface = &(App::instance->systemInterface);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 
-	if ((! command) || (interface->getCommandId (command) != SystemInterface::Command_AgentConfiguration)) {
+	if ((! command) || (interface->getCommandId (command) != SystemInterface::CommandId_AgentConfiguration)) {
 		return (Result::ERROR_INVALID_PARAM);
 	}
 
@@ -358,24 +355,24 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 StdString AgentConfigurationWindow::mediaScanPeriodSliderValueName (float sliderValue) {
 	UiText *uitext;
 
-	uitext = &(App::getInstance ()->uiText);
+	uitext = &(App::instance->uiText);
 	if (FLOAT_EQUALS (sliderValue, 0.0f)) {
 		return (uitext->getText (UiTextString::mediaScanPeriodNeverDescription).capitalized ());
 	}
 	if (FLOAT_EQUALS (sliderValue, 1.0f)) {
-		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::slowest).capitalized ().c_str (), Util::getDurationDisplayString (AgentConfigurationWindow::mediaScanPeriods[(int) sliderValue] * 1000).c_str ()));
+		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::slowest).capitalized ().c_str (), OsUtil::getDurationDisplayString (AgentConfigurationWindow::mediaScanPeriods[(int) sliderValue] * 1000).c_str ()));
 	}
 	if (FLOAT_EQUALS (sliderValue, 2.0f)) {
-		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::slow).capitalized ().c_str (), Util::getDurationDisplayString (AgentConfigurationWindow::mediaScanPeriods[(int) sliderValue] * 1000).c_str ()));
+		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::slow).capitalized ().c_str (), OsUtil::getDurationDisplayString (AgentConfigurationWindow::mediaScanPeriods[(int) sliderValue] * 1000).c_str ()));
 	}
 	if (FLOAT_EQUALS (sliderValue, 3.0f)) {
-		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::medium).capitalized ().c_str (), Util::getDurationDisplayString (AgentConfigurationWindow::mediaScanPeriods[(int) sliderValue] * 1000).c_str ()));
+		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::medium).capitalized ().c_str (), OsUtil::getDurationDisplayString (AgentConfigurationWindow::mediaScanPeriods[(int) sliderValue] * 1000).c_str ()));
 	}
 	if (FLOAT_EQUALS (sliderValue, 4.0f)) {
-		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::fast).capitalized ().c_str (), Util::getDurationDisplayString (AgentConfigurationWindow::mediaScanPeriods[(int) sliderValue] * 1000).c_str ()));
+		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::fast).capitalized ().c_str (), OsUtil::getDurationDisplayString (AgentConfigurationWindow::mediaScanPeriods[(int) sliderValue] * 1000).c_str ()));
 	}
 	if (FLOAT_EQUALS (sliderValue, 5.0f)) {
-		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::fastest).capitalized ().c_str (), Util::getDurationDisplayString (AgentConfigurationWindow::mediaScanPeriods[(int) sliderValue] * 1000).c_str ()));
+		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::fastest).capitalized ().c_str (), OsUtil::getDurationDisplayString (AgentConfigurationWindow::mediaScanPeriods[(int) sliderValue] * 1000).c_str ()));
 	}
 
 	return (StdString (""));
@@ -411,16 +408,14 @@ void AgentConfigurationWindow::actionOptionChanged (void *windowPtr, Widget *wid
 void AgentConfigurationWindow::applyButtonClicked (void *windowPtr, Widget *widgetPtr) {
 	AgentConfigurationWindow *window;
 	ActionWindow *action;
-	App *app;
 	SystemInterface *interface;
 	UiText *uitext;
 	Json *params, *agentconfig, *cfg;
 	int result, numperiods, period, index;
 
 	window = (AgentConfigurationWindow *) windowPtr;
-	app = App::getInstance ();
-	interface = &(app->systemInterface);
-	uitext = &(app->uiText);
+	interface = &(App::instance->systemInterface);
+	uitext = &(App::instance->uiText);
 	action = window->actionWindow;
 
 	if (window->isWaiting) {
@@ -453,11 +448,11 @@ void AgentConfigurationWindow::applyButtonClicked (void *windowPtr, Widget *widg
 	params->set ("agentConfiguration", agentconfig);
 
 	window->retain ();
-	result = app->agentControl.invokeCommand (window->agentId, app->createCommand ("UpdateAgentConfiguration", SystemInterface::Constant_DefaultCommandType, params), AgentConfigurationWindow::invokeUpdateAgentConfigurationComplete, window);
+	result = App::instance->agentControl.invokeCommand (window->agentId, App::instance->createCommand (SystemInterface::Command_UpdateAgentConfiguration, SystemInterface::Constant_DefaultCommandType, params), AgentConfigurationWindow::invokeUpdateAgentConfigurationComplete, window);
 	if (result != Result::SUCCESS) {
 		window->release ();
-		Log::write (Log::DEBUG, "Failed to invoke UpdateAgentConfiguration command; err=%i agentId=\"%s\"", result, window->agentId.c_str ());
-		app->showSnackbar (app->uiText.getText (UiTextString::internalError));
+		Log::debug ("Failed to invoke UpdateAgentConfiguration command; err=%i agentId=\"%s\"", result, window->agentId.c_str ());
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
 		return;
 	}
 	window->setWaiting (true);
@@ -465,7 +460,6 @@ void AgentConfigurationWindow::applyButtonClicked (void *windowPtr, Widget *widg
 
 void AgentConfigurationWindow::invokeUpdateAgentConfigurationComplete (void *windowPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand) {
 	AgentConfigurationWindow *window;
-	App *app;
 	SystemInterface *interface;
 
 	window = (AgentConfigurationWindow *) windowPtr;
@@ -474,20 +468,19 @@ void AgentConfigurationWindow::invokeUpdateAgentConfigurationComplete (void *win
 		return;
 	}
 
-	app = App::getInstance ();
-	interface = &(app->systemInterface);
+	interface = &(App::instance->systemInterface);
 	if (invokeResult != Result::SUCCESS) {
-		Log::write (Log::DEBUG, "Failed to invoke UpdateAgentConfiguration command; err=%i agentId=\"%s\"", invokeResult, agentId.c_str ());
-		app->showSnackbar (app->uiText.getText (UiTextString::serverContactError));
+		Log::debug ("Failed to invoke UpdateAgentConfiguration command; err=%i agentId=\"%s\"", invokeResult, agentId.c_str ());
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::serverContactError));
 	}
 	else {
-		if ((! responseCommand) || (interface->getCommandId (responseCommand) != SystemInterface::Command_AgentConfiguration)) {
-			Log::write (Log::DEBUG, "Failed to invoke UpdateAgentConfiguration command; err=\"Invalid response data\" agentId=\"%s\"", agentId.c_str ());
-			app->showSnackbar (app->uiText.getText (UiTextString::internalError));
+		if ((! responseCommand) || (interface->getCommandId (responseCommand) != SystemInterface::CommandId_AgentConfiguration)) {
+			Log::debug ("Failed to invoke UpdateAgentConfiguration command; err=\"Invalid response data\" agentId=\"%s\"", agentId.c_str ());
+			App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
 		}
 		else {
-			app->showSnackbar (app->uiText.getText (UiTextString::updateAgentConfigurationMessage));
-			app->agentControl.refreshAgentStatus (window->agentId);
+			App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::updateAgentConfigurationMessage));
+			App::instance->agentControl.refreshAgentStatus (window->agentId);
 		}
 	}
 

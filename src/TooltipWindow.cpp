@@ -48,7 +48,7 @@ TooltipWindow::TooltipWindow (const StdString &tipText)
 	UiConfiguration *uiconfig;
 	float x, y;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	setFillBg (true, uiconfig->mediumInverseBackgroundColor);
 	setBorder (true, uiconfig->lightInverseBackgroundColor);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);

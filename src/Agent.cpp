@@ -32,8 +32,6 @@
 #include <stdlib.h>
 #include "App.h"
 #include "Result.h"
-#include "Log.h"
-#include "Util.h"
 #include "StdString.h"
 #include "Json.h"
 #include "SystemInterface.h"
@@ -90,15 +88,13 @@ StdString Agent::toString () {
 }
 
 void Agent::readCommand (Json *command) {
-	App *app;
 	SystemInterface *interface;
 	StdString val;
 	int commandid, i;
 
-	app = App::getInstance ();
-	interface = &(app->systemInterface);
+	interface = &(App::instance->systemInterface);
 	commandid = interface->getCommandId (command);
-	if (commandid != SystemInterface::Command_AgentStatus) {
+	if (commandid != SystemInterface::CommandId_AgentStatus) {
 		return;
 	}
 
@@ -155,7 +151,7 @@ StdString Agent::getInvokeUrl () {
 	if (port <= 0) {
 		port = SystemInterface::Constant_DefaultTcpPort1;
 	}
-	return (StdString::createSprintf ("%s://%s:%i", App::getInstance ()->isHttpsEnabled ? "https" : "http", hostname.c_str (), port));
+	return (StdString::createSprintf ("%s://%s:%i", App::instance->isHttpsEnabled ? "https" : "http", hostname.c_str (), port));
 }
 
 StdString Agent::getSecondaryUrl () {

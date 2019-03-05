@@ -36,7 +36,6 @@
 #include "StdString.h"
 #include "StringList.h"
 #include "App.h"
-#include "Util.h"
 #include "SystemInterface.h"
 #include "Json.h"
 #include "RecordStore.h"
@@ -77,7 +76,7 @@ void RecordStore::addRecord (Json *record, const StdString &recordId) {
 	StdString id;
 	Json *item;
 
-	interface = &(App::getInstance ()->systemInterface);
+	interface = &(App::instance->systemInterface);
 	if (! recordId.empty ()) {
 		id.assign (recordId);
 	}
@@ -120,15 +119,12 @@ void RecordStore::removeRecord (const StdString &recordId) {
 }
 
 void RecordStore::removeRecords (int commandId) {
-	App *app;
 	SystemInterface *interface;
 	StringList idlist;
 	std::map<StdString, Json *>::iterator i, iend, pos;
 	StringList::iterator j, jend;
 
-	app = App::getInstance ();
-	interface = &(app->systemInterface);
-
+	interface = &(App::instance->systemInterface);
 	lock ();
 
 	i = recordMap.begin ();
@@ -163,7 +159,7 @@ void RecordStore::compact () {
 	std::list<StdString>::iterator j, jend;
 	SystemInterface *interface;
 
-	interface = &(App::getInstance ()->systemInterface);
+	interface = &(App::instance->systemInterface);
 	i = recordMap.begin ();
 	iend = recordMap.end ();
 	while (i != iend) {
@@ -206,7 +202,7 @@ Json *RecordStore::findRecord (const StdString &recordId, int recordType) {
 		return (NULL);
 	}
 
-	if (App::getInstance ()->systemInterface.getCommandId (pos->second) != recordType) {
+	if (App::instance->systemInterface.getCommandId (pos->second) != recordType) {
 		return (NULL);
 	}
 
@@ -265,7 +261,7 @@ void RecordStore::processAgentRecords (const char *agentStatusFieldName, RecordS
 	SystemInterface *interface;
 	Json *record;
 
-	interface = &(App::getInstance ()->systemInterface);
+	interface = &(App::instance->systemInterface);
 	fieldname.assign (agentStatusFieldName);
 	findRecords (RecordStore::matchAgentStatusObjectExists, &fieldname, &records, true);
 	i = records.begin ();
@@ -293,7 +289,7 @@ void RecordStore::processCommandRecords (int commandId, RecordStore::ProcessReco
 	SystemInterface *interface;
 	Json *record;
 
-	interface = &(App::getInstance ()->systemInterface);
+	interface = &(App::instance->systemInterface);
 	findRecords (RecordStore::matchCommandId, &commandId, &records, true);
 	i = records.begin ();
 	end = records.end ();
@@ -322,7 +318,7 @@ void RecordStore::populateAgentMap (HashMap *destMap, const char *statusFieldNam
 	SystemInterface *interface;
 	StdString fieldname, agentid, agentname;
 
-	interface = &(App::getInstance ()->systemInterface);
+	interface = &(App::instance->systemInterface);
 	fieldname.assign (statusFieldName);
 	findRecords (RecordStore::matchAgentStatusObjectExists, &fieldname, &records, true);
 	destMap->clear ();
@@ -424,15 +420,15 @@ bool RecordStore::matchCommandId (void *intPtr, Json *record) {
 	int *type;
 
 	type = (int *) intPtr;
-	return (App::getInstance ()->systemInterface.getCommandId (record) == *type);
+	return (App::instance->systemInterface.getCommandId (record) == *type);
 }
 
 bool RecordStore::matchAgentStatusSource (void *agentIdStringPtr, Json *record) {
 	StdString *agentid;
 	SystemInterface *interface;
 
-	interface = &(App::getInstance ()->systemInterface);
-	if (interface->getCommandId (record) != SystemInterface::Command_AgentStatus) {
+	interface = &(App::instance->systemInterface);
+	if (interface->getCommandId (record) != SystemInterface::CommandId_AgentStatus) {
 		return (false);
 	}
 
@@ -444,8 +440,8 @@ bool RecordStore::matchAgentStatusObjectExists (void *objectFieldNameStringPtr, 
 	StdString *fieldname;
 	SystemInterface *interface;
 
-	interface = &(App::getInstance ()->systemInterface);
-	if (interface->getCommandId (record) != SystemInterface::Command_AgentStatus) {
+	interface = &(App::instance->systemInterface);
+	if (interface->getCommandId (record) != SystemInterface::CommandId_AgentStatus) {
 		return (false);
 	}
 

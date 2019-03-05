@@ -37,7 +37,7 @@
 #include "Result.h"
 #include "StdString.h"
 #include "Log.h"
-#include "Util.h"
+#include "OsUtil.h"
 #include "Json.h"
 #include "SystemInterface.h"
 #include "LinkClient.h"
@@ -210,13 +210,13 @@ void LinkClient::start () {
 		contextinfo.extensions = libwebsocketExts;
 		contextinfo.user = this;
 
-		if (App::getInstance ()->isHttpsEnabled) {
+		if (App::instance->isHttpsEnabled) {
 			contextinfo.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
 		}
 
 		context = lws_create_context (&contextinfo);
 		if (! context) {
-			Log::write (Log::ERR, "Failed to create libwebsockets context; url=\"%s\"", url.c_str ());
+			Log::err ("Failed to create libwebsockets context; url=\"%s\"", url.c_str ());
 			isRunning = false;
 			return;
 		}
@@ -225,7 +225,7 @@ void LinkClient::start () {
 	clear ();
 	thread = SDL_CreateThread (LinkClient::runThread, "LinkClient::runThread", (void *) this);
 	if (! thread) {
-		Log::write (Log::ERR, "WebSocket client start failed; err=\"thread create failed\"");
+		Log::err ("WebSocket client start failed; err=\"thread create failed\"");
 		isRunning = false;
 		return;
 	}
@@ -277,7 +277,6 @@ int LinkClient::runThread (void *clientPtr) {
 }
 
 void LinkClient::run () {
-	App *app;
 	lws_client_connect_info clientinfo;
 	int result, port, sz;
 	const char *protocol, *address, *path;
@@ -287,18 +286,17 @@ void LinkClient::run () {
 		return;
 	}
 
-	app = App::getInstance ();
 	sz = url.length () + 1;
 	urlParseBuffer = (char *) malloc (sz);
 	if (! urlParseBuffer) {
-		Log::write (Log::ERR, "Failed to allocate memory for url parse buffer; length=%i", sz);
+		Log::err ("Failed to allocate memory for url parse buffer; length=%i", sz);
 		return;
 	}
 	memset (urlParseBuffer, 0, sz);
 	memcpy (urlParseBuffer, url.c_str (), sz);
 	result = lws_parse_uri (urlParseBuffer, &protocol, &address, &port, &path);
 	if (result != 0) {
-		Log::write (Log::ERR, "Failed to parse WebSocket URL; url=\"%s\" err=%i", url.c_str (), result);
+		Log::err ("Failed to parse WebSocket URL; url=\"%s\" err=%i", url.c_str (), result);
 		return;
 	}
 
@@ -316,7 +314,7 @@ void LinkClient::run () {
 	clientinfo.origin = clientinfo.address;
 	clientinfo.ietf_version_or_minus_one = -1;
 
-	if (app->isHttpsEnabled) {
+	if (App::instance->isHttpsEnabled) {
 		// TODO: Possibly enable certificate validation (currently disabled to allow use of self-signed certificates)
 		clientinfo.ssl_connection = LCCSCF_USE_SSL | LCCSCF_ALLOW_SELFSIGNED | LCCSCF_SKIP_SERVER_CERT_HOSTNAME_CHECK | LCCSCF_ALLOW_EXPIRED;
 	}
@@ -326,7 +324,7 @@ void LinkClient::run () {
 
 	lws = lws_client_connect_via_info (&clientinfo);
 	if (! lws) {
-		Log::write (Log::ERR, "Failed to establish WebSocket connection; url=\"%s\"", url.c_str ());
+		Log::err ("Failed to establish WebSocket connection; url=\"%s\"", url.c_str ());
 		return;
 	}
 
@@ -341,14 +339,14 @@ void LinkClient::run () {
 		}
 
 		if ((pingInterval > 0) && (nextPingTime > 0)) {
-			now = Util::getTime ();
+			now = OsUtil::getTime ();
 			if (nextPingTime <= now) {
 				write (StdString ("2"));
 				nextPingTime = 0;
 			}
 		}
 
-		lws_service (context, app->minUpdateFrameDelay);
+		lws_service (context, App::instance->minUpdateFrameDelay);
 	}
 
 	isConnected = false;
@@ -359,12 +357,11 @@ void LinkClient::run () {
 
 		isClosing = true;
 		lws_callback_on_writable (lws);
-		lws_service (context, app->minUpdateFrameDelay);
+		lws_service (context, App::instance->minUpdateFrameDelay);
 	}
 }
 
 void LinkClient::authorize () {
-	App *app;
 	Json *cmd, *params;
 	bool sent;
 
@@ -382,14 +379,13 @@ void LinkClient::authorize () {
 		return;
 	}
 
-	app = App::getInstance ();
 	sent = false;
 	authorizeToken.assign ("");
 	params = new Json ();
-	params->set ("token", app->getRandomString (64));
-	cmd = app->createCommand ("Authorize", SystemInterface::Constant_DefaultCommandType, params);
+	params->set ("token", App::instance->getRandomString (64));
+	cmd = App::instance->createCommand (SystemInterface::Command_Authorize, SystemInterface::Constant_DefaultCommandType, params);
 	if (cmd) {
-		if (app->agentControl.setCommandAuthorization (cmd, authorizeSecretIndex)) {
+		if (App::instance->agentControl.setCommandAuthorization (cmd, authorizeSecretIndex)) {
 			writeCommand (cmd);
 			sent = true;
 		}
@@ -410,17 +406,15 @@ void LinkClient::write (const StdString &message) {
 }
 
 void LinkClient::writeCommand (Json *sourceCommand) {
-	App *app;
 	Json *cmd;
 
-	app = App::getInstance ();
 	if (authorizeToken.empty ()) {
 		writeCommand (sourceCommand->toString ());
 	}
 	else {
 		cmd = new Json ();
 		cmd->copy (sourceCommand);
-		if (! app->agentControl.setCommandAuthorization (cmd, authorizeSecretIndex, authorizeToken)) {
+		if (! App::instance->agentControl.setCommandAuthorization (cmd, authorizeSecretIndex, authorizeToken)) {
 			authorizeToken.assign ("");
 			writeCommand (sourceCommand->toString ());
 		}
@@ -460,7 +454,7 @@ void LinkClient::writeNextMessage () {
 			writeBuffer = (unsigned char *) realloc (writeBuffer, buflen);
 			if (! writeBuffer) {
 				isWriteReady = false;
-				Log::write (Log::ERR, "Failed to allocate memory for WebSocket write buffer; length=%i", buflen);
+				Log::err ("Failed to allocate memory for WebSocket write buffer; length=%i", buflen);
 				return;
 			}
 		}
@@ -468,7 +462,7 @@ void LinkClient::writeNextMessage () {
 		memcpy (writeBuffer + LWS_PRE, message.c_str (), message.length ());
 		result = lws_write (lws, writeBuffer + LWS_PRE, message.length (), LWS_WRITE_TEXT);
 		if (result < 0) {
-			Log::write (Log::ERR, "Failed to write WebSocket messge; err=%i", result);
+			Log::err ("Failed to write WebSocket messge; err=%i", result);
 		}
 	}
 	if (shouldrequestcallback) {
@@ -507,7 +501,7 @@ void LinkClient::receiveData (char *data, int dataLength) {
 			json = new Json ();
 			result = json->parse (d, len);
 			if (result != Result::SUCCESS) {
-				Log::write (Log::ERR, "WebSocket connection error; url=\"%s\" err=\"Failed to parse open packet, %i\"", url.c_str (), result);
+				Log::err ("WebSocket connection error; url=\"%s\" err=\"Failed to parse open packet, %i\"", url.c_str (), result);
 			}
 			else {
 				sessionId = json->getString ("sid", "");
@@ -516,7 +510,7 @@ void LinkClient::receiveData (char *data, int dataLength) {
 					nextPingTime = 0;
 				}
 				else {
-					nextPingTime = Util::getTime () + pingInterval;
+					nextPingTime = OsUtil::getTime () + pingInterval;
 				}
 			}
 			delete (json);
@@ -528,7 +522,7 @@ void LinkClient::receiveData (char *data, int dataLength) {
 		}
 		case '3': { // pong
 			if (pingInterval > 0) {
-				nextPingTime = Util::getTime () + pingInterval;
+				nextPingTime = OsUtil::getTime () + pingInterval;
 			}
 			break;
 		}
@@ -555,7 +549,6 @@ void LinkClient::receiveData (char *data, int dataLength) {
 }
 
 void LinkClient::processCommandMessage (char *data, int dataLength) {
-	App *app;
 	StdString s, prefix;
 	size_t pos1, pos2;
 	Json *cmd;
@@ -565,7 +558,6 @@ void LinkClient::processCommandMessage (char *data, int dataLength) {
 		return;
 	}
 
-	app = App::getInstance ();
 	if (! commandBuffer.empty ()) {
 		commandBuffer.add ((uint8_t *) data, dataLength);
 		s.assignBuffer (&commandBuffer);
@@ -594,7 +586,7 @@ void LinkClient::processCommandMessage (char *data, int dataLength) {
 	--pos2;
 
 	s.assign (s.substr (pos1, pos2 - pos1 + 1));
-	if (! App::getInstance ()->systemInterface.parseCommand (s, &cmd)) {
+	if (! App::instance->systemInterface.parseCommand (s, &cmd)) {
 		if (commandBuffer.empty ()) {
 			commandBuffer.add ((uint8_t *) data, dataLength);
 		}
@@ -605,17 +597,17 @@ void LinkClient::processCommandMessage (char *data, int dataLength) {
 	}
 	commandBuffer.reset ();
 
-	commandid = app->systemInterface.getCommandId (cmd);
+	commandid = App::instance->systemInterface.getCommandId (cmd);
 	switch (commandid) {
-		case SystemInterface::Command_AuthorizationRequired: {
+		case SystemInterface::CommandId_AuthorizationRequired: {
 			authorize ();
 			break;
 		}
-		case SystemInterface::Command_AuthorizeResult: {
-			authorizeToken = app->systemInterface.getCommandStringParam (cmd, "token", "");
+		case SystemInterface::CommandId_AuthorizeResult: {
+			authorizeToken = App::instance->systemInterface.getCommandStringParam (cmd, "token", "");
 			break;
 		}
-		case SystemInterface::Command_LinkSuccess: {
+		case SystemInterface::CommandId_LinkSuccess: {
 			if (! isConnected) {
 				isConnected = true;
 				if (connectCallback) {
@@ -646,7 +638,7 @@ int LinkClient::protocolCallback (struct lws *wsi, enum lws_callback_reasons rea
 	result = 0;
 	switch (reason) {
 		case LWS_CALLBACK_CLIENT_CONNECTION_ERROR: {
-			Log::write (Log::DEBUG, "WebSocket connection error; url=\"%s\" err=\"%s\"", client->url.c_str (), in ? StdString ((char *) in, len).c_str () : "unspecified connection failure");
+			Log::debug ("WebSocket connection error; url=\"%s\" err=\"%s\"", client->url.c_str (), in ? StdString ((char *) in, len).c_str () : "unspecified connection failure");
 			break;
 		}
 		case LWS_CALLBACK_CLIENT_ESTABLISHED: {

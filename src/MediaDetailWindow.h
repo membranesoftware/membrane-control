@@ -34,7 +34,6 @@
 #define MEDIA_DETAIL_WINDOW_H
 
 #include "StdString.h"
-#include "Sprite.h"
 #include "Json.h"
 #include "Image.h"
 #include "Label.h"
@@ -57,8 +56,8 @@ public:
 	int64_t mediaSize;
 	int64_t mediaBitrate;
 
-	// Execute operations appropriate to sync widget state with records present in the provided RecordStore object, which has been locked prior to invocation
-	void syncRecordStore (RecordStore *store);
+	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
+	void syncRecordStore ();
 
 	// Return a boolean value indicating if the provided Widget is a member of this class
 	static bool isWidgetType (Widget *widget);

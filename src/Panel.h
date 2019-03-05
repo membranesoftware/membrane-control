@@ -37,7 +37,6 @@
 #include <list>
 #include "SDL2/SDL.h"
 #include "Color.h"
-#include "RecordStore.h"
 #include "WidgetHandle.h"
 #include "Widget.h"
 
@@ -68,7 +67,7 @@ public:
 	bool isAlphaBlended;
 	float alpha;
 	float alphaTarget;
-	int alphaTransitionDuration;
+	int alphaTranslateDuration;
 	bool isFilledBg;
 	bool isBordered;
 	bool isFixedSize;
@@ -79,8 +78,8 @@ public:
 	// Set the panel's alpha blend option. If enabled, the panel's fill bg and border are drawn with alpha blending of the specified amount.
 	void setAlphaBlend (bool enable, float blendAlpha = 1.0f);
 
-	// Begin a transition of the panel's alpha blend using the specified start value, target value, and millisecond duration
-	void transitionAlphaBlend (float startAlpha, float targetAlpha, int durationMs);
+	// Begin translating the panel's alpha blend using the specified start value, target value, and millisecond duration
+	void translateAlphaBlend (float startAlpha, float targetAlpha, int durationMs);
 
 	// Set the panel's fill bg option. If enabled, the panel is drawn with a background fill using the specified color.
 	void setFillBg (bool enable, float r = 0.0f, float g = 0.0f, float b = 0.0f);
@@ -129,8 +128,8 @@ public:
 	// Update widget state to reflect the latest input events
 	void processInput ();
 
-	// Execute operations appropriate to sync widget state with records present in the provided RecordStore object, which has been locked prior to invocation
-	void syncRecordStore (RecordStore *store);
+	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
+	virtual void syncRecordStore ();
 
 protected:
 	// Execute operations to update object state as appropriate for an elapsed millisecond time period and origin position

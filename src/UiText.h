@@ -43,8 +43,10 @@ public:
 	UiText ();
 	~UiText ();
 
+	static const StdString defaultLanguage;
+
 	// Load text strings for the specified language and return a Result value
-	int load (const StdString &language = StdString ("en"));
+	int load (const StdString &language = UiText::defaultLanguage);
 
 	// Return the specified text string
 	StdString getText (int stringIndex);

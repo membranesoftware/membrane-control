@@ -64,7 +64,7 @@ Button::Button (const StdString &labelText, Sprite *sprite, bool shouldDestroySp
 
 	widgetType.assign ("Button");
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	if (! labelText.empty ()) {
 		normalTextColor.assign (uiconfig->flatButtonTextColor);
 		label = (Label *) addWidget (new Label (labelText, UiConfiguration::BUTTON, normalTextColor));
@@ -198,7 +198,7 @@ bool Button::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isCo
 
 	if ((shortcutKey != SDLK_UNKNOWN) && (keycode == shortcutKey)) {
 		setPressed (true);
-		pressClock = App::getInstance ()->uiConfig.blinkDuration;
+		pressClock = App::instance->uiConfig.blinkDuration;
 		refreshLayout ();
 		if (mouseClickCallback) {
 			mouseClickCallback (mouseClickCallbackData, this);
@@ -265,7 +265,7 @@ void Button::doUpdate (int msElapsed, float originX, float originY) {
 
 	if (! isInputSuspended) {
 		if (isPressed && (pressClock <= 0)) {
-			if ((! isMouseEntered) || (! App::getInstance ()->input.isMouseLeftButtonDown)) {
+			if ((! isMouseEntered) || (! App::instance->input.isMouseLeftButtonDown)) {
 				setPressed (false);
 				if (isMouseEntered) {
 					setFocused (true);
@@ -284,7 +284,7 @@ void Button::doUpdate (int msElapsed, float originX, float originY) {
 void Button::doRefresh () {
 	UiConfiguration *uiconfig;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	widthPadding = uiconfig->paddingSize;
 	heightPadding = uiconfig->paddingSize;
 	Panel::doRefresh ();
@@ -303,7 +303,7 @@ void Button::refreshLayout () {
 
 	// TODO: Handle borders / shadows in this operation
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 
 	shouldfillbg = false;
 	bgalpha = -1.0f;

@@ -38,10 +38,7 @@
 #include <map>
 #include <vector>
 #include "SDL2/SDL.h"
-#include "SDL2/SDL_surface.h"
 #include "SDL2/SDL_image.h"
-#include "SDL2/SDL_rwops.h"
-#include "SDL2/SDL_render.h"
 #include "ft2build.h"
 #include FT_FREETYPE_H
 #include "App.h"
@@ -49,7 +46,6 @@
 #include "Result.h"
 #include "Log.h"
 #include "StdString.h"
-#include "Util.h"
 #include "Resource.h"
 
 Resource::Resource ()
@@ -151,7 +147,7 @@ int Resource::open () {
 
 
 	if (FT_Init_FreeType (&(freetype))) {
-		Log::write (Log::ERR, "Failed to initialize freetype library");
+		Log::err ("Failed to initialize freetype library");
 		return (Result::ERROR_FREETYPE_OPERATION_FAILED);
 	}
 
@@ -160,13 +156,13 @@ int Resource::open () {
 	}
 
 	if (stat (dataPath.c_str (), &st) != 0) {
-		Log::write (Log::ERR, "stat failed; path=\"%s\" err=\"%s\"", dataPath.c_str (), strerror (errno));
+		Log::err ("stat failed; path=\"%s\" err=\"%s\"", dataPath.c_str (), strerror (errno));
 		return (Result::ERROR_FILE_OPERATION_FAILED);
 	}
 
 	if (! isBundleFile) {
 		if (! S_ISDIR (st.st_mode)) {
-			Log::write (Log::ERR, "Failed to open resources; path=\"%s\" err=\"Invalid resource path\"", dataPath.c_str ());
+			Log::err ("Failed to open resources; path=\"%s\" err=\"Invalid resource path\"", dataPath.c_str ());
 			return (Result::ERROR_MISMATCHED_TYPE);
 		}
 
@@ -176,14 +172,14 @@ int Resource::open () {
 
 	rw = SDL_RWFromFile (dataPath.c_str (), "r");
 	if (! rw) {
-		Log::write (Log::ERR, "Failed to open resource bundle file; path=\"%s\" error=\"%s\"", dataPath.c_str (), SDL_GetError ());
+		Log::err ("Failed to open resource bundle file; path=\"%s\" error=\"%s\"", dataPath.c_str (), SDL_GetError ());
 		return (Result::ERROR_FILE_OPERATION_FAILED);
 	}
 
 	result = Result::SUCCESS;
 	archiveEntryMap.clear ();
 	while (true) {
-		result = Util::readValue (rw, &id);
+		result = Resource::readUint64 (rw, &id);
 		if (result != Result::SUCCESS) {
 			break;
 		}
@@ -191,12 +187,12 @@ int Resource::open () {
 			break;
 		}
 
-		result = Util::readValue (rw, &(ae.position));
+		result = Resource::readUint64 (rw, &(ae.position));
 		if (result != Result::SUCCESS) {
 			break;
 		}
 
-		result = Util::readValue (rw, &(ae.length));
+		result = Resource::readUint64 (rw, &(ae.length));
 		if (result != Result::SUCCESS) {
 			break;
 		}
@@ -352,27 +348,27 @@ SDL_RWops *Resource::openFile (const StdString &path, uint64_t *fileSize) {
 		id = Resource::getPathId (path);
 		i = archiveEntryMap.find (id);
 		if (i == archiveEntryMap.end ()) {
-			Log::write (Log::DEBUG3, "Failed to open file resource; path=\"%s\" error=\"Unknown path\"", path.c_str ());
+			Log::debug3 ("Failed to open file resource; path=\"%s\" error=\"Unknown path\"", path.c_str ());
 			return (NULL);
 		}
 
 		rwbundle = SDL_RWFromFile (dataPath.c_str (), "r");
 		if (! rwbundle) {
-			Log::write (Log::DEBUG3, "Failed to open file resource; path=\"%s\" error=\"bundle: %s\"", dataPath.c_str (), SDL_GetError ());
+			Log::debug3 ("Failed to open file resource; path=\"%s\" error=\"bundle: %s\"", dataPath.c_str (), SDL_GetError ());
 			return (NULL);
 		}
 
 		pos = SDL_RWseek (rwbundle, (Sint64) i->second.position, RW_SEEK_SET);
 		if (pos < 0) {
 			SDL_RWclose (rwbundle);
-			Log::write (Log::DEBUG3, "Failed to open file resource; path=\"%s\" error=\"seek: %s\"", dataPath.c_str (), SDL_GetError ());
+			Log::debug3 ("Failed to open file resource; path=\"%s\" error=\"seek: %s\"", dataPath.c_str (), SDL_GetError ());
 			return (NULL);
 		}
 
 		rw = SDL_AllocRW ();
 		if (! rw) {
 			SDL_RWclose (rwbundle);
-			Log::write (Log::DEBUG3, "Failed to open file resource; path=\"%s\" error=\"bundle: %s\"", dataPath.c_str (), SDL_GetError ());
+			Log::debug3 ("Failed to open file resource; path=\"%s\" error=\"bundle: %s\"", dataPath.c_str (), SDL_GetError ());
 			return (NULL);
 		}
 
@@ -398,7 +394,7 @@ SDL_RWops *Resource::openFile (const StdString &path, uint64_t *fileSize) {
 
 		pos = SDL_RWsize (rw);
 		if (pos < 0) {
-			Log::write (Log::DEBUG3, "Failed to open file resource; path=\"%s\" error=\"%s\"", loadpath.c_str (), SDL_GetError ());
+			Log::debug3 ("Failed to open file resource; path=\"%s\" error=\"%s\"", loadpath.c_str (), SDL_GetError ());
 			return (NULL);
 		}
 
@@ -561,7 +557,7 @@ Buffer *Resource::loadFile (const StdString &path) {
 	SDL_RWclose (rw);
 
 	if (sz > 0) {
-		Log::write (Log::ERR, "Failed to load file resource; path=\"%s\" error=\"%s\"", path.c_str (), SDL_GetError ());
+		Log::err ("Failed to load file resource; path=\"%s\" error=\"%s\"", path.c_str (), SDL_GetError ());
 		delete (buffer);
 		return (NULL);
 	}
@@ -607,7 +603,7 @@ SDL_Surface *Resource::loadSurface (const StdString &path) {
 
 		surface = IMG_Load_RW (rw, 1);
 		if (! surface) {
-			Log::write (Log::INFO, "bundle IMG_Load_RW failed; path=\"%s\" err=\"%s\"", path.c_str (), SDL_GetError ());
+			Log::info ("bundle IMG_Load_RW failed; path=\"%s\" err=\"%s\"", path.c_str (), SDL_GetError ());
 			return (NULL);
 		}
 	}
@@ -615,7 +611,7 @@ SDL_Surface *Resource::loadSurface (const StdString &path) {
 		loadpath.sprintf ("%s/%s", dataPath.c_str (), path.c_str ());
 		surface = IMG_Load (loadpath.c_str ());
 		if (! surface) {
-			Log::write (Log::INFO, "IMG_Load failed; path=\"%s\" err=\"%s\"", path.c_str (), SDL_GetError ());
+			Log::info ("IMG_Load failed; path=\"%s\" err=\"%s\"", path.c_str (), SDL_GetError ());
 			return (NULL);
 		}
 	}
@@ -624,7 +620,6 @@ SDL_Surface *Resource::loadSurface (const StdString &path) {
 }
 
 SDL_Texture *Resource::loadTexture (const StdString &path) {
-	App *app;
 	std::map<StdString, Resource::TextureData>::iterator i;
 	Resource::TextureData data;
 	StdString loadpath;
@@ -644,7 +639,6 @@ SDL_Texture *Resource::loadTexture (const StdString &path) {
 		return (texture);
 	}
 
-	app = App::getInstance ();
 	surface = NULL;
 	if (isBundleFile) {
 		rw = openFile (path);
@@ -654,7 +648,7 @@ SDL_Texture *Resource::loadTexture (const StdString &path) {
 
 		surface = IMG_Load_RW (rw, 1);
 		if (! surface) {
-			Log::write (Log::INFO, "bundle IMG_Load_RW failed; path=\"%s\" err=\"%s\"", path.c_str (), SDL_GetError ());
+			Log::info ("bundle IMG_Load_RW failed; path=\"%s\" err=\"%s\"", path.c_str (), SDL_GetError ());
 			return (NULL);
 		}
 	}
@@ -662,7 +656,7 @@ SDL_Texture *Resource::loadTexture (const StdString &path) {
 		loadpath.sprintf ("%s/%s", dataPath.c_str (), path.c_str ());
 		surface = IMG_Load (loadpath.c_str ());
 		if (! surface) {
-			Log::write (Log::INFO, "IMG_Load failed; path=\"%s\" err=\"%s\"", path.c_str (), SDL_GetError ());
+			Log::info ("IMG_Load failed; path=\"%s\" err=\"%s\"", path.c_str (), SDL_GetError ());
 			return (NULL);
 		}
 	}
@@ -670,10 +664,10 @@ SDL_Texture *Resource::loadTexture (const StdString &path) {
 		return (NULL);
 	}
 
-	texture = SDL_CreateTextureFromSurface (app->render, surface);
+	texture = SDL_CreateTextureFromSurface (App::instance->render, surface);
 	SDL_FreeSurface (surface);
 	if (! texture) {
-		Log::write (Log::ERR, "SDL_CreateTextureFromSurface failed; path=\"%s\" err=\"%s\"", path.c_str (), SDL_GetError ());
+		Log::err ("SDL_CreateTextureFromSurface failed; path=\"%s\" err=\"%s\"", path.c_str (), SDL_GetError ());
 		return (NULL);
 	}
 
@@ -687,7 +681,6 @@ SDL_Texture *Resource::loadTexture (const StdString &path) {
 }
 
 SDL_Texture *Resource::createTexture (const StdString &path, SDL_Surface *surface) {
-	App *app;
 	std::map<StdString, Resource::TextureData>::iterator i;
 	Resource::TextureData data;
 	SDL_Texture *texture;
@@ -704,10 +697,9 @@ SDL_Texture *Resource::createTexture (const StdString &path, SDL_Surface *surfac
 		return (texture);
 	}
 
-	app = App::getInstance ();
-	texture = SDL_CreateTextureFromSurface (app->render, surface);
+	texture = SDL_CreateTextureFromSurface (App::instance->render, surface);
 	if (! texture) {
-		Log::write (Log::ERR, "SDL_CreateTextureFromSurface failed; path=\"%s\" err=\"%s\"", path.c_str (), SDL_GetError ());
+		Log::err ("SDL_CreateTextureFromSurface failed; path=\"%s\" err=\"%s\"", path.c_str (), SDL_GetError ());
 		return (NULL);
 	}
 
@@ -770,7 +762,7 @@ Font *Resource::loadFont (const StdString &path, int pointSize) {
 	if (result != Result::SUCCESS) {
 		delete (font);
 		unloadFile (path);
-		Log::write (Log::ERR, "Failed to load font resource; key=\"%s\" err=%i", key.c_str (), result);
+		Log::err ("Failed to load font resource; key=\"%s\" err=%i", key.c_str (), result);
 		return (NULL);
 	}
 
@@ -830,4 +822,37 @@ uint64_t Resource::getPathId (const StdString &path) {
 	}
 
 	return (id);
+}
+
+int Resource::readUint64 (SDL_RWops *src, Uint64 *value) {
+	char buf[8];
+	size_t rlen;
+	Uint64 val;
+
+	rlen = SDL_RWread (src, buf, 8, 1);
+	if (rlen < 1) {
+		return (Result::ERROR_FILE_OPERATION_FAILED);
+	}
+
+	val = 0;
+	val |= (buf[0] & 0xFF);
+	val <<= 8;
+	val |= (buf[1] & 0xFF);
+	val <<= 8;
+	val |= (buf[2] & 0xFF);
+	val <<= 8;
+	val |= (buf[3] & 0xFF);
+	val <<= 8;
+	val |= (buf[4] & 0xFF);
+	val <<= 8;
+	val |= (buf[5] & 0xFF);
+	val <<= 8;
+	val |= (buf[6] & 0xFF);
+	val <<= 8;
+	val |= (buf[7] & 0xFF);
+
+	if (value) {
+		*value = val;
+	}
+	return (Result::SUCCESS);
 }

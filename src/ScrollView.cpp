@@ -30,6 +30,7 @@
 */
 #include "Config.h"
 #include <stdlib.h>
+#include <math.h>
 #include "App.h"
 #include "Result.h"
 #include "Log.h"
@@ -52,7 +53,7 @@ ScrollView::ScrollView (float viewWidth, float viewHeight)
 
 	widgetType.assign ("ScrollView");
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	setFixedSize (true, viewWidth, viewHeight);
 	setVerticalScrollSpeed (height * uiconfig->mouseWheelScrollSpeed);
 }

@@ -38,21 +38,18 @@
 #include <queue>
 #include "SDL2/SDL.h"
 #include "StdString.h"
-#include "Buffer.h"
+#include "Log.h"
 #include "Input.h"
 #include "Resource.h"
 #include "Network.h"
 #include "HashMap.h"
-#include "Json.h"
 #include "Prng.h"
-#include "Ui.h"
+#include "UiStack.h"
 #include "UiText.h"
-#include "SystemInterface.h"
 #include "UiConfiguration.h"
+#include "Widget.h"
 #include "Panel.h"
-#include "Toolbar.h"
-#include "NewsWindow.h"
-#include "SnackbarWindow.h"
+#include "SystemInterface.h"
 #include "AgentControl.h"
 #ifndef ENABLE_TEST_KEYS
 #define ENABLE_TEST_KEYS 0
@@ -63,11 +60,13 @@ public:
 	App ();
 	~App ();
 
-	// Return the singleton instance of this class, creating it if necessary
-	static App *getInstance ();
+	static App *instance;
 
-	// Destroy any previously created singleton instance of this class
-	static void freeInstance ();
+	// Populate the App instance pointer with a newly created object
+	static void createInstance ();
+
+	// Destroy and clear the App instance pointer
+	static void destroyInstance ();
 
 	static const int defaultMinFrameDelay;
 	static const int windowWidths[];
@@ -75,26 +74,26 @@ public:
 	static const int numWindowSizes;
 	static const float fontScales[];
 	static const int numFontScales;
-	static const StdString prefsFilename;
+	static const StdString serverUrl;
 
 	// Constants to use as key values in the prefs map
-	static const StdString prefsIsFirstLaunchComplete;
 	static const StdString prefsNetworkThreads;
-	static const StdString prefsAgentStatus;
 	static const StdString prefsWindowWidth;
 	static const StdString prefsWindowHeight;
 	static const StdString prefsFontScale;
+	static const StdString prefsHttps;
 	static const StdString prefsShowClock;
+	static const StdString prefsIsFirstLaunchComplete;
+	static const StdString prefsAgentStatus;
 	static const StdString prefsMediaImageSize;
 	static const StdString prefsMonitorImageSize;
 	static const StdString prefsMediaItemImageSize;
 	static const StdString prefsStreamItemImageSize;
 	static const StdString prefsServerAdminSecrets;
-	static const StdString prefsServerTimeout; // seconds
+	static const StdString prefsServerTimeout;
 	static const int64_t defaultServerTimeout;
 	static const StdString prefsServerPath;
 	static const StdString prefsApplicationName;
-	static const StdString prefsHttps;
 	static const StdString prefsWebKioskUiSelectedAgents;
 	static const StdString prefsWebKioskUiExpandedAgents;
 	static const StdString prefsWebKioskUiPlaylists;
@@ -103,10 +102,23 @@ public:
 	static const StdString prefsMonitorUiSelectedAgents;
 	static const StdString prefsMonitorUiExpandedAgents;
 	static const StdString prefsMainUiShowAllEnabled;
+	static const StdString prefsMainUiApplicationNewsItems;
+	static const StdString prefsMediaItemUiVideoQuality;
 
 	// Read-write data members
-	bool shouldSyncRecordStore;
+	Log log;
+	Prng prng;
+	Input input;
+	UiStack uiStack;
+	UiText uiText;
+	UiConfiguration uiConfig;
+	Resource resource;
+	Network network;
+	SystemInterface systemInterface;
+	AgentControl agentControl;
+	HashMap prefsMap;
 	bool shouldRefreshUi;
+	bool shouldSyncRecordStore;
 	float nextFontScale;
 	int nextWindowWidth;
 	int nextWindowHeight;
@@ -115,15 +127,6 @@ public:
 	bool isUiPauseKeyPressed;
 #endif
 	StdString prefsPath;
-	Prng prng;
-	Input input;
-	UiText uiText;
-	UiConfiguration uiConfig;
-	Resource resource;
-	Network network;
-	SystemInterface systemInterface;
-	AgentControl agentControl;
-	HashMap prefsMap;
 
 	// Read-only data members
 	bool isShuttingDown;
@@ -133,10 +136,6 @@ public:
 	SDL_Window *window;
 	SDL_Renderer *render; // The renderer must be accessed only from the application's main thread
 	Panel *rootPanel;
-	Toolbar *mainToolbar;
-	Toolbar *secondaryToolbar;
-	NewsWindow *newsWindow;
-	SnackbarWindow *snackbarWindow;
 	float displayDdpi;
 	float displayHdpi;
 	float displayVdpi;
@@ -144,9 +143,6 @@ public:
 	int windowHeight;
 	int minDrawFrameDelay; // milliseconds
 	int minUpdateFrameDelay; // milliseconds
-	float topBarHeight;
-	float bottomBarHeight;
-	float rightBarWidth;
 	float fontScale;
 	int imageScale;
 	int64_t drawCount;
@@ -162,44 +158,15 @@ public:
 	// Return an int64_t value for use as a unique ID
 	int64_t getUniqueId ();
 
-	// Remove all Ui objects and add the provided one as the top item in the Ui stack
-	void setUi (Ui *ui);
-
-	// Push the provided Ui object to the top of the stack
-	void pushUi (Ui *ui);
-
-	// Remove and unload the top item in the Ui stack
-	void popUi ();
-
-	// Return the topmost item in the Ui stack, or NULL if no such item was found. If a Ui object is returned by this method, it has been retained and must be released by the caller when no longer needed.
-	Ui *getCurrentUi ();
-
-	// Toggle the visible state of the news window, shown as a right nav
-	void toggleNewsWindow ();
-
-	// Show the specified message in the application's snackbar window, optionally including an action button
-	void showSnackbar (const StdString &messageText, const StdString &actionButtonText = StdString (""), Widget::EventCallback actionButtonClickCallback = NULL, void *actionButtonClickCallbackData = NULL);
-
-	// Execute actions appropriate for a command received from the agent control link client
-	void handleLinkClientCommand (const StdString &agentId, Json *command);
-
-	// Execute actions appropriate for a connect event from an agent control link client
-	void handleLinkClientConnect (const StdString &agentId);
-
-	// Execute actions appropriate for a disconnect event from an agent control link client
-	void handleLinkClientDisconnect (const StdString &agentId, const StdString &errorDescription);
-
 	// Apply the provided clip rectangle to the application's renderer and push it onto the clip stack
 	void pushClipRect (const SDL_Rect *rect);
 
 	// Pop the clip stack
 	void popClipRect ();
 
-	// Return a SystemInterface::Prefix struct containing command prefix fields
-	SystemInterface::Prefix createCommandPrefix ();
-
-	// Return a newly created Json object containing the specified command and the default prefix, or NULL if the command could not be created. commandParams can be NULL if not needed, causing the returned command to use empty parameter fields. If a commandParams object is provided, this method becomes responsible for deleting it when it's no longer needed.
-	Json *createCommand (const char *commandName, int commandType, Json *commandParams = NULL);
+	// Set a resource path that should be used to load a background texture and render it during draw operations
+	void setNextBackgroundTexturePath (const StdString &path);
+	void setNextBackgroundTexturePath (const char *path);
 
 	typedef void (*RenderTaskFunction) (void *fnData);
 	struct RenderTaskContext {
@@ -210,9 +177,20 @@ public:
 	// Schedule a task function to execute at the top of the next render loop
 	void addRenderTask (RenderTaskFunction fn, void *fnData);
 
-	// Set a resource path that should be used to load a background texture and render it during draw operations
-	void setNextBackgroundTexturePath (const StdString &path);
-	void setNextBackgroundTexturePath (const char *path);
+	// Execute actions appropriate for a command received from the agent control link client
+	void handleLinkClientCommand (const StdString &agentId, Json *command);
+
+	// Execute actions appropriate for a connect event from an agent control link client
+	void handleLinkClientConnect (const StdString &agentId);
+
+	// Execute actions appropriate for a disconnect event from an agent control link client
+	void handleLinkClientDisconnect (const StdString &agentId, const StdString &errorDescription);
+
+	// Return a SystemInterface::Prefix struct containing command prefix fields
+	SystemInterface::Prefix createCommandPrefix ();
+
+	// Return a newly created Json object containing the specified command and the default prefix, or NULL if the command could not be created. commandParams can be NULL if not needed, causing the returned command to use empty parameter fields. If a commandParams object is provided, this method becomes responsible for deleting it when it's no longer needed.
+	Json *createCommand (const char *commandName, int commandType, Json *commandParams = NULL);
 
 	// Return a pseudorandom int value, chosen from within the specified inclusive range
 	int getRandomInt (int i1, int i2);
@@ -220,19 +198,29 @@ public:
 	// Return a pseudorandomly chosen string value of the specified length
 	StdString getRandomString (int stringLength);
 
-private:
-	// Constants to use for UiChange type values
-	enum {
-		UI_CHANGE_PUSH = 0,
-		UI_CHANGE_POP = 1,
-		UI_CHANGE_SET = 2
-	};
-	struct UiChange {
-		Ui *ui;
-		int type;
-		UiChange (Ui *ui, int type): ui (ui), type (type) { }
-	};
+	// Return the URL that should be used for viewing the specified help topic ID
+	static StdString getHelpUrl (const StdString &topicId);
+	static StdString getHelpUrl (const char *topicId);
 
+	// Return the URL that should be used for downloading the specified application
+	static StdString getApplicationUrl (const StdString &applicationId);
+
+	// Return the URL that should be used for viewing information about the specified feature
+	static StdString getFeatureUrl (const StdString &featureId);
+
+	// Return the URL that should be used for application feedback, optionally appending an ID value that specifies the application version
+	static StdString getFeedbackUrl (bool shouldIncludeVersion = false);
+
+	// Return the URL that should be used for updates targeting the specified application ID, or the current application if no ID value is provided
+	static StdString getUpdateUrl (const StdString &applicationId = StdString (""));
+
+	// Return the URL that should be used for retrieving news related to the current application
+	static StdString getApplicationNewsUrl ();
+
+	// Return the URL that should be used for the Membrane Software donation page
+	static StdString getDonateUrl ();
+
+private:
 	// Create the root panel and other top-level widgets
 	void populateWidgets ();
 
@@ -244,9 +232,6 @@ private:
 
 	// Execute operations to update application state as appropriate for an elapsed millisecond time period
 	void update (int msElapsed);
-
-	// Refresh all interface elements in the app and any Ui objects present in the stack. This method must be invoked only while holding a lock on uiMutex.
-	void refreshUi ();
 
 	// Close the application window and reopen it at the size indicated by nextWindowWidth and nextWindowHeight
 	void resizeWindow ();
@@ -263,22 +248,12 @@ private:
 	// Write the prefs map file if any of its keys have changed since the last write
 	void writePrefsMap ();
 
-	// Remove all items from uiStack
-	void clearUiStack ();
-
 	// Remove all items from renderTaskQueue
 	void clearRenderTaskQueue ();
-
-	// Return the path to the image file that should be loaded as a background texture from the specified base path, as appropriate for the current image scale
-	StdString getBackgroundTexturePath (const StdString &basePath);
 
 	SDL_Thread *updateThread;
 	SDL_mutex *uniqueIdMutex;
 	int64_t nextUniqueId;
-	SDL_mutex *uiMutex;
-	Ui *currentUi;
-	std::vector<Ui *> uiStack;
-	std::vector<App::UiChange> uiChangeList;
 	std::vector<SDL_Keycode> keyPressList;
 	std::stack<SDL_Rect> clipRectStack;
 	SDL_Rect clipRect;
@@ -295,7 +270,7 @@ private:
 	SDL_Texture *nextBackgroundTexture;
 	StdString nextBackgroundTexturePath;
 	int nextBackgroundTextureWidth, nextBackgroundTextureHeight;
-	float backgroundTransitionAlpha;
+	float backgroundCrossFadeAlpha;
 };
 
 #endif

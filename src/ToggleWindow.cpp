@@ -50,7 +50,7 @@ ToggleWindow::ToggleWindow (Toggle *toggle, const StdString &labelText)
 {
 	UiConfiguration *uiconfig;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 
 	addWidget (toggle);
@@ -88,7 +88,7 @@ void ToggleWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	toggle->position.assign (x, y);

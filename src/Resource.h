@@ -36,8 +36,6 @@
 #include <map>
 #include <vector>
 #include "SDL2/SDL.h"
-#include "SDL2/SDL_rwops.h"
-#include "SDL2/SDL_surface.h"
 #include "ft2build.h"
 #include FT_FREETYPE_H
 #include "StdString.h"
@@ -90,6 +88,9 @@ public:
 
 	// Unload previously acquired font resources for the specified path and point size
 	void unloadFont (const StdString &path, int pointSize);
+
+	// Read a value from an SDL_RWops object and store it in the provided pointer. Returns a Result value.
+	static int readUint64 (SDL_RWops *src, Uint64 *value);
 
 	// Interface functions for use in an SDL_RWops struct
 	static Sint64 rwopsSize (SDL_RWops *rw);

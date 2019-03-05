@@ -36,7 +36,7 @@
 #include "App.h"
 #include "Result.h"
 #include "Log.h"
-#include "Util.h"
+#include "OsUtil.h"
 #include "StdString.h"
 #include "Json.h"
 #include "Network.h"
@@ -100,16 +100,14 @@ bool CommandList::empty () {
 }
 
 bool CommandList::isIdle (int timeout) {
-	return ((lastIdleTime > 0) && ((Util::getTime () - lastIdleTime) >= timeout));
+	return ((lastIdleTime > 0) && ((OsUtil::getTime () - lastIdleTime) >= timeout));
 }
 
 void CommandList::addCommand (const StdString &hostname, int tcpPort, Json *command, CommandList::InvokeCallback callback, void *callbackData) {
-	App *app;
 	CommandList::Context *ctx;
 	StdString url, postdata;
 	bool shouldinvoke;
 
-	app = App::getInstance ();
 	shouldinvoke = false;
 
 	SDL_LockMutex (mutex);
@@ -128,19 +126,17 @@ void CommandList::addCommand (const StdString &hostname, int tcpPort, Json *comm
 	SDL_UnlockMutex (mutex);
 
 	if (shouldinvoke) {
-		app->network.sendHttpPost (url, postdata, CommandList::invokeComplete, this);
+		App::instance->network.sendHttpPost (url, postdata, CommandList::invokeComplete, this);
 	}
 }
 
 void CommandList::invokeComplete (void *commandListPtr, const StdString &targetUrl, int statusCode, SharedBuffer *responseData) {
 	CommandList *cmdlist;
-	App *app;
 	StdString resp;
 	Json *responsecmd;
 	int result;
 
 	cmdlist = (CommandList *) commandListPtr;
-	app = App::getInstance ();
 	if (statusCode == Network::HTTP_UNAUTHORIZED) {
 		if (cmdlist->authorizeLastCommand ()) {
 			return;
@@ -171,7 +167,7 @@ void CommandList::invokeComplete (void *commandListPtr, const StdString &targetU
 
 	if (result == Result::SUCCESS) {
 		resp.assignBuffer (responseData);
-		if (! app->systemInterface.parseCommand (resp, &responsecmd)) {
+		if (! App::instance->systemInterface.parseCommand (resp, &responsecmd)) {
 			result = Result::ERROR_MALFORMED_RESPONSE;
 		}
 	}
@@ -183,12 +179,10 @@ void CommandList::invokeComplete (void *commandListPtr, const StdString &targetU
 }
 
 void CommandList::endInvoke (int invokeResult, Json *responseCommand) {
-	App *app;
 	CommandList::Context *ctx;
 	StdString agentid, url, postdata;
 	bool shouldinvoke;
 
-	app = App::getInstance ();
 	ctx = NULL;
 	shouldinvoke = false;
 
@@ -203,7 +197,7 @@ void CommandList::endInvoke (int invokeResult, Json *responseCommand) {
 		lastInvokeResult = invokeResult;
 		if (ctx->callback) {
 			if (responseCommand) {
-				agentid = app->systemInterface.getCommandAgentId (responseCommand);
+				agentid = App::instance->systemInterface.getCommandAgentId (responseCommand);
 			}
 
 			ctx->callback (ctx->callbackData, invokeResult, ctx->hostname, ctx->tcpPort, agentid, ctx->command, responseCommand);
@@ -214,7 +208,7 @@ void CommandList::endInvoke (int invokeResult, Json *responseCommand) {
 	SDL_LockMutex (mutex);
 	if (! getNextCommand (&url, &postdata)) {
 		isInvoking = false;
-		lastIdleTime = Util::getTime ();
+		lastIdleTime = OsUtil::getTime ();
 	}
 	else {
 		shouldinvoke = true;
@@ -223,7 +217,7 @@ void CommandList::endInvoke (int invokeResult, Json *responseCommand) {
 	SDL_UnlockMutex (mutex);
 
 	if (shouldinvoke) {
-		app->network.sendHttpPost (url, postdata, CommandList::invokeComplete, this);
+		App::instance->network.sendHttpPost (url, postdata, CommandList::invokeComplete, this);
 	}
 	else {
 		if (! isInvoking) {
@@ -233,7 +227,6 @@ void CommandList::endInvoke (int invokeResult, Json *responseCommand) {
 }
 
 bool CommandList::getNextCommand (StdString *url, StdString *postData) {
-	App *app;
 	CommandList::Context *ctx;
 	std::map<StdString, CommandList::Token>::iterator pos;
 	Json *cmd;
@@ -242,14 +235,13 @@ bool CommandList::getNextCommand (StdString *url, StdString *postData) {
 		return (false);
 	}
 
-	app = App::getInstance ();
 	ctx = contextList.front ();
 	if (ctx->hostname.empty () || (ctx->tcpPort <= 0)) {
 		return (false);
 	}
 
-	url->assign (app->agentControl.getHostInvokeUrl (ctx->hostname, ctx->tcpPort));
-	pos = tokenMap.find (app->agentControl.getMapKey (ctx->hostname, ctx->tcpPort));
+	url->assign (App::instance->agentControl.getHostInvokeUrl (ctx->hostname, ctx->tcpPort));
+	pos = tokenMap.find (App::instance->agentControl.getMapKey (ctx->hostname, ctx->tcpPort));
 	if (pos == tokenMap.end ()) {
 		postData->assign (ctx->command->toString ());
 		return (true);
@@ -257,8 +249,8 @@ bool CommandList::getNextCommand (StdString *url, StdString *postData) {
 
 	cmd = new Json ();
 	cmd->copy (ctx->command);
-	if (! app->agentControl.setCommandAuthorization (cmd, pos->second.authorizeSecretIndex, pos->second.token)) {
-		Log::write (Log::DEBUG, "Failed to generate command authorization; err=index %i not found", ctx->authorizeSecretIndex);
+	if (! App::instance->agentControl.setCommandAuthorization (cmd, pos->second.authorizeSecretIndex, pos->second.token)) {
+		Log::debug ("Failed to generate command authorization; err=index %i not found", ctx->authorizeSecretIndex);
 		postData->assign (ctx->command->toString ());
 	}
 	else {
@@ -270,13 +262,11 @@ bool CommandList::getNextCommand (StdString *url, StdString *postData) {
 }
 
 bool CommandList::authorizeLastCommand () {
-	App *app;
 	CommandList::Context *ctx;
 	Json *cmd, *params;
 	StdString path, url, postdata;
 	bool result;
 
-	app = App::getInstance ();
 	result = false;
 	SDL_LockMutex (mutex);
 	if (! contextList.empty ()) {
@@ -293,15 +283,15 @@ bool CommandList::authorizeLastCommand () {
 
 		if (ctx->isAuthorizing) {
 			params = new Json ();
-			params->set ("token", app->getRandomString (64));
-			cmd = app->createCommand ("Authorize", SystemInterface::Constant_DefaultCommandType, params);
+			params->set ("token", App::instance->getRandomString (64));
+			cmd = App::instance->createCommand (SystemInterface::Command_Authorize, SystemInterface::Constant_DefaultCommandType, params);
 			if (cmd) {
-				if (app->agentControl.setCommandAuthorization (cmd, ctx->authorizeSecretIndex, StdString (""), &path)) {
+				if (App::instance->agentControl.setCommandAuthorization (cmd, ctx->authorizeSecretIndex, StdString (""), &path)) {
 					result = true;
 					ctx->isAuthorizing = true;
-					url = app->agentControl.getHostInvokeUrl (ctx->hostname, ctx->tcpPort, path);
+					url = App::instance->agentControl.getHostInvokeUrl (ctx->hostname, ctx->tcpPort, path);
 					postdata = cmd->toString ();
-					tokenMap.erase (app->agentControl.getMapKey (ctx->hostname, ctx->tcpPort));
+					tokenMap.erase (App::instance->agentControl.getMapKey (ctx->hostname, ctx->tcpPort));
 				}
 				delete (cmd);
 			}
@@ -315,22 +305,20 @@ bool CommandList::authorizeLastCommand () {
 	SDL_UnlockMutex (mutex);
 
 	if (result) {
-		app->network.sendHttpPost (url, postdata, CommandList::authorizeComplete, this);
+		App::instance->network.sendHttpPost (url, postdata, CommandList::authorizeComplete, this);
 	}
 	return (result);
 }
 
 void CommandList::authorizeComplete (void *commandListPtr, const StdString &targetUrl, int statusCode, SharedBuffer *responseData) {
 	CommandList *cmdlist;
-	App *app;
 	SystemInterface *interface;
 	StdString resp;
 	Json *responsecmd;
 	int result;
 
 	cmdlist = (CommandList *) commandListPtr;
-	app = App::getInstance ();
-	interface = &(app->systemInterface);
+	interface = &(App::instance->systemInterface);
 
 	result = Result::SUCCESS;
 	responsecmd = NULL;
@@ -355,17 +343,15 @@ void CommandList::authorizeComplete (void *commandListPtr, const StdString &targ
 }
 
 void CommandList::endAuthorize (int invokeResult, Json *responseCommand) {
-	App *app;
 	SystemInterface *interface;
 	CommandList::Context *ctx;
 	CommandList::Token item;
 	StdString token, url, postdata;
 	bool shouldinvoke, shouldcallback;
 
-	app = App::getInstance ();
-	interface = &(app->systemInterface);
+	interface = &(App::instance->systemInterface);
 
-	if (responseCommand && (interface->getCommandId (responseCommand) == SystemInterface::Command_AuthorizeResult)) {
+	if (responseCommand && (interface->getCommandId (responseCommand) == SystemInterface::CommandId_AuthorizeResult)) {
 		token = interface->getCommandStringParam (responseCommand, "token", "");
 	}
 
@@ -384,7 +370,7 @@ void CommandList::endAuthorize (int invokeResult, Json *responseCommand) {
 				}
 				else {
 					isInvoking = false;
-					lastIdleTime = Util::getTime ();
+					lastIdleTime = OsUtil::getTime ();
 				}
 			}
 		}
@@ -392,7 +378,7 @@ void CommandList::endAuthorize (int invokeResult, Json *responseCommand) {
 			ctx->isAuthorizeComplete = true;
 			item.token.assign (token);
 			item.authorizeSecretIndex = ctx->authorizeSecretIndex;
-			tokenMap.insert (std::pair<StdString, CommandList::Token> (app->agentControl.getMapKey (ctx->hostname, ctx->tcpPort), item));
+			tokenMap.insert (std::pair<StdString, CommandList::Token> (App::instance->agentControl.getMapKey (ctx->hostname, ctx->tcpPort), item));
 			if (getNextCommand (&url, &postdata)) {
 				shouldinvoke = true;
 			}
@@ -401,7 +387,7 @@ void CommandList::endAuthorize (int invokeResult, Json *responseCommand) {
 	SDL_UnlockMutex (mutex);
 
 	if (shouldinvoke) {
-		app->network.sendHttpPost (url, postdata, CommandList::invokeComplete, this);
+		App::instance->network.sendHttpPost (url, postdata, CommandList::invokeComplete, this);
 	}
 	if (ctx && shouldcallback) {
 		lastInvokeResult = Result::ERROR_UNAUTHORIZED;

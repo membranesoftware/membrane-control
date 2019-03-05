@@ -36,7 +36,7 @@
 #include "App.h"
 #include "Resource.h"
 #include "SpriteGroup.h"
-#include "Util.h"
+#include "OsUtil.h"
 #include "Ui.h"
 #include "SystemInterface.h"
 #include "StringList.h"
@@ -46,10 +46,9 @@
 #include "Toggle.h"
 #include "Button.h"
 #include "Menu.h"
-#include "ScrollView.h"
+#include "Chip.h"
 #include "TextFieldWindow.h"
 #include "ActionWindow.h"
-#include "HelpWindow.h"
 #include "IconCardWindow.h"
 #include "CardView.h"
 #include "ServerWindow.h"
@@ -75,49 +74,39 @@ StdString ServerUi::getSpritePath () {
 	return (StdString ("ui/ServerUi/sprite"));
 }
 
-StdString ServerUi::getBreadcrumbTitle () {
-	return (App::getInstance ()->uiText.getText (UiTextString::servers).capitalized ());
+Widget *ServerUi::createBreadcrumbWidget () {
+	return (new Chip (App::instance->uiText.getText (UiTextString::servers).capitalized (), sprites.getSprite (ServerUi::BREADCRUMB_ICON)));
 }
 
-Sprite *ServerUi::getBreadcrumbSprite () {
-	return (sprites.getSprite (ServerUi::BREADCRUMB_ICON)->copy ());
-}
-
-void ServerUi::setHelpWindowContent (Widget *helpWindowPtr) {
-	App *app;
-	HelpWindow *help;
+void ServerUi::setHelpWindowContent (HelpWindow *helpWindow) {
 	UiText *uitext;
 
-	help = (HelpWindow *) helpWindowPtr;
-	app = App::getInstance ();
-	uitext = &(app->uiText);
+	uitext = &(App::instance->uiText);
 
-	help->setHelpText (uitext->getText (UiTextString::serverUiHelpTitle), uitext->getText (UiTextString::serverUiHelpText));
+	helpWindow->setHelpText (uitext->getText (UiTextString::serverUiHelpTitle), uitext->getText (UiTextString::serverUiHelpText));
 	if (agentCount <= 0) {
-		help->addAction (uitext->getText (UiTextString::serverUiHelpAction1Text), uitext->getText (UiTextString::learnMore).capitalized (), Util::getHelpUrl ("servers"));
+		helpWindow->addAction (uitext->getText (UiTextString::serverUiHelpAction1Text), uitext->getText (UiTextString::learnMore).capitalized (), App::getHelpUrl ("servers"));
 	}
 	else {
-		help->addAction (uitext->getText (UiTextString::serverUiHelpAction2Text), uitext->getText (UiTextString::learnMore).capitalized (), Util::getHelpUrl ("servers"));
+		helpWindow->addAction (uitext->getText (UiTextString::serverUiHelpAction2Text), uitext->getText (UiTextString::learnMore).capitalized (), App::getHelpUrl ("servers"));
 	}
 
-	help->addTopicLink (uitext->getText (UiTextString::serversHelpTitle), Util::getHelpUrl ("servers"));
-	help->addTopicLink (uitext->getText (UiTextString::membraneSoftwareOverviewHelpTitle), Util::getHelpUrl ("membrane-software-overview"));
-	help->addTopicLink (uitext->getText (UiTextString::searchForHelp).capitalized (), Util::getHelpUrl (""));
+	helpWindow->addTopicLink (uitext->getText (UiTextString::serversHelpTitle), App::getHelpUrl ("servers"));
+	helpWindow->addTopicLink (uitext->getText (UiTextString::membraneSoftwareOverviewHelpTitle), App::getHelpUrl ("membrane-software-overview"));
+	helpWindow->addTopicLink (uitext->getText (UiTextString::searchForHelp).capitalized (), App::getHelpUrl (""));
 }
 
 int ServerUi::doLoad () {
-	App *app;
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
-	app = App::getInstance ();
-	uiconfig = &(app->uiConfig);
-	uitext = &(app->uiText);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 
-	cardView = (CardView *) addWidget (new CardView (app->windowWidth - app->rightBarWidth, app->windowHeight - app->topBarHeight - app->bottomBarHeight));
+	cardView = (CardView *) addWidget (new CardView (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight));
 	cardView->isKeyboardScrollEnabled = true;
 	cardView->setRowHeader (0, uitext->getText (UiTextString::serverUiNetworkAgentsTitle), UiConfiguration::TITLE, uiconfig->inverseTextColor);
-	cardView->position.assign (0.0f, app->topBarHeight);
+	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 
 	adminSecretWindow = new AdminSecretWindow ();
 	adminSecretWindow->setAddButtonClickCallback (ServerUi::adminSecretAddButtonClicked, this);
@@ -134,47 +123,39 @@ void ServerUi::doUnload () {
 	emptyServerWindow.clear ();
 }
 
-void ServerUi::doResetMainToolbar (Toolbar *toolbar) {
-	App *app;
+void ServerUi::doAddMainToolbarItems (Toolbar *toolbar) {
 	Button *button;
 
-	app = App::getInstance ();
-	button = new Button (StdString (""), app->uiConfig.coreSprites.getSprite (UiConfiguration::RELOAD_BUTTON));
+	button = new Button (StdString (""), App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::RELOAD_BUTTON));
 	button->setInverseColor (true);
 	button->setMouseClickCallback (ServerUi::reloadButtonClicked, this);
-	button->setMouseHoverTooltip (app->uiText.getText (UiTextString::reloadTooltip));
+	button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::reloadTooltip));
 	toolbar->addRightItem (button);
-
-	addMainToolbarBackButton (toolbar);
 }
 
-void ServerUi::doResetSecondaryToolbar (Toolbar *toolbar) {
-	App *app;
+void ServerUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
 	UiConfiguration *uiconfig;
 	Button *button;
 	Toggle *toggle;
 
-	app = App::getInstance ();
-	uiconfig = &(app->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 
 	button = new Button (StdString (""), sprites.getSprite (ServerUi::BROADCAST_BUTTON));
 	button->setInverseColor (true);
 	button->shortcutKey = SDLK_F2;
 	button->setMouseClickCallback (ServerUi::broadcastButtonClicked, this);
-	button->setMouseHoverTooltip (app->uiText.getText (UiTextString::serverUiBroadcastTooltip));
+	button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::serverUiBroadcastTooltip));
 	toolbar->addRightItem (button);
 
 	toggle = new Toggle (sprites.getSprite (ServerUi::ADDRESS_BUTTON), uiconfig->coreSprites.getSprite (UiConfiguration::CANCEL_BUTTON));
 	toggle->setInverseColor (true);
 	toggle->shortcutKey = SDLK_F1;
 	toggle->setStateChangeCallback (ServerUi::addressToggleStateChanged, this);
-	toggle->setMouseHoverTooltip (app->uiText.getText (UiTextString::serverUiAddressTooltip));
+	toggle->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::serverUiAddressTooltip));
 	toolbar->addRightItem (toggle);
 
 	addressToggle.destroyAndClear ();
 	addressToggle.assign (toggle);
-
-	toolbar->isVisible = true;
 }
 
 void ServerUi::doClearPopupWidgets () {
@@ -182,23 +163,16 @@ void ServerUi::doClearPopupWidgets () {
 }
 
 void ServerUi::doResume () {
-	App *app;
-
-	app = App::getInstance ();
-
-	app->setNextBackgroundTexturePath ("ui/ServerUi/bg");
-	cardView->setViewSize (app->windowWidth - app->rightBarWidth, app->windowHeight - app->topBarHeight - app->bottomBarHeight);
-	cardView->position.assign (0.0f, app->topBarHeight);
+	App::instance->setNextBackgroundTexturePath ("ui/ServerUi/bg");
+	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
+	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 
 	adminSecretWindow->readItems ();
 }
 
 void ServerUi::doRefresh () {
-	App *app;
-
-	app = App::getInstance ();
-	cardView->setViewSize (app->windowWidth - app->rightBarWidth, app->windowHeight - app->topBarHeight - app->bottomBarHeight);
-	cardView->position.assign (0.0f, app->topBarHeight);
+	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
+	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 }
 
 void ServerUi::doPause () {
@@ -218,7 +192,7 @@ void ServerUi::doUpdate (int msElapsed) {
 	emptyServerWindow.compact ();
 
 	cardIdList.clear ();
-	cardView->processItems (ServerUi::findDeletedServerContactWindows, this);
+	cardView->processItems (ServerUi::findDeletedWindows, this);
 	if (! cardIdList.empty ()) {
 		i = cardIdList.begin ();
 		end = cardIdList.end ();
@@ -231,41 +205,49 @@ void ServerUi::doUpdate (int msElapsed) {
 	}
 }
 
-void ServerUi::findDeletedServerContactWindows (void *uiPtr, Widget *widgetPtr) {
+void ServerUi::findDeletedWindows (void *uiPtr, Widget *widgetPtr) {
 	ServerUi *ui;
-	ServerContactWindow *window;
+	ServerWindow *serverwindow;
+	ServerContactWindow *servercontactwindow;
 
 	ui = (ServerUi *) uiPtr;
-	window = ServerContactWindow::castWidget (widgetPtr);
-	if (! window) {
-		return;
+	serverwindow = ServerWindow::castWidget (widgetPtr);
+	if (serverwindow) {
+		if (serverwindow->isRecordDeleted) {
+			ui->cardIdList.push_back (serverwindow->itemId);
+		}
 	}
-
-	if (window->isDeleted) {
-		ui->cardIdList.push_back (window->itemId);
+	else {
+		servercontactwindow = ServerContactWindow::castWidget (widgetPtr);
+		if (servercontactwindow) {
+			if (servercontactwindow->isDeleted) {
+				ui->cardIdList.push_back (servercontactwindow->itemId);
+			}
+		}
 	}
 }
 
 void ServerUi::doResize () {
-	App *app;
+	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
+	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 
-	app = App::getInstance ();
-	cardView->setViewSize (app->windowWidth - app->rightBarWidth, app->windowHeight - app->topBarHeight - app->bottomBarHeight);
-	cardView->position.assign (0.0f, app->topBarHeight);
+	if (addressTextFieldWindow.widget) {
+		((TextFieldWindow *) addressTextFieldWindow.widget)->setWindowWidth (App::instance->uiStack.secondaryToolbar->getLeftWidth ());
+	}
 }
 
-void ServerUi::doSyncRecordStore (RecordStore *store) {
-	App *app;
+void ServerUi::doSyncRecordStore () {
+	RecordStore *store;
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 	IconCardWindow *window;
 
-	app = App::getInstance ();
-	uiconfig = &(app->uiConfig);
-	uitext = &(app->uiText);
+	store = &(App::instance->agentControl.recordStore);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 
 	agentCount = 0;
-	store->processCommandRecords (SystemInterface::Command_AgentStatus, ServerUi::processAgentStatus, this);
+	store->processCommandRecords (SystemInterface::CommandId_AgentStatus, ServerUi::processAgentStatus, this);
 	cardView->processItems (ServerUi::countServerContactWindows, this);
 
 	window = (IconCardWindow *) emptyServerWindow.widget;
@@ -278,7 +260,7 @@ void ServerUi::doSyncRecordStore (RecordStore *store) {
 	else {
 		if (! window) {
 			window = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::ERROR_ICON), uitext->getText (UiTextString::serverUiEmptyAgentStatusTitle), StdString (""), uitext->getText (UiTextString::serverUiEmptyAgentStatusText));
-			window->setLink (uitext->getText (UiTextString::learnMore).capitalized (), Util::getHelpUrl ("servers"));
+			window->setLink (uitext->getText (UiTextString::learnMore).capitalized (), App::getHelpUrl ("servers"));
 			emptyServerWindow.assign (window);
 
 			window->itemId.assign (cardView->getAvailableItemId ());
@@ -286,7 +268,7 @@ void ServerUi::doSyncRecordStore (RecordStore *store) {
 		}
 	}
 
-	cardView->syncRecordStore (store);
+	cardView->syncRecordStore ();
 	cardView->refresh ();
 }
 
@@ -305,56 +287,49 @@ void ServerUi::processAgentStatus (void *uiPtr, Json *record, const StdString &r
 	ServerWindow *window;
 
 	ui = (ServerUi *) uiPtr;
-	interface = &(App::getInstance ()->systemInterface);
+	interface = &(App::instance->systemInterface);
 	++(ui->agentCount);
 
 	if (! ui->cardView->contains (recordId)) {
 		window = new ServerWindow (recordId);
 		window->sortKey.assign (interface->getCommandAgentName (record).lowercased ());
 		window->setMenuClickCallback (ServerUi::agentMenuClicked, ui);
+		window->itemId.assign (recordId);
 		ui->cardView->addItem (window, recordId, 0);
 	}
 }
 
 void ServerUi::reloadButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	ServerUi *ui;
-	App *app;
 
 	ui = (ServerUi *) uiPtr;
-	app = App::getInstance ();
 	ui->cardView->processItems (ServerUi::reloadAgent, ui);
-	app->agentControl.retryAgents ();
+	App::instance->agentControl.retryAgents ();
 }
 
 void ServerUi::reloadAgent (void *uiPtr, Widget *widgetPtr) {
 	ServerWindow *serverwindow;
 	ServerContactWindow *servercontactwindow;
-	App *app;
 
-	app = App::getInstance ();
 	serverwindow = ServerWindow::castWidget (widgetPtr);
 	if (serverwindow) {
-		app->agentControl.refreshAgentStatus (serverwindow->agentId);
+		App::instance->agentControl.refreshAgentStatus (serverwindow->agentId);
 	}
 	else {
 		servercontactwindow = ServerContactWindow::castWidget (widgetPtr);
 		if (servercontactwindow) {
-			app->agentControl.contactAgent (servercontactwindow->agentHostname, servercontactwindow->agentPort);
+			App::instance->agentControl.contactAgent (servercontactwindow->agentHostname, servercontactwindow->agentPort);
 		}
 	}
 }
 
 void ServerUi::broadcastButtonClicked (void *uiPtr, Widget *widgetPtr) {
-	App *app;
-
-	app = App::getInstance ();
-	app->agentControl.broadcastContactMessage ();
-	app->showSnackbar (app->uiText.getText (UiTextString::sentBroadcast));
+	App::instance->agentControl.broadcastContactMessage ();
+	App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::sentBroadcast));
 }
 
 void ServerUi::addressToggleStateChanged (void *uiPtr, Widget *widgetPtr) {
 	ServerUi *ui;
-	App *app;
 	UiConfiguration *uiconfig;
 	Toolbar *toolbar;
 	Toggle *toggle;
@@ -362,12 +337,11 @@ void ServerUi::addressToggleStateChanged (void *uiPtr, Widget *widgetPtr) {
 
 	ui = (ServerUi *) uiPtr;
 	toggle = (Toggle *) widgetPtr;
-	app = App::getInstance ();
-	uiconfig = &(app->uiConfig);
-	toolbar = app->secondaryToolbar;
+	uiconfig = &(App::instance->uiConfig);
+	toolbar = App::instance->uiStack.secondaryToolbar;
 
 	if (toggle->isChecked) {
-		textfield = new TextFieldWindow (toolbar->getLeftWidth (), app->uiText.getText (UiTextString::enterAddressPrompt), ui->sprites.getSprite (ServerUi::ADDRESS_ICON));
+		textfield = new TextFieldWindow (toolbar->getLeftWidth (), App::instance->uiText.getText (UiTextString::enterAddressPrompt), ui->sprites.getSprite (ServerUi::ADDRESS_ICON));
 		textfield->setWindowHeight (toolbar->height);
 		textfield->setButtonsEnabled (true, false, false, false);
 		textfield->setFillBg (true, uiconfig->lightPrimaryColor);
@@ -385,7 +359,6 @@ void ServerUi::addressToggleStateChanged (void *uiPtr, Widget *widgetPtr) {
 }
 
 void ServerUi::addressTextFieldEdited (void *uiPtr, Widget *widgetPtr) {
-	App *app;
 	ServerUi *ui;
 	TextFieldWindow *textfield;
 	ServerContactWindow *window;
@@ -393,26 +366,25 @@ void ServerUi::addressTextFieldEdited (void *uiPtr, Widget *widgetPtr) {
 	int port;
 
 	ui = (ServerUi *) uiPtr;
-	app = App::getInstance ();
 	textfield = (TextFieldWindow *) widgetPtr;
 	address.assign (textfield->getValue ());
 	if (address.empty ()) {
-		app->showSnackbar (app->uiText.getText (UiTextString::invokeGetStatusAddressEmptyError), app->uiText.getText (UiTextString::help).uppercased (), ServerUi::addressSnackbarHelpClicked, ui);
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::invokeGetStatusAddressEmptyError), App::instance->uiText.getText (UiTextString::help).uppercased (), ServerUi::addressSnackbarHelpClicked, ui);
 		return;
 	}
 
-	if (! StdString::parseAddress (address.c_str (), &hostname, &port, SystemInterface::Constant_DefaultTcpPort1)) {
-		app->showSnackbar (app->uiText.getText (UiTextString::invokeGetStatusAddressParseError), app->uiText.getText (UiTextString::help).uppercased (), ServerUi::addressSnackbarHelpClicked, ui);
+	if (! address.parseAddress (&hostname, &port, SystemInterface::Constant_DefaultTcpPort1)) {
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::invokeGetStatusAddressParseError), App::instance->uiText.getText (UiTextString::help).uppercased (), ServerUi::addressSnackbarHelpClicked, ui);
 		return;
 	}
 
-	if (app->agentControl.isContacted (hostname, port)) {
-		app->agentControl.refreshAgentStatus (hostname, port);
+	if (App::instance->agentControl.isContacted (hostname, port)) {
+		App::instance->agentControl.refreshAgentStatus (hostname, port);
 		return;
 	}
 
-	app->agentControl.contactAgent (hostname, port);
-	app->showSnackbar (StdString::createSprintf ("%s: %s", app->uiText.getText (UiTextString::serverUiContactingAgentMessage).c_str (), address.c_str ()));
+	App::instance->agentControl.contactAgent (hostname, port);
+	App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s: %s", App::instance->uiText.getText (UiTextString::serverUiContactingAgentMessage).c_str (), address.c_str ()));
 
 	key.sprintf ("%s:%i", hostname.c_str (), port);
 	if (! ui->cardView->contains (key)) {
@@ -422,28 +394,25 @@ void ServerUi::addressTextFieldEdited (void *uiPtr, Widget *widgetPtr) {
 		window->itemId.assign (key);
 		ui->cardView->addItem (window, window->itemId, 0);
 	}
-	app->shouldSyncRecordStore = true;
+	App::instance->shouldSyncRecordStore = true;
 }
 
 void ServerUi::addressSnackbarHelpClicked (void *uiPtr, Widget *widgetPtr) {
-	App *app;
 	StdString url;
 	int result;
 
-	app = App::getInstance ();
-	url.assign (Util::getHelpUrl ("servers"));
-	result = Util::openUrl (url);
+	url.assign (App::getHelpUrl ("servers"));
+	result = OsUtil::openUrl (url);
 	if (result != Result::SUCCESS) {
-		app->showSnackbar (app->uiText.getText (UiTextString::openHelpUrlError));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::openHelpUrlError));
 	}
 	else {
-		app->showSnackbar (StdString::createSprintf ("%s - %s", app->uiText.getText (UiTextString::launchedWebBrowser).capitalized ().c_str (), url.c_str ()));
+		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::launchedWebBrowser).capitalized ().c_str (), url.c_str ()));
 	}
 }
 
 void ServerUi::agentMenuClicked (void *uiPtr, Widget *widgetPtr) {
 	ServerUi *ui;
-	App *app;
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 	ServerWindow *target;
@@ -452,9 +421,8 @@ void ServerUi::agentMenuClicked (void *uiPtr, Widget *widgetPtr) {
 
 	ui = (ServerUi *) uiPtr;
 	target = (ServerWindow *) widgetPtr;
-	app = App::getInstance ();
-	uiconfig = &(app->uiConfig);
-	uitext = &(app->uiText);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 
 	show = true;
 	if (Menu::isWidgetType (ui->actionWidget.widget) && (ui->actionTarget.widget == target)) {
@@ -466,7 +434,7 @@ void ServerUi::agentMenuClicked (void *uiPtr, Widget *widgetPtr) {
 		return;
 	}
 
-	action = (Menu *) app->rootPanel->addWidget (new Menu ());
+	action = (Menu *) App::instance->rootPanel->addWidget (new Menu ());
 	ui->actionWidget.assign (action);
 	ui->actionTarget.assign (target);
 
@@ -477,77 +445,69 @@ void ServerUi::agentMenuClicked (void *uiPtr, Widget *widgetPtr) {
 
 	action->addItem (uitext->getText (UiTextString::remove).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::DELETE_BUTTON), ServerUi::agentRemoveActionClicked, ui);
 
-	action->zLevel = app->rootPanel->maxWidgetZLevel + 1;
+	action->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
 	action->isClickDestroyEnabled = true;
 	action->position.assign (target->drawX + target->width - action->width - uiconfig->marginSize, target->drawY + target->menuPositionY);
 }
 
 void ServerUi::agentAdminActionClicked (void *uiPtr, Widget *widgetPtr) {
-	App *app;
 	ServerUi *ui;
 	ServerWindow *target;
 
 	ui = (ServerUi *) uiPtr;
-	app = App::getInstance ();
 	target = ServerWindow::castWidget (ui->actionTarget.widget);
 	if (! target) {
 		return;
 	}
 
-	app->pushUi (new ServerAdminUi (target->agentId, target->agentDisplayName));
+	App::instance->uiStack.pushUi (new ServerAdminUi (target->agentId, target->agentDisplayName));
 }
 
 void ServerUi::agentUpdateActionClicked (void *uiPtr, Widget *widgetPtr) {
-	App *app;
 	ServerUi *ui;
 	ServerWindow *target;
 	StdString url;
 	int result;
 
 	ui = (ServerUi *) uiPtr;
-	app = App::getInstance ();
 	target = ServerWindow::castWidget (ui->actionTarget.widget);
 	if (! target) {
 		return;
 	}
 
 	ui->clearPopupWidgets ();
-	url.assign (Util::getUpdateUrl (target->applicationId));
-	result = Util::openUrl (url);
+	url.assign (App::getUpdateUrl (target->applicationId));
+	result = OsUtil::openUrl (url);
 	if (result != Result::SUCCESS) {
-		app->showSnackbar (app->uiText.getText (UiTextString::openUpdateUrlError));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::openUpdateUrlError));
 	}
 	else {
-		app->showSnackbar (StdString::createSprintf ("%s - %s", app->uiText.getText (UiTextString::launchedWebBrowser).capitalized ().c_str (), url.c_str ()));
+		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::launchedWebBrowser).capitalized ().c_str (), url.c_str ()));
 	}
 }
 
 void ServerUi::agentRemoveActionClicked (void *uiPtr, Widget *widgetPtr) {
 	ServerUi *ui;
 	ServerWindow *target;
-	App *app;
 
 	ui = (ServerUi *) uiPtr;
-	app = App::getInstance ();
 	target = ServerWindow::castWidget (ui->actionTarget.widget);
 	if (target) {
-		app->agentControl.removeAgent (target->agentId);
+		App::instance->agentControl.removeAgent (target->agentId);
 		ui->cardView->removeItem (target->agentId);
 	}
 	ui->clearPopupWidgets ();
-	app->shouldSyncRecordStore = true;
+	App::instance->shouldSyncRecordStore = true;
 }
 
 void ServerUi::adminSecretAddButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	ServerUi *ui;
 	AdminSecretWindow *target;
-	App *app;
 	ActionWindow *action;
 	bool show;
 
 	ui = (ServerUi *) uiPtr;
 	target = (AdminSecretWindow *) widgetPtr;
-	app = App::getInstance ();
 
 	show = true;
 	if (ActionWindow::isWidgetType (ui->actionWidget.widget) && (ui->actionTarget.widget == target)) {
@@ -559,10 +519,10 @@ void ServerUi::adminSecretAddButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	}
 
 	action = target->createAddActionWindow ();
-	action->zLevel = app->rootPanel->maxWidgetZLevel + 1;
+	action->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
 	action->setCloseCallback (ServerUi::adminSecretAddActionClosed, ui);
 
-	app->rootPanel->addWidget (action);
+	App::instance->rootPanel->addWidget (action);
 	ui->actionWidget.assign (action);
 	ui->actionTarget.assign (target);
 	action->position.assign (target->drawX + target->width, target->drawY + target->height - action->height);

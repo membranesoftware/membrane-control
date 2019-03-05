@@ -53,16 +53,21 @@
 #define PLATFORM_WINDOWS 0
 #endif
 
+#if !(PLATFORM_LINUX || PLATFORM_MACOS || PLATFORM_WINDOWS)
+#undef PLATFORM_LINUX
+#define PLATFORM_LINUX 1
+#endif
+
 #define CONFIG_FLOAT_EPSILON (0.000001f)
 #define FLOAT_EQUALS(F1,F2) (fabs (F1 - F2) <= CONFIG_FLOAT_EPSILON)
 #define BOOL_STRING(VAL) ((VAL) ? "true" : "false")
 #define TOSTRING_STRING(VAL) ((VAL) ? (VAL)->toString ().c_str () : "NULL")
+#define CONFIG_DEFAULT_RESOURCE_PATH "membrane-control.dat"
 
 #if PLATFORM_LINUX || PLATFORM_MACOS
 #define OPEN_READONLY_FLAGS O_RDONLY
 #define OPEN_CREATE_FLAGS (O_WRONLY | O_CREAT)
 #define CONFIG_NEWLINE "\n"
-#define CONFIG_DEFAULT_RESOURCE_PATH "membrane-control.dat"
 #endif
 
 #if PLATFORM_WINDOWS
@@ -75,7 +80,6 @@
 #define S_ISDIR(X) ((X) && _S_IFDIR)
 #define SHUT_RDWR SD_BOTH
 #define CONFIG_NEWLINE "\r\n"
-#define CONFIG_DEFAULT_RESOURCE_PATH "membrane_control.dat"
 #endif
 
 #endif

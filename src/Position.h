@@ -40,9 +40,10 @@ public:
 
 	// Read-only data members
 	float x, y;
+	bool isTranslating;
 	float translateTargetX, translateTargetY;
 	float translateDx, translateDy;
-	bool isTranslating;
+	int translateDuration;
 
 	// Update state as appropriate for an elapsed millisecond time period
 	void update (int msElapsed);
@@ -66,6 +67,17 @@ public:
 
 	// Begin a translation operation using the provided parameters
 	void translate (float targetX, float targetY, int durationMs);
+	void translate (const Position &targetPosition, int durationMs);
+	void translate (float startX, float startY, float targetX, float targetY, int durationMs);
+	void translate (const Position &startPosition, const Position &targetPosition, int durationMs);
+
+	// Begin a translation operation for the position's x coordinate value
+	void translateX (float targetX, int durationMs);
+	void translateX (float startX, float targetX, int durationMs);
+
+	// Begin a translation operation for the position's y coordinate value
+	void translateY (float targetY, int durationMs);
+	void translateY (float startY, float targetY, int durationMs);
 
 	// Return a boolean value indicating if the position is equivalent to the provided one
 	bool equals (float positionX, float positionY) const;

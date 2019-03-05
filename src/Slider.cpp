@@ -30,13 +30,14 @@
 */
 #include "Config.h"
 #include <stdlib.h>
+#include <math.h>
 #include <list>
 #include "SDL2/SDL.h"
 #include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
-#include "Util.h"
+#include "MathUtil.h"
 #include "Widget.h"
 #include "Color.h"
 #include "Sprite.h"
@@ -73,7 +74,7 @@ Slider::Slider (float minValue, float maxValue)
 
 	widgetType.assign ("Slider");
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	if (maxValue < minValue) {
 		maxValue = minValue;
 	}
@@ -106,7 +107,7 @@ void Slider::setInverseColor (bool inverse) {
 	if (isInverseColor == inverse) {
 		return;
 	}
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	isInverseColor = inverse;
 	if (isInverseColor) {
 		thumbColor.assign (uiconfig->darkBackgroundColor);
@@ -220,7 +221,6 @@ void Slider::doUpdate (int msElapsed, float originX, float originY) {
 }
 
 void Slider::doDraw () {
-	App *app;
 	SDL_Rect rect;
 	SDL_Texture *texture;
 	float w, h;
@@ -229,15 +229,13 @@ void Slider::doDraw () {
 		return;
 	}
 
-	app = App::getInstance ();
-
 	h = (thumbSize - trackHeight) / 2.0f;
 	rect.x = (int) drawX;
 	rect.y = (int) (drawY + h);
 	rect.w = (int) trackWidth;
 	rect.h = (int) trackHeight;
-	SDL_SetRenderDrawColor (app->render, trackColor.rByte, trackColor.gByte, trackColor.bByte, 255);
-	SDL_RenderFillRect (app->render, &rect);
+	SDL_SetRenderDrawColor (App::instance->render, trackColor.rByte, trackColor.gByte, trackColor.bByte, 255);
+	SDL_RenderFillRect (App::instance->render, &rect);
 
 	if (isHovering && (! isDragging) && (! FLOAT_EQUALS (hoverValue, value))) {
 		rect.x = (int) drawX;
@@ -248,8 +246,8 @@ void Slider::doDraw () {
 		rect.y = (int) (drawY + h);
 		rect.w = (int) hoverSize;
 		rect.h = (int) trackHeight;
-		SDL_SetRenderDrawColor (app->render, hoverColor.rByte, hoverColor.gByte, hoverColor.bByte, 255);
-		SDL_RenderFillRect (app->render, &rect);
+		SDL_SetRenderDrawColor (App::instance->render, hoverColor.rByte, hoverColor.gByte, hoverColor.bByte, 255);
+		SDL_RenderFillRect (App::instance->render, &rect);
 	}
 
 	rect.x = (int) drawX;
@@ -264,11 +262,11 @@ void Slider::doDraw () {
 		texture = thumbSprite->getTexture (0);
 		SDL_SetTextureColorMod (texture, thumbColor.rByte, thumbColor.gByte, thumbColor.bByte);
 		SDL_SetTextureBlendMode (texture, SDL_BLENDMODE_BLEND);
-		SDL_RenderCopy (app->render, texture, NULL, &rect);
+		SDL_RenderCopy (App::instance->render, texture, NULL, &rect);
 	}
 	else {
-		SDL_SetRenderDrawColor (app->render, thumbColor.rByte, thumbColor.gByte, thumbColor.bByte, 255);
-		SDL_RenderFillRect (app->render, &rect);
+		SDL_SetRenderDrawColor (App::instance->render, thumbColor.rByte, thumbColor.gByte, thumbColor.bByte, 255);
+		SDL_RenderFillRect (App::instance->render, &rect);
 	}
 }
 
@@ -277,7 +275,7 @@ void Slider::doProcessMouseState (const Widget::MouseState &mouseState) {
 	float val, dx;
 	bool firsthover;
 
-	input = &(App::getInstance ()->input);
+	input = &(App::instance->input);
 	firsthover = false;
 	if (mouseState.isEntered) {
 		if (isDragging) {
@@ -342,7 +340,7 @@ void Slider::doProcessMouseState (const Widget::MouseState &mouseState) {
 void Slider::doRefresh () {
 	UiConfiguration *uiconfig;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	thumbSize = uiconfig->sliderThumbSize;
 	trackWidth = uiconfig->sliderTrackWidth * trackWidthScale;
 	trackHeight = uiconfig->sliderTrackHeight;
@@ -367,13 +365,11 @@ void Slider::doResetInputState () {
 }
 
 void Slider::loadThumbSprite () {
-	App *app;
 	Uint32 *dest, color;
 	int x, y, w, h;
 	float dist, radius, targetalpha, minalpha, opacity;
 	uint8_t alpha;
 
-	app = App::getInstance ();
 	w = (int) thumbSize;
 	h = (int) thumbSize;
 	if ((w <= 0) || (h <= 0)) {
@@ -386,7 +382,7 @@ void Slider::loadThumbSprite () {
 	}
 	thumbSpritePixels = (Uint32 *) malloc (w * h * sizeof (Uint32));
 	if (! thumbSpritePixels) {
-		Log::write (Log::WARNING, "Failed to create slider texture; err=\"Out of memory, bitmap dimensions %ix%i\"", w, h);
+		Log::warning ("Failed to create slider texture; err=\"Out of memory, bitmap dimensions %ix%i\"", w, h);
 		isThumbSpriteLoaded = true;
 		return;
 	}
@@ -399,7 +395,7 @@ void Slider::loadThumbSprite () {
 	while (y < h) {
 		x = 0;
 		while (x < w) {
-			dist = Util::getDistance (((float) x) + 0.5f, ((float) y) + 0.5f, radius + 0.5f, radius + 0.5f);
+			dist = MathUtil::getDistance (((float) x) + 0.5f, ((float) y) + 0.5f, radius + 0.5f, radius + 0.5f);
 			targetalpha = 1.0f - ((1.0f - minalpha) * (dist / radius));
 			if (targetalpha <= 0.0f) {
 				targetalpha = 0.0f;
@@ -425,12 +421,11 @@ void Slider::loadThumbSprite () {
 	}
 
 	retain ();
-	app->addRenderTask (Slider::createThumbTexture, this);
+	App::instance->addRenderTask (Slider::createThumbTexture, this);
 }
 
 void Slider::createThumbTexture (void *sliderPtr) {
 	Slider *slider;
-	App *app;
 	Uint32 rmask, gmask, bmask, amask;
 	SDL_Surface *surface;
 	SDL_Texture *texture;
@@ -438,8 +433,6 @@ void Slider::createThumbTexture (void *sliderPtr) {
 	StdString path;
 
 	slider = (Slider *) sliderPtr;
-	app = App::getInstance ();
-
 #if SDL_BYTEORDER == SDL_BIG_ENDIAN
 	rmask = 0xFF000000;
 	gmask = 0x00FF0000;
@@ -453,13 +446,13 @@ void Slider::createThumbTexture (void *sliderPtr) {
 #endif
 	surface = SDL_CreateRGBSurfaceFrom (slider->thumbSpritePixels, (int) slider->thumbSize, (int) slider->thumbSize, 32, (int) slider->thumbSize * sizeof (Uint32), rmask, gmask, bmask, amask);
 	if (! surface) {
-		Log::write (Log::WARNING, "Failed to create slider texture; err=\"SDL_CreateRGBSurfaceFrom, %s\"", SDL_GetError ());
+		Log::warning ("Failed to create slider texture; err=\"SDL_CreateRGBSurfaceFrom, %s\"", SDL_GetError ());
 		slider->endLoadThumbSprite ();
 		return;
 	}
 
-	path.sprintf ("*_Slider_%llx_%llx", (long long int) slider->id, (long long int) app->getUniqueId ());
-	texture = app->resource.createTexture (path, surface);
+	path.sprintf ("*_Slider_%llx_%llx", (long long int) slider->id, (long long int) App::instance->getUniqueId ());
+	texture = App::instance->resource.createTexture (path, surface);
 	SDL_FreeSurface (surface);
 	if (! texture) {
 		slider->endLoadThumbSprite ();

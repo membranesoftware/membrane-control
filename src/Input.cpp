@@ -32,11 +32,10 @@
 #include <stdlib.h>
 #include <vector>
 #include "SDL2/SDL.h"
-#include "SDL2/SDL_events.h"
 #include "Result.h"
 #include "App.h"
 #include "Log.h"
-#include "Util.h"
+#include "OsUtil.h"
 #include "Input.h"
 
 Input::Input ()
@@ -155,7 +154,7 @@ void Input::pollEvents () {
 	SDL_Event event;
 	int64_t now;
 
-	now = Util::getTime ();
+	now = OsUtil::getTime ();
 	while (SDL_PollEvent (&event)) {
 		switch (event.type) {
 			case SDL_KEYDOWN: {
@@ -233,7 +232,7 @@ void Input::pollEvents () {
 			}
 			case SDL_WINDOWEVENT: {
 				if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
-					App::getInstance ()->shutdown ();
+					App::instance->shutdown ();
 				}
 				break;
 			}

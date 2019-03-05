@@ -35,9 +35,10 @@
 #include "StdString.h"
 #include "App.h"
 #include "Resource.h"
-#include "Util.h"
 #include "Json.h"
 #include "UiText.h"
+
+const StdString UiText::defaultLanguage = StdString ("en");
 
 UiText::UiText () {
 
@@ -48,14 +49,16 @@ UiText::~UiText () {
 }
 
 int UiText::load (const StdString &language) {
-	App *app;
 	Buffer *buffer;
 	StdString path, text, s;
 	size_t curpos, pos1, pos2;
 
-	app = App::getInstance ();
 	path.sprintf ("text/%s.txt", language.c_str ());
-	buffer = app->resource.loadFile (path);
+	buffer = App::instance->resource.loadFile (path);
+	if ((! buffer) && (! language.equals (UiText::defaultLanguage))) {
+		path.sprintf ("text/%s.txt", UiText::defaultLanguage.c_str ());
+		buffer = App::instance->resource.loadFile (path);
+	}
 	if (! buffer) {
 		return (Result::ERROR_FILE_OPEN_FAILED);
 	}
@@ -76,7 +79,7 @@ int UiText::load (const StdString &language) {
 		curpos = pos2 + 1;
 	}
 
-	app->resource.unloadFile (path);
+	App::instance->resource.unloadFile (path);
 	return (Result::SUCCESS);
 }
 

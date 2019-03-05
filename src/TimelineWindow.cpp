@@ -30,21 +30,24 @@
 */
 #include "Config.h"
 #include <stdlib.h>
+#include <math.h>
+#include <vector>
+#include <list>
 #include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
-#include "Util.h"
+#include "OsUtil.h"
 #include "Widget.h"
 #include "Color.h"
 #include "Panel.h"
 #include "Label.h"
 #include "UiConfiguration.h"
-#include "TimelineBar.h"
+#include "TimelineWindow.h"
 
-const int TimelineBar::guideSegmentCount = 4;
+const int TimelineWindow::guideSegmentCount = 4;
 
-TimelineBar::TimelineBar (float barWidth, const StdString &recordId)
+TimelineWindow::TimelineWindow (float barWidth, const StdString &recordId)
 : Panel ()
 , recordId (recordId)
 , recordType (-1)
@@ -67,9 +70,7 @@ TimelineBar::TimelineBar (float barWidth, const StdString &recordId)
 {
 	UiConfiguration *uiconfig;
 
-	widgetType.assign ("TimelineBar");
-
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	setFillBg (true, uiconfig->lightBackgroundColor);
 
 	startTimeLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CAPTION, uiconfig->darkBackgroundColor)));
@@ -99,31 +100,35 @@ TimelineBar::TimelineBar (float barWidth, const StdString &recordId)
 	refreshLayout ();
 }
 
-TimelineBar::~TimelineBar () {
+TimelineWindow::~TimelineWindow () {
 
 }
 
-void TimelineBar::setPositionHoverCallback (Widget::EventCallback callback, void *callbackData) {
+StdString TimelineWindow::toStringDetail () {
+	return (StdString (" TimelineWindow"));
+}
+
+void TimelineWindow::setPositionHoverCallback (Widget::EventCallback callback, void *callbackData) {
 	positionHoverCallback = callback;
 	positionHoverCallbackData = callbackData;
 }
 
-void TimelineBar::setPositionClickCallback (Widget::EventCallback callback, void *callbackData) {
+void TimelineWindow::setPositionClickCallback (Widget::EventCallback callback, void *callbackData) {
 	positionClickCallback = callback;
 	positionClickCallbackData = callbackData;
 }
 
-void TimelineBar::syncRecordStore (RecordStore *store) {
-	App *app;
+void TimelineWindow::syncRecordStore () {
+	RecordStore *store;
 	SystemInterface *interface;
 	Json *record, *agentstatus, serverstatus;
 
-	app = App::getInstance ();
-	interface = &(app->systemInterface);
+	store = &(App::instance->agentControl.recordStore);
+	interface = &(App::instance->systemInterface);
 
-	record = store->findRecord (recordId, SystemInterface::Command_MediaItem);
+	record = store->findRecord (recordId, SystemInterface::CommandId_MediaItem);
 	if (record) {
-		recordType = SystemInterface::Command_MediaItem;
+		recordType = SystemInterface::CommandId_MediaItem;
 		agentId = interface->getCommandAgentId (record);
 		duration = interface->getCommandNumberParam (record, "duration", (float) 0.0f);
 		agentstatus = store->findRecord (RecordStore::matchAgentStatusSource, &agentId);
@@ -135,9 +140,9 @@ void TimelineBar::syncRecordStore (RecordStore *store) {
 	}
 
 	if (! record) {
-		record = store->findRecord (recordId, SystemInterface::Command_StreamItem);
+		record = store->findRecord (recordId, SystemInterface::CommandId_StreamItem);
 		if (record) {
-			recordType = SystemInterface::Command_StreamItem;
+			recordType = SystemInterface::CommandId_StreamItem;
 			agentId = interface->getCommandAgentId (record);
 			duration = interface->getCommandNumberParam (record, "duration", (float) 0.0f);
 			thumbnailCount = interface->getCommandNumberParam (record, "segmentCount", (int) 0);
@@ -148,32 +153,32 @@ void TimelineBar::syncRecordStore (RecordStore *store) {
 	if (! record) {
 		return;
 	}
-	minDurationUnitType = Util::getDurationMinUnitType (duration);
-	startTimeLabel->setText (Util::getDurationString (0.0f, minDurationUnitType));
-	endTimeLabel->setText (Util::getDurationString (duration, minDurationUnitType));
+	minDurationUnitType = OsUtil::getDurationMinUnitType (duration);
+	startTimeLabel->setText (OsUtil::getDurationString (0.0f, minDurationUnitType));
+	endTimeLabel->setText (OsUtil::getDurationString (duration, minDurationUnitType));
 	populateMarkers ();
 	refreshLayout ();
 }
 
-void TimelineBar::populateMarkers () {
+void TimelineWindow::populateMarkers () {
 	if ((! markerList.empty ()) || (recordType < 0)) {
 		return;
 	}
 
 	switch (recordType) {
-		case SystemInterface::Command_MediaItem: {
+		case SystemInterface::CommandId_MediaItem: {
 			UiConfiguration *uiconfig;
 			Panel *panel;
 			float x, dx;
 			int i;
 
 			if (thumbnailCount > 0) {
-				uiconfig = &(App::getInstance ()->uiConfig);
+				uiconfig = &(App::instance->uiConfig);
 				dx = barWidth / (float) thumbnailCount;
 				if (dx < 1.0f) {
 					dx = 1.0f;
 				}
-				x = 0.0f;
+				x = (dx / 2.0f);
 				for (i = 0; i < thumbnailCount; ++i) {
 					panel = (Panel *) addWidget (new Panel (), x - (uiconfig->timelineMarkerWidth / 2.0f), 1.0f);
 					panel->setFillBg (true, uiconfig->darkInverseBackgroundColor);
@@ -185,14 +190,14 @@ void TimelineBar::populateMarkers () {
 			}
 			break;
 		}
-		case SystemInterface::Command_StreamItem: {
+		case SystemInterface::CommandId_StreamItem: {
 			UiConfiguration *uiconfig;
 			Panel *panel;
 			float x, dx;
 
-			uiconfig = &(App::getInstance ()->uiConfig);
+			uiconfig = &(App::instance->uiConfig);
 			x = 0.0f;
-			dx = barWidth / (float) TimelineBar::guideSegmentCount;
+			dx = barWidth / (float) TimelineWindow::guideSegmentCount;
 			if (dx < 1.0f) {
 				dx = 1.0f;
 			}
@@ -210,17 +215,17 @@ void TimelineBar::populateMarkers () {
 	}
 }
 
-void TimelineBar::setHighlightedMarker (int markerIndex) {
+void TimelineWindow::setHighlightedMarker (int markerIndex) {
 	std::list<Panel *>::iterator i, end;
 	Panel *panel;
 	UiConfiguration *uiconfig;
-	float x, t;
+	float x, t, dt;
 	int curindex;
 	bool found;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	switch (recordType) {
-		case SystemInterface::Command_MediaItem: {
+		case SystemInterface::CommandId_MediaItem: {
 			if (markerIndex >= (int) markerList.size ()) {
 				markerIndex = -1;
 			}
@@ -231,11 +236,12 @@ void TimelineBar::setHighlightedMarker (int markerIndex) {
 			while (i != end) {
 				panel = *i;
 				if (curindex == markerIndex) {
-					panel->bgColor.rotate (uiconfig->lightPrimaryColor, uiconfig->shortColorRotateDuration);
+					panel->bgColor.translate (uiconfig->lightPrimaryColor, uiconfig->shortColorTranslateDuration);
 					if ((thumbnailCount > 0) && (duration > 0.0f)) {
 						found = true;
-						t = (float) markerIndex * duration / (float) thumbnailCount;
-						highlightTimeLabel->setText (Util::getDurationString (t, minDurationUnitType));
+						dt = duration / (float) thumbnailCount;
+						t = (dt / 2.0f) + ((float) markerIndex * dt);
+						highlightTimeLabel->setText (OsUtil::getDurationString (t, minDurationUnitType));
 						x = panel->position.x + (panel->width / 2.0f) - (highlightTimeLabel->width / 2.0f);
 						if (x < 0.0f) {
 							x = 0.0f;
@@ -248,7 +254,7 @@ void TimelineBar::setHighlightedMarker (int markerIndex) {
 					}
 				}
 				else {
-					panel->bgColor.rotate (uiconfig->darkInverseBackgroundColor, uiconfig->shortColorRotateDuration);
+					panel->bgColor.translate (uiconfig->darkInverseBackgroundColor, uiconfig->shortColorTranslateDuration);
 				}
 				++curindex;
 				++i;
@@ -259,11 +265,11 @@ void TimelineBar::setHighlightedMarker (int markerIndex) {
 			highlightedMarkerIndex = markerIndex;
 			break;
 		}
-		case SystemInterface::Command_StreamItem: {
+		case SystemInterface::CommandId_StreamItem: {
 			found = false;
 			if (streamHighlightMarker) {
-				streamHighlightMarker->bgColor.rotate (uiconfig->lightBackgroundColor, uiconfig->shortColorRotateDuration);
-				streamHighlightMarker->setDestroyDelay (uiconfig->shortColorRotateDuration);
+				streamHighlightMarker->bgColor.translate (uiconfig->lightBackgroundColor, uiconfig->shortColorTranslateDuration);
+				streamHighlightMarker->setDestroyDelay (uiconfig->shortColorTranslateDuration);
 				streamHighlightMarker = NULL;
 			}
 
@@ -274,7 +280,7 @@ void TimelineBar::setHighlightedMarker (int markerIndex) {
 				}
 				streamHighlightMarker = (Panel *) addWidget (new Panel (), x - (uiconfig->timelineMarkerWidth / 2.0f), 1.0f);
 				streamHighlightMarker->setFillBg (true, uiconfig->lightBackgroundColor);
-				streamHighlightMarker->bgColor.rotate (uiconfig->darkPrimaryColor, uiconfig->shortColorRotateDuration);
+				streamHighlightMarker->bgColor.translate (uiconfig->darkPrimaryColor, uiconfig->shortColorTranslateDuration);
 				streamHighlightMarker->setFixedSize (true, uiconfig->timelineMarkerWidth, barHeight - 2.0f);
 				streamHighlightMarker->isInputSuspended = true;
 				streamHighlightMarker->zLevel = 1;
@@ -282,7 +288,7 @@ void TimelineBar::setHighlightedMarker (int markerIndex) {
 				if (markerIndex < (int) segmentPositionList.size ()) {
 					found = true;
 					t = ((float) segmentPositionList.at (markerIndex)) * 1000.0f;
-					highlightTimeLabel->setText (Util::getDurationString (t, minDurationUnitType));
+					highlightTimeLabel->setText (OsUtil::getDurationString (t, minDurationUnitType));
 					x = streamHighlightMarker->position.x + (streamHighlightMarker->width / 2.0f) - (highlightTimeLabel->width / 2.0f);
 					if (x < 0.0f) {
 						x = 0.0f;
@@ -303,13 +309,14 @@ void TimelineBar::setHighlightedMarker (int markerIndex) {
 	}
 }
 
-void TimelineBar::refreshLayout () {
+void TimelineWindow::refreshLayout () {
 	setFixedSize (true, barWidth, barHeight);
 	startTimeLabel->position.assign (0.0f, barHeight - startTimeLabel->height);
 	endTimeLabel->position.assign (barWidth - endTimeLabel->width, barHeight - endTimeLabel->height);
 }
 
-void TimelineBar::doProcessMouseState (const Widget::MouseState &mouseState) {
+void TimelineWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
+	Panel::doProcessMouseState (mouseState);
 	if (mouseState.isEntered) {
 		if (! FLOAT_EQUALS (hoverPosition, mouseState.enterDeltaX)) {
 			hoverPosition = mouseState.enterDeltaX;

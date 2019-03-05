@@ -35,8 +35,8 @@
 
 #include <list>
 #include "SDL2/SDL.h"
-#include "SDL2/SDL_surface.h"
 #include "StdString.h"
+#include "UiConfiguration.h"
 #include "Font.h"
 #include "Color.h"
 #include "Widget.h"

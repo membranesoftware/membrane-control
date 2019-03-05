@@ -36,7 +36,6 @@
 #include "StdString.h"
 #include "App.h"
 #include "UiText.h"
-#include "Util.h"
 #include "Sprite.h"
 #include "SpriteGroup.h"
 #include "Widget.h"
@@ -69,7 +68,7 @@ UiLaunchWindow::UiLaunchWindow (int uiType, SpriteGroup *mainUiSpriteGroup)
 {
 	UiConfiguration *uiconfig;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
@@ -110,8 +109,8 @@ void UiLaunchWindow::populate () {
 	IconLabelWindow *icon;
 	StdString name, text;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
-	uitext = &(App::getInstance ()->uiText);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 
 	switch (uiType) {
 		case UiLaunchWindow::SERVER_UI: {
@@ -169,21 +168,21 @@ void UiLaunchWindow::populate () {
 	openButton->setMouseHoverTooltip (uitext->getText (UiTextString::uiLaunchOpenButtonTooltip));
 }
 
-void UiLaunchWindow::syncRecordStore (RecordStore *store) {
-	App *app;
+void UiLaunchWindow::syncRecordStore () {
 	UiText *uitext;
+	RecordStore *store;
 	IconLabelWindow *icon;
 	int count;
 	int64_t maxage;
 
-	app = App::getInstance ();
-	uitext = &(App::getInstance ()->uiText);
+	uitext = &(App::instance->uiText);
+	store = &(App::instance->agentControl.recordStore);
 
-	maxage = app->prefsMap.find (App::prefsServerTimeout, App::defaultServerTimeout) * 1000;
+	maxage = App::instance->prefsMap.find (App::prefsServerTimeout, App::defaultServerTimeout) * 1000;
 	switch (uiType) {
 		case UiLaunchWindow::SERVER_UI: {
 			icon = noteIcons.at (0);
-			count = store->countCommandRecords (SystemInterface::Command_AgentStatus, maxage);
+			count = store->countCommandRecords (SystemInterface::CommandId_AgentStatus, maxage);
 			icon->setText (uitext->getCountText (count, UiTextString::serverConnected, UiTextString::serversConnected));
 			break;
 		}
@@ -215,7 +214,7 @@ void UiLaunchWindow::syncRecordStore (RecordStore *store) {
 		}
 	}
 
-	Panel::syncRecordStore (store);
+	Panel::syncRecordStore ();
 }
 
 int UiLaunchWindow::countMediaItems (RecordStore *store) {
@@ -232,7 +231,7 @@ void UiLaunchWindow::addMediaCount (void *sumPtr, Json *record, const StdString 
 	int *sum;
 
 	sum = (int *) sumPtr;
-	interface = &(App::getInstance ()->systemInterface);
+	interface = &(App::instance->systemInterface);
 	if (interface->getCommandObjectParam (record, "mediaServerStatus", &serverstatus)) {
 		*sum += serverstatus.getNumber ("mediaCount", 0);
 	}
@@ -252,18 +251,16 @@ void UiLaunchWindow::addStreamCount (void *sumPtr, Json *record, const StdString
 	int *sum;
 
 	sum = (int *) sumPtr;
-	interface = &(App::getInstance ()->systemInterface);
+	interface = &(App::instance->systemInterface);
 	if (interface->getCommandObjectParam (record, "streamServerStatus", &serverstatus)) {
 		*sum += serverstatus.getNumber ("streamCount", 0);
 	}
 }
 
 bool UiLaunchWindow::isReadyState (int uiType, RecordStore *store) {
-	App *app;
 	int64_t maxage;
 
-	app = App::getInstance ();
-	maxage = app->prefsMap.find (App::prefsServerTimeout, App::defaultServerTimeout) * 1000;
+	maxage = App::instance->prefsMap.find (App::prefsServerTimeout, App::defaultServerTimeout) * 1000;
 	switch (uiType) {
 		case UiLaunchWindow::MEDIA_UI: {
 			if (store->countAgentRecords ("mediaServerStatus", maxage) > 0) {
@@ -294,7 +291,7 @@ void UiLaunchWindow::refreshLayout () {
 	std::vector<IconLabelWindow *>::iterator i, end;
 	float x, y;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x = uiconfig->paddingSize;
 	y = uiconfig->paddingSize;
 	iconImage->position.assign (x, y);

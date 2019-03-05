@@ -34,13 +34,10 @@
 #define STREAM_PLAYLIST_WINDOW_H
 
 #include "StdString.h"
-#include "Sprite.h"
-#include "SpriteGroup.h"
 #include "Json.h"
 #include "Image.h"
 #include "Label.h"
 #include "LabelWindow.h"
-#include "TextArea.h"
 #include "ListView.h"
 #include "Button.h"
 #include "Toggle.h"

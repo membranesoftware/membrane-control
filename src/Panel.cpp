@@ -60,7 +60,7 @@ Panel::Panel ()
 , isAlphaBlended (false)
 , alpha (1.0f)
 , alphaTarget (1.0f)
-, alphaTransitionDuration (0)
+, alphaTranslateDuration (0)
 , isFilledBg (false)
 , isBordered (false)
 , isFixedSize (false)
@@ -160,7 +160,7 @@ void Panel::destroyAllChildWidgets () {
 
 Widget *Panel::addWidget (Widget *widget, float positionX, float positionY, int zLevel) {
 	if (widget->id <= 0) {
-		widget->id = App::getInstance ()->getUniqueId ();
+		widget->id = App::instance->getUniqueId ();
 	}
 	if (widget->sortKey.empty ()) {
 		widget->sortKey.sprintf ("%016llx", (unsigned long long) widget->id);
@@ -290,19 +290,19 @@ void Panel::doUpdate (int msElapsed, float originX, float originY) {
 	bgColor.update (msElapsed);
 	borderColor.update (msElapsed);
 
-	if (alphaTransitionDuration > 0) {
+	if (alphaTranslateDuration > 0) {
 		if (alpha < alphaTarget) {
-			alpha += (1.0f / ((float) alphaTransitionDuration)) * (float) msElapsed;
+			alpha += (1.0f / ((float) alphaTranslateDuration)) * (float) msElapsed;
 			if (alpha >= alphaTarget) {
 				alpha = alphaTarget;
-				alphaTransitionDuration = 0;
+				alphaTranslateDuration = 0;
 			}
 		}
 		else {
-			alpha -= (1.0f / ((float) alphaTransitionDuration)) * (float) msElapsed;
+			alpha -= (1.0f / ((float) alphaTranslateDuration)) * (float) msElapsed;
 			if (alpha <= alphaTarget) {
 				alpha = alphaTarget;
-				alphaTransitionDuration = 0;
+				alphaTranslateDuration = 0;
 			}
 		}
 	}
@@ -345,7 +345,7 @@ void Panel::doUpdate (int msElapsed, float originX, float originY) {
 
 		if (waitProgressBar.widget) {
 			bar = (ProgressBar *) waitProgressBar.widget;
-			bar->setSize (width, App::getInstance ()->uiConfig.progressBarHeight);
+			bar->setSize (width, App::instance->uiConfig.progressBarHeight);
 		}
 	}
 
@@ -360,7 +360,6 @@ void Panel::doUpdate (int msElapsed, float originX, float originY) {
 }
 
 void Panel::processInput () {
-	App *app;
 	Input *input;
 	std::list<Widget *>::reverse_iterator i, iend;
 	std::vector<SDL_Keycode> keyevents;
@@ -370,8 +369,7 @@ void Panel::processInput () {
 	float x, y, enterdx, enterdy;
 	bool isshiftdown, iscontroldown;
 
-	app = App::getInstance ();
-	input = &(app->input);
+	input = &(App::instance->input);
 
 	input->pollKeyPressEvents (&keyevents);
 	isshiftdown = input->isShiftDown ();
@@ -481,39 +479,6 @@ void Panel::processInput () {
 	SDL_UnlockMutex (widgetListMutex);
 }
 
-void Panel::syncRecordStore (RecordStore *store) {
-	std::list<Widget *>::iterator i, end;
-	Widget *widget;
-
-	SDL_LockMutex (widgetListMutex);
-	i = widgetList.begin ();
-	end = widgetList.end ();
-	while (i != end) {
-		widget = *i;
-		++i;
-		if (widget->isDestroyed) {
-			continue;
-		}
-
-		widget->syncRecordStore (store);
-	}
-	SDL_UnlockMutex (widgetListMutex);
-
-	SDL_LockMutex (widgetAddListMutex);
-	i = widgetAddList.begin ();
-	end = widgetAddList.end ();
-	while (i != end) {
-		widget = *i;
-		++i;
-		if (widget->isDestroyed) {
-			continue;
-		}
-
-		widget->syncRecordStore (store);
-	}
-	SDL_UnlockMutex (widgetAddListMutex);
-}
-
 bool Panel::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown) {
 	std::list<Widget *>::iterator i, end;
 	Widget *widget;
@@ -548,7 +513,7 @@ void Panel::doProcessMouseState (const Widget::MouseState &mouseState) {
 	Widget::MouseState m;
 	float x, y;
 
-	input = &(App::getInstance ()->input);
+	input = &(App::instance->input);
 	x = input->mouseX;
 	y = input->mouseY;
 
@@ -594,7 +559,7 @@ void Panel::doResetInputState () {
 	std::list<Widget *>::iterator i, end;
 	Widget *widget;
 
-	input = &(App::getInstance ()->input);
+	input = &(App::instance->input);
 	lastMouseLeftUpCount = input->mouseLeftUpCount;
 	lastMouseLeftDownCount = input->mouseLeftDownCount;
 	lastMouseRightUpCount = input->mouseRightUpCount;
@@ -614,18 +579,15 @@ void Panel::doResetInputState () {
 }
 
 void Panel::doDraw () {
-	App *app;
 	SDL_Rect rect;
 	std::list<Widget *>::iterator i, end;
 	Widget *widget;
-
-	app = App::getInstance ();
 
 	rect.x = (int) drawX;
 	rect.y = (int) drawY;
 	rect.w = (int) width;
 	rect.h = (int) height;
-	app->pushClipRect (&rect);
+	App::instance->pushClipRect (&rect);
 
 	if (isFilledBg) {
 		rect.x = (int) drawX;
@@ -633,15 +595,15 @@ void Panel::doDraw () {
 		rect.w = (int) width;
 		rect.h = (int) height;
 		if (isAlphaBlended) {
-			SDL_SetRenderDrawColor (app->render, bgColor.rByte, bgColor.gByte, bgColor.bByte, (Uint8) (alpha * 255.0f));
-			SDL_SetRenderDrawBlendMode (app->render, SDL_BLENDMODE_BLEND);
+			SDL_SetRenderDrawColor (App::instance->render, bgColor.rByte, bgColor.gByte, bgColor.bByte, (Uint8) (alpha * 255.0f));
+			SDL_SetRenderDrawBlendMode (App::instance->render, SDL_BLENDMODE_BLEND);
 		}
 		else {
-			SDL_SetRenderDrawColor (app->render, bgColor.rByte, bgColor.gByte, bgColor.bByte, 255);
+			SDL_SetRenderDrawColor (App::instance->render, bgColor.rByte, bgColor.gByte, bgColor.bByte, 255);
 		}
-		SDL_RenderFillRect (app->render, &rect);
+		SDL_RenderFillRect (App::instance->render, &rect);
 		if (isAlphaBlended) {
-			SDL_SetRenderDrawBlendMode (app->render, SDL_BLENDMODE_NONE);
+			SDL_SetRenderDrawBlendMode (App::instance->render, SDL_BLENDMODE_NONE);
 		}
 	}
 
@@ -666,19 +628,19 @@ void Panel::doDraw () {
 		rect.h = (int) height;
 
 		if (isAlphaBlended) {
-			SDL_SetRenderDrawColor (app->render, borderColor.rByte, borderColor.gByte, borderColor.bByte, (Uint8) (alpha * 255.0f));
-			SDL_SetRenderDrawBlendMode (app->render, SDL_BLENDMODE_BLEND);
+			SDL_SetRenderDrawColor (App::instance->render, borderColor.rByte, borderColor.gByte, borderColor.bByte, (Uint8) (alpha * 255.0f));
+			SDL_SetRenderDrawBlendMode (App::instance->render, SDL_BLENDMODE_BLEND);
 		}
 		else {
-			SDL_SetRenderDrawColor (app->render, borderColor.rByte, borderColor.gByte, borderColor.bByte, 255);
+			SDL_SetRenderDrawColor (App::instance->render, borderColor.rByte, borderColor.gByte, borderColor.bByte, 255);
 		}
-		SDL_RenderDrawRect (app->render, &rect);
+		SDL_RenderDrawRect (App::instance->render, &rect);
 		if (isAlphaBlended) {
-			SDL_SetRenderDrawBlendMode (app->render, SDL_BLENDMODE_NONE);
+			SDL_SetRenderDrawBlendMode (App::instance->render, SDL_BLENDMODE_NONE);
 		}
 	}
 
-	app->popClipRect ();
+	App::instance->popClipRect ();
 }
 
 void Panel::doRefresh () {
@@ -768,7 +730,7 @@ void Panel::refreshLayout () {
 
 	switch (layout) {
 		case Panel::VERTICAL: {
-			uiconfig = &(App::getInstance ()->uiConfig);
+			uiconfig = &(App::instance->uiConfig);
 			x = widthPadding;
 			y = heightPadding;
 
@@ -804,7 +766,7 @@ void Panel::refreshLayout () {
 			break;
 		}
 		case Panel::VERTICAL_RIGHT_JUSTIFIED: {
-			uiconfig = &(App::getInstance ()->uiConfig);
+			uiconfig = &(App::instance->uiConfig);
 			x = widthPadding;
 			y = heightPadding;
 			maxw = 0.0f;
@@ -875,7 +837,7 @@ void Panel::refreshLayout () {
 			break;
 		}
 		case Panel::HORIZONTAL: {
-			uiconfig = &(App::getInstance ()->uiConfig);
+			uiconfig = &(App::instance->uiConfig);
 			x = widthPadding;
 			y = heightPadding;
 
@@ -970,7 +932,7 @@ void Panel::setAlphaBlend (bool enable, float blendAlpha) {
 	}
 }
 
-void Panel::transitionAlphaBlend (float startAlpha, float targetAlpha, int durationMs) {
+void Panel::translateAlphaBlend (float startAlpha, float targetAlpha, int durationMs) {
 	if (startAlpha < 0.0f) {
 		startAlpha = 0.0f;
 	}
@@ -987,8 +949,8 @@ void Panel::transitionAlphaBlend (float startAlpha, float targetAlpha, int durat
 	if (durationMs < 0) {
 		durationMs = 0;
 	}
-	alphaTransitionDuration = durationMs;
-	if (alphaTransitionDuration <= 0) {
+	alphaTranslateDuration = durationMs;
+	if (alphaTranslateDuration <= 0) {
 		setAlphaBlend (true, targetAlpha);
 		return;
 	}
@@ -1088,7 +1050,7 @@ void Panel::setWaiting (bool enable) {
 		return;
 	}
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	isWaiting = enable;
 	if (isWaiting) {
 		isInputSuspended = true;
@@ -1111,4 +1073,37 @@ void Panel::setWaiting (bool enable) {
 		waitPanel.destroyAndClear ();
 		waitProgressBar.clear ();
 	}
+}
+
+void Panel::syncRecordStore () {
+	std::list<Widget *>::iterator i, end;
+	Widget *widget;
+
+	SDL_LockMutex (widgetListMutex);
+	i = widgetList.begin ();
+	end = widgetList.end ();
+	while (i != end) {
+		widget = *i;
+		++i;
+		if (widget->isDestroyed) {
+			continue;
+		}
+
+		widget->syncRecordStore ();
+	}
+	SDL_UnlockMutex (widgetListMutex);
+
+	SDL_LockMutex (widgetAddListMutex);
+	i = widgetAddList.begin ();
+	end = widgetAddList.end ();
+	while (i != end) {
+		widget = *i;
+		++i;
+		if (widget->isDestroyed) {
+			continue;
+		}
+
+		widget->syncRecordStore ();
+	}
+	SDL_UnlockMutex (widgetAddListMutex);
 }

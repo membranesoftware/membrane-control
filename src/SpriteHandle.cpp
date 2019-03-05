@@ -33,7 +33,6 @@
 #include "App.h"
 #include "Result.h"
 #include "Log.h"
-#include "Util.h"
 #include "Sprite.h"
 #include "SpriteHandle.h"
 

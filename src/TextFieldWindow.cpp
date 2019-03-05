@@ -67,8 +67,8 @@ TextFieldWindow::TextFieldWindow (float windowWidth, const StdString &promptText
 	UiText *uitext;
 	Image *image;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
-	uitext = &(App::getInstance ()->uiText);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize / 2.0f);
 
 	textField = (TextField *) addWidget (new TextField (windowWidth - uiconfig->marginSize - uiconfig->paddingSize, promptText));
@@ -162,8 +162,8 @@ void TextFieldWindow::setObscured (bool enable) {
 		return;
 	}
 
-	uiconfig = &(App::getInstance ()->uiConfig);
-	uitext = &(App::getInstance ()->uiText);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 	if (visibilityToggle) {
 		visibilityToggle->isDestroyed = true;
 		visibilityToggle = NULL;
@@ -189,6 +189,15 @@ StdString TextFieldWindow::getValue () {
 
 void TextFieldWindow::setValue (const StdString &valueText) {
 	textField->setValue (valueText);
+}
+
+void TextFieldWindow::setWindowWidth (float fixedWidth) {
+	UiConfiguration *uiconfig;
+
+	uiconfig = &(App::instance->uiConfig);
+	windowWidth = fixedWidth;
+	textField->setFieldWidth (windowWidth - uiconfig->marginSize - uiconfig->paddingSize);
+	refreshLayout ();
 }
 
 void TextFieldWindow::setWindowHeight (float fixedHeight) {
@@ -220,7 +229,7 @@ void TextFieldWindow::refreshLayout () {
 	float x, y, w, h;
 	bool found;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x = 0.0f;
 	y = heightPadding;
 	w = windowWidth;
@@ -386,11 +395,9 @@ void TextFieldWindow::clearButtonClicked (void *windowPtr, Widget *widgetPtr) {
 static const int RANDOMIZE_STRING_LENGTH = 16;
 void TextFieldWindow::randomizeButtonClicked (void *windowPtr, Widget *widgetPtr) {
 	TextFieldWindow *window;
-	App *app;
 
 	window = (TextFieldWindow *) windowPtr;
-	app = App::getInstance ();
-	window->textField->setValue (app->getRandomString (RANDOMIZE_STRING_LENGTH));
+	window->textField->setValue (App::instance->getRandomString (RANDOMIZE_STRING_LENGTH));
 }
 
 void TextFieldWindow::visibilityToggleStateChanged (void *windowPtr, Widget *widgetPtr) {

@@ -31,7 +31,65 @@
 #include <stdlib.h>
 #include "Config.h"
 #include "SystemInterface.h"
-const char *SystemInterface::version = "8-stable-f11d18e2";
+
+const char *SystemInterface::version = "10-stable-6f663484";
+const char *SystemInterface::Command_AgentConfiguration = "AgentConfiguration";
+const char *SystemInterface::Command_AgentContact = "AgentContact";
+const char *SystemInterface::Command_AgentStatus = "AgentStatus";
+const char *SystemInterface::Command_ApplicationNews = "ApplicationNews";
+const char *SystemInterface::Command_AuthorizationRequired = "AuthorizationRequired";
+const char *SystemInterface::Command_Authorize = "Authorize";
+const char *SystemInterface::Command_AuthorizeResult = "AuthorizeResult";
+const char *SystemInterface::Command_CancelTask = "CancelTask";
+const char *SystemInterface::Command_ClearCache = "ClearCache";
+const char *SystemInterface::Command_ClearDisplay = "ClearDisplay";
+const char *SystemInterface::Command_CommandResult = "CommandResult";
+const char *SystemInterface::Command_CreateCacheStream = "CreateCacheStream";
+const char *SystemInterface::Command_CreateMediaDisplayIntent = "CreateMediaDisplayIntent";
+const char *SystemInterface::Command_CreateMediaStream = "CreateMediaStream";
+const char *SystemInterface::Command_CreateWebDisplayIntent = "CreateWebDisplayIntent";
+const char *SystemInterface::Command_EndSet = "EndSet";
+const char *SystemInterface::Command_EventRecord = "EventRecord";
+const char *SystemInterface::Command_FindItems = "FindItems";
+const char *SystemInterface::Command_FindMediaResult = "FindMediaResult";
+const char *SystemInterface::Command_FindStreamsResult = "FindStreamsResult";
+const char *SystemInterface::Command_GetAgentConfiguration = "GetAgentConfiguration";
+const char *SystemInterface::Command_GetHlsHtml5Interface = "GetHlsHtml5Interface";
+const char *SystemInterface::Command_GetHlsManifest = "GetHlsManifest";
+const char *SystemInterface::Command_GetHlsSegment = "GetHlsSegment";
+const char *SystemInterface::Command_GetMedia = "GetMedia";
+const char *SystemInterface::Command_GetStatus = "GetStatus";
+const char *SystemInterface::Command_GetThumbnailImage = "GetThumbnailImage";
+const char *SystemInterface::Command_IntentState = "IntentState";
+const char *SystemInterface::Command_LinkSuccess = "LinkSuccess";
+const char *SystemInterface::Command_MediaDisplayIntentState = "MediaDisplayIntentState";
+const char *SystemInterface::Command_MediaItem = "MediaItem";
+const char *SystemInterface::Command_MediaServerStatus = "MediaServerStatus";
+const char *SystemInterface::Command_MonitorServerStatus = "MonitorServerStatus";
+const char *SystemInterface::Command_PlayCacheStream = "PlayCacheStream";
+const char *SystemInterface::Command_PlayMedia = "PlayMedia";
+const char *SystemInterface::Command_ReadEvents = "ReadEvents";
+const char *SystemInterface::Command_ReadTasks = "ReadTasks";
+const char *SystemInterface::Command_RemoveIntent = "RemoveIntent";
+const char *SystemInterface::Command_RemoveStream = "RemoveStream";
+const char *SystemInterface::Command_ReportContact = "ReportContact";
+const char *SystemInterface::Command_ReportStatus = "ReportStatus";
+const char *SystemInterface::Command_ScanMediaItems = "ScanMediaItems";
+const char *SystemInterface::Command_ServerError = "ServerError";
+const char *SystemInterface::Command_SetAdminSecret = "SetAdminSecret";
+const char *SystemInterface::Command_SetIntentActive = "SetIntentActive";
+const char *SystemInterface::Command_ShowWebUrl = "ShowWebUrl";
+const char *SystemInterface::Command_ShutdownAgent = "ShutdownAgent";
+const char *SystemInterface::Command_StartServers = "StartServers";
+const char *SystemInterface::Command_StopServers = "StopServers";
+const char *SystemInterface::Command_StreamItem = "StreamItem";
+const char *SystemInterface::Command_StreamServerStatus = "StreamServerStatus";
+const char *SystemInterface::Command_TaskItem = "TaskItem";
+const char *SystemInterface::Command_UpdateAgentConfiguration = "UpdateAgentConfiguration";
+const char *SystemInterface::Command_UpdateIntentState = "UpdateIntentState";
+const char *SystemInterface::Command_WatchEvents = "WatchEvents";
+const char *SystemInterface::Command_WatchTasks = "WatchTasks";
+const char *SystemInterface::Command_WebDisplayIntentState = "WebDisplayIntentState";
 const int SystemInterface::Constant_MaxCommandPriority = 100;
 const char *SystemInterface::Constant_CreateTimePrefixField = "a";
 const char *SystemInterface::Constant_AgentIdPrefixField = "b";
@@ -62,6 +120,7 @@ void SystemInterface::populate () {
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("AgentConfiguration"), SystemInterface::Command (45, StdString ("AgentConfiguration"), StdString ("AgentConfiguration"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("AgentContact"), SystemInterface::Command (33, StdString ("AgentContact"), StdString ("AgentContact"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("AgentStatus"), SystemInterface::Command (1, StdString ("AgentStatus"), StdString ("AgentStatus"))));
+  commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("ApplicationNews"), SystemInterface::Command (64, StdString ("ApplicationNews"), StdString ("ApplicationNews"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("AuthorizationRequired"), SystemInterface::Command (62, StdString ("AuthorizationRequired"), StdString ("EmptyObject"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("Authorize"), SystemInterface::Command (19, StdString ("Authorize"), StdString ("Authorize"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("AuthorizeResult"), SystemInterface::Command (13, StdString ("AuthorizeResult"), StdString ("AuthorizeResult"))));
@@ -118,6 +177,8 @@ void SystemInterface::populate () {
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("AgentConfiguration"), SystemInterface::getParams_AgentConfiguration));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("AgentContact"), SystemInterface::getParams_AgentContact));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("AgentStatus"), SystemInterface::getParams_AgentStatus));
+  getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("ApplicationNews"), SystemInterface::getParams_ApplicationNews));
+  getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("ApplicationNewsItem"), SystemInterface::getParams_ApplicationNewsItem));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("Authorize"), SystemInterface::getParams_Authorize));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("AuthorizeResult"), SystemInterface::getParams_AuthorizeResult));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("CancelTask"), SystemInterface::getParams_CancelTask));
@@ -167,6 +228,8 @@ void SystemInterface::populate () {
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("AgentConfiguration"), SystemInterface::populateDefaultFields_AgentConfiguration));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("AgentContact"), SystemInterface::populateDefaultFields_AgentContact));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("AgentStatus"), SystemInterface::populateDefaultFields_AgentStatus));
+  populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("ApplicationNews"), SystemInterface::populateDefaultFields_ApplicationNews));
+  populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("ApplicationNewsItem"), SystemInterface::populateDefaultFields_ApplicationNewsItem));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("Authorize"), SystemInterface::populateDefaultFields_Authorize));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("AuthorizeResult"), SystemInterface::populateDefaultFields_AuthorizeResult));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("CancelTask"), SystemInterface::populateDefaultFields_CancelTask));
@@ -216,6 +279,8 @@ void SystemInterface::populate () {
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("AgentConfiguration"), SystemInterface::hashFields_AgentConfiguration));
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("AgentContact"), SystemInterface::hashFields_AgentContact));
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("AgentStatus"), SystemInterface::hashFields_AgentStatus));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("ApplicationNews"), SystemInterface::hashFields_ApplicationNews));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("ApplicationNewsItem"), SystemInterface::hashFields_ApplicationNewsItem));
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("Authorize"), SystemInterface::hashFields_Authorize));
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("AuthorizeResult"), SystemInterface::hashFields_AuthorizeResult));
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("CancelTask"), SystemInterface::hashFields_CancelTask));
@@ -305,6 +370,20 @@ void SystemInterface::getParams_AgentStatus (std::list<SystemInterface::Param> *
   destList->push_back (SystemInterface::Param (StdString ("mediaServerStatus"), StdString ("MediaServerStatus"), StdString (""), 0));
   destList->push_back (SystemInterface::Param (StdString ("streamServerStatus"), StdString ("StreamServerStatus"), StdString (""), 0));
   destList->push_back (SystemInterface::Param (StdString ("monitorServerStatus"), StdString ("MonitorServerStatus"), StdString (""), 0));
+}
+
+void SystemInterface::getParams_ApplicationNews (std::list<SystemInterface::Param> *destList) {
+  destList->clear ();
+  destList->push_back (SystemInterface::Param (StdString ("items"), StdString ("array"), StdString ("ApplicationNewsItem"), 1));
+}
+
+void SystemInterface::getParams_ApplicationNewsItem (std::list<SystemInterface::Param> *destList) {
+  destList->clear ();
+  destList->push_back (SystemInterface::Param (StdString ("message"), StdString ("string"), StdString (""), 3));
+  destList->push_back (SystemInterface::Param (StdString ("iconType"), StdString ("string"), StdString (""), 0));
+  destList->push_back (SystemInterface::Param (StdString ("actionText"), StdString ("string"), StdString (""), 0));
+  destList->push_back (SystemInterface::Param (StdString ("actionType"), StdString ("string"), StdString (""), 0));
+  destList->push_back (SystemInterface::Param (StdString ("actionTarget"), StdString ("string"), StdString (""), 0));
 }
 
 void SystemInterface::getParams_Authorize (std::list<SystemInterface::Param> *destList) {
@@ -677,6 +756,12 @@ void SystemInterface::populateDefaultFields_AgentStatus (Json *destObject) {
   if (! destObject->exists ("platform")) {
     destObject->set ("platform", "");
   }
+}
+
+void SystemInterface::populateDefaultFields_ApplicationNews (Json *destObject) {
+}
+
+void SystemInterface::populateDefaultFields_ApplicationNewsItem (Json *destObject) {
 }
 
 void SystemInterface::populateDefaultFields_Authorize (Json *destObject) {
@@ -1077,6 +1162,51 @@ void SystemInterface::hashFields_AgentStatus (Json *commandParams, SystemInterfa
     hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
   }
   s = commandParams->getString ("version", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+}
+
+void SystemInterface::hashFields_ApplicationNews (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  Json obj;
+  int i, len;
+
+  len = commandParams->getArrayLength ("items");
+  for (i = 0; i < len; ++i) {
+    if (commandParams->getArrayObject ("items", i, &obj)) {
+      SystemInterface::hashFields_ApplicationNewsItem (&obj, hashUpdateFn, hashContextPtr);
+    }
+  }
+}
+
+void SystemInterface::hashFields_ApplicationNewsItem (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  if (commandParams->exists ("actionTarget")) {
+    s = commandParams->getString ("actionTarget", "");
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
+  }
+  if (commandParams->exists ("actionText")) {
+    s = commandParams->getString ("actionText", "");
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
+  }
+  if (commandParams->exists ("actionType")) {
+    s = commandParams->getString ("actionType", "");
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
+  }
+  if (commandParams->exists ("iconType")) {
+    s = commandParams->getString ("iconType", "");
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
+  }
+  s = commandParams->getString ("message", "");
   if (! s.empty ()) {
     hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
   }
@@ -2211,7 +2341,7 @@ StdString SystemInterface::getCommandAgentId (Json *command) {
 StdString SystemInterface::getCommandAgentName (Json *command) {
 	StdString name;
 
-	if (getCommandId (command) != SystemInterface::Command_AgentStatus) {
+	if (getCommandId (command) != SystemInterface::CommandId_AgentStatus) {
 		return (StdString (""));
 	}
 
@@ -2237,7 +2367,7 @@ StdString SystemInterface::getCommandAgentAddress (Json *command) {
 	StdString hostname;
 	int port;
 
-	if (getCommandId (command) != SystemInterface::Command_AgentStatus) {
+	if (getCommandId (command) != SystemInterface::CommandId_AgentStatus) {
 		return (StdString (""));
 	}
 
@@ -2428,6 +2558,60 @@ int SystemInterface::getCommandArrayLength (Json *command, const StdString &para
 
 int SystemInterface::getCommandArrayLength (Json *command, const char *paramName) {
 	return (getCommandArrayLength (command, StdString (paramName)));
+}
+
+int SystemInterface::getCommandNumberArrayItem (Json *command, const StdString &paramName, int index, int defaultValue) {
+	Json params;
+
+	if (! command->getObject ("params", &params)) {
+		return (0);
+	}
+
+	return (params.getArrayNumber (paramName, index, defaultValue));
+}
+
+int64_t SystemInterface::getCommandNumberArrayItem (Json *command, const StdString &paramName, int index, int64_t defaultValue) {
+	Json params;
+
+	if (! command->getObject ("params", &params)) {
+		return (0);
+	}
+
+	return (params.getArrayNumber (paramName, index, defaultValue));
+}
+
+double SystemInterface::getCommandNumberArrayItem (Json *command, const StdString &paramName, int index, double defaultValue) {
+	Json params;
+
+	if (! command->getObject ("params", &params)) {
+		return (0);
+	}
+
+	return (params.getArrayNumber (paramName, index, defaultValue));
+}
+
+float SystemInterface::getCommandNumberArrayItem (Json *command, const StdString &paramName, int index, float defaultValue) {
+	Json params;
+
+	if (! command->getObject ("params", &params)) {
+		return (0);
+	}
+
+	return (params.getArrayNumber (paramName, index, defaultValue));
+}
+
+StdString SystemInterface::getCommandStringArrayItem (Json *command, const StdString &paramName, int index, const StdString &defaultValue) {
+	Json params;
+
+	if (! command->getObject ("params", &params)) {
+		return (0);
+	}
+
+	return (params.getArrayString (paramName, index, defaultValue));
+}
+
+StdString SystemInterface::getCommandStringArrayItem (Json *command, const char *paramName, int index, const StdString &defaultValue) {
+	return (getCommandStringArrayItem (command, StdString (paramName), index, defaultValue));
 }
 
 bool SystemInterface::getCommandObjectArrayItem (Json *command, const StdString &paramName, int index, Json *destJson) {

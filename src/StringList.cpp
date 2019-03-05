@@ -33,7 +33,6 @@
 #include <ctype.h>
 #include <list>
 #include "Result.h"
-#include "Util.h"
 #include "Log.h"
 #include "StdString.h"
 #include "StringList.h"
@@ -113,6 +112,9 @@ bool StringList::parseJsonString (const StdString &jsonString) {
 				if (c == '[') {
 					stage = 1;
 				}
+				else {
+					err = true;
+				}
 				break;
 			}
 			case 1: {
@@ -166,6 +168,12 @@ bool StringList::parseJsonString (const StdString &jsonString) {
 			break;
 		}
 		++i;
+	}
+
+	if (! err) {
+		if (! ended) {
+			err = true;
+		}
 	}
 
 	if (err) {

@@ -33,7 +33,7 @@
 #ifndef SPRITE_HANDLE_H
 #define SPRITE_HANDLE_H
 
-#include "SDL2/SDL_render.h"
+#include "SDL2/SDL.h"
 #include "Sprite.h"
 
 class SpriteHandle {

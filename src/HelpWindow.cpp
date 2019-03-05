@@ -31,20 +31,16 @@
 #include "Config.h"
 #include <stdlib.h>
 #include "Result.h"
-#include "Log.h"
 #include "StdString.h"
 #include "App.h"
 #include "UiText.h"
-#include "Util.h"
 #include "Widget.h"
 #include "Color.h"
-#include "Json.h"
 #include "Panel.h"
 #include "Label.h"
 #include "TextArea.h"
 #include "Image.h"
 #include "ImageWindow.h"
-#include "SystemInterface.h"
 #include "UiConfiguration.h"
 #include "HelpActionWindow.h"
 #include "HyperlinkWindow.h"
@@ -62,19 +58,17 @@ HelpWindow::HelpWindow (float windowWidth, float windowHeight)
 , linkIconImage (NULL)
 , versionLabel (NULL)
 {
-	App *app;
 	UiText *uitext;
 	UiConfiguration *uiconfig;
 
-	app = App::getInstance ();
-	uitext = &(app->uiText);
-	uiconfig = &(app->uiConfig);
+	uitext = &(App::instance->uiText);
+	uiconfig = &(App::instance->uiConfig);
 
 	setFixedSize (true, windowWidth, windowHeight);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
 	headerImage = (ImageWindow *) addWidget (new ImageWindow ());
-	headerImage->setLoadResourcePath (StdString::createSprintf ("bg/help/%i.png", app->imageScale));
+	headerImage->setLoadResourcePath (StdString::createSprintf ("bg/help/%i.png", App::instance->imageScale));
 
 	titleLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::help).capitalized (), UiConfiguration::TITLE, uiconfig->primaryTextColor)));
 	titleLabel->setPadding (0.0f, 0.0f);
@@ -105,7 +99,7 @@ StdString HelpWindow::toStringDetail () {
 void HelpWindow::setWindowSize (float windowWidth, float windowHeight) {
 	UiConfiguration *uiconfig;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	helpText->setMaxLineWidth (windowWidth - (uiconfig->paddingSize * 2.0f));
 	setFixedSize (true, windowWidth, windowHeight);
 	refreshLayout ();
@@ -114,7 +108,7 @@ void HelpWindow::setWindowSize (float windowWidth, float windowHeight) {
 void HelpWindow::setHelpText (const StdString &title, const StdString &text) {
 	UiConfiguration *uiconfig;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	helpTitleLabel->setText (title);
 	helpText->setMaxLineWidth (width - (uiconfig->paddingSize * 2.0f));
 	helpText->setText (text);
@@ -125,7 +119,7 @@ void HelpWindow::addAction (const StdString &actionText, const StdString &linkTe
 	UiConfiguration *uiconfig;
 	HelpActionWindow *action;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	action = new HelpActionWindow (width - (uiconfig->paddingSize * 2.0f), actionText, linkText, linkUrl);
 
 	addWidget (action);
@@ -160,7 +154,7 @@ void HelpWindow::refreshLayout () {
 	HyperlinkWindow *linkwindow;
 	float x, y;
 
-	uiconfig = &(App::getInstance ()->uiConfig);
+	uiconfig = &(App::instance->uiConfig);
 	x = 0.0f;
 	y = 0.0f;
 
