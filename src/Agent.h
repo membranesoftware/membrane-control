@@ -75,6 +75,18 @@ public:
 
 	// Return the URL that should be used for link operations targeting the agent
 	StdString getLinkUrl ();
+
+private:
+	// Constants to use as object field names
+	static const char *AgentIdKey;
+	static const char *InvokeHostnameKey;
+	static const char *InvokeTcpPort1Key;
+	static const char *InvokeTcpPort2Key;
+	static const char *LinkPathKey;
+	static const char *DisplayNameKey;
+	static const char *UrlHostnameKey;
+	static const char *TcpPort1Key;
+	static const char *TcpPort2Key;
 };
 
 #endif

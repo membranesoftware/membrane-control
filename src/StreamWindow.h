@@ -48,12 +48,12 @@ class StreamWindow : public Panel {
 public:
 	// Constants to use for layout types
 	enum {
-		LOW_DETAIL = 0,
-		MEDIUM_DETAIL = 1,
-		HIGH_DETAIL = 2
+		LowDetailLayout = 0,
+		MediumDetailLayout = 1,
+		HighDetailLayout = 2
 	};
 
-	StreamWindow (Json *streamItem, int layoutType = StreamWindow::LOW_DETAIL, float maxStreamImageWidth = 64.0f);
+	StreamWindow (Json *streamItem, int layoutType = StreamWindow::LowDetailLayout, float maxStreamImageWidth = 64.0f);
 	virtual ~StreamWindow ();
 
 	// Read-only data members
@@ -63,7 +63,7 @@ public:
 	StdString thumbnailPath;
 	StdString hlsStreamPath;
 	bool isSelected;
-	float selectedTimestamp;
+	float displayTimestamp;
 	int thumbnailIndex;
 	int segmentCount;
 	std::vector<double> segmentPositions;
@@ -85,8 +85,11 @@ public:
 	// Set the index that should be used to load the window's thumbnail image
 	void setThumbnailIndex (int index);
 
-	// Set the window's selected state, along with the timestamp it should show if selected
-	void setSelected (bool selected, float timestamp = 0.0f);
+	// Set the window's selected state
+	void setSelected (bool selected);
+
+	// Set the timestamp that should be shown for the media item, with a negative value specifying that no timestamp should be shown
+	void setDisplayTimestamp (float timestamp);
 
 	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
 	void syncRecordStore ();
@@ -118,9 +121,8 @@ private:
 	TextArea *detailText;
 	LabelWindow *mouseoverLabel;
 	LabelWindow *detailNameLabel;
-	Panel *selectPanel;
-	Panel *spacerPanel;
-	Label *timestampLabel;
+	LabelWindow *timestampLabel;
+	Panel *buttonPanel;
 	Button *selectButton;
 	Button *viewButton;
 	Widget::EventCallback streamImageClickCallback;

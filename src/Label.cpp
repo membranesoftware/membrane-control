@@ -131,12 +131,12 @@ void Label::setObscured (bool enable) {
 	setText (text, textFontType, true);
 }
 
-void Label::doDraw () {
+void Label::doDraw (SDL_Texture *targetTexture, float originX, float originY) {
 	Font::Glyph *glyph;
 	std::list<Font::Glyph *>::iterator i, end;
 	std::list<int>::iterator ki, kend;
 	SDL_Rect rect;
-	int x, y, kerning;
+	int x, y, x0, y0, kerning;
 	bool first;
 
 	SDL_LockMutex (textMutex);
@@ -145,6 +145,8 @@ void Label::doDraw () {
 		return;
 	}
 
+	x0 = (int) (originX + position.x);
+	y0 = (int) (originY + position.y);
 	x = 0;
 	y = 0;
 	kerning = 0;
@@ -167,8 +169,8 @@ void Label::doDraw () {
 			x += (int) spaceWidth;
 		}
 		else {
-			rect.x = x + (int) drawX + glyph->leftBearing + kerning;
-			rect.y = y + (int) drawY + maxGlyphTopBearing - glyph->topBearing;
+			rect.x = x + x0 + glyph->leftBearing + kerning;
+			rect.y = y + y0 + maxGlyphTopBearing - glyph->topBearing;
 			if (((rect.x + glyph->advanceWidth) >= 0) && (rect.x < App::instance->windowWidth) && ((rect.y + maxGlyphTopBearing) >= 0) && (rect.y < App::instance->windowHeight)) {
 				rect.w = glyph->width;
 				rect.h = glyph->height;
@@ -192,9 +194,9 @@ void Label::doDraw () {
 	}
 
 	if (isUnderlined) {
-		y = (int) (drawY + maxGlyphTopBearing + underlineMargin);
+		y = y0 + maxGlyphTopBearing + (int) underlineMargin;
 		SDL_SetRenderDrawColor (App::instance->render, textColor.rByte, textColor.gByte, textColor.bByte, 255);
-		SDL_RenderDrawLine (App::instance->render, (int) drawX, y, (int) (drawX + width), y);
+		SDL_RenderDrawLine (App::instance->render, x0, y, (int) (x0 + width), y);
 	}
 	SDL_UnlockMutex (textMutex);
 }
@@ -210,7 +212,7 @@ void Label::doRefresh () {
 	}
 }
 
-void Label::doUpdate (int msElapsed, float originX, float originY) {
+void Label::doUpdate (int msElapsed) {
 	textColor.update (msElapsed);
 }
 
@@ -340,27 +342,99 @@ void Label::setFont (int fontType) {
 }
 
 void Label::truncateText (StdString *text, int fontType, float maxWidth, const StdString &truncateSuffix) {
-	StdString s;
-	Label *label;
-	bool istruncated;
+	UiConfiguration *uiconfig;
+	Font *font;
+	Font::Glyph *glyph;
+	float x, spacew, suffixw;
+	char *buf, c, lastc, suffixc;
+	int i, textlen, truncatepos, suffixkerning;
 
-	istruncated = false;
-	s.assign (*text);
-	label = new Label (s, fontType);
-	while (label->width > maxWidth) {
-		if (s.empty ()) {
-			break;
+	if ((fontType < 0) || (fontType >= UiConfiguration::FontCount)) {
+		return;
+	}
+
+	uiconfig = &(App::instance->uiConfig);
+	font = uiconfig->fonts[fontType];
+	if (! font) {
+		return;
+	}
+	spacew = (float) font->spaceWidth;
+
+	suffixc = 0;
+	x = 0.0f;
+	lastc = 0;
+	buf = (char *) truncateSuffix.c_str ();
+	textlen = truncateSuffix.length ();
+	for (i = 0; i < textlen; ++i) {
+		c = buf[i];
+		if (suffixc <= 0) {
+			suffixc = c;
+		}
+		glyph = font->getGlyph (c);
+		if (i > 0) {
+			x += font->getKerning (lastc, c);
+		}
+		lastc = c;
+
+		if (! glyph) {
+			if (i < (textlen - 1)) {
+				x += spacew;
+			}
+		}
+		else {
+			if (i == (textlen - 1)) {
+				x += glyph->leftBearing;
+				x += glyph->width;
+			}
+			else {
+				x += glyph->advanceWidth;
+			}
+		}
+	}
+	suffixw = x;
+
+	truncatepos = 0;
+	x = 0.0f;
+	lastc = 0;
+	buf = (char *) text->c_str ();
+	textlen = text->length ();
+	for (i = 0; i < textlen; ++i) {
+		c = buf[i];
+		glyph = font->getGlyph (c);
+		if (i > 0) {
+			x += font->getKerning (lastc, c);
+		}
+		lastc = c;
+
+		if (! glyph) {
+			if (i < (textlen - 1)) {
+				x += spacew;
+			}
+		}
+		else {
+			if (i == (textlen - 1)) {
+				x += glyph->leftBearing;
+				x += glyph->width;
+			}
+			else {
+				x += glyph->advanceWidth;
+			}
 		}
 
-		istruncated = true;
-		s = s.substr (0, s.length () - 1);
-		label->setText (StdString::createSprintf ("%s%s", s.c_str (), truncateSuffix.c_str ()));
-	}
+		suffixkerning = 0;
+		if (suffixc > 0) {
+			suffixkerning = font->getKerning (c, suffixc);
+		}
 
-	if (istruncated) {
-		text->sprintf ("%s%s", s.c_str (), truncateSuffix.c_str ());
+		if ((x + suffixkerning + suffixw) <= maxWidth) {
+			truncatepos = i;
+		}
+		if (x > maxWidth) {
+			text->assign (text->substr (0, truncatepos + 1));
+			text->append (truncateSuffix);
+			break;
+		}
 	}
-	delete (label);
 }
 
 StdString Label::getTruncatedText (const StdString &text, int fontType, float maxWidth, const StdString &truncateSuffix) {

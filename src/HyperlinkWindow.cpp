@@ -116,7 +116,7 @@ void HyperlinkWindow::windowClicked (void *windowPtr, Widget *widgetPtr) {
 	}
 
 	result = OsUtil::openUrl (window->url);
-	if (result != Result::SUCCESS) {
+	if (result != Result::Success) {
 		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::openHelpUrlError));
 	}
 	else {

@@ -28,7 +28,7 @@
 * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 * POSSIBILITY OF SUCH DAMAGE.
 */
-// Object that represents an RGB color value
+// Object that represents an RGBA color value
 
 #ifndef COLOR_H
 #define COLOR_H
@@ -37,25 +37,29 @@
 
 class Color {
 public:
-	Color (float r = 0.0f, float g = 0.0f, float b = 0.0f);
+	Color (float r = 0.0f, float g = 0.0f, float b = 0.0f, float a = 1.0f);
 	~Color ();
 
 	// Read-only data members
-	float r, g, b;
-	uint8_t rByte, gByte, bByte;
+	float r, g, b, a;
+	uint8_t rByte, gByte, bByte, aByte;
 	bool isTranslating;
 
 	// Return a string description of the color
 	StdString toString ();
 
 	// Return a Color object that has been assigned to the specified byte values
-	static Color fromByteValues (uint8_t r, uint8_t g, uint8_t b);
+	static Color fromByteValues (uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255);
 
 	// Return the decimal color value associated with the specified byte
 	static float getByteValue (uint8_t byte);
 
+	// Return a Color object with values copied from this one. If aValue is zero or greater, assign that value to the returned object's alpha component.
+	Color copy (float aValue = -1.0f);
+
 	// Assign the color's values
-	void assign (float r, float g, float b);
+	void assign (float rValue, float gValue, float bValue);
+	void assign (float rValue, float gValue, float bValue, float aValue);
 	void assign (const Color &sourceColor);
 
 	// Modify the color's values by applying the specified blend operation
@@ -67,6 +71,7 @@ public:
 
 	// Begin an operation to change the color's value over time
 	void translate (float translateTargetR, float translateTargetG, float translateTargetB, int durationMs);
+	void translate (float translateTargetR, float translateTargetG, float translateTargetB, float translateTargetA, int durationMs);
 	void translate (const Color &targetColor, int durationMs);
 	void translate (const Color &startColor, const Color &targetColor, int durationMs);
 
@@ -78,8 +83,8 @@ private:
 	void normalize ();
 
 	int translateDuration;
-	float targetR, targetG, targetB;
-	float deltaR, deltaG, deltaB;
+	float targetR, targetG, targetB, targetA;
+	float deltaR, deltaG, deltaB, deltaA;
 };
 
 #endif

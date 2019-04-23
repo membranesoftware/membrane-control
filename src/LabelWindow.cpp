@@ -152,9 +152,8 @@ void LabelWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 	}
 }
 
-void LabelWindow::doUpdate (int msElapsed, float originX, float originY) {
-	Panel::doUpdate (msElapsed, originX, originY);
-
+void LabelWindow::doUpdate (int msElapsed) {
+	Panel::doUpdate (msElapsed);
 	if (isCrawlEnabled) {
 		switch (crawlStage) {
 			case 0: {

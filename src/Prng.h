@@ -49,13 +49,13 @@ public:
 
 protected:
 	enum {
-		MERSENNE_TWISTER_N = 624
+		MersenneTwisterN = 624
 	};
 
 	// Return the next int value in the generator's sequence
 	int extract ();
 
-	uint32_t MT[Prng::MERSENNE_TWISTER_N];
+	uint32_t MT[Prng::MersenneTwisterN];
 	int sequenceIndex;
 };
 

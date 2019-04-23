@@ -44,83 +44,86 @@ class UiConfiguration {
 public:
 	// Constants to use for indexes in the coreSprites group
 	enum {
-		OK_BUTTON = 0,
-		CANCEL_BUTTON = 1,
-		ENTER_TEXT_BUTTON = 2,
-		APP_LOGO = 3,
-		SETTINGS_BUTTON = 4,
-		EXIT_BUTTON = 5,
-		MAIN_MENU_BUTTON = 6,
-		BACK_BUTTON = 7,
-		NEWS_BUTTON = 8,
-		DELETE_BUTTON = 9,
-		HELP_BUTTON = 10,
-		PASTE_BUTTON = 11,
-		INFO_NEWS_ICON = 12,
-		NETWORK_CONNECT_ICON = 13,
-		NETWORK_DISCONNECT_ICON = 14,
-		CHECKMARK = 15,
-		SCROLL_UP_ARROW = 16,
-		SCROLL_DOWN_ARROW = 17,
-		TASK_IN_PROGRESS_ICON = 18,
-		TASK_COMPLETE_ICON = 19,
-		INFO_ICON = 20,
-		WEB_LINK_ICON = 21,
-		TOGGLE_CHECKBOX = 22,
-		TOGGLE_CHECKBOX_OUTLINE = 23,
-		TOGGLE_CHECKBOX_INDETERMINATE = 24,
-		UPDATE_BUTTON = 25,
-		FEEDBACK_BUTTON = 26,
-		STAR_BUTTON = 27,
-		STAR_OUTLINE_BUTTON = 28,
-		STAR_HALF_BUTTON = 29,
-		CLEAR_BUTTON = 30,
-		RELOAD_BUTTON = 31,
-		RENAME_BUTTON = 32,
-		ERROR_ICON = 33,
-		ABOUT_BUTTON = 34,
-		AGENT_ADMIN_BUTTON = 35,
-		SERVER_ICON = 36,
-		DISPLAY_ICON = 37,
-		LARGE_MEDIA_ICON = 38,
-		LARGE_STREAM_ICON = 39,
-		PROGRAM_ICON = 40,
-		EXPAND_LESS_BUTTON = 41,
-		EXPAND_MORE_BUTTON = 42,
-		CONFIGURATION_ICON = 43,
-		LOADING_IMAGE_ICON = 44,
-		IMAGE_BUTTON = 45,
-		ACTIVITY_STATE_ICON = 46,
-		STORAGE_ICON = 47,
-		SMALL_STREAM_ICON = 48,
-		TASK_COUNT_ICON = 49,
-		SMALL_MEDIA_ICON = 50,
-		KEY_ICON = 51,
-		ADD_BUTTON = 52,
-		VISIBILITY_ON_BUTTON = 53,
-		VISIBILITY_OFF_BUTTON = 54,
-		RANDOMIZE_BUTTON = 55
+		OkButtonSprite = 0,
+		CancelButtonSprite = 1,
+		EnterTextButtonSprite = 2,
+		AppLogoSprite = 3,
+		SettingsButtonSprite = 4,
+		ExitButtonSprite = 5,
+		MainMenuButtonSprite = 6,
+		BackButtonSprite = 7,
+		NewsButtonSprite = 8,
+		DeleteButtonSprite = 9,
+		HelpButtonSprite = 10,
+		PasteButtonSprite = 11,
+		InfoNewsIconSprite = 12,
+		NetworkConnectIconSprite = 13,
+		NetworkDisconnectIconSprite = 14,
+		CheckmarkSprite = 15,
+		ScrollUpArrowSprite = 16,
+		ScrollDownArrowSprite = 17,
+		TaskInProgressIconSprite = 18,
+		TaskCompleteIconSprite = 19,
+		InfoIconSprite = 20,
+		WebLinkIconSprite = 21,
+		ToggleCheckboxSprite = 22,
+		ToggleCheckboxOutlineSprite = 23,
+		ToggleCheckboxIndeterminateSprite = 24,
+		UpdateButtonSprite = 25,
+		FeedbackButtonSprite = 26,
+		StarButtonSprite = 27,
+		StarOutlineButtonSprite = 28,
+		StarHalfButtonSprite = 29,
+		ClearButtonSprite = 30,
+		ReloadButtonSprite = 31,
+		RenameButtonSprite = 32,
+		ErrorIconSprite = 33,
+		AboutButtonSprite = 34,
+		AgentAdminButtonSprite = 35,
+		ServerIconSprite = 36,
+		LargeDisplayIconSprite = 37,
+		LargeMediaIconSprite = 38,
+		LargeStreamIconSprite = 39,
+		ProgramIconSprite = 40,
+		ExpandLessButtonSprite = 41,
+		ExpandMoreButtonSprite = 42,
+		ConfigurationIconSprite = 43,
+		LoadingImageIconSprite = 44,
+		ImageButtonSprite = 45,
+		ActivityStateIconSprite = 46,
+		StorageIconSprite = 47,
+		SmallStreamIconSprite = 48,
+		TaskCountIconSprite = 49,
+		SmallMediaIconSprite = 50,
+		KeyIconSprite = 51,
+		AddButtonSprite = 52,
+		VisibilityOnButtonSprite = 53,
+		VisibilityOffButtonSprite = 54,
+		RandomizeButtonSprite = 55,
+		ToolsButtonSprite = 56,
+		SmallDisplayIconSprite = 57,
+		SmallProgramIconSprite = 58
 	};
 
 	// Constants to use for font types
 	enum {
-		CAPTION = 0,
-		BODY = 1,
-		BUTTON = 2,
-		TITLE = 3,
-		HEADLINE = 4,
-		NUM_FONT_TYPES = 5
+		CaptionFont = 0,
+		BodyFont = 1,
+		ButtonFont = 2,
+		TitleFont = 3,
+		HeadlineFont = 4,
+		FontCount = 5
 	};
 
 	// Constants to use for sprite frame indexes
 	enum {
-		INACTIVE_STATE_ICON_FRAME = 0,
-		ACTIVE_STATE_ICON_FRAME = 1,
-		WHITE_BUTTON_FRAME = 0,
-		WHITE_LARGE_BUTTON_FRAME = 1,
-		BLACK_BUTTON_FRAME = 2,
-		BLACK_LARGE_BUTTON_FRAME = 3,
-		CHIP_ICON_FRAME = 0
+		InactiveStateIconFrame = 0,
+		ActiveStateIconFrame = 1,
+		WhiteButtonFrame = 0,
+		WhiteLargeButtonFrame = 1,
+		BlackButtonFrame = 2,
+		BlackLargeButtonFrame = 3,
+		ChipIconFrame = 0
 	};
 
 	UiConfiguration ();
@@ -146,10 +149,10 @@ public:
 	int mouseHoverThreshold;
 	int blinkDuration; // ms
 	int backgroundCrossFadeDuration; // ms
-	StdString fontNames[UiConfiguration::NUM_FONT_TYPES];
-	int fontBaseSizes[UiConfiguration::NUM_FONT_TYPES];
-	int fontSizes[UiConfiguration::NUM_FONT_TYPES];
-	Font *fonts[UiConfiguration::NUM_FONT_TYPES];
+	StdString fontNames[UiConfiguration::FontCount];
+	int fontBaseSizes[UiConfiguration::FontCount];
+	int fontSizes[UiConfiguration::FontCount];
+	Font *fonts[UiConfiguration::FontCount];
 	Color lightPrimaryColor;
 	Color mediumPrimaryColor;
 	Color darkPrimaryColor;
@@ -172,6 +175,8 @@ public:
 	Color raisedButtonTextColor;
 	Color raisedButtonInverseTextColor;
 	Color raisedButtonBackgroundColor;
+	Color dropShadowColor;
+	float dropShadowWidth;
 	float buttonFocusedShadeAlpha;
 	float buttonPressedShadeAlpha;
 	float buttonDisabledShadeAlpha;
@@ -188,6 +193,8 @@ public:
 	float textLineHeightMargin;
 	float textUnderlineMargin;
 	float menuDividerLineWidth;
+	float selectionBorderWidth;
+	float selectionBorderAlpha;
 	float sliderThumbSize;
 	float sliderTrackWidth;
 	float sliderTrackHeight;

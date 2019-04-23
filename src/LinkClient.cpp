@@ -31,18 +31,20 @@
 #include "Config.h"
 #include <stdlib.h>
 #include <string.h>
+#include <map>
+#include <list>
+#include <queue>
 #include "SDL2/SDL.h"
 #include "libwebsockets.h"
 #include "App.h"
 #include "Result.h"
 #include "StdString.h"
+#include "StringList.h"
 #include "Log.h"
 #include "OsUtil.h"
 #include "Json.h"
 #include "SystemInterface.h"
 #include "LinkClient.h"
-
-static bool initLibDone = false;
 
 const int LinkClient::defaultPingInterval = 25000; // milliseconds
 const int LinkClient::reconnectPeriod = 7000; // milliseconds
@@ -72,55 +74,59 @@ static const struct lws_protocols libwebsocketProtocols[] = {
 	{ NULL, NULL, 0, 0 }
 };
 
-LinkClient::LinkClient (const StdString &serverUrl, const StdString &agentId, void *callbackData, LinkClient::ConnectCallback connectCallback, LinkClient::DisconnectCallback disconnectCallback, LinkClient::CommandCallback commandCallback)
-: usageCount (0)
-, isConnected (false)
-, isRunning (false)
-, isStopped (false)
-, isShutdown (false)
-, isClosing (false)
-, isClosed (false)
-, url (serverUrl)
-, agentId (agentId)
-, callbackData (callbackData)
+LinkClient::LinkClient (void *callbackData, LinkContext::ConnectCallback connectCallback, LinkContext::DisconnectCallback disconnectCallback, LinkContext::CommandCallback commandCallback)
+: callbackData (callbackData)
 , connectCallback (connectCallback)
 , disconnectCallback (disconnectCallback)
 , commandCallback (commandCallback)
-, runMutex (NULL)
-, runCond (NULL)
+, contextMutex (NULL)
+{
+	contextMutex = SDL_CreateMutex ();
+}
+
+LinkClient::~LinkClient () {
+	clear ();
+	if (contextMutex) {
+		SDL_DestroyMutex (contextMutex);
+		contextMutex = NULL;
+	}
+}
+
+LinkContext::LinkContext ()
+: usageCount (0)
+, isConnected (false)
+, isClosing (false)
+, isClosed (false)
+, reconnectClock (0)
 , context (NULL)
 , lws (NULL)
 , urlParseBuffer (NULL)
-, writeQueueMutex (NULL)
 , isWriteReady (false)
+, writeQueueMutex (NULL)
 , writeBuffer (NULL)
 , writeBufferSize (0)
 , pingInterval (0)
 , nextPingTime (0)
-, reconnectClock (0)
 , authorizeSecretIndex (0)
 , isAuthorizing (false)
 , isAuthorizeComplete (false)
+, callbackData (NULL)
+, connectCallback (NULL)
+, disconnectCallback (NULL)
+, commandCallback (NULL)
 {
-	runMutex = SDL_CreateMutex ();
-	runCond = SDL_CreateCond ();
 	writeQueueMutex = SDL_CreateMutex ();
 }
 
-LinkClient::~LinkClient () {
-	stop ();
-	clear ();
+LinkContext::~LinkContext () {
 	if (context) {
 		lws_context_destroy (context);
 		context = NULL;
 	}
-	if (runCond) {
-		SDL_DestroyCond (runCond);
-		runCond = NULL;
-	}
-	if (runMutex) {
-		SDL_DestroyMutex (runMutex);
-		runMutex = NULL;
+	lws = NULL;
+	if (urlParseBuffer) {
+		free (urlParseBuffer);
+		urlParseBuffer = NULL;
 	}
 	if (writeQueueMutex) {
 		SDL_DestroyMutex (writeQueueMutex);
@@ -132,75 +138,149 @@ LinkClient::~LinkClient () {
 	}
 }
 
+void LinkClient::start () {
+	int level;
+
+	level = 0;
+	lws_set_log_level (level, LinkClient::logCallback);
+}
+
+void LinkClient::logCallback (int level, const char *line) {
+}
+
 void LinkClient::clear () {
-	SDL_LockMutex (writeQueueMutex);
-	while (! writeQueue.empty ()) {
-		writeQueue.pop ();
-	}
-	SDL_UnlockMutex (writeQueueMutex);
+	std::map<StdString, LinkContext *>::iterator i, iend;
+	std::list<LinkContext *>::iterator j, jend;
 
-	if (urlParseBuffer) {
-		free (urlParseBuffer);
-		urlParseBuffer = NULL;
+	SDL_LockMutex (contextMutex);
+	i = contextMap.begin ();
+	iend = contextMap.end ();
+	while (i != iend) {
+		delete (i->second);
+		++i;
 	}
+	contextMap.clear ();
 
-	lws = NULL;
-	isConnected = false;
-	isStopped = false;
-	isClosing = false;
-	isClosed = false;
-	pingInterval = 0;
-	nextPingTime = 0;
-	commandBuffer.reset ();
-	sessionId.assign ("");
+	j = closeContextList.begin ();
+	jend = closeContextList.end ();
+	while (j != jend) {
+		delete (*j);
+		++j;
+	}
+	closeContextList.clear ();
+
+	SDL_UnlockMutex (contextMutex);
 }
 
 void LinkClient::update (int msElapsed) {
-	if ((! isShutdown) && (! isRunning)) {
-		reconnectClock -= msElapsed;
-		if (reconnectClock <= 0) {
-			start ();
-			reconnectClock = LinkClient::reconnectPeriod;
+	StringList idlist;
+	LinkContext *ctx;
+	std::map<StdString, LinkContext *>::iterator i, iend;
+	std::list<LinkContext *>::iterator j, jend;
+	StringList::iterator k, kend;
+	bool found;
+
+	SDL_LockMutex (contextMutex);
+	i = contextMap.begin ();
+	iend = contextMap.end ();
+	while (i != iend) {
+		ctx = i->second;
+		updateActiveContext (ctx, msElapsed);
+		if (ctx->isClosing || ctx->isClosed) {
+			idlist.push_back (i->first);
+		}
+		else {
+			if (ctx->isConnected) {
+				if (! ctx->disconnectCallback) {
+					ctx->disconnectCallback = disconnectCallback;
+				}
+			}
+		}
+		++i;
+	}
+
+	k = idlist.begin ();
+	kend = idlist.end ();
+	while (k != kend) {
+		i = contextMap.find (*k);
+		if (i != contextMap.end ()) {
+			ctx = i->second;
+			closeContextList.push_back (ctx);
+
+			if (ctx->usageCount <= 0) {
+				contextMap.erase (i);
+			}
+			else {
+				i->second = new LinkContext ();
+				i->second->agentId.assign (ctx->agentId);
+				i->second->usageCount = ctx->usageCount;
+				i->second->linkUrl.assign (ctx->linkUrl);
+				i->second->callbackData = callbackData;
+				i->second->connectCallback = connectCallback;
+				i->second->commandCallback = commandCallback;
+				i->second->reconnectClock = LinkClient::reconnectPeriod;
+			}
+
+			if (ctx->disconnectCallback) {
+				// TODO: Possibly set an error description string here
+				ctx->disconnectCallback (ctx->callbackData, ctx->agentId, StdString (""));
+				ctx->disconnectCallback = NULL;
+			}
+		}
+		++k;
+	}
+
+	while (true) {
+		found = false;
+		j = closeContextList.begin ();
+		jend = closeContextList.end ();
+		while (j != jend) {
+			ctx = *j;
+			if ((! ctx->context) || (! ctx->lws) || ctx->isClosed) {
+				found = true;
+				closeContextList.erase (j);
+				delete (ctx);
+				break;
+			}
+			++j;
+		}
+
+		if (! found) {
+			break;
 		}
 	}
-}
 
-void LinkClient::setUrl (const StdString &linkUrl) {
-	if (url.equals (linkUrl)) {
-		return;
+	j = closeContextList.begin ();
+	jend = closeContextList.end ();
+	while (j != jend) {
+		ctx = *j;
+		ctx->isClosing = true;
+		lws_callback_on_writable (ctx->lws);
+		lws_service (ctx->context, 0);
+		++j;
 	}
-
-	url.assign (linkUrl);
-	if (isRunning) {
-		stop ();
-	}
-	reconnectClock = 0;
+	SDL_UnlockMutex (contextMutex);
 }
 
-void LinkClient::shutdown () {
-	isShutdown = true;
-	stop (false);
-}
-
-void LinkClient::start () {
+void LinkClient::updateActiveContext (LinkContext *ctx, int msElapsed) {
 	struct lws_context_creation_info contextinfo;
-	SDL_Thread *thread;
-	bool shouldrun;
+	lws_client_connect_info clientinfo;
+	int result, sz, port;
+	int64_t now;
+	const char *protocol, *address, *path;
 
-	LinkClient::initLib ();
-	shouldrun = false;
-	SDL_LockMutex (runMutex);
-	if (! isRunning) {
-		shouldrun = true;
-		isRunning = true;
-	}
-	SDL_UnlockMutex (runMutex);
-
-	if (! shouldrun) {
+	if (ctx->isClosing) {
 		return;
 	}
 
-	if (! context) {
+	if (ctx->reconnectClock > 0) {
+		ctx->reconnectClock -= msElapsed;
+		if (ctx->reconnectClock > 0) {
+			return;
+		}
+	}
+
+	if (! ctx->context) {
 		memset (&contextinfo, 0, sizeof contextinfo);
 		contextinfo.port = CONTEXT_PORT_NO_LISTEN;
 		contextinfo.protocols = libwebsocketProtocols;
@@ -208,276 +288,300 @@ void LinkClient::start () {
 		contextinfo.uid = -1;
 		contextinfo.ws_ping_pong_interval = 0;
 		contextinfo.extensions = libwebsocketExts;
-		contextinfo.user = this;
-
+		contextinfo.user = ctx;
 		if (App::instance->isHttpsEnabled) {
 			contextinfo.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
 		}
 
-		context = lws_create_context (&contextinfo);
-		if (! context) {
-			Log::err ("Failed to create libwebsockets context; url=\"%s\"", url.c_str ());
-			isRunning = false;
+		ctx->context = lws_create_context (&contextinfo);
+		if (! ctx->context) {
+			ctx->isClosing = true;
+			Log::err ("Failed to create libwebsockets context; url=\"%s\"", ctx->linkUrl.c_str ());
 			return;
 		}
 	}
 
-	clear ();
-	thread = SDL_CreateThread (LinkClient::runThread, "LinkClient::runThread", (void *) this);
-	if (! thread) {
-		Log::err ("WebSocket client start failed; err=\"thread create failed\"");
-		isRunning = false;
-		return;
-	}
-	SDL_DetachThread (thread);
-}
-
-void LinkClient::stop (bool shouldWait) {
-	SDL_LockMutex (runMutex);
-	if (isRunning && (! isStopped)) {
-		isStopped = true;
-	}
-	if (shouldWait) {
-		while (isRunning) {
-			SDL_CondWait (runCond, runMutex);
-		}
-	}
-	SDL_UnlockMutex (runMutex);
-}
-
-void LinkClient::initLib () {
-	int level;
-
-	if (initLibDone) {
-		return;
-	}
-
-	level = 0;
-	lws_set_log_level (level, LinkClient::logCallback);
-	initLibDone = true;
-}
-
-void LinkClient::logCallback (int level, const char *line) {
-}
-
-int LinkClient::runThread (void *clientPtr) {
-	LinkClient *client;
-
-	client = (LinkClient *) clientPtr;
-
-	client->run ();
-
-	client->clear ();
-
-	SDL_LockMutex (client->runMutex);
-	client->isRunning = false;
-	SDL_CondBroadcast (client->runCond);
-	SDL_UnlockMutex (client->runMutex);
-	return (0);
-}
-
-void LinkClient::run () {
-	lws_client_connect_info clientinfo;
-	int result, port, sz;
-	const char *protocol, *address, *path;
-	int64_t now;
-
-	if (url.empty ()) {
-		return;
-	}
-
-	sz = url.length () + 1;
-	urlParseBuffer = (char *) malloc (sz);
-	if (! urlParseBuffer) {
-		Log::err ("Failed to allocate memory for url parse buffer; length=%i", sz);
-		return;
-	}
-	memset (urlParseBuffer, 0, sz);
-	memcpy (urlParseBuffer, url.c_str (), sz);
-	result = lws_parse_uri (urlParseBuffer, &protocol, &address, &port, &path);
-	if (result != 0) {
-		Log::err ("Failed to parse WebSocket URL; url=\"%s\" err=%i", url.c_str (), result);
-		return;
-	}
-
-	urlPath.assign ("");
-	if (path[0] != '/') {
-		urlPath.append ("/");
-	}
-	urlPath.append (path);
-	memset (&clientinfo, 0, sizeof (clientinfo));
-	clientinfo.context = context;
-	clientinfo.address = address;
-	clientinfo.port = port;
-	clientinfo.path = urlPath.c_str ();
-	clientinfo.host = clientinfo.address;
-	clientinfo.origin = clientinfo.address;
-	clientinfo.ietf_version_or_minus_one = -1;
-
-	if (App::instance->isHttpsEnabled) {
-		// TODO: Possibly enable certificate validation (currently disabled to allow use of self-signed certificates)
-		clientinfo.ssl_connection = LCCSCF_USE_SSL | LCCSCF_ALLOW_SELFSIGNED | LCCSCF_SKIP_SERVER_CERT_HOSTNAME_CHECK | LCCSCF_ALLOW_EXPIRED;
-	}
-	else {
-		clientinfo.ssl_connection = 0;
-	}
-
-	lws = lws_client_connect_via_info (&clientinfo);
-	if (! lws) {
-		Log::err ("Failed to establish WebSocket connection; url=\"%s\"", url.c_str ());
-		return;
-	}
-
-	while (true) {
-		if (isStopped || isClosing || isClosed) {
-			break;
+	if (! ctx->lws) {
+		sz = (int) ctx->linkUrl.length () + 1;
+		ctx->urlParseBuffer = (char *) realloc (ctx->urlParseBuffer, sz);
+		if (! ctx->urlParseBuffer) {
+			ctx->isClosing = true;
+			Log::err ("Failed to allocate memory for link url parse buffer; length=%i", sz);
+			return;
 		}
 
-		if ((! isWriteReady) && (! writeQueue.empty ())) {
-			isWriteReady = true;
-			lws_callback_on_writable (lws);
+		memset (ctx->urlParseBuffer, 0, sz);
+		memcpy (ctx->urlParseBuffer, ctx->linkUrl.c_str (), ctx->linkUrl.length ());
+		result = lws_parse_uri (ctx->urlParseBuffer, &protocol, &address, &port, &path);
+		if (result != 0) {
+			ctx->isClosing = true;
+			Log::err ("Failed to parse WebSocket URL; url=\"%s\" err=%i", ctx->linkUrl.c_str (), result);
+			return;
 		}
 
-		if ((pingInterval > 0) && (nextPingTime > 0)) {
-			now = OsUtil::getTime ();
-			if (nextPingTime <= now) {
-				write (StdString ("2"));
-				nextPingTime = 0;
-			}
+		ctx->urlPath.assign ("");
+		if (path[0] != '/') {
+			ctx->urlPath.append ("/");
 		}
+		ctx->urlPath.append (path);
+		memset (&clientinfo, 0, sizeof (clientinfo));
+		clientinfo.context = ctx->context;
+		clientinfo.address = address;
+		clientinfo.port = port;
+		clientinfo.path = ctx->urlPath.c_str ();
+		clientinfo.host = clientinfo.address;
+		clientinfo.origin = clientinfo.address;
+		clientinfo.ietf_version_or_minus_one = -1;
 
-		lws_service (context, App::instance->minUpdateFrameDelay);
-	}
-
-	isConnected = false;
-	while (true) {
-		if (isClosed) {
-			break;
-		}
-
-		isClosing = true;
-		lws_callback_on_writable (lws);
-		lws_service (context, App::instance->minUpdateFrameDelay);
-	}
-}
-
-void LinkClient::authorize () {
-	Json *cmd, *params;
-	bool sent;
-
-	if (! isAuthorizing) {
-		if (! isAuthorizeComplete) {
-			authorizeSecretIndex = 0;
-			isAuthorizing = true;
-		}
-	}
-	else {
-		++authorizeSecretIndex;
-	}
-	if (! isAuthorizing) {
-		// TODO: Possibly disconnect the client here (expecting to retry authorization on the next scheduled reconnect)
-		return;
-	}
-
-	sent = false;
-	authorizeToken.assign ("");
-	params = new Json ();
-	params->set ("token", App::instance->getRandomString (64));
-	cmd = App::instance->createCommand (SystemInterface::Command_Authorize, SystemInterface::Constant_DefaultCommandType, params);
-	if (cmd) {
-		if (App::instance->agentControl.setCommandAuthorization (cmd, authorizeSecretIndex)) {
-			writeCommand (cmd);
-			sent = true;
-		}
-		delete (cmd);
-	}
-
-	if (! sent) {
-		isAuthorizeComplete = true;
-		isAuthorizing = false;
-		// TODO: Possibly disconnect the client here (expecting to retry authorization on the next scheduled reconnect)
-	}
-}
-
-void LinkClient::write (const StdString &message) {
-	SDL_LockMutex (writeQueueMutex);
-	writeQueue.push (message);
-	SDL_UnlockMutex (writeQueueMutex);
-}
-
-void LinkClient::writeCommand (Json *sourceCommand) {
-	Json *cmd;
-
-	if (authorizeToken.empty ()) {
-		writeCommand (sourceCommand->toString ());
-	}
-	else {
-		cmd = new Json ();
-		cmd->copy (sourceCommand);
-		if (! App::instance->agentControl.setCommandAuthorization (cmd, authorizeSecretIndex, authorizeToken)) {
-			authorizeToken.assign ("");
-			writeCommand (sourceCommand->toString ());
+		if (App::instance->isHttpsEnabled) {
+			// TODO: Possibly enable certificate validation (currently disabled to allow use of self-signed certificates)
+			clientinfo.ssl_connection = LCCSCF_USE_SSL | LCCSCF_ALLOW_SELFSIGNED | LCCSCF_SKIP_SERVER_CERT_HOSTNAME_CHECK | LCCSCF_ALLOW_EXPIRED;
 		}
 		else {
-			writeCommand (cmd->toString ());
+			clientinfo.ssl_connection = 0;
 		}
-		delete (cmd);
+
+		ctx->lws = lws_client_connect_via_info (&clientinfo);
+		if (! ctx->lws) {
+			ctx->isClosing = true;
+			Log::err ("Failed to establish WebSocket connection; url=\"%s\" err=\"lws_client_connect_via_info failed\"", ctx->linkUrl.c_str ());
+			return;
+		}
 	}
+
+	if ((! ctx->isWriteReady) && (! ctx->writeQueue.empty ())) {
+		ctx->isWriteReady = true;
+		lws_callback_on_writable (ctx->lws);
+	}
+
+	if ((ctx->pingInterval > 0) && (ctx->nextPingTime > 0)) {
+		now = OsUtil::getTime ();
+		if (ctx->nextPingTime <= now) {
+			ctx->writeMessage (StdString ("2"));
+			ctx->nextPingTime = 0;
+		}
+	}
+
+	lws_service (ctx->context, 0);
 }
 
-void LinkClient::writeCommand (const StdString &commandJson) {
-	// This output string specifies packet types 4 (message) and 2 (event) for the engine.io / socket.io protocols
-	write (StdString::createSprintf ("42[\"%s\",%s]", SystemInterface::Constant_WebSocketEvent, commandJson.c_str ()));
-}
+void LinkClient::connect (const StdString &agentId, const StdString &linkUrl) {
+	std::map<StdString, LinkContext *>::iterator pos;
+	LinkContext *ctx;
 
-void LinkClient::writeNextMessage () {
-	StdString message;
-	bool found, shouldrequestcallback;
-	int buflen, result;
-
-	found = false;
-	shouldrequestcallback = false;
-	SDL_LockMutex (writeQueueMutex);
-	if (! writeQueue.empty ()) {
-		found = true;
-		message = writeQueue.front ();
-		writeQueue.pop ();
-		if (! writeQueue.empty ()) {
-			shouldrequestcallback = true;
-		}
+	if (agentId.empty () || linkUrl.empty ()) {
+		return;
 	}
-	SDL_UnlockMutex (writeQueueMutex);
 
-	if (found) {
-		buflen = message.length () + LWS_PRE;
-		if (buflen > writeBufferSize) {
-			writeBuffer = (unsigned char *) realloc (writeBuffer, buflen);
-			if (! writeBuffer) {
-				isWriteReady = false;
-				Log::err ("Failed to allocate memory for WebSocket write buffer; length=%i", buflen);
-				return;
-			}
+	SDL_LockMutex (contextMutex);
+	pos = contextMap.find (agentId);
+	if (pos != contextMap.end ()) {
+		ctx = pos->second;
+		if (! ctx->linkUrl.equals (linkUrl)) {
+			// TODO: Restart the context targeting the new URL
 		}
-
-		memcpy (writeBuffer + LWS_PRE, message.c_str (), message.length ());
-		result = lws_write (lws, writeBuffer + LWS_PRE, message.length (), LWS_WRITE_TEXT);
-		if (result < 0) {
-			Log::err ("Failed to write WebSocket messge; err=%i", result);
-		}
-	}
-	if (shouldrequestcallback) {
-		isWriteReady = true;
-		lws_callback_on_writable (lws);
+		++(ctx->usageCount);
 	}
 	else {
-		isWriteReady = false;
+		ctx = new LinkContext ();
+		ctx->agentId.assign (agentId);
+		ctx->usageCount = 1;
+		ctx->linkUrl.assign (linkUrl);
+		ctx->callbackData = callbackData;
+		ctx->connectCallback = connectCallback;
+		ctx->commandCallback = commandCallback;
+		contextMap.insert (std::pair<StdString, LinkContext *> (agentId, ctx));
 	}
+	SDL_UnlockMutex (contextMutex);
 }
 
-void LinkClient::receiveData (char *data, int dataLength) {
+void LinkClient::disconnect (const StdString &agentId) {
+	std::map<StdString, LinkContext *>::iterator pos;
+	LinkContext *ctx;
+
+	SDL_LockMutex (contextMutex);
+	pos = contextMap.find (agentId);
+	if (pos != contextMap.end ()) {
+		ctx = pos->second;
+		--(ctx->usageCount);
+		if (ctx->usageCount <= 0) {
+			ctx->isClosing = true;
+			closeContextList.push_back (ctx);
+			contextMap.erase (pos);
+			if (ctx->disconnectCallback) {
+				// TODO: Possibly set an error description string here
+				ctx->disconnectCallback (ctx->callbackData, ctx->agentId, StdString (""));
+				ctx->disconnectCallback = NULL;
+			}
+		}
+	}
+	SDL_UnlockMutex (contextMutex);
+}
+
+void LinkClient::setLinkUrl (const StdString &agentId, const StdString &linkUrl) {
+	std::map<StdString, LinkContext *>::iterator pos;
+	LinkContext *ctx;
+
+	SDL_LockMutex (contextMutex);
+	pos = contextMap.find (agentId);
+	if (pos != contextMap.end ()) {
+		ctx = pos->second;
+		if (! ctx->linkUrl.equals (linkUrl)) {
+			ctx->isClosing = true;
+			closeContextList.push_back (ctx);
+			if (ctx->disconnectCallback) {
+				// TODO: Possibly set an error description string here
+				ctx->disconnectCallback (ctx->callbackData, ctx->agentId, StdString (""));
+				ctx->disconnectCallback = NULL;
+			}
+
+			pos->second = new LinkContext ();
+			pos->second->agentId.assign (ctx->agentId);
+			pos->second->usageCount = ctx->usageCount;
+			pos->second->linkUrl.assign (linkUrl);
+			pos->second->callbackData = callbackData;
+			pos->second->connectCallback = connectCallback;
+			pos->second->commandCallback = commandCallback;
+		}
+	}
+	SDL_UnlockMutex (contextMutex);
+}
+
+void LinkClient::writeCommand (Json *command, const StdString &agentId) {
+	std::map<StdString, LinkContext *>::iterator i, end;
+	LinkContext *ctx;
+
+	if (! command) {
+		return;
+	}
+	SDL_LockMutex (contextMutex);
+	end = contextMap.end ();
+	if (agentId.empty ()) {
+		i = contextMap.begin ();
+		while (i != end) {
+			ctx = i->second;
+			if (ctx->isConnected) {
+				ctx->writeCommand (command);
+			}
+			++i;
+		}
+	}
+	else {
+		i = contextMap.find (agentId);
+		if (i != end) {
+			ctx = i->second;
+			if (ctx->isConnected) {
+				ctx->writeCommand (command);
+			}
+		}
+	}
+	SDL_UnlockMutex (contextMutex);
+
+	delete (command);
+}
+
+int LinkClient::protocolCallback (struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len) {
+	LinkContext *ctx;
+	int result;
+
+	ctx = (LinkContext *) lws_context_user (lws_get_context (wsi));
+	if (! ctx) {
+		return (-1);
+	}
+
+	result = 0;
+	switch (reason) {
+		case LWS_CALLBACK_CLIENT_CONNECTION_ERROR: {
+			Log::debug ("WebSocket connection error; url=\"%s\" err=\"%s\"", ctx->linkUrl.c_str (), in ? StdString ((char *) in, len).c_str () : "unspecified connection failure");
+			break;
+		}
+		case LWS_CALLBACK_CLIENT_ESTABLISHED: {
+			break;
+		}
+		case LWS_CALLBACK_CLOSED: {
+			ctx->isConnected = false;
+			ctx->isClosing = true;
+			break;
+		}
+		case LWS_CALLBACK_CLIENT_WRITEABLE: {
+			if (ctx->isClosing) {
+				result = -1;
+			}
+			else {
+				ctx->sendNextMessage ();
+			}
+			break;
+		}
+		case LWS_CALLBACK_RECEIVE: {
+			ctx->receiveData ((char *) in, len);
+			break;
+		}
+		case LWS_CALLBACK_CLIENT_RECEIVE: {
+			ctx->receiveData ((char *) in, len);
+			break;
+		}
+		case LWS_CALLBACK_CLIENT_CLOSED: {
+			break;
+		}
+		case LWS_CALLBACK_WS_PEER_INITIATED_CLOSE: {
+			ctx->isConnected = false;
+			break;
+		}
+		case LWS_CALLBACK_PROTOCOL_INIT: {
+			break;
+		}
+		case LWS_CALLBACK_PROTOCOL_DESTROY: {
+			break;
+		}
+		case LWS_CALLBACK_WSI_CREATE: {
+			break;
+		}
+		case LWS_CALLBACK_WSI_DESTROY: {
+			ctx->isClosed = true;
+			break;
+		}
+		case LWS_CALLBACK_CLIENT_CONFIRM_EXTENSION_SUPPORTED: {
+			break;
+		}
+		case LWS_CALLBACK_WS_EXT_DEFAULTS: {
+			break;
+		}
+		case LWS_CALLBACK_CLIENT_FILTER_PRE_ESTABLISH: {
+			break;
+		}
+		case LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER: {
+			break;
+		}
+		case LWS_CALLBACK_LOCK_POLL: {
+			break;
+		}
+		case LWS_CALLBACK_UNLOCK_POLL: {
+			break;
+		}
+		case LWS_CALLBACK_ADD_POLL_FD: {
+			break;
+		}
+		case LWS_CALLBACK_CHANGE_MODE_POLL_FD: {
+			break;
+		}
+		case LWS_CALLBACK_DEL_POLL_FD: {
+			break;
+		}
+		case LWS_CALLBACK_OPENSSL_PERFORM_SERVER_CERT_VERIFICATION: {
+			break;
+		}
+		default: {
+			break;
+		}
+	}
+
+	return (result);
+}
+
+void LinkContext::receiveData (char *data, int dataLength) {
 	Json *json;
 	char *d, packettype;
-	int result, len;
+	int len;
 
 	d = data;
 	len = dataLength;
@@ -499,9 +603,8 @@ void LinkClient::receiveData (char *data, int dataLength) {
 				break;
 			}
 			json = new Json ();
-			result = json->parse (d, len);
-			if (result != Result::SUCCESS) {
-				Log::err ("WebSocket connection error; url=\"%s\" err=\"Failed to parse open packet, %i\"", url.c_str (), result);
+			if (! json->parse (d, len)) {
+				Log::err ("WebSocket connection error; url=\"%s\" err=\"Failed to parse open packet\"", linkUrl.c_str ());
 			}
 			else {
 				sessionId = json->getString ("sid", "");
@@ -548,7 +651,85 @@ void LinkClient::receiveData (char *data, int dataLength) {
 	}
 }
 
-void LinkClient::processCommandMessage (char *data, int dataLength) {
+void LinkContext::writeMessage (const StdString &message) {
+	if (isClosing || isClosed) {
+		return;
+	}
+	SDL_LockMutex (writeQueueMutex);
+	writeQueue.push (message);
+	SDL_UnlockMutex (writeQueueMutex);
+}
+
+void LinkContext::writeCommand (Json *sourceCommand) {
+	Json *cmd;
+
+	if (authorizeToken.empty ()) {
+		writeCommand (sourceCommand->toString ());
+	}
+	else {
+		cmd = new Json ();
+		cmd->copyValue (sourceCommand);
+		if (! App::instance->agentControl.setCommandAuthorization (cmd, authorizeSecretIndex, authorizeToken)) {
+			authorizeToken.assign ("");
+			writeCommand (sourceCommand->toString ());
+		}
+		else {
+			writeCommand (cmd->toString ());
+		}
+		delete (cmd);
+	}
+}
+
+void LinkContext::writeCommand (const StdString &commandJson) {
+	// This output string specifies packet types 4 (message) and 2 (event) for the engine.io / socket.io protocols
+	writeMessage (StdString::createSprintf ("42[\"%s\",%s]", SystemInterface::Constant_WebSocketEvent, commandJson.c_str ()));
+}
+
+void LinkContext::sendNextMessage () {
+	StdString message;
+	bool found, shouldrequestcallback;
+	int buflen, result;
+
+	found = false;
+	shouldrequestcallback = false;
+	SDL_LockMutex (writeQueueMutex);
+	if (! writeQueue.empty ()) {
+		found = true;
+		message = writeQueue.front ();
+		writeQueue.pop ();
+		if (! writeQueue.empty ()) {
+			shouldrequestcallback = true;
+		}
+	}
+	SDL_UnlockMutex (writeQueueMutex);
+
+	if (found) {
+		buflen = message.length () + LWS_PRE;
+		if (buflen > writeBufferSize) {
+			writeBuffer = (unsigned char *) realloc (writeBuffer, buflen);
+			if (! writeBuffer) {
+				isWriteReady = false;
+				Log::err ("Failed to allocate memory for WebSocket write buffer; length=%i", buflen);
+				return;
+			}
+		}
+
+		memcpy (writeBuffer + LWS_PRE, message.c_str (), message.length ());
+		result = lws_write (lws, writeBuffer + LWS_PRE, message.length (), LWS_WRITE_TEXT);
+		if (result < 0) {
+			Log::err ("Failed to write WebSocket messge; err=%i", result);
+		}
+	}
+	if (shouldrequestcallback) {
+		isWriteReady = true;
+		lws_callback_on_writable (lws);
+	}
+	else {
+		isWriteReady = false;
+	}
+}
+
+void LinkContext::processCommandMessage (char *data, int dataLength) {
 	StdString s, prefix;
 	size_t pos1, pos2;
 	Json *cmd;
@@ -611,14 +792,14 @@ void LinkClient::processCommandMessage (char *data, int dataLength) {
 			if (! isConnected) {
 				isConnected = true;
 				if (connectCallback) {
-					connectCallback (callbackData, this);
+					connectCallback (callbackData, agentId);
 				}
 			}
 			break;
 		}
 		default: {
 			if (commandCallback) {
-				commandCallback (callbackData, this, cmd);
+				commandCallback (callbackData, agentId, cmd);
 			}
 			break;
 		}
@@ -626,98 +807,40 @@ void LinkClient::processCommandMessage (char *data, int dataLength) {
 	delete (cmd);
 }
 
-int LinkClient::protocolCallback (struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len) {
-	LinkClient *client;
-	int result;
+void LinkContext::authorize () {
+	Json *cmd, *params;
+	bool sent;
 
-	client = (LinkClient *) lws_context_user (lws_get_context (wsi));
-	if (! client) {
-		return (-1);
-	}
-
-	result = 0;
-	switch (reason) {
-		case LWS_CALLBACK_CLIENT_CONNECTION_ERROR: {
-			Log::debug ("WebSocket connection error; url=\"%s\" err=\"%s\"", client->url.c_str (), in ? StdString ((char *) in, len).c_str () : "unspecified connection failure");
-			break;
-		}
-		case LWS_CALLBACK_CLIENT_ESTABLISHED: {
-			break;
-		}
-		case LWS_CALLBACK_CLOSED: {
-			client->isConnected = false;
-			client->isClosing = true;
-			if (client->disconnectCallback) {
-				// TODO: Possibly set an error description string here
-				client->disconnectCallback (client->callbackData, client, StdString (""));
-			}
-			break;
-		}
-		case LWS_CALLBACK_CLIENT_WRITEABLE: {
-			if (client->isClosing) {
-				result = -1;
-			}
-			else {
-				client->writeNextMessage ();
-			}
-			break;
-		}
-		case LWS_CALLBACK_RECEIVE: {
-			client->receiveData ((char *) in, len);
-			break;
-		}
-		case LWS_CALLBACK_CLIENT_RECEIVE: {
-			client->receiveData ((char *) in, len);
-			break;
-		}
-		case LWS_CALLBACK_WS_PEER_INITIATED_CLOSE: {
-			client->isConnected = false;
-			break;
-		}
-		case LWS_CALLBACK_PROTOCOL_INIT: {
-			break;
-		}
-		case LWS_CALLBACK_PROTOCOL_DESTROY: {
-			break;
-		}
-		case LWS_CALLBACK_WSI_CREATE: {
-			break;
-		}
-		case LWS_CALLBACK_WSI_DESTROY: {
-			client->isClosed = true;
-			break;
-		}
-		case LWS_CALLBACK_CLIENT_CONFIRM_EXTENSION_SUPPORTED: {
-			break;
-		}
-		case LWS_CALLBACK_WS_EXT_DEFAULTS: {
-			break;
-		}
-		case LWS_CALLBACK_CLIENT_FILTER_PRE_ESTABLISH: {
-			break;
-		}
-		case LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER: {
-			break;
-		}
-		case LWS_CALLBACK_LOCK_POLL: {
-			break;
-		}
-		case LWS_CALLBACK_UNLOCK_POLL: {
-			break;
-		}
-		case LWS_CALLBACK_ADD_POLL_FD: {
-			break;
-		}
-		case LWS_CALLBACK_CHANGE_MODE_POLL_FD: {
-			break;
-		}
-		case LWS_CALLBACK_DEL_POLL_FD: {
-			break;
-		}
-		default: {
-			break;
+	if (! isAuthorizing) {
+		if (! isAuthorizeComplete) {
+			authorizeSecretIndex = 0;
+			isAuthorizing = true;
 		}
 	}
+	else {
+		++authorizeSecretIndex;
+	}
+	if (! isAuthorizing) {
+		// TODO: Possibly disconnect the client here (expecting to retry authorization on the next scheduled reconnect)
+		return;
+	}
 
-	return (result);
+	sent = false;
+	authorizeToken.assign ("");
+	params = new Json ();
+	params->set ("token", App::instance->getRandomString (64));
+	cmd = App::instance->createCommand (SystemInterface::Command_Authorize, SystemInterface::Constant_DefaultCommandType, params);
+	if (cmd) {
+		if (App::instance->agentControl.setCommandAuthorization (cmd, authorizeSecretIndex)) {
+			writeCommand (cmd);
+			sent = true;
+		}
+		delete (cmd);
+	}
+
+	if (! sent) {
+		isAuthorizeComplete = true;
+		isAuthorizing = false;
+		// TODO: Possibly disconnect the client here (expecting to retry authorization on the next scheduled reconnect)
+	}
 }

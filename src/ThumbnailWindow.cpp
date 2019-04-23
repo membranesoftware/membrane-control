@@ -66,17 +66,16 @@ ThumbnailWindow::ThumbnailWindow (int thumbnailIndex, float thumbnailTimestamp, 
 	uiconfig = &(App::instance->uiConfig);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
-	mediaImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LOADING_IMAGE_ICON))));
-	mediaImage->setLoadUrl (sourceUrl, uiconfig->coreSprites.getSprite (UiConfiguration::LOADING_IMAGE_ICON));
+	mediaImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LoadingImageIconSprite))));
+	mediaImage->setLoadUrl (sourceUrl, uiconfig->coreSprites.getSprite (UiConfiguration::LoadingImageIconSprite));
 
-	timestampLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CAPTION, uiconfig->inverseTextColor)));
+	timestampLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->inverseTextColor)));
 	timestampLabel->zLevel = 1;
 	timestampLabel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	timestampLabel->setFillBg (true, 0.0f, 0.0f, 0.0f);
-	timestampLabel->setAlphaBlend (true, uiconfig->scrimBackgroundAlpha);
+	timestampLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
 	timestampLabel->isVisible = false;
 	if (thumbnailTimestamp >= 0.0f) {
-		timestampLabel->setText (OsUtil::getDurationString ((int64_t) thumbnailTimestamp, OsUtil::HOURS));
+		timestampLabel->setText (OsUtil::getDurationString ((int64_t) thumbnailTimestamp, OsUtil::HoursUnit));
 	}
 
 	setLayout (layoutType, maxMediaImageWidth);
@@ -131,15 +130,15 @@ void ThumbnailWindow::refreshLayout () {
 	timestampLabel->position.assign (mediaImage->position.x, mediaImage->position.y + mediaImage->height - timestampLabel->height);
 
 	switch (layout) {
-		case ThumbnailWindow::LOW_DETAIL: {
+		case ThumbnailWindow::LowDetailLayout: {
 			timestampLabel->isVisible = false;
 			break;
 		}
-		case ThumbnailWindow::MEDIUM_DETAIL: {
+		case ThumbnailWindow::MediumDetailLayout: {
 			timestampLabel->isVisible = true;
 			break;
 		}
-		case ThumbnailWindow::HIGH_DETAIL: {
+		case ThumbnailWindow::HighDetailLayout: {
 			timestampLabel->isVisible = true;
 			break;
 		}
@@ -168,7 +167,7 @@ void ThumbnailWindow::setHighlighted (bool highlighted) {
 
 void ThumbnailWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 	Panel::doProcessMouseState (mouseState);
-	if (layout == ThumbnailWindow::LOW_DETAIL) {
+	if (layout == ThumbnailWindow::LowDetailLayout) {
 		if (mouseState.isEntered) {
 			timestampLabel->isVisible = true;
 		}

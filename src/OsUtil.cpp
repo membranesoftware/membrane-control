@@ -91,18 +91,18 @@ StdString OsUtil::getDurationString (int64_t duration, int minUnitType) {
 	seconds = (int) (duration / 1000);
 	ms = (int) (duration % 1000);
 
-	mintype = OsUtil::MILLISECONDS;
+	mintype = OsUtil::MillisecondsUnit;
 	if (seconds > 0) {
-		mintype = OsUtil::SECONDS;
+		mintype = OsUtil::SecondsUnit;
 	}
 	if (minutes > 0) {
-		mintype = OsUtil::MINUTES;
+		mintype = OsUtil::MinutesUnit;
 	}
 	if (hours > 0) {
-		mintype = OsUtil::HOURS;
+		mintype = OsUtil::HoursUnit;
 	}
 	if (days > 0) {
-		mintype = OsUtil::DAYS;
+		mintype = OsUtil::DaysUnit;
 	}
 	if (mintype < minUnitType) {
 		mintype = minUnitType;
@@ -110,27 +110,27 @@ StdString OsUtil::getDurationString (int64_t duration, int minUnitType) {
 
 	separator[0] = '\0';
 	separator[1] = '\0';
-	if (mintype >= OsUtil::DAYS) {
+	if (mintype >= OsUtil::DaysUnit) {
 		s.appendSprintf ("%id", days);
 	}
-	if (mintype >= OsUtil::HOURS) {
+	if (mintype >= OsUtil::HoursUnit) {
 		s.appendSprintf ("%02i", hours);
 	}
-	if (mintype >= OsUtil::MINUTES) {
+	if (mintype >= OsUtil::MinutesUnit) {
 		separator[0] = '\0';
 		if (! s.empty ()) {
 			separator[0] = ':';
 		}
 		s.appendSprintf ("%s%02i", separator, minutes);
 	}
-	if (mintype >= OsUtil::SECONDS) {
+	if (mintype >= OsUtil::SecondsUnit) {
 		separator[0] = '\0';
 		if (! s.empty ()) {
 			separator[0] = ':';
 		}
 		s.appendSprintf ("%s%02i", separator, seconds);
 	}
-	if (mintype >= OsUtil::MILLISECONDS) {
+	if (mintype >= OsUtil::MillisecondsUnit) {
 		s.appendSprintf (".%03i", ms);
 	}
 
@@ -144,14 +144,14 @@ StdString OsUtil::getDurationDisplayString (int64_t duration) {
 	unit = OsUtil::getDurationMinUnitType (duration);
 	t = duration;
 	t /= 1000;
-	if (unit >= OsUtil::HOURS) {
+	if (unit >= OsUtil::HoursUnit) {
 		t /= 60;
 		h = (int) (t / 60);
 		t %= 60;
 		m = (int) t;
 		return (StdString::createSprintf ("%ih%im", h, m));
 	}
-	if (unit >= OsUtil::MINUTES) {
+	if (unit >= OsUtil::MinutesUnit) {
 		m = (int) (t / 60);
 		return (StdString::createSprintf ("%im%is", m, (int) (t % 60)));
 	}
@@ -161,12 +161,12 @@ StdString OsUtil::getDurationDisplayString (int64_t duration) {
 
 int OsUtil::getDurationMinUnitType (int64_t duration) {
 	if (duration >= (3600 * 1000)) {
-		return (OsUtil::HOURS);
+		return (OsUtil::HoursUnit);
 	}
 	if (duration >= (60 * 1000)) {
-		return (OsUtil::MINUTES);
+		return (OsUtil::MinutesUnit);
 	}
-	return (OsUtil::SECONDS);
+	return (OsUtil::SecondsUnit);
 }
 
 StdString OsUtil::getTimestampString (int64_t timestamp, bool isTimezoneEnabled) {
@@ -365,20 +365,20 @@ int OsUtil::createDirectory (const StdString &path) {
 	result = stat (path.c_str (), &st);
 	if (result != 0) {
 		if (errno != ENOENT) {
-			return (Result::ERROR_SYSTEM_OPERATION_FAILED);
+			return (Result::SystemOperationFailedError);
 		}
 	}
 
 	if ((result == 0) && (st.st_mode & S_IFDIR)) {
-		return (Result::SUCCESS);
+		return (Result::Success);
 	}
 
 	result = mkdir (path.c_str (), S_IRWXU);
 	if (result != 0) {
-		return (Result::ERROR_SYSTEM_OPERATION_FAILED);
+		return (Result::SystemOperationFailedError);
 	}
 
-	result = Result::SUCCESS;
+	result = Result::Success;
 #endif
 #if PLATFORM_WINDOWS
 	DWORD a;
@@ -386,18 +386,18 @@ int OsUtil::createDirectory (const StdString &path) {
 	a = GetFileAttributes (path.c_str ());
 	if (a != INVALID_FILE_ATTRIBUTES) {
 		if (a & FILE_ATTRIBUTE_DIRECTORY) {
-			return (Result::SUCCESS);
+			return (Result::Success);
 		}
 		else {
-			return (Result::ERROR_SYSTEM_OPERATION_FAILED);
+			return (Result::SystemOperationFailedError);
 		}
 	}
 
 	if (! CreateDirectory (path.c_str (), NULL)) {
-		return (Result::ERROR_SYSTEM_OPERATION_FAILED);
+		return (Result::SystemOperationFailedError);
 	}
 
-	result = Result::SUCCESS;
+	result = Result::Success;
 #endif
 
 	return (result);
@@ -421,7 +421,7 @@ int OsUtil::readFile (const StdString &path, StdString *destString) {
 
 	fp = fopen (path.c_str (), "rb");
 	if (! fp) {
-		return (Result::ERROR_FILE_OPEN_FAILED);
+		return (Result::FileOpenFailedError);
 	}
 
 	destString->assign ("");
@@ -433,10 +433,11 @@ int OsUtil::readFile (const StdString &path, StdString *destString) {
 	}
 
 	fclose (fp);
-	return (Result::SUCCESS);
+	return (Result::Success);
 }
 
 StdString OsUtil::getEnvValue (const StdString &key, const StdString &defaultValue) {
+#if PLATFORM_LINUX || PLATFORM_MACOS
 	char *val;
 
 	val = getenv (key.c_str ());
@@ -445,32 +446,50 @@ StdString OsUtil::getEnvValue (const StdString &key, const StdString &defaultVal
 	}
 
 	return (StdString (val));
+#endif
+#if PLATFORM_WINDOWS
+	DWORD result, bufsize;
+	LPTSTR buf;
+	StdString val;
+	std::basic_string<TCHAR> k;
+
+	bufsize = 4096;
+	buf = (LPTSTR) malloc (bufsize * sizeof (TCHAR));
+	if (! buf) {
+		return (defaultValue);
+	}
+
+	val.assign (defaultValue);
+	k.assign (key);
+	result = GetEnvironmentVariable (k.c_str (), buf, bufsize);
+	if (result > bufsize) {
+		bufsize = result;
+		buf = (LPTSTR) realloc (buf, bufsize * sizeof (TCHAR));
+		if (! buf) {
+			return (defaultValue);
+		}
+
+		result = GetEnvironmentVariable (k.c_str (), buf, bufsize);
+	}
+	if ((result != 0) && (result <= bufsize)) {
+		k.assign (buf);
+		val.assign (k);
+	}
+
+	free (buf);
+	return (val);
+#endif
 }
 
 StdString OsUtil::getEnvValue (const StdString &key, const char *defaultValue) {
-	char *val;
-
-	val = getenv (key.c_str ());
-	if (! val) {
-		return (StdString (defaultValue));
-	}
-
-	return (StdString (val));
+	return (OsUtil::getEnvValue (key, StdString (defaultValue)));
 }
 
 bool OsUtil::getEnvValue (const StdString &key, bool defaultValue) {
-	char *val;
+	StdString val;
 
-	val = getenv (key.c_str ());
-	if (! val) {
-		return (defaultValue);
-	}
-
-	if (! strcmp (val, "true")) {
-		return (true);
-	}
-
-	return (false);
+	val = OsUtil::getEnvValue (key, defaultValue ? "true" : "false");
+	return (val.equals ("true"));
 }
 
 StdString OsUtil::getEnvLanguage (const StdString &defaultValue) {
@@ -534,7 +553,7 @@ int OsUtil::openUrl (const StdString &url) {
 	StringList::iterator i, iend, j, jend;
 #endif
 
-	result = Result::ERROR_NOT_IMPLEMENTED;
+	result = Result::NotImplementedError;
 #if PLATFORM_LINUX
 	execfile = OsUtil::getEnvValue ("BROWSER", "");
 	if (! execfile.empty ()) {
@@ -574,29 +593,29 @@ int OsUtil::openUrl (const StdString &url) {
 	}
 
 	if (execfile.empty ()) {
-		return (Result::ERROR_PROGRAM_NOT_FOUND);
+		return (Result::ProgramNotFoundError);
 	}
 
 	if (!(fork ())) {
 		execlp (execfile.c_str (), execarg.c_str (), url.c_str (), NULL);
 		exit (1);
 	}
-	result = Result::SUCCESS;
+	result = Result::Success;
 #endif
 #if PLATFORM_MACOS
 	if (!(fork ())) {
 		execlp ("open", "open", url.c_str (), NULL);
 		exit (-1);
 	}
-	result = Result::SUCCESS;
+	result = Result::Success;
 #endif
 #if PLATFORM_WINDOWS
 	HINSTANCE h;
 
-	result = Result::SUCCESS;
+	result = Result::Success;
 	h = ShellExecute (NULL, "open", url.c_str (), NULL, NULL, SW_SHOWNORMAL);
 	if (((int) h) <= 32) {
-		result = Result::ERROR_SYSTEM_OPERATION_FAILED;
+		result = Result::SystemOperationFailedError;
 	}
 #endif
 	return (result);

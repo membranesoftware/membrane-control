@@ -58,7 +58,7 @@ ToggleWindow::ToggleWindow (Toggle *toggle, const StdString &labelText)
 	toggle->setStateChangeCallback (ToggleWindow::toggleStateChanged, this);
 
 	if (! labelText.empty ()) {
-		label = (Label *) addWidget (new Label (labelText, UiConfiguration::CAPTION, uiconfig->primaryTextColor));
+		label = (Label *) addWidget (new Label (labelText, UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
 		label->isInputSuspended = true;
 	}
 
@@ -94,15 +94,16 @@ void ToggleWindow::refreshLayout () {
 	toggle->position.assign (x, y);
 	x += toggle->width;
 	if (label) {
+		x += (uiconfig->marginSize / 2.0f);
 		label->position.assign (x, y);
 		x += label->width + uiconfig->marginSize;
 	}
 
 	resetSize ();
 	if (label) {
-		label->position.assign (label->position.x, (height / 2.0f) - (label->height / 2.0f));
+		label->position.assignY ((height / 2.0f) - (label->height / 2.0f));
 	}
-	toggle->position.assign (toggle->position.x, (height / 2.0f) - (toggle->height / 2.0f));
+	toggle->position.assignY ((height / 2.0f) - (toggle->height / 2.0f));
 	resetSize ();
 }
 

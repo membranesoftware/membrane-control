@@ -41,17 +41,17 @@ class Log {
 public:
 	// Constants to use for log levels
 	enum {
-		ERR = 0,
-		WARNING = 1,
-		NOTICE = 2,
-		INFO = 3,
-		DEBUG = 4,
-		DEBUG1 = 5,
-		DEBUG2 = 6,
-		DEBUG3 = 7,
-		DEBUG4 = 8,
-		NUM_LEVELS = 9,
-		NO_LEVEL = 255
+		ErrLevel = 0,
+		WarningLevel = 1,
+		NoticeLevel = 2,
+		InfoLevel = 3,
+		DebugLevel = 4,
+		Debug1Level = 5,
+		Debug2Level = 6,
+		Debug3Level = 7,
+		Debug4Level = 8,
+		LevelCount = 9,
+		NoLevel = 255
 	};
 
 	Log ();

@@ -119,11 +119,11 @@ protected:
 private:
 	// Constants to use for item types
 	enum {
-		COMBO_BOX = 1,
-		TEXT_FIELD = 2,
-		TEXT_FIELD_WINDOW = 3,
-		TOGGLE = 4,
-		SLIDER = 5
+		ComboBoxItem = 1,
+		TextFieldItem = 2,
+		TextFieldWindowItem = 3,
+		ToggleItem = 4,
+		SliderItem = 5
 	};
 	struct Item {
 		StdString name;

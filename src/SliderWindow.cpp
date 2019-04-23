@@ -60,7 +60,7 @@ SliderWindow::SliderWindow (Slider *slider)
 
 	value = slider->value;
 	addWidget (slider);
-	valueLabel = (Label *) addWidget (new Label (StdString::createSprintf ("%.2f", slider->value), UiConfiguration::CAPTION, normalValueTextColor));
+	valueLabel = (Label *) addWidget (new Label (StdString::createSprintf ("%.2f", slider->value), UiConfiguration::CaptionFont, normalValueTextColor));
 
 	slider->setValueChangeCallback (SliderWindow::sliderValueChanged, this);
 	slider->setValueHoverCallback (SliderWindow::sliderValueHovered, this);

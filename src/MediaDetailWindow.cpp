@@ -32,6 +32,7 @@
 #include <stdlib.h>
 #include "Result.h"
 #include "StdString.h"
+#include "StringList.h"
 #include "App.h"
 #include "UiText.h"
 #include "OsUtil.h"
@@ -46,12 +47,12 @@
 #include "Label.h"
 #include "Button.h"
 #include "Toggle.h"
-#include "StatsWindow.h"
 #include "SystemInterface.h"
 #include "UiConfiguration.h"
+#include "MediaItemUi.h"
 #include "MediaDetailWindow.h"
 
-MediaDetailWindow::MediaDetailWindow (const StdString &recordId)
+MediaDetailWindow::MediaDetailWindow (const StdString &recordId, SpriteGroup *mediaItemUiSpriteGroup)
 : Panel ()
 , recordId (recordId)
 , mediaWidth (0)
@@ -60,18 +61,38 @@ MediaDetailWindow::MediaDetailWindow (const StdString &recordId)
 , mediaFrameRate (0.0f)
 , mediaSize (0)
 , mediaBitrate (0)
+, sprites (mediaItemUiSpriteGroup)
 , iconImage (NULL)
 , nameLabel (NULL)
 , descriptionLabel (NULL)
-, statsWindow (NULL)
+, attributesIcon (NULL)
+, fileSizeIcon (NULL)
+, durationIcon (NULL)
 {
 	UiConfiguration *uiconfig;
+	UiText *uitext;
 
 	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
-	populate ();
+	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeMediaIconSprite)));
+	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::TitleFont, uiconfig->primaryTextColor));
+	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+
+	attributesIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (MediaItemUi::AttributesIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	attributesIcon->setPadding (0.0f, 0.0f);
+	attributesIcon->setMouseHoverTooltip (uitext->getText (UiTextString::mediaAttributesTooltip));
+
+	fileSizeIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::StorageIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	fileSizeIcon->setPadding (0.0f, 0.0f);
+	fileSizeIcon->setMouseHoverTooltip (uitext->getText (UiTextString::fileSize).capitalized ());
+
+	durationIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (MediaItemUi::DurationIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	durationIcon->setPadding (0.0f, 0.0f);
+	durationIcon->setMouseHoverTooltip (uitext->getText (UiTextString::duration).capitalized ());
+
 	refreshLayout ();
 }
 
@@ -96,37 +117,15 @@ MediaDetailWindow *MediaDetailWindow::castWidget (Widget *widget) {
 	return (MediaDetailWindow::isWidgetType (widget) ? (MediaDetailWindow *) widget : NULL);
 }
 
-void MediaDetailWindow::populate () {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
-
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LARGE_MEDIA_ICON)));
-	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::TITLE, uiconfig->primaryTextColor));
-	descriptionLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::mediaFile).capitalized (), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
-
-	statsWindow = (StatsWindow *) addWidget (new StatsWindow ());
-	statsWindow->setItem (uitext->getText (UiTextString::server).capitalized (), StdString (""));
-	statsWindow->setItem (uitext->getText (UiTextString::frameSize).capitalized (), StdString (""));
-	statsWindow->setItem (uitext->getText (UiTextString::frameRate).capitalized (), StdString (""));
-	statsWindow->setItem (uitext->getText (UiTextString::bitrate).capitalized (), StdString (""));
-	statsWindow->setItem (uitext->getText (UiTextString::duration).capitalized (), StdString (""));
-	statsWindow->setItem (uitext->getText (UiTextString::fileSize).capitalized (), StdString (""));
-	statsWindow->setPadding (uiconfig->paddingSize, 0.0f);
-}
-
 void MediaDetailWindow::syncRecordStore () {
 	RecordStore *store;
 	SystemInterface *interface;
-	UiText *uitext;
 	Json *record;
 	StdString text, rationame, framesizename;
+	StringList attributes;
 
 	store = &(App::instance->agentControl.recordStore);
 	interface = &(App::instance->systemInterface);
-	uitext = &(App::instance->uiText);
 	record = store->findRecord (recordId, SystemInterface::CommandId_MediaItem);
 	if (! record) {
 		return;
@@ -144,7 +143,7 @@ void MediaDetailWindow::syncRecordStore () {
 	mediaName.assign (interface->getCommandStringParam (record, "name", ""));
 	nameLabel->setText (mediaName);
 
-	statsWindow->setItem (uitext->getText (UiTextString::server).capitalized (), App::instance->agentControl.getAgentDisplayName (agentId));
+	descriptionLabel->setText (App::instance->agentControl.getAgentDisplayName (agentId));
 
 	if ((mediaWidth > 0) && (mediaHeight > 0)) {
 		text.sprintf ("%ix%i", mediaWidth, mediaHeight);
@@ -164,23 +163,25 @@ void MediaDetailWindow::syncRecordStore () {
 			text.append (")");
 		}
 
-		statsWindow->setItem (uitext->getText (UiTextString::frameSize).capitalized (), text);
+		attributes.push_back (text);
 	}
 
 	if (mediaFrameRate > 0.0f) {
-		statsWindow->setItem (uitext->getText (UiTextString::frameRate).capitalized (), StdString::createSprintf ("%.2ffps", mediaFrameRate));
+		attributes.push_back (StdString::createSprintf ("%.2ffps", mediaFrameRate));
 	}
 
 	if (mediaBitrate > 0.0f) {
-		statsWindow->setItem (uitext->getText (UiTextString::bitrate).capitalized (), MediaUtil::getBitrateDisplayString (mediaBitrate));
+		attributes.push_back (MediaUtil::getBitrateDisplayString (mediaBitrate));
 	}
 
+	attributesIcon->setText (attributes.join (", "));
+
 	if (mediaSize > 0) {
-		statsWindow->setItem (uitext->getText (UiTextString::fileSize).capitalized (), OsUtil::getByteCountDisplayString (mediaSize));
+		fileSizeIcon->setText (StdString::createSprintf ("%lli (%s)", (long long int) mediaSize, OsUtil::getByteCountDisplayString (mediaSize).c_str ()));
 	}
 
 	if (mediaDuration > 0.0f) {
-		statsWindow->setItem (uitext->getText (UiTextString::duration).capitalized (), OsUtil::getDurationDisplayString (mediaDuration));
+		durationIcon->setText (OsUtil::getDurationDisplayString (mediaDuration));
 	}
 
 	refreshLayout ();
@@ -204,7 +205,12 @@ void MediaDetailWindow::refreshLayout () {
 
 	y = y2 + uiconfig->marginSize;
 	x = x0;
-	statsWindow->flowDown (x, &y);
+	attributesIcon->flowDown (x, &y, &x2, &y2);
+
+	y = y2 + uiconfig->marginSize;
+	x = x0;
+	durationIcon->flowRight (&x, y, &x2, &y2);
+	fileSizeIcon->flowDown (x, &y, &x2, &y2);
 
 	resetSize ();
 }

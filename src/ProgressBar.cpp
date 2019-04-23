@@ -120,7 +120,7 @@ void ProgressBar::setIndeterminate (bool indeterminate) {
 	refreshLayout ();
 }
 
-void ProgressBar::doUpdate (int msElapsed, float originX, float originY) {
+void ProgressBar::doUpdate (int msElapsed) {
 	if (isIndeterminate) {
 		switch (fillStage) {
 			case 0: {
@@ -188,26 +188,29 @@ void ProgressBar::doUpdate (int msElapsed, float originX, float originY) {
 	}
 }
 
-void ProgressBar::doDraw () {
+void ProgressBar::doDraw (SDL_Texture *targetTexture, float originX, float originY) {
+	SDL_Renderer *render;
 	SDL_Rect rect;
 	float x1, x2, w;
 
-	rect.x = (int) drawX;
-	rect.y = (int) drawY;
+	render = App::instance->render;
+	rect.x = (int) (originX + position.x);
+	rect.y = (int) (originY + position.y);
 	rect.w = (int) width;
 	rect.h = (int) height;
-	SDL_SetRenderDrawColor (App::instance->render, bgColor.rByte, bgColor.gByte, bgColor.bByte, 255);
-	SDL_RenderFillRect (App::instance->render, &rect);
+	SDL_SetRenderDrawColor (render, bgColor.rByte, bgColor.gByte, bgColor.bByte, 255);
+	SDL_RenderFillRect (render, &rect);
 
 	x1 = floorf (fillStart);
 	x2 = floorf (fillEnd);
 	w = x2 - x1;
 	if (w > 0.0f) {
-		rect.x = (int) (drawX + x1);
+		rect.x = (int) (originX + position.x + x1);
 		rect.w = (int) w;
-		SDL_SetRenderDrawColor (App::instance->render, fillColor.rByte, fillColor.gByte, fillColor.bByte, 255);
-		SDL_RenderFillRect (App::instance->render, &rect);
+		SDL_SetRenderDrawColor (render, fillColor.rByte, fillColor.gByte, fillColor.bByte, 255);
+		SDL_RenderFillRect (render, &rect);
 	}
+	SDL_SetRenderDrawColor (render, 0, 0, 0, 0);
 }
 
 void ProgressBar::refreshLayout () {

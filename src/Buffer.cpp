@@ -97,7 +97,7 @@ int Buffer::add (uint8_t *dataPtr, int dataLength) {
 		sz2 = size + (blocks * incr);
 		data = (uint8_t *) realloc (data, sz2);
 		if (! data) {
-			return (Result::ERROR_OUT_OF_MEMORY);
+			return (Result::OutOfMemoryError);
 		}
 		size = sz2;
 	}
@@ -105,7 +105,7 @@ int Buffer::add (uint8_t *dataPtr, int dataLength) {
 	memcpy (data + length, dataPtr, dataLength);
 	length += dataLength;
 
-	return (Result::SUCCESS);
+	return (Result::Success);
 }
 
 int Buffer::add (const char *str) {

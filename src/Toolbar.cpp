@@ -292,15 +292,13 @@ void Toolbar::refreshLayout () {
 	}
 }
 
-void Toolbar::doUpdate (int msElapsed, float originX, float originY) {
+void Toolbar::doUpdate (int msElapsed) {
 	std::list<Widget *>::iterator i, end;
 	Widget *widget;
 	bool shouldrefresh, found;
 
-	Panel::doUpdate (msElapsed, originX, originY);
-
+	Panel::doUpdate (msElapsed);
 	shouldrefresh = false;
-
 	while (true) {
 		found = false;
 		i = leftItemList.begin ();

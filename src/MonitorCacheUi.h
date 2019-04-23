@@ -39,24 +39,24 @@
 #include "Toolbar.h"
 #include "CardView.h"
 #include "HelpWindow.h"
+#include "StreamWindow.h"
 #include "Ui.h"
 
 class MonitorCacheUi : public Ui {
 public:
-	MonitorCacheUi (const StdString &agentId, const StdString &agentDisplayName, int streamWindowLayout);
+	MonitorCacheUi (const StdString &agentId, const StdString &agentName, int streamWindowLayout);
 	~MonitorCacheUi ();
 
 	// Constants to use for sprite indexes
 	enum {
-		BREADCRUMB_ICON = 0,
-		THUMBNAIL_SIZE_BUTTON = 1,
-		LARGE_THUMBNAIL_BUTTON = 2,
-		MEDIUM_THUMBNAIL_BUTTON = 3,
-		SMALL_THUMBNAIL_BUTTON = 4,
-		PLAY_BUTTON = 5,
-		STOP_BUTTON = 6,
-		WRITE_PLAYLIST_BUTTON = 7,
-		SMALL_STREAM_ICON = 8
+		BreadcrumbIconSprite = 0,
+		ThumbnailSizeButtonSprite = 1,
+		LargeThumbnailButtonSprite = 2,
+		MediumThumbnailButtonSprite = 3,
+		SmallThumbnailButtonSprite = 4,
+		PlayButtonSprite = 5,
+		StopButtonSprite = 6,
+		WritePlaylistButtonSprite = 7
 	};
 
 	// Read-only data members
@@ -135,8 +135,8 @@ protected:
 	void doSyncRecordStore ();
 
 private:
-	// Set the interface's selected StreamWindow item at the specified timestamp, for use in executing remote commands
-	void setSelectedStream (StreamWindow *streamWindow, float timestamp);
+	// Set the interface's selected StreamWindow item
+	void setSelectedStream (StreamWindow *streamWindow);
 
 	// Send a RemoveMediaStream command to a remote agent, as specified by the currently held action widget
 	void invokeRemoveMediaStream ();

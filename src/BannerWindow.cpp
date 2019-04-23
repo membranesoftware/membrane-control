@@ -49,7 +49,7 @@ BannerWindow::BannerWindow (float windowWidth)
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize / 2.0f);
 	setFillBg (true, uiconfig->darkPrimaryColor);
 
-	messageLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::BUTTON, uiconfig->inverseTextColor)));
+	messageLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::ButtonFont, uiconfig->inverseTextColor)));
 	messageLabel->setPadding (0.0f, 0.0f);
 
 	actionButton = (Button *) addWidget (new Button ());

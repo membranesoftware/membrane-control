@@ -145,7 +145,7 @@ void UiStack::doSetUi (void *uiStackPtr) {
 		ui = uistack->uiAddList.front ();
 		uistack->uiAddList.pop_front ();
 		result = ui->load ();
-		if (result != Result::SUCCESS) {
+		if (result != Result::Success) {
 			Log::err ("Failed to load UI resources; err=%i", result);
 			ui->release ();
 		}
@@ -182,7 +182,7 @@ void UiStack::doPushUi (void *uiStackPtr) {
 		ui = uistack->uiAddList.front ();
 		uistack->uiAddList.pop_front ();
 		result = ui->load ();
-		if (result != Result::SUCCESS) {
+		if (result != Result::Success) {
 			Log::err ("Failed to load UI resources; err=%i", result);
 			ui->release ();
 		}
@@ -291,7 +291,7 @@ void UiStack::resetToolbars () {
 	mainToolbar->clearRightItems ();
 	secondaryToolbar->clearAll ();
 
-	button = new Button (StdString (""), App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::MAIN_MENU_BUTTON));
+	button = new Button (StdString (""), App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::MainMenuButtonSprite));
 	button->setInverseColor (true);
 	button->setMouseClickCallback (UiStack::mainMenuButtonClicked, this);
 	button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::mainMenuTooltip));
@@ -302,7 +302,7 @@ void UiStack::resetToolbars () {
 	}
 
 	if (uiList.size () > 1) {
-		button = new Button (StdString (""), App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::BACK_BUTTON));
+		button = new Button (StdString (""), App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::BackButtonSprite));
 		button->setInverseColor (true);
 		button->setMouseClickCallback (UiStack::backButtonClicked, this);
 		button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::uiBackTooltip));
@@ -425,10 +425,10 @@ void UiStack::activateMouseHover () {
 		tooltipwindow->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
 		tooltip.assign (tooltipwindow);
 
-		x = widget->drawX;
-		y = widget->drawY;
+		x = widget->screenX;
+		y = widget->screenY;
 		switch (widget->tooltipAlignment) {
-			case Widget::TOP: {
+			case Widget::TopAlignment: {
 				x += ((widget->width / 2.0f) - (tooltipwindow->width / 2.0f));
 				y -= (tooltipwindow->height + uiconfig->marginSize);
 
@@ -441,11 +441,11 @@ void UiStack::activateMouseHover () {
 				}
 
 				if (y < uiconfig->paddingSize) {
-					y = widget->drawY + widget->height + uiconfig->marginSize;
+					y = widget->screenY + widget->height + uiconfig->marginSize;
 				}
 				break;
 			}
-			case Widget::LEFT: {
+			case Widget::LeftAlignment: {
 				x -= (tooltipwindow->width + uiconfig->marginSize);
 				y += ((widget->height / 2.0f) - (tooltipwindow->height / 2.0f));
 
@@ -458,11 +458,11 @@ void UiStack::activateMouseHover () {
 				}
 
 				if (x < uiconfig->paddingSize) {
-					x = widget->drawX + widget->width + uiconfig->marginSize;
+					x = widget->screenX + widget->width + uiconfig->marginSize;
 				}
 				break;
 			}
-			case Widget::RIGHT: {
+			case Widget::RightAlignment: {
 				x += (widget->width + uiconfig->marginSize);
 				y += ((widget->height / 2.0f) - (tooltipwindow->height / 2.0f));
 
@@ -475,11 +475,11 @@ void UiStack::activateMouseHover () {
 				}
 
 				if ((x + tooltipwindow->width) >= (App::instance->rootPanel->width - uiconfig->paddingSize)) {
-					x = widget->drawX - (tooltipwindow->width + uiconfig->marginSize);
+					x = widget->screenX - (tooltipwindow->width + uiconfig->marginSize);
 				}
 				break;
 			}
-			case Widget::BOTTOM:
+			case Widget::BottomAlignment:
 			default: {
 				x += ((widget->width / 2.0f) - (tooltipwindow->width / 2.0f));
 				y += (widget->height + uiconfig->marginSize);
@@ -493,7 +493,7 @@ void UiStack::activateMouseHover () {
 				}
 
 				if ((y + tooltipwindow->height) >= (App::instance->rootPanel->height - uiconfig->paddingSize)) {
-					y = widget->drawY - (tooltipwindow->height + uiconfig->marginSize);
+					y = widget->screenY - (tooltipwindow->height + uiconfig->marginSize);
 				}
 				break;
 			}
@@ -544,12 +544,12 @@ void UiStack::mainMenuButtonClicked (void *uiStackPtr, Widget *widgetPtr) {
 	menu = (Menu *) App::instance->rootPanel->addWidget (new Menu ());
 	menu->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
 	menu->isClickDestroyEnabled = true;
-	menu->addItem (uitext->getText (UiTextString::settings).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::SETTINGS_BUTTON), UiStack::settingsActionClicked, uistack);
-	menu->addItem (uitext->getText (UiTextString::about).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::ABOUT_BUTTON), UiStack::aboutActionClicked, uistack);
-	menu->addItem (uitext->getText (UiTextString::checkForUpdates).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::UPDATE_BUTTON), UiStack::updateActionClicked, uistack);
-	menu->addItem (uitext->getText (UiTextString::sendFeedback).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::FEEDBACK_BUTTON), UiStack::feedbackActionClicked, uistack);
-	menu->addItem (uitext->getText (UiTextString::help).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::HELP_BUTTON), UiStack::helpActionClicked, uistack);
-	menu->addItem (uitext->getText (UiTextString::exit).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::EXIT_BUTTON), UiStack::exitActionClicked, uistack);
+	menu->addItem (uitext->getText (UiTextString::settings).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::SettingsButtonSprite), UiStack::settingsActionClicked, uistack);
+	menu->addItem (uitext->getText (UiTextString::about).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::AboutButtonSprite), UiStack::aboutActionClicked, uistack);
+	menu->addItem (uitext->getText (UiTextString::checkForUpdates).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::UpdateButtonSprite), UiStack::updateActionClicked, uistack);
+	menu->addItem (uitext->getText (UiTextString::sendFeedback).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::FeedbackButtonSprite), UiStack::feedbackActionClicked, uistack);
+	menu->addItem (uitext->getText (UiTextString::help).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::HelpButtonSprite), UiStack::helpActionClicked, uistack);
+	menu->addItem (uitext->getText (UiTextString::exit).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::ExitButtonSprite), UiStack::exitActionClicked, uistack);
 	menu->position.assign (widgetPtr->position.x + widgetPtr->width - menu->width, widgetPtr->position.y + widgetPtr->height);
 	uistack->mainMenu.assign (menu);
 }
@@ -568,7 +568,7 @@ void UiStack::aboutActionClicked (void *uiStackPtr, Widget *widgetPtr) {
 
 	url.assign (App::getHelpUrl ("about-membrane-control"));
 	result = OsUtil::openUrl (url);
-	if (result != Result::SUCCESS) {
+	if (result != Result::Success) {
 		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::openAboutUrlError));
 	}
 	else {
@@ -580,7 +580,7 @@ void UiStack::updateActionClicked (void *uiStackPtr, Widget *widgetPtr) {
 	int result;
 
 	result = OsUtil::openUrl (App::getUpdateUrl ());
-	if (result != Result::SUCCESS) {
+	if (result != Result::Success) {
 		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::openFeedbackUrlError));
 	}
 	else {
@@ -592,7 +592,7 @@ void UiStack::feedbackActionClicked (void *uiStackPtr, Widget *widgetPtr) {
 	int result;
 
 	result = OsUtil::openUrl (App::getFeedbackUrl (true));
-	if (result != Result::SUCCESS) {
+	if (result != Result::Success) {
 		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::openFeedbackUrlError));
 	}
 	else {
@@ -630,8 +630,8 @@ void UiStack::toggleSettingsWindow () {
 	uiconfig = &(App::instance->uiConfig);
 	settings = new SettingsWindow (App::instance->rootPanel->width * 0.33f, App::instance->rootPanel->height);
 	panel = new Panel ();
-	panel->setFillBg (true, 0.0f, 0.0f, 0.0f);
-	panel->translateAlphaBlend (0.0f, uiconfig->overlayWindowAlpha, uiconfig->backgroundCrossFadeDuration);
+	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, 0.0f));
+	panel->bgColor.translate (0.0f, 0.0f, 0.0f, uiconfig->overlayWindowAlpha, uiconfig->backgroundCrossFadeDuration);
 	panel->setFixedSize (true, App::instance->rootPanel->width - settings->width, App::instance->rootPanel->height);
 
 	App::instance->rootPanel->addWidget (panel);
@@ -666,8 +666,8 @@ void UiStack::toggleHelpWindow () {
 	SDL_UnlockMutex (uiMutex);
 
 	panel = new Panel ();
-	panel->setFillBg (true, 0.0f, 0.0f, 0.0f);
-	panel->translateAlphaBlend (0.0f, uiconfig->overlayWindowAlpha, uiconfig->backgroundCrossFadeDuration);
+	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, 0.0f));
+	panel->bgColor.translate (0.0f, 0.0f, 0.0f, uiconfig->overlayWindowAlpha, uiconfig->backgroundCrossFadeDuration);
 	panel->setFixedSize (true, App::instance->rootPanel->width - helpwindow->width, App::instance->rootPanel->height);
 
 	App::instance->rootPanel->addWidget (panel);

@@ -35,7 +35,6 @@
 #include <map>
 #include <list>
 #include <vector>
-#include "Result.h"
 #include "StdString.h"
 #include "Json.h"
 
@@ -53,6 +52,7 @@ public:
   static const char *Command_ClearCache;
   static const char *Command_ClearDisplay;
   static const char *Command_CommandResult;
+  static const char *Command_ConfigureMediaStream;
   static const char *Command_CreateCacheStream;
   static const char *Command_CreateMediaDisplayIntent;
   static const char *Command_CreateMediaStream;
@@ -63,6 +63,9 @@ public:
   static const char *Command_FindMediaResult;
   static const char *Command_FindStreamsResult;
   static const char *Command_GetAgentConfiguration;
+  static const char *Command_GetDashHtml5Interface;
+  static const char *Command_GetDashMpd;
+  static const char *Command_GetDashSegment;
   static const char *Command_GetHlsHtml5Interface;
   static const char *Command_GetHlsManifest;
   static const char *Command_GetHlsSegment;
@@ -110,6 +113,7 @@ public:
   static const int CommandId_ClearCache = 59;
   static const int CommandId_ClearDisplay = 31;
   static const int CommandId_CommandResult = 0;
+  static const int CommandId_ConfigureMediaStream = 65;
   static const int CommandId_CreateCacheStream = 60;
   static const int CommandId_CreateMediaDisplayIntent = 50;
   static const int CommandId_CreateMediaStream = 14;
@@ -120,6 +124,9 @@ public:
   static const int CommandId_FindMediaResult = 48;
   static const int CommandId_FindStreamsResult = 4;
   static const int CommandId_GetAgentConfiguration = 44;
+  static const int CommandId_GetDashHtml5Interface = 66;
+  static const int CommandId_GetDashMpd = 67;
+  static const int CommandId_GetDashSegment = 68;
   static const int CommandId_GetHlsHtml5Interface = 25;
   static const int CommandId_GetHlsManifest = 23;
   static const int CommandId_GetHlsSegment = 24;
@@ -192,6 +199,10 @@ public:
   static const int Constant_Master;
   static const int Constant_Admin;
   static const int Constant_CommandTypeCount;
+  static const int Constant_DefaultStreamProfile;
+  static const int Constant_CompressedStreamProfile;
+  static const int Constant_LowQualityStreamProfile;
+  static const int Constant_LowestQualityStreamProfile;
   void populate ();
 	SystemInterface ();
 	~SystemInterface ();
@@ -340,6 +351,7 @@ public:
   static void getParams_AuthorizeResult (std::list<SystemInterface::Param> *destList);
   static void getParams_CancelTask (std::list<SystemInterface::Param> *destList);
   static void getParams_CommandResult (std::list<SystemInterface::Param> *destList);
+  static void getParams_ConfigureMediaStream (std::list<SystemInterface::Param> *destList);
   static void getParams_CreateCacheStream (std::list<SystemInterface::Param> *destList);
   static void getParams_CreateMediaDisplayIntent (std::list<SystemInterface::Param> *destList);
   static void getParams_CreateMediaStream (std::list<SystemInterface::Param> *destList);
@@ -349,12 +361,16 @@ public:
   static void getParams_FindItems (std::list<SystemInterface::Param> *destList);
   static void getParams_FindMediaResult (std::list<SystemInterface::Param> *destList);
   static void getParams_FindStreamsResult (std::list<SystemInterface::Param> *destList);
+  static void getParams_GetDashHtml5Interface (std::list<SystemInterface::Param> *destList);
+  static void getParams_GetDashMpd (std::list<SystemInterface::Param> *destList);
+  static void getParams_GetDashSegment (std::list<SystemInterface::Param> *destList);
   static void getParams_GetHlsHtml5Interface (std::list<SystemInterface::Param> *destList);
   static void getParams_GetHlsManifest (std::list<SystemInterface::Param> *destList);
   static void getParams_GetHlsSegment (std::list<SystemInterface::Param> *destList);
   static void getParams_GetMedia (std::list<SystemInterface::Param> *destList);
   static void getParams_GetThumbnailImage (std::list<SystemInterface::Param> *destList);
   static void getParams_IntentState (std::list<SystemInterface::Param> *destList);
+  static void getParams_MasterServerConfiguration (std::list<SystemInterface::Param> *destList);
   static void getParams_MediaDisplayIntentState (std::list<SystemInterface::Param> *destList);
   static void getParams_MediaDisplayItem (std::list<SystemInterface::Param> *destList);
   static void getParams_MediaItem (std::list<SystemInterface::Param> *destList);
@@ -391,6 +407,7 @@ public:
   static void populateDefaultFields_AuthorizeResult (Json *destObject);
   static void populateDefaultFields_CancelTask (Json *destObject);
   static void populateDefaultFields_CommandResult (Json *destObject);
+  static void populateDefaultFields_ConfigureMediaStream (Json *destObject);
   static void populateDefaultFields_CreateCacheStream (Json *destObject);
   static void populateDefaultFields_CreateMediaDisplayIntent (Json *destObject);
   static void populateDefaultFields_CreateMediaStream (Json *destObject);
@@ -400,12 +417,16 @@ public:
   static void populateDefaultFields_FindItems (Json *destObject);
   static void populateDefaultFields_FindMediaResult (Json *destObject);
   static void populateDefaultFields_FindStreamsResult (Json *destObject);
+  static void populateDefaultFields_GetDashHtml5Interface (Json *destObject);
+  static void populateDefaultFields_GetDashMpd (Json *destObject);
+  static void populateDefaultFields_GetDashSegment (Json *destObject);
   static void populateDefaultFields_GetHlsHtml5Interface (Json *destObject);
   static void populateDefaultFields_GetHlsManifest (Json *destObject);
   static void populateDefaultFields_GetHlsSegment (Json *destObject);
   static void populateDefaultFields_GetMedia (Json *destObject);
   static void populateDefaultFields_GetThumbnailImage (Json *destObject);
   static void populateDefaultFields_IntentState (Json *destObject);
+  static void populateDefaultFields_MasterServerConfiguration (Json *destObject);
   static void populateDefaultFields_MediaDisplayIntentState (Json *destObject);
   static void populateDefaultFields_MediaDisplayItem (Json *destObject);
   static void populateDefaultFields_MediaItem (Json *destObject);
@@ -442,6 +463,7 @@ public:
   static void hashFields_AuthorizeResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_CancelTask (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_CommandResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_ConfigureMediaStream (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_CreateCacheStream (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_CreateMediaDisplayIntent (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_CreateMediaStream (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
@@ -451,12 +473,16 @@ public:
   static void hashFields_FindItems (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_FindMediaResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_FindStreamsResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_GetDashHtml5Interface (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_GetDashMpd (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_GetDashSegment (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_GetHlsHtml5Interface (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_GetHlsManifest (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_GetHlsSegment (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_GetMedia (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_GetThumbnailImage (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_IntentState (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_MasterServerConfiguration (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_MediaDisplayIntentState (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_MediaDisplayItem (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_MediaItem (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);

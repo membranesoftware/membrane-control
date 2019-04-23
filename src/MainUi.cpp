@@ -29,9 +29,10 @@
 * POSSIBILITY OF SUCH DAMAGE.
 */
 #include "Config.h"
-#include <map>
-#include <vector>
 #include <stdlib.h>
+#include <map>
+#include <list>
+#include <vector>
 #include "Result.h"
 #include "StdString.h"
 #include "Log.h"
@@ -48,14 +49,12 @@
 #include "ServerUi.h"
 #include "WebKioskUi.h"
 #include "MediaUi.h"
-#include "MonitorUi.h"
 #include "MainUi.h"
 
 const int MainUi::uiLaunchWindowTypes[] = {
-	UiLaunchWindow::SERVER_UI,
-	UiLaunchWindow::WEB_KIOSK_UI,
-	UiLaunchWindow::MEDIA_UI,
-	UiLaunchWindow::MONITOR_UI
+	UiLaunchWindow::ServerUi,
+	UiLaunchWindow::MediaUi,
+	UiLaunchWindow::WebKioskUi
 };
 const StdString MainUi::announcementIconType = StdString ("a");
 const StdString MainUi::updateIconType = StdString ("b");
@@ -105,14 +104,14 @@ int MainUi::doLoad () {
 
 	cardView = (CardView *) addWidget (new CardView (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight));
 	cardView->isKeyboardScrollEnabled = true;
-	cardView->setRowHeader (0, uitext->getText (UiTextString::mainMenu).capitalized (), UiConfiguration::TITLE, uiconfig->inverseTextColor);
+	cardView->setRowHeader (0, uitext->getText (UiTextString::mainMenu).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor);
 	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 
 	bannerList.randomizeOrder (&(App::instance->prng));
-	bannerIconTypeMap.insert (MainUi::announcementIconType, MainUi::ANNOUNCEMENT_ICON);
-	bannerIconTypeMap.insert (MainUi::updateIconType, MainUi::UPDATE_ICON);
-	bannerIconTypeMap.insert (MainUi::textMessageIconType, MainUi::TEXT_MESSAGE_ICON);
-	bannerIconTypeMap.insert (MainUi::videoMessageIconType, MainUi::VIDEO_MESSAGE_ICON);
+	bannerIconTypeMap.insert (MainUi::announcementIconType, MainUi::AnnouncementIconSprite);
+	bannerIconTypeMap.insert (MainUi::updateIconType, MainUi::UpdateIconSprite);
+	bannerIconTypeMap.insert (MainUi::textMessageIconType, MainUi::TextMessageIconSprite);
+	bannerIconTypeMap.insert (MainUi::videoMessageIconType, MainUi::VideoMessageIconSprite);
 	bannerActionCallbackMap.insert (std::pair<StdString, Widget::EventCallback> (MainUi::openUrlActionType, MainUi::openUrlActionClicked));
 	bannerActionCallbackMap.insert (std::pair<StdString, Widget::EventCallback> (MainUi::helpActionType, MainUi::helpActionClicked));
 	bannerClock = 1200;
@@ -121,7 +120,7 @@ int MainUi::doLoad () {
 	shouldResetShowAll = true;
 	App::instance->shouldSyncRecordStore = true;
 
-	return (Result::SUCCESS);
+	return (Result::Success);
 }
 
 void MainUi::doUnload () {
@@ -137,9 +136,9 @@ void MainUi::doAddMainToolbarItems (Toolbar *toolbar) {
 
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
-	toggle = new Toggle (sprites.getSprite (MainUi::SHOW_ALL_DISABLED_BUTTON), sprites.getSprite (MainUi::SHOW_ALL_ENABLED_BUTTON));
+	toggle = new Toggle (sprites.getSprite (MainUi::ShowAllDisabledButtonSprite), sprites.getSprite (MainUi::ShowAllEnabledButtonSprite));
 	toggle->setInverseColor (true);
-	toggle->setChecked (App::instance->prefsMap.find (App::prefsMainUiShowAllEnabled, false));
+	toggle->setChecked (App::instance->prefsMap.find (App::MainUiShowAllEnabledKey, false));
 	toggle->setStateChangeCallback (MainUi::showAllToggleStateChanged, this);
 	toggle->position.assign (App::instance->windowWidth - toggle->width - uiconfig->marginSize - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - toggle->height - uiconfig->marginSize);
 	toggle->setMouseHoverTooltip (uitext->getText (UiTextString::mainUiShowAllTooltip));
@@ -154,7 +153,7 @@ void MainUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
 
 	uitext = &(App::instance->uiText);
 
-	button = new Button (StdString (""), sprites.getSprite (MainUi::NEXT_ITEM_BUTTON));
+	button = new Button (StdString (""), sprites.getSprite (MainUi::NextItemButtonSprite));
 	button->setInverseColor (true);
 	button->setMouseClickCallback (MainUi::nextBannerButtonClicked, this);
 	button->setMouseHoverTooltip (uitext->getText (UiTextString::mainUiNextBannerTooltip));
@@ -177,8 +176,8 @@ void MainUi::doResume () {
 	bannerClock = 1200;
 
 	if (! isFirstResumeComplete) {
-		if (! App::instance->prefsMap.find (App::prefsIsFirstLaunchComplete, false)) {
-			App::instance->prefsMap.insert (App::prefsIsFirstLaunchComplete, true);
+		if (! App::instance->prefsMap.find (App::IsFirstLaunchCompleteKey, false)) {
+			App::instance->prefsMap.insert (App::IsFirstLaunchCompleteKey, true);
 		}
 		else {
 			App::instance->network.sendHttpGet (App::getApplicationNewsUrl (), MainUi::getApplicationNewsComplete, this);
@@ -196,7 +195,7 @@ void MainUi::doPause () {
 
 	toggle = (Toggle *) showAllToggle.widget;
 	if (toggle) {
-		App::instance->prefsMap.insert (App::prefsMainUiShowAllEnabled, toggle->isChecked);
+		App::instance->prefsMap.insert (App::MainUiShowAllEnabledKey, toggle->isChecked);
 	}
 }
 
@@ -225,8 +224,9 @@ void MainUi::doSyncRecordStore () {
 	RecordStore *store;
 	UiLaunchWindow *item;
 	Toggle *toggle;
+	StdString id;
 	int i, len, type, readycount;
-	bool skip;
+	bool show;
 
 	store = &(App::instance->agentControl.recordStore);
 	len = sizeof (MainUi::uiLaunchWindowTypes) / sizeof (MainUi::uiLaunchWindowTypes[0]);
@@ -244,23 +244,29 @@ void MainUi::doSyncRecordStore () {
 
 	if (shouldResetShowAll) {
 		shouldResetShowAll = false;
-		cardView->removeAllItems ();
 
 		toggle = (Toggle *) showAllToggle.widget;
 		for (i = 0; i < len; ++i) {
 			type = MainUi::uiLaunchWindowTypes[i];
-			skip = false;
+			show = true;
 			if (toggle && (! toggle->isChecked)) {
-				if ((type != UiLaunchWindow::SERVER_UI) && (! UiLaunchWindow::isReadyState (type, store))) {
-					skip = true;
+				if ((type != UiLaunchWindow::ServerUi) && (! UiLaunchWindow::isReadyState (type, store))) {
+					show = false;
 				}
 			}
 
-			if (! skip) {
-				item = new UiLaunchWindow (type, &sprites);
-				item->itemId.assign (cardView->getAvailableItemId ());
-				item->setOpenCallback (MainUi::uiOpenClicked, this);
-				cardView->addItem (item, item->itemId, 0, true);
+			id.sprintf ("%i", i);
+			if (show) {
+				if (! cardView->contains (id)) {
+					item = new UiLaunchWindow (type, &sprites);
+					item->itemId.assign (id);
+					item->setOpenCallback (MainUi::uiOpenClicked, this);
+					cardView->addItem (item, id, 0, true);
+					item->animateNewCard ();
+				}
+			}
+			else {
+				cardView->removeItem (id);
 			}
 		}
 	}
@@ -280,19 +286,15 @@ void MainUi::uiOpenClicked (void *uiPtr, Widget *widgetPtr) {
 	window = (UiLaunchWindow *) widgetPtr;
 	ui = NULL;
 	switch (window->uiType) {
-		case UiLaunchWindow::SERVER_UI: {
+		case UiLaunchWindow::ServerUi: {
 			ui = (Ui *) new ServerUi ();
 			break;
 		}
-		case UiLaunchWindow::MEDIA_UI: {
+		case UiLaunchWindow::MediaUi: {
 			ui = (Ui *) new MediaUi ();
 			break;
 		}
-		case UiLaunchWindow::MONITOR_UI: {
-			ui = (Ui *) new MonitorUi ();
-			break;
-		}
-		case UiLaunchWindow::WEB_KIOSK_UI: {
+		case UiLaunchWindow::WebKioskUi: {
 			ui = (Ui *) new WebKioskUi ();
 			break;
 		}
@@ -376,7 +378,7 @@ void MainUi::getApplicationNewsComplete (void *uiPtr, const StdString &targetUrl
 	StringList items;
 	int i, count;
 
-	if ((statusCode != Network::HTTP_OK) || (responseData->length <= 0)) {
+	if ((statusCode != Network::HttpOkCode) || (responseData->length <= 0)) {
 		return;
 	}
 	if (! App::instance->systemInterface.parseCommand (StdString ((char *) responseData->data, responseData->length), &cmd)) {
@@ -395,7 +397,7 @@ void MainUi::getApplicationNewsComplete (void *uiPtr, const StdString &targetUrl
 	}
 	delete (cmd);
 
-	App::instance->prefsMap.insert (App::prefsMainUiApplicationNewsItems, &items);
+	App::instance->prefsMap.insert (App::MainUiApplicationNewsItemsKey, &items);
 	ui->resetBanners ();
 }
 
@@ -408,7 +410,7 @@ void MainUi::resetBanners () {
 
 	uitext = &(App::instance->uiText);
 	bannerList.clear ();
-	if (! App::instance->prefsMap.find (App::prefsIsFirstLaunchComplete, false)) {
+	if (! App::instance->prefsMap.find (App::IsFirstLaunchCompleteKey, false)) {
 		item = MainUi::Banner ();
 		item.messageText.assign (uitext->getText (UiTextString::firstLaunchBannerMessage));
 		item.iconType.assign (MainUi::announcementIconType);
@@ -424,12 +426,12 @@ void MainUi::resetBanners () {
 		bannerList.push_back (item);
 	}
 
-	App::instance->prefsMap.find (App::prefsMainUiApplicationNewsItems, &items);
+	App::instance->prefsMap.find (App::MainUiApplicationNewsItemsKey, &items);
 	i = items.begin ();
 	end = items.end ();
 	while (i != end) {
 		json = new Json ();
-		if (json->parse (*i) == Result::SUCCESS) {
+		if (json->parse (*i)) {
 			item = MainUi::Banner ();
 			item.messageText.assign (json->getString ("message", ""));
 			item.iconType.assign (json->getString ("iconType", ""));
@@ -486,7 +488,7 @@ void MainUi::openUrlActionClicked (void *uiPtr, Widget *widgetPtr) {
 	}
 
 	result = OsUtil::openUrl (url);
-	if (result != Result::SUCCESS) {
+	if (result != Result::Success) {
 		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::launchWebBrowserError));
 	}
 	else {

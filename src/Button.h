@@ -45,8 +45,11 @@ public:
 	Button (const StdString &labelText = StdString (""), Sprite *sprite = NULL, bool shouldDestroySprite = false);
 	virtual ~Button ();
 
+	static const float focusTextOffset;
+
 	// Read-write data members
 	SDL_Keycode shortcutKey;
+	bool isFocusDropShadowDisabled;
 
 	// Read-only data members
 	float maxImageWidth, maxImageHeight;
@@ -99,8 +102,8 @@ public:
 	static void mouseReleased (void *buttonPtr, Widget *widgetPtr);
 
 protected:
-	// Execute subclass-specific operations to update object state as appropriate for an elapsed millisecond time period and origin position
-	virtual void doUpdate (int msElapsed, float originX, float originY);
+	// Execute subclass-specific operations to update object state as appropriate for an elapsed millisecond time period
+	virtual void doUpdate (int msElapsed);
 
 	// Update the widget as appropriate for a received keypress event and return a boolean value indicating if the event was consumed and should no longer be processed
 	virtual bool doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown);

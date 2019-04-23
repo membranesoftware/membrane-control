@@ -76,21 +76,21 @@ AdminSecretWindow::AdminSecretWindow ()
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::KEY_ICON)));
-	nameLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::serverPasswords).capitalized (), UiConfiguration::HEADLINE, uiconfig->primaryTextColor));
+	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::KeyIconSprite)));
+	nameLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::serverPasswords).capitalized (), UiConfiguration::HeadlineFont, uiconfig->primaryTextColor));
 
-	itemListView = (ListView *) addWidget (new ListView (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CAPTION]->maxGlyphWidth, 3, UiConfiguration::CAPTION, StdString (""), uitext->getText (UiTextString::emptyAdminSecretListText)));
+	itemListView = (ListView *) addWidget (new ListView (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, 3, UiConfiguration::CaptionFont, StdString (""), uitext->getText (UiTextString::emptyAdminSecretListText)));
 	itemListView->setListChangeCallback (AdminSecretWindow::listChanged, this);
 	itemListView->setItemDeleteCallback (AdminSecretWindow::listItemDeleted, this);
 	itemListView->isVisible = false;
 
-	addButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::ADD_BUTTON)));
+	addButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::AddButtonSprite)));
 	addButton->setImageColor (uiconfig->flatButtonTextColor);
 	addButton->setMouseClickCallback (AdminSecretWindow::addButtonClicked, this);
 	addButton->setMouseHoverTooltip (uitext->getText (UiTextString::addAdminPasswordTooltip));
 	addButton->isVisible = false;
 
-	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::EXPAND_MORE_BUTTON), uiconfig->coreSprites.getSprite (UiConfiguration::EXPAND_LESS_BUTTON)));
+	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
 	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
 	expandToggle->setStateChangeCallback (AdminSecretWindow::expandToggleStateChanged, this);
 	expandToggle->setMouseHoverTooltip (uitext->getText (UiTextString::expandToggleTooltip));
@@ -254,6 +254,7 @@ ActionWindow *AdminSecretWindow::createAddActionWindow () {
 	uitext = &(App::instance->uiText);
 	action = new ActionWindow ();
 	action->setInverseColor (true);
+	action->setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
 	action->setTitleText (uitext->getText (UiTextString::createAdminPassword).capitalized ());
 
 	i = itemListView->getItemCount () + 1;
@@ -267,13 +268,13 @@ ActionWindow *AdminSecretWindow::createAddActionWindow () {
 
 	len = (uiconfig->textFieldShortLineLength + uiconfig->textFieldMediumLineLength) / 2;
 
-	textfield = new TextField (len * uiconfig->fonts[UiConfiguration::CAPTION]->maxGlyphWidth, uitext->getText (UiTextString::adminPasswordNamePrompt));
+	textfield = new TextField (len * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, uitext->getText (UiTextString::adminPasswordNamePrompt));
 	textfield->setPromptErrorColor (true);
 	textfield->setValue (name);
 	action->addOption (uitext->getText (UiTextString::name).capitalized (), textfield);
 	action->setOptionNotEmptyString (uitext->getText (UiTextString::name).capitalized ());
 
-	textfieldwindow = new TextFieldWindow (len * uiconfig->fonts[UiConfiguration::CAPTION]->maxGlyphWidth, uitext->getText (UiTextString::adminPasswordPrompt));
+	textfieldwindow = new TextFieldWindow (len * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, uitext->getText (UiTextString::adminPasswordPrompt));
 	textfieldwindow->setPromptErrorColor (true);
 	textfieldwindow->setObscured (true);
 	textfieldwindow->setButtonsEnabled (false, false, false, false, true);

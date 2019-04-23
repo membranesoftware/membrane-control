@@ -61,11 +61,10 @@ SnackbarWindow::SnackbarWindow (float maxWidth)
 
 	backgroundPanel = (Panel *) addWidget (new Panel ());
 	backgroundPanel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	backgroundPanel->setFillBg (true, 0.0f, 0.0f, 0.0f);
-	backgroundPanel->setAlphaBlend (true, uiconfig->overlayWindowAlpha);
+	backgroundPanel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->overlayWindowAlpha));
 	backgroundPanel->setMouseClickCallback (SnackbarWindow::backgroundPanelClicked, this);
 
-	messageLabel = (Label *) backgroundPanel->addWidget (new Label (StdString (""), UiConfiguration::CAPTION, uiconfig->inverseTextColor));
+	messageLabel = (Label *) backgroundPanel->addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->inverseTextColor));
 	messageLabel->zLevel = 1;
 
 	actionButton = (Button *) backgroundPanel->addWidget (new Button (StdString ("")));
@@ -134,8 +133,8 @@ void SnackbarWindow::backgroundPanelClicked (void *windowPtr, Widget *widgetPtr)
 	window->isTimeoutDismissed = true;
 }
 
-void SnackbarWindow::doUpdate (int msElapsed, float originX, float originY) {
-	Panel::doUpdate (msElapsed, originX, originY);
+void SnackbarWindow::doUpdate (int msElapsed) {
+	Panel::doUpdate (msElapsed);
 	if (isVisible) {
 		if (timeoutClock > 0) {
 			if (! isTimeoutSuspended) {

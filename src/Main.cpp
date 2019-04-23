@@ -104,7 +104,7 @@ int main (int argc, char **argv)
 #endif
 		if (! val.empty ()) {
 			result = OsUtil::createDirectory (val);
-			if (result != Result::SUCCESS) {
+			if (result != Result::Success) {
 				Log::warning ("Application data cannot be saved (failed to create directory); path=\"%s\" err=%i", val.c_str (), result);
 			}
 			else {
@@ -161,7 +161,7 @@ int main (int argc, char **argv)
 
 	exitval = 0;
 	result = App::instance->run ();
-	if (result != Result::SUCCESS) {
+	if (result != Result::Success) {
 		printf ("Failed to execute application. For errors, see log file: %s\n", App::instance->log.outputFilename.c_str ());
 		exitval = 1;
 	}
@@ -170,7 +170,7 @@ int main (int argc, char **argv)
 }
 
 void cleanup () {
-	App::destroyInstance ();
+	App::freeInstance ();
 }
 
 #if PLATFORM_LINUX || PLATFORM_MACOS

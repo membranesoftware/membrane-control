@@ -56,21 +56,15 @@ public:
 
 	// Constants to use for sprite indexes
 	enum {
-		UI_ICON = 0,
-		LINK_SERVER_ICON = 1,
-		MEDIA_SERVER_ICON = 2,
-		STREAM_ICON = 3,
-		SERVER_ICON = 4,
-		DISPLAY_ICON = 5,
-		MASTER_ICON = 6,
-		INTENT_ICON = 7,
-		SHOW_ALL_ENABLED_BUTTON = 8,
-		SHOW_ALL_DISABLED_BUTTON = 9,
-		ANNOUNCEMENT_ICON = 10,
-		NEXT_ITEM_BUTTON = 11,
-		UPDATE_ICON = 12,
-		TEXT_MESSAGE_ICON = 13,
-		VIDEO_MESSAGE_ICON = 14
+		UiIconSprite = 0,
+		ServerIconSprite = 1,
+		ShowAllEnabledButtonSprite = 2,
+		ShowAllDisabledButtonSprite = 3,
+		AnnouncementIconSprite = 4,
+		NextItemButtonSprite = 5,
+		UpdateIconSprite = 6,
+		TextMessageIconSprite = 7,
+		VideoMessageIconSprite = 8
 	};
 
 	MainUi ();

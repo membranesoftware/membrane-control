@@ -44,7 +44,7 @@
 
 class IconLabelWindow : public Panel {
 public:
-	IconLabelWindow (Sprite *iconSprite, const StdString &iconText = StdString (""), int iconFontType = UiConfiguration::BODY, const Color &iconTextColor = Color (0.0f, 0.0f, 0.0f), bool isTextWordWrapped = false);
+	IconLabelWindow (Sprite *iconSprite, const StdString &iconText = StdString (""), int iconFontType = UiConfiguration::BodyFont, const Color &iconTextColor = Color (0.0f, 0.0f, 0.0f), bool isTextWordWrapped = false);
 	~IconLabelWindow ();
 
 	// Set the window's text

@@ -51,10 +51,10 @@
 #include "OsUtil.h"
 #include "Log.h"
 
-const char *Log::levelNames[Log::NUM_LEVELS] = { "ERR", "WARNING", "NOTICE", "INFO", "DEBUG", "DEBUG1", "DEBUG2", "DEBUG3", "DEBUG4" };
+const char *Log::levelNames[Log::LevelCount] = { "ERR", "WARNING", "NOTICE", "INFO", "DEBUG", "DEBUG1", "DEBUG2", "DEBUG3", "DEBUG4" };
 
 Log::Log ()
-: writeLevel (Log::ERR)
+: writeLevel (Log::ErrLevel)
 , outputFilename ("")
 , isStderrOutputEnabled (false)
 , isFileOutputEnabled (false)
@@ -72,7 +72,7 @@ Log::~Log () {
 }
 
 void Log::setLevel (int level) {
-	if ((level >= 0) && (level < Log::NUM_LEVELS)) {
+	if ((level >= 0) && (level < Log::LevelCount)) {
 		writeLevel = level;
 	}
 }
@@ -80,11 +80,11 @@ void Log::setLevel (int level) {
 int Log::setLevelByName (const char *name) {
 	int rval, i;
 
-	rval = Result::ERROR_INVALID_PARAM;
-	for (i = 0; i < Log::NUM_LEVELS; ++i) {
+	rval = Result::InvalidParamError;
+	for (i = 0; i < Log::LevelCount; ++i) {
 		if (! strcmp (name, Log::levelNames[i])) {
 			setLevel (i);
-			rval = Result::SUCCESS;
+			rval = Result::Success;
 			break;
 		}
 	}
@@ -111,7 +111,7 @@ int Log::setFileOutput (bool enable, const char *filename) {
 	if (! enable) {
 		isFileOutputEnabled = false;
 		outputFilename.assign ("");
-		return (Result::SUCCESS);
+		return (Result::Success);
 	}
 
 	fname.assign (filename);
@@ -142,26 +142,26 @@ int Log::setFileOutput (bool enable, const char *filename) {
 			free (cwd);
 		}
 		if (! c) {
-			return (Result::ERROR_FILE_OPEN_FAILED);
+			return (Result::FileOpenFailedError);
 		}
 	}
 #endif
 
 #if PLATFORM_WINDOWS
-	fd = open (fname.c_str (), O_APPEND | OPEN_CREATE_FLAGS);
+	fd = _open (fname.c_str (), _O_APPEND | _O_WRONLY | _O_CREAT | _O_BINARY, _S_IREAD | _S_IWRITE);
 #else
-	fd = open (fname.c_str (), O_APPEND | OPEN_CREATE_FLAGS, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	fd = open (fname.c_str (), O_APPEND | O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 #endif
 	if (fd < 0) {
 		fprintf (stderr, "Failed to open log file %s - %s\n", fname.c_str (), strerror (errno));
-		return (Result::ERROR_FILE_OPEN_FAILED);
+		return (Result::FileOpenFailedError);
 	}
 	close (fd);
 
 	isFileOutputEnabled = true;
 	outputFilename.assign (fname);
 
-	return (Result::SUCCESS);
+	return (Result::Success);
 }
 
 int Log::setFileOutput (bool enable, const StdString &filename) {
@@ -178,11 +178,11 @@ void Log::voutput (int level, const char *str, va_list args) {
 		return;
 	}
 
-	if ((level < 0) || (level >= Log::NUM_LEVELS)) {
-		level = Log::NO_LEVEL;
+	if ((level < 0) || (level >= Log::LevelCount)) {
+		level = Log::NoLevel;
 	}
 
-	if (level != Log::NO_LEVEL) {
+	if (level != Log::NoLevel) {
 		if (level > writeLevel) {
 			return;
 		}
@@ -190,7 +190,7 @@ void Log::voutput (int level, const char *str, va_list args) {
 
 	now = OsUtil::getTime ();
 	text.appendSprintf ("[%s]", OsUtil::getTimestampString (now, true).c_str ());
-	if (level != Log::NO_LEVEL) {
+	if (level != Log::NoLevel) {
 		text.appendSprintf ("[%s]", Log::levelNames[level]);
 	}
 	text.append (" ");
@@ -236,7 +236,7 @@ void Log::printf (const char *str, ...) {
 	va_list ap;
 
 	va_start (ap, str);
-	App::instance->log.voutput (Log::NO_LEVEL, str, ap);
+	App::instance->log.voutput (Log::NoLevel, str, ap);
 	va_end (ap);
 }
 
@@ -244,7 +244,7 @@ void Log::err (const char *str, ...) {
 	va_list ap;
 
 	va_start (ap, str);
-	App::instance->log.voutput (Log::ERR, str, ap);
+	App::instance->log.voutput (Log::ErrLevel, str, ap);
 	va_end (ap);
 }
 
@@ -252,7 +252,7 @@ void Log::warning (const char *str, ...) {
 	va_list ap;
 
 	va_start (ap, str);
-	App::instance->log.voutput (Log::WARNING, str, ap);
+	App::instance->log.voutput (Log::WarningLevel, str, ap);
 	va_end (ap);
 }
 
@@ -260,7 +260,7 @@ void Log::notice (const char *str, ...) {
 	va_list ap;
 
 	va_start (ap, str);
-	App::instance->log.voutput (Log::NOTICE, str, ap);
+	App::instance->log.voutput (Log::NoticeLevel, str, ap);
 	va_end (ap);
 }
 
@@ -268,7 +268,7 @@ void Log::info (const char *str, ...) {
 	va_list ap;
 
 	va_start (ap, str);
-	App::instance->log.voutput (Log::INFO, str, ap);
+	App::instance->log.voutput (Log::InfoLevel, str, ap);
 	va_end (ap);
 }
 
@@ -276,7 +276,7 @@ void Log::debug (const char *str, ...) {
 	va_list ap;
 
 	va_start (ap, str);
-	App::instance->log.voutput (Log::DEBUG, str, ap);
+	App::instance->log.voutput (Log::DebugLevel, str, ap);
 	va_end (ap);
 }
 
@@ -284,7 +284,7 @@ void Log::debug1 (const char *str, ...) {
 	va_list ap;
 
 	va_start (ap, str);
-	App::instance->log.voutput (Log::DEBUG1, str, ap);
+	App::instance->log.voutput (Log::Debug1Level, str, ap);
 	va_end (ap);
 }
 
@@ -292,7 +292,7 @@ void Log::debug2 (const char *str, ...) {
 	va_list ap;
 
 	va_start (ap, str);
-	App::instance->log.voutput (Log::DEBUG2, str, ap);
+	App::instance->log.voutput (Log::Debug2Level, str, ap);
 	va_end (ap);
 }
 
@@ -300,7 +300,7 @@ void Log::debug3 (const char *str, ...) {
 	va_list ap;
 
 	va_start (ap, str);
-	App::instance->log.voutput (Log::DEBUG3, str, ap);
+	App::instance->log.voutput (Log::Debug3Level, str, ap);
 	va_end (ap);
 }
 
@@ -308,6 +308,6 @@ void Log::debug4 (const char *str, ...) {
 	va_list ap;
 
 	va_start (ap, str);
-	App::instance->log.voutput (Log::DEBUG4, str, ap);
+	App::instance->log.voutput (Log::Debug4Level, str, ap);
 	va_end (ap);
 }

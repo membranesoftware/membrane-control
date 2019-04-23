@@ -56,6 +56,8 @@ SettingsWindow::SettingsWindow (float windowWidth, float windowHeight)
 , windowSizeSlider (NULL)
 , textSizeLabel (NULL)
 , textSizeSlider (NULL)
+, showClockToggle (NULL)
+, showInterfaceAnimationsToggle (NULL)
 {
 	UiText *uitext;
 	UiConfiguration *uiconfig;
@@ -71,15 +73,15 @@ SettingsWindow::SettingsWindow (float windowWidth, float windowHeight)
 	headerImage = (ImageWindow *) addWidget (new ImageWindow ());
 	headerImage->setLoadResourcePath (StdString::createSprintf ("bg/settings/%i.png", App::instance->imageScale));
 
-	titleLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::settings).capitalized (), UiConfiguration::TITLE, uiconfig->primaryTextColor)));
+	titleLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::settings).capitalized (), UiConfiguration::TitleFont, uiconfig->primaryTextColor)));
 	titleLabel->setPadding (0.0f, 0.0f);
 
-	closeButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::EXIT_BUTTON)));
+	closeButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::ExitButtonSprite)));
 	closeButton->zLevel = 1;
 	closeButton->setMouseClickCallback (SettingsWindow::closeButtonClicked, this);
 	closeButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
 
-	windowSizeLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::windowSize).capitalized (), UiConfiguration::TITLE, uiconfig->primaryTextColor));
+	windowSizeLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::windowSize).capitalized (), UiConfiguration::TitleFont, uiconfig->primaryTextColor));
 	slider = new Slider ();
 	slider->addSnapValue (0.0f);
 	slider->addSnapValue (0.25f);
@@ -105,7 +107,7 @@ SettingsWindow::SettingsWindow (float windowWidth, float windowHeight)
 	windowSizeSlider->setValueChangeCallback (SettingsWindow::windowSizeSliderChanged, this);
 	windowSizeSlider->setValueNameFunction (SettingsWindow::windowSizeSliderValueName);
 
-	textSizeLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::textSize).capitalized (), UiConfiguration::TITLE, uiconfig->primaryTextColor));
+	textSizeLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::textSize).capitalized (), UiConfiguration::TitleFont, uiconfig->primaryTextColor));
 	slider = new Slider ();
 	slider->addSnapValue (0.0f);
 	slider->addSnapValue (0.25f);
@@ -135,8 +137,16 @@ SettingsWindow::SettingsWindow (float windowWidth, float windowHeight)
 	showClockToggle = (ToggleWindow *) addWidget (new ToggleWindow (new Toggle (), uitext->getText (UiTextString::showClock).capitalized ()));
 	showClockToggle->setPadding (0.0f, 0.0f);
 	showClockToggle->setImageColor (uiconfig->flatButtonTextColor);
-	showClockToggle->setChecked (App::instance->prefsMap.find (App::prefsShowClock, false));
+	showClockToggle->setChecked (App::instance->prefsMap.find (App::ShowClockKey, false));
 	showClockToggle->setStateChangeCallback (SettingsWindow::showClockToggleStateChanged, this);
+
+	if (App::instance->isTextureRenderEnabled) {
+		showInterfaceAnimationsToggle = (ToggleWindow *) addWidget (new ToggleWindow (new Toggle (), uitext->getText (UiTextString::showInterfaceAnimations).capitalized ()));
+		showInterfaceAnimationsToggle->setPadding (0.0f, 0.0f);
+		showInterfaceAnimationsToggle->setImageColor (uiconfig->flatButtonTextColor);
+		showInterfaceAnimationsToggle->setChecked (App::instance->isInterfaceAnimationEnabled);
+		showInterfaceAnimationsToggle->setStateChangeCallback (SettingsWindow::showInterfaceAnimationsToggleStateChanged, this);
+	}
 
 	refreshLayout ();
 }
@@ -168,7 +178,6 @@ void SettingsWindow::refreshLayout () {
 		headerImage->isVisible = false;
 
 		titleLabel->setFillBg (false);
-		titleLabel->setAlphaBlend (false);
 		titleLabel->setTextColor (uiconfig->primaryTextColor);
 		titleLabel->position.assign (x, y);
 
@@ -182,8 +191,7 @@ void SettingsWindow::refreshLayout () {
 		x += uiconfig->paddingSize;
 		titleLabel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 		titleLabel->setTextColor (uiconfig->inverseTextColor);
-		titleLabel->setFillBg (true, 0.0f, 0.0f, 0.0f);
-		titleLabel->setAlphaBlend (true, uiconfig->scrimBackgroundAlpha);
+		titleLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
 		titleLabel->position.assign (x, y + headerImage->height - titleLabel->height - uiconfig->paddingSize);
 		closeButton->position.assign (width - closeButton->width - uiconfig->paddingSize, y + headerImage->height - closeButton->height - uiconfig->paddingSize);
 		y += headerImage->height + uiconfig->marginSize;
@@ -203,6 +211,11 @@ void SettingsWindow::refreshLayout () {
 
 	showClockToggle->position.assign (x, y);
 	y += showClockToggle->height + uiconfig->marginSize;
+
+	if (showInterfaceAnimationsToggle) {
+		showInterfaceAnimationsToggle->position.assign (x, y);
+		y += showInterfaceAnimationsToggle->height + uiconfig->marginSize;
+	}
 }
 
 void SettingsWindow::doRefresh () {
@@ -211,9 +224,8 @@ void SettingsWindow::doRefresh () {
 	Panel::doRefresh ();
 }
 
-void SettingsWindow::doUpdate (int msElapsed, float originX, float originY) {
-	Panel::doUpdate (msElapsed, originX, originY);
-
+void SettingsWindow::doUpdate (int msElapsed) {
+	Panel::doUpdate (msElapsed);
 	if (! isHeaderImageLoaded) {
 		if (headerImage->isLoaded ()) {
 			isHeaderImageLoaded = true;
@@ -322,6 +334,14 @@ void SettingsWindow::showClockToggleStateChanged (void *windowPtr, Widget *widge
 	ToggleWindow *toggle;
 
 	toggle = (ToggleWindow *) widgetPtr;
-	App::instance->prefsMap.insert (App::prefsShowClock, toggle->isChecked);
+	App::instance->prefsMap.insert (App::ShowClockKey, toggle->isChecked);
 	App::instance->shouldRefreshUi = true;
+}
+
+void SettingsWindow::showInterfaceAnimationsToggleStateChanged (void *windowPtr, Widget *widgetPtr) {
+	ToggleWindow *toggle;
+
+	toggle = (ToggleWindow *) widgetPtr;
+	App::instance->prefsMap.insert (App::ShowInterfaceAnimationsKey, toggle->isChecked);
+	App::instance->isInterfaceAnimationEnabled = toggle->isChecked;
 }

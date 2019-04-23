@@ -42,12 +42,12 @@ class ThumbnailWindow : public Panel {
 public:
 	// Constants to use for layout types
 	enum {
-		LOW_DETAIL = 0,
-		MEDIUM_DETAIL = 1,
-		HIGH_DETAIL = 2
+		LowDetailLayout = 0,
+		MediumDetailLayout = 1,
+		HighDetailLayout = 2
 	};
 
-	ThumbnailWindow (int thumbnailIndex, float thumbnailTimestamp, int sourceWidth, int sourceHeight, const StdString &sourceUrl, int layoutType = ThumbnailWindow::LOW_DETAIL, float maxMediaImageWidth = 64.0f);
+	ThumbnailWindow (int thumbnailIndex, float thumbnailTimestamp, int sourceWidth, int sourceHeight, const StdString &sourceUrl, int layoutType = ThumbnailWindow::LowDetailLayout, float maxMediaImageWidth = 64.0f);
 	virtual ~ThumbnailWindow ();
 
 	// Read-only data members

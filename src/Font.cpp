@@ -93,12 +93,12 @@ int Font::load (Buffer *fontData, int pointSize) {
 	result = FT_New_Memory_Face (freetype, (FT_Byte *) fontData->data, fontData->length, 0, &face);
 	if (result != 0) {
 		Log::err ("Failed to load font; name=\"%s\" err=\"FT_New_Memory_Face: %i\"", name.c_str (), result);
-		return (Result::ERROR_FREETYPE_OPERATION_FAILED);
+		return (Result::FreetypeOperationFailedError);
 	}
 	result = FT_Set_Char_Size (face, pointSize << 6, 0, 100, 0);
 	if (result != 0) {
 		Log::err ("Failed to load font; name=\"%s\" err=\"FT_Set_Char_Size: %i\"", name.c_str (), result);
-		return (Result::ERROR_FREETYPE_OPERATION_FAILED);
+		return (Result::FreetypeOperationFailedError);
 	}
 
 	maxw = 0;
@@ -216,7 +216,7 @@ int Font::load (Buffer *fontData, int pointSize) {
 	}
 
 	isLoaded = true;
-	return (Result::SUCCESS);
+	return (Result::Success);
 }
 
 Font::Glyph *Font::getGlyph (char glyphCharacter) {

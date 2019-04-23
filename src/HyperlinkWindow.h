@@ -42,7 +42,7 @@
 
 class HyperlinkWindow : public Panel {
 public:
-	HyperlinkWindow (const StdString &linkText = StdString (""), const StdString &linkUrl = StdString (""), int fontType = UiConfiguration::CAPTION);
+	HyperlinkWindow (const StdString &linkText = StdString (""), const StdString &linkUrl = StdString (""), int fontType = UiConfiguration::CaptionFont);
 	virtual ~HyperlinkWindow ();
 
 	// Read-only data members

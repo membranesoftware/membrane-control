@@ -108,6 +108,7 @@ Input::Input ()
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_SEMICOLON, false));
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_QUOTE, false));
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_BACKSLASH, false));
+	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_TAB, false));
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_LEFT, false));
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_UP, false));
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_DOWN, false));
@@ -146,7 +147,7 @@ Input::~Input () {
 int Input::start () {
 	// TODO: Execute startup actions here (none required for now)
 
-	return (Result::SUCCESS);
+	return (Result::Success);
 }
 
 void Input::pollEvents () {

@@ -66,7 +66,7 @@ public:
 	static void createInstance ();
 
 	// Destroy and clear the App instance pointer
-	static void destroyInstance ();
+	static void freeInstance ();
 
 	static const int defaultMinFrameDelay;
 	static const int windowWidths[];
@@ -75,35 +75,37 @@ public:
 	static const float fontScales[];
 	static const int numFontScales;
 	static const StdString serverUrl;
+	static const int64_t defaultServerTimeout;
 
 	// Constants to use as key values in the prefs map
-	static const StdString prefsNetworkThreads;
-	static const StdString prefsWindowWidth;
-	static const StdString prefsWindowHeight;
-	static const StdString prefsFontScale;
-	static const StdString prefsHttps;
-	static const StdString prefsShowClock;
-	static const StdString prefsIsFirstLaunchComplete;
-	static const StdString prefsAgentStatus;
-	static const StdString prefsMediaImageSize;
-	static const StdString prefsMonitorImageSize;
-	static const StdString prefsMediaItemImageSize;
-	static const StdString prefsStreamItemImageSize;
-	static const StdString prefsServerAdminSecrets;
-	static const StdString prefsServerTimeout;
-	static const int64_t defaultServerTimeout;
-	static const StdString prefsServerPath;
-	static const StdString prefsApplicationName;
-	static const StdString prefsWebKioskUiSelectedAgents;
-	static const StdString prefsWebKioskUiExpandedAgents;
-	static const StdString prefsWebKioskUiPlaylists;
-	static const StdString prefsMediaUiExpandedAgents;
-	static const StdString prefsMonitorUiPlaylists;
-	static const StdString prefsMonitorUiSelectedAgents;
-	static const StdString prefsMonitorUiExpandedAgents;
-	static const StdString prefsMainUiShowAllEnabled;
-	static const StdString prefsMainUiApplicationNewsItems;
-	static const StdString prefsMediaItemUiVideoQuality;
+	static const char *NetworkThreadsKey;
+	static const char *WindowWidthKey;
+	static const char *WindowHeightKey;
+	static const char *FontScaleKey;
+	static const char *HttpsKey;
+	static const char *ShowInterfaceAnimationsKey;
+	static const char *ShowClockKey;
+	static const char *IsFirstLaunchCompleteKey;
+	static const char *AgentStatusKey;
+	static const char *MediaImageSizeKey;
+	static const char *MonitorImageSizeKey;
+	static const char *MediaItemImageSizeKey;
+	static const char *StreamItemImageSizeKey;
+	static const char *ServerAdminSecretsKey;
+	static const char *ServerTimeoutKey;
+	static const char *WebKioskUiSelectedAgentsKey;
+	static const char *WebKioskUiExpandedAgentsKey;
+	static const char *WebKioskUiPlaylistsKey;
+	static const char *WebKioskUiToolbarModeKey;
+	static const char *MediaUiSelectedAgentsKey;
+	static const char *MediaUiExpandedAgentsKey;
+	static const char *MediaUiPlaylistsKey;
+	static const char *MediaUiToolbarModeKey;
+	static const char *MainUiShowAllEnabledKey;
+	static const char *MainUiApplicationNewsItemsKey;
+	static const char *MediaItemUiVideoQualityKey;
+	static const char *MediaUiVideoQualityKey;
+	static const char *MediaUiVisibilityKey;
 
 	// Read-write data members
 	Log log;
@@ -119,6 +121,7 @@ public:
 	HashMap prefsMap;
 	bool shouldRefreshUi;
 	bool shouldSyncRecordStore;
+	bool isInterfaceAnimationEnabled;
 	float nextFontScale;
 	int nextWindowWidth;
 	int nextWindowHeight;
@@ -135,6 +138,7 @@ public:
 	bool isHttpsEnabled;
 	SDL_Window *window;
 	SDL_Renderer *render; // The renderer must be accessed only from the application's main thread
+	bool isTextureRenderEnabled;
 	Panel *rootPanel;
 	float displayDdpi;
 	float displayHdpi;
@@ -163,6 +167,12 @@ public:
 
 	// Pop the clip stack
 	void popClipRect ();
+
+	// Disable any active clip rectangle, to be restored by a call to unsuspendClipRect
+	void suspendClipRect ();
+
+	// Restore a previously suspended clip rectangle
+	void unsuspendClipRect ();
 
 	// Set a resource path that should be used to load a background texture and render it during draw operations
 	void setNextBackgroundTexturePath (const StdString &path);

@@ -73,24 +73,21 @@ TimelineWindow::TimelineWindow (float barWidth, const StdString &recordId)
 	uiconfig = &(App::instance->uiConfig);
 	setFillBg (true, uiconfig->lightBackgroundColor);
 
-	startTimeLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CAPTION, uiconfig->darkBackgroundColor)));
+	startTimeLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->darkBackgroundColor)));
 	startTimeLabel->setPadding (uiconfig->paddingSize / 2.0f, uiconfig->textLineHeightMargin);
-	startTimeLabel->setFillBg (true, 0.0f, 0.0f, 0.0f);
-	startTimeLabel->setAlphaBlend (true, uiconfig->scrimBackgroundAlpha);
+	startTimeLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
 	startTimeLabel->isInputSuspended = true;
 	startTimeLabel->zLevel = 2;
 
-	endTimeLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CAPTION, uiconfig->darkBackgroundColor)));
+	endTimeLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->darkBackgroundColor)));
 	endTimeLabel->setPadding (uiconfig->paddingSize / 2.0, uiconfig->textLineHeightMargin);
-	endTimeLabel->setFillBg (true, 0.0f, 0.0f, 0.0f);
-	endTimeLabel->setAlphaBlend (true, uiconfig->scrimBackgroundAlpha);
+	endTimeLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
 	endTimeLabel->isInputSuspended = true;
 	endTimeLabel->zLevel = 2;
 
-	highlightTimeLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CAPTION, uiconfig->mediumSecondaryColor)));
+	highlightTimeLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->mediumSecondaryColor)));
 	highlightTimeLabel->setPadding (uiconfig->paddingSize / 2.0, uiconfig->textLineHeightMargin);
-	highlightTimeLabel->setFillBg (true, 0.0f, 0.0f, 0.0f);
-	highlightTimeLabel->setAlphaBlend (true, uiconfig->scrimBackgroundAlpha);
+	highlightTimeLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
 	highlightTimeLabel->isInputSuspended = true;
 	highlightTimeLabel->zLevel = 3;
 	highlightTimeLabel->isVisible = false;

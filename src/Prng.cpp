@@ -59,7 +59,7 @@ void Prng::seed (uint32_t seedValue) {
 
 	a = MT;
 	a[0] = seedValue;
-	for (i = 1; i < Prng::MERSENNE_TWISTER_N; ++i) {
+	for (i = 1; i < Prng::MersenneTwisterN; ++i) {
 		val = 0x6C078965;
 		val *= (a[i - 1] ^ rshift (a[i - 1], 30));
 		val += i;
@@ -101,10 +101,10 @@ int Prng::extract () {
 
 	a = MT;
 	if (sequenceIndex == 0) {
-		for (i = 0; i < Prng::MERSENNE_TWISTER_N; ++i) {
+		for (i = 0; i < Prng::MersenneTwisterN; ++i) {
 			y = a[i] & 0x80000000;
-			y += (a[(i + 1) % Prng::MERSENNE_TWISTER_N] & 0x7FFFFFFF);
-			a[i] = a[(i + 397) % Prng::MERSENNE_TWISTER_N] ^ (rshift (y, 1));
+			y += (a[(i + 1) % Prng::MersenneTwisterN] & 0x7FFFFFFF);
+			a[i] = a[(i + 397) % Prng::MersenneTwisterN] ^ (rshift (y, 1));
 			if (y % 2) {
 				a[i] ^= 0x9908B0DF;
 			}
@@ -118,7 +118,7 @@ int Prng::extract () {
 	y ^= rshift (y, 18);
 
 	++sequenceIndex;
-	if (sequenceIndex > (Prng::MERSENNE_TWISTER_N - 1)) {
+	if (sequenceIndex > (Prng::MersenneTwisterN - 1)) {
 		sequenceIndex = 0;
 	}
 

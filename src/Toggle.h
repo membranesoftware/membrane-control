@@ -48,6 +48,7 @@ public:
 
 	// Read-write data members
 	SDL_Keycode shortcutKey;
+	bool isFocusDropShadowDisabled;
 
 	// Read-only data members
 	bool isChecked;

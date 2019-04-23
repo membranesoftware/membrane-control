@@ -69,18 +69,18 @@ ListView::ListView (float viewWidth, int minItemHeight, int itemFontType, const 
 	setFillBg (true, uiconfig->lightBackgroundColor);
 
 	if (! titleText.empty ()) {
-		titleLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (titleText, UiConfiguration::TITLE, uiconfig->inverseTextColor)));
+		titleLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (titleText, UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
 		titleLabel->setFillBg (true, uiconfig->mediumPrimaryColor);
 		titleLabel->setPadding (uiconfig->paddingSize, uiconfig->textLineHeightMargin * 2.0f);
 		titleLabel->setWindowWidth (viewWidth);
 	}
 
 	if (! emptyStateText.empty ()) {
-		emptyStateLabel = (Label *) addWidget (new Label (emptyStateText, UiConfiguration::CAPTION, uiconfig->primaryTextColor));
+		emptyStateLabel = (Label *) addWidget (new Label (emptyStateText, UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
 		emptyStateLabel->isVisible = false;
 	}
 
-	deleteButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::DELETE_BUTTON)));
+	deleteButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
 	deleteButton->setMouseClickCallback (ListView::deleteButtonClicked, this);
 	deleteButton->zLevel = 2;
 	deleteButton->setImageColor (uiconfig->flatButtonTextColor);

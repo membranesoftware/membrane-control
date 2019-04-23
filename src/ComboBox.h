@@ -82,8 +82,8 @@ public:
 	static void expandItemClicked (void *comboBoxPtr, Widget *labelWindowPtr);
 
 protected:
-	// Execute operations to update object state as appropriate for an elapsed millisecond time period and origin position
-	virtual void doUpdate (int msElapsed, float originX, float originY);
+	// Execute operations to update object state as appropriate for an elapsed millisecond time period
+	virtual void doUpdate (int msElapsed);
 
 	// Execute operations appropriate when the widget receives new mouse state
 	virtual void doProcessMouseState (const Widget::MouseState &mouseState);
@@ -107,7 +107,7 @@ private:
 	std::list<ComboBox::Item> itemList;
 	WidgetHandle expandPanel;
 	bool isExpanded;
-	float expandDrawX, expandDrawY;
+	float expandScreenX, expandScreenY;
 	bool isFocused;
 	LabelWindow *selectedItemLabel;
 	float maxTextWidth;

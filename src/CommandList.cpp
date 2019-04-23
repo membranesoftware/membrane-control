@@ -137,38 +137,38 @@ void CommandList::invokeComplete (void *commandListPtr, const StdString &targetU
 	int result;
 
 	cmdlist = (CommandList *) commandListPtr;
-	if (statusCode == Network::HTTP_UNAUTHORIZED) {
+	if (statusCode == Network::HttpUnauthorizedCode) {
 		if (cmdlist->authorizeLastCommand ()) {
 			return;
 		}
 	}
 
-	result = Result::SUCCESS;
+	result = Result::Success;
 	responsecmd = NULL;
 
-	if ((statusCode != Network::HTTP_OK) || (! responseData)) {
+	if ((statusCode != Network::HttpOkCode) || (! responseData)) {
 		switch (statusCode) {
-			case Network::HTTP_UNAUTHORIZED: {
-				result = Result::ERROR_UNAUTHORIZED;
+			case Network::HttpUnauthorizedCode: {
+				result = Result::UnauthorizedError;
 				break;
 			}
 			default: {
-				result = Result::ERROR_HTTP_OPERATION_FAILED;
+				result = Result::HttpOperationFailedError;
 				break;
 			}
 		}
 	}
 
-	if (result == Result::SUCCESS) {
+	if (result == Result::Success) {
 		if (responseData->empty ()) {
-			result = Result::ERROR_MALFORMED_RESPONSE;
+			result = Result::MalformedResponseError;
 		}
 	}
 
-	if (result == Result::SUCCESS) {
+	if (result == Result::Success) {
 		resp.assignBuffer (responseData);
 		if (! App::instance->systemInterface.parseCommand (resp, &responsecmd)) {
-			result = Result::ERROR_MALFORMED_RESPONSE;
+			result = Result::MalformedResponseError;
 		}
 	}
 
@@ -248,7 +248,7 @@ bool CommandList::getNextCommand (StdString *url, StdString *postData) {
 	}
 
 	cmd = new Json ();
-	cmd->copy (ctx->command);
+	cmd->copyValue (ctx->command);
 	if (! App::instance->agentControl.setCommandAuthorization (cmd, pos->second.authorizeSecretIndex, pos->second.token)) {
 		Log::debug ("Failed to generate command authorization; err=index %i not found", ctx->authorizeSecretIndex);
 		postData->assign (ctx->command->toString ());
@@ -320,19 +320,19 @@ void CommandList::authorizeComplete (void *commandListPtr, const StdString &targ
 	cmdlist = (CommandList *) commandListPtr;
 	interface = &(App::instance->systemInterface);
 
-	result = Result::SUCCESS;
+	result = Result::Success;
 	responsecmd = NULL;
 
-	if ((statusCode == Network::HTTP_OK) && (! responseData->empty ())) {
+	if ((statusCode == Network::HttpOkCode) && (! responseData->empty ())) {
 		resp.assignBuffer (responseData);
 		if (! interface->parseCommand (resp, &responsecmd)) {
-			result = Result::ERROR_MALFORMED_RESPONSE;
+			result = Result::MalformedResponseError;
 		}
 	}
 
-	if (result == Result::SUCCESS) {
+	if (result == Result::Success) {
 		if (! responsecmd) {
-			result = Result::ERROR_HTTP_OPERATION_FAILED;
+			result = Result::HttpOperationFailedError;
 		}
 	}
 
@@ -390,9 +390,9 @@ void CommandList::endAuthorize (int invokeResult, Json *responseCommand) {
 		App::instance->network.sendHttpPost (url, postdata, CommandList::invokeComplete, this);
 	}
 	if (ctx && shouldcallback) {
-		lastInvokeResult = Result::ERROR_UNAUTHORIZED;
+		lastInvokeResult = Result::UnauthorizedError;
 		if (ctx->callback) {
-			ctx->callback (ctx->callbackData, Result::ERROR_UNAUTHORIZED, ctx->hostname, ctx->tcpPort, StdString (""), ctx->command, NULL);
+			ctx->callback (ctx->callbackData, Result::UnauthorizedError, ctx->hostname, ctx->tcpPort, StdString (""), ctx->command, NULL);
 		}
 		freeContext (ctx);
 	}

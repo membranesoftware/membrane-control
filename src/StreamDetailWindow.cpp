@@ -44,13 +44,12 @@
 #include "Json.h"
 #include "Panel.h"
 #include "Label.h"
-#include "Button.h"
-#include "StatsWindow.h"
 #include "SystemInterface.h"
 #include "UiConfiguration.h"
+#include "StreamItemUi.h"
 #include "StreamDetailWindow.h"
 
-StreamDetailWindow::StreamDetailWindow (const StdString &recordId)
+StreamDetailWindow::StreamDetailWindow (const StdString &recordId, SpriteGroup *streamItemUiSpriteGroup)
 : Panel ()
 , recordId (recordId)
 , streamWidth (0)
@@ -59,22 +58,38 @@ StreamDetailWindow::StreamDetailWindow (const StdString &recordId)
 , streamFrameRate (0.0f)
 , streamSize (0)
 , streamBitrate (0)
-, menuPositionY (0.0f)
+, sprites (streamItemUiSpriteGroup)
 , iconImage (NULL)
 , nameLabel (NULL)
 , descriptionLabel (NULL)
-, statsWindow (NULL)
-, menuButton (NULL)
-, menuClickCallback (NULL)
-, menuClickCallbackData (NULL)
+, attributesIcon (NULL)
+, fileSizeIcon (NULL)
+, durationIcon (NULL)
 {
 	UiConfiguration *uiconfig;
+	UiText *uitext;
 
 	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
-	populate ();
+	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeStreamIconSprite)));
+	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::TitleFont, uiconfig->primaryTextColor));
+	descriptionLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::videoStream).capitalized (), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+
+	attributesIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (StreamItemUi::AttributesIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	attributesIcon->setPadding (0.0f, 0.0f);
+	attributesIcon->setMouseHoverTooltip (uitext->getText (UiTextString::mediaAttributesTooltip));
+
+	fileSizeIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::StorageIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	fileSizeIcon->setPadding (0.0f, 0.0f);
+	fileSizeIcon->setMouseHoverTooltip (uitext->getText (UiTextString::fileSize).capitalized ());
+
+	durationIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (StreamItemUi::DurationIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	durationIcon->setPadding (0.0f, 0.0f);
+	durationIcon->setMouseHoverTooltip (uitext->getText (UiTextString::duration).capitalized ());
+
 	refreshLayout ();
 }
 
@@ -99,48 +114,15 @@ StreamDetailWindow *StreamDetailWindow::castWidget (Widget *widget) {
 	return (StreamDetailWindow::isWidgetType (widget) ? (StreamDetailWindow *) widget : NULL);
 }
 
-void StreamDetailWindow::populate () {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
-
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LARGE_STREAM_ICON)));
-	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::TITLE, uiconfig->primaryTextColor));
-	descriptionLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::videoStream).capitalized (), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
-
-	statsWindow = (StatsWindow *) addWidget (new StatsWindow ());
-	statsWindow->setItem (uitext->getText (UiTextString::server).capitalized (), StdString (""));
-	statsWindow->setItem (uitext->getText (UiTextString::frameSize).capitalized (), StdString (""));
-	statsWindow->setItem (uitext->getText (UiTextString::frameRate).capitalized (), StdString (""));
-	statsWindow->setItem (uitext->getText (UiTextString::bitrate).capitalized (), StdString (""));
-	statsWindow->setItem (uitext->getText (UiTextString::duration).capitalized (), StdString (""));
-	statsWindow->setPadding (uiconfig->paddingSize, 0.0f);
-
-	menuButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::MAIN_MENU_BUTTON)));
-	menuButton->setMouseClickCallback (StreamDetailWindow::menuButtonClicked, this);
-	menuButton->setImageColor (uiconfig->flatButtonTextColor);
-	menuButton->setMouseHoverTooltip (uitext->getText (UiTextString::moreActionsTooltip));
-	menuButton->isVisible = false;
-}
-
-void StreamDetailWindow::setMenuClickCallback (Widget::EventCallback callback, void *callbackData) {
-	menuClickCallback = callback;
-	menuClickCallbackData = callbackData;
-	menuButton->isVisible = menuClickCallback ? true : false;
-}
-
 void StreamDetailWindow::syncRecordStore () {
 	RecordStore *store;
 	SystemInterface *interface;
-	UiText *uitext;
 	Json *record;
 	StdString text, rationame, framesizename;
+	StringList attributes;
 
 	store = &(App::instance->agentControl.recordStore);
 	interface = &(App::instance->systemInterface);
-	uitext = &(App::instance->uiText);
 	record = store->findRecord (recordId, SystemInterface::CommandId_StreamItem);
 	if (! record) {
 		return;
@@ -157,8 +139,7 @@ void StreamDetailWindow::syncRecordStore () {
 
 	streamName.assign (interface->getCommandStringParam (record, "name", ""));
 	nameLabel->setText (streamName);
-
-	statsWindow->setItem (uitext->getText (UiTextString::server).capitalized (), App::instance->agentControl.getAgentDisplayName (agentId));
+	descriptionLabel->setText (App::instance->agentControl.getAgentDisplayName (agentId));
 
 	if ((streamWidth > 0) && (streamHeight > 0)) {
 		text.sprintf ("%ix%i", streamWidth, streamHeight);
@@ -178,23 +159,25 @@ void StreamDetailWindow::syncRecordStore () {
 			text.append (")");
 		}
 
-		statsWindow->setItem (uitext->getText (UiTextString::frameSize).capitalized (), text);
+		attributes.push_back (text);
 	}
 
 	if (streamFrameRate > 0.0f) {
-		statsWindow->setItem (uitext->getText (UiTextString::frameRate).capitalized (), StdString::createSprintf ("%.2ffps", streamFrameRate));
+		attributes.push_back (StdString::createSprintf ("%.2ffps", streamFrameRate));
 	}
 
 	if (streamBitrate > 0.0f) {
-		statsWindow->setItem (uitext->getText (UiTextString::bitrate).capitalized (), MediaUtil::getBitrateDisplayString (streamBitrate));
+		attributes.push_back (MediaUtil::getBitrateDisplayString (streamBitrate));
 	}
 
+	attributesIcon->setText (attributes.join (", "));
+
 	if (streamSize > 0) {
-		statsWindow->setItem (uitext->getText (UiTextString::fileSize).capitalized (), OsUtil::getByteCountDisplayString (streamSize));
+		fileSizeIcon->setText (StdString::createSprintf ("%lli (%s)", (long long int) streamSize, OsUtil::getByteCountDisplayString (streamSize).c_str ()));
 	}
 
 	if (streamDuration > 0.0f) {
-		statsWindow->setItem (uitext->getText (UiTextString::duration).capitalized (), OsUtil::getDurationDisplayString (streamDuration));
+		durationIcon->setText (OsUtil::getDurationDisplayString (streamDuration));
 	}
 
 	refreshLayout ();
@@ -216,28 +199,14 @@ void StreamDetailWindow::refreshLayout () {
 	nameLabel->flowRight (&x, y, NULL, &y2);
 	descriptionLabel->position.assign (x2, descriptionLabel->getLinePosition (y + uiconfig->marginSize + nameLabel->maxLineHeight));
 
-	if (menuButton->isVisible) {
-		menuButton->flowRight (&x, y, NULL, &y2);
-	}
+	y = y2 + uiconfig->marginSize;
+	x = x0;
+	attributesIcon->flowDown (x, &y, &x2, &y2);
 
 	y = y2 + uiconfig->marginSize;
 	x = x0;
-	statsWindow->flowDown (x, &y);
+	durationIcon->flowRight (&x, y, &x2, &y2);
+	fileSizeIcon->flowDown (x, &y, &x2, &y2);
 
 	resetSize ();
-
-	x = width - uiconfig->paddingSize;
-	if (menuButton->isVisible) {
-		menuButton->flowLeft (&x);
-		menuPositionY = menuButton->position.y + menuButton->height;
-	}
-}
-
-void StreamDetailWindow::menuButtonClicked (void *windowPtr, Widget *widgetPtr) {
-	StreamDetailWindow *window;
-
-	window = (StreamDetailWindow *) windowPtr;
-	if (window->menuClickCallback) {
-		window->menuClickCallback (window->menuClickCallbackData, window);
-	}
 }

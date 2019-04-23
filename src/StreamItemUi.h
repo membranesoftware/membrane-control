@@ -33,31 +33,41 @@
 #ifndef STREAM_ITEM_UI_H
 #define STREAM_ITEM_UI_H
 
+#include <vector>
 #include "StdString.h"
 #include "Json.h"
 #include "WidgetHandle.h"
 #include "Toolbar.h"
-#include "Button.h"
 #include "HelpWindow.h"
-#include "TimelineWindow.h"
-#include "StreamWindow.h"
-#include "IconCardWindow.h"
 #include "CardView.h"
 #include "Ui.h"
 
 class StreamItemUi : public Ui {
 public:
-	StreamItemUi (StreamWindow *streamWindow, const StdString &captionText = StdString (""));
+	StreamItemUi (const StdString &streamId, const StdString &streamName, const StdString &captionText = StdString (""));
 	~StreamItemUi ();
 
 	// Constants to use for sprite indexes
 	enum {
-		TIME_ICON = 0,
-		LARGE_THUMBNAILS_ICON = 1,
-		MEDIUM_THUMBNAILS_ICON = 2,
-		SMALL_THUMBNAILS_ICON = 3,
-		THUMBNAIL_SIZE_BUTTON = 4
+		TimeIconSprite = 0,
+		LargeThumbnailsIconSprite = 1,
+		MediumThumbnailsIconSprite = 2,
+		SmallThumbnailsIconSprite = 3,
+		ThumbnailSizeButtonSprite = 4,
+		AttributesIconSprite = 5,
+		DurationIconSprite = 6
 	};
+
+	// Read-only data members
+	StdString streamId;
+	StdString streamName;
+	StdString agentId;
+	int64_t duration;
+	int frameWidth;
+	int frameHeight;
+	StdString thumbnailPath;
+	int segmentCount;
+	std::vector<double> segmentPositions;
 
 	// Set fields in the provided HelpWindow widget as appropriate for the UI's help content
 	void setHelpWindowContent (HelpWindow *helpWindow);
@@ -119,16 +129,15 @@ protected:
 	void doSyncRecordStore ();
 
 private:
-	// Execute actions appropriate when the view button is clicked
-	void handleThumbnailSizeButtonClick (Widget *buttonWidget);
+	// Find the source StreamItem record and populate the interface based on its fields
+	void syncStreamItem ();
 
-	WidgetHandle sourceStreamWindow;
 	StdString captionText;
+	WidgetHandle timelineWindow;
+	bool isRecordSynced;
 	CardView *cardView;
 	int cardLayout;
 	float cardMaxImageWidth;
-	TimelineWindow *timelineWindow;
-	WidgetHandle thumbnailSizeMenu;
 	int lastTimelineHoverPosition;
 	Widget::EventCallback thumbnailClickCallback;
 	void *thumbnailClickCallbackData;

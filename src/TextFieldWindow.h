@@ -98,8 +98,8 @@ protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
 
-	// Execute operations to update object state as appropriate for an elapsed millisecond time period and origin position
-	void doUpdate (int msElapsed, float originX, float originY);
+	// Execute operations to update object state as appropriate for an elapsed millisecond time period
+	void doUpdate (int msElapsed);
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
 	void refreshLayout ();
@@ -119,6 +119,8 @@ private:
 	ImageWindow *iconImage;
 	Toggle *visibilityToggle;
 	bool shouldResetEditing;
+	StdString cancelValue;
+	bool isCancelled;
 };
 
 #endif

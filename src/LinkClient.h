@@ -28,11 +28,12 @@
 * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 * POSSIBILITY OF SUCH DAMAGE.
 */
-// Class that runs a systemagent link client using libwebsockets and the engine.io protocol
+// Class that runs a set of systemagent link clients using libwebsockets and the engine.io protocol
 
 #ifndef LINK_CLIENT_H
 #define LINK_CLIENT_H
 
+#include <map>
 #include <list>
 #include <queue>
 #include "SDL2/SDL.h"
@@ -41,109 +42,113 @@
 #include "Json.h"
 #include "libwebsockets.h"
 
-class LinkClient {
+class LinkContext {
 public:
-	typedef void (*ConnectCallback) (void *data, LinkClient *client);
-	typedef void (*DisconnectCallback) (void *data, LinkClient *client, const StdString &errorDescription);
-	typedef void (*CommandCallback) (void *data, LinkClient *client, Json *command);
+	typedef void (*ConnectCallback) (void *data, const StdString &agentId);
+	typedef void (*DisconnectCallback) (void *data, const StdString &agentId, const StdString &errorDescription);
+	typedef void (*CommandCallback) (void *data, const StdString &agentId, Json *command);
 
-	LinkClient (const StdString &serverUrl, const StdString &agentId = StdString (""), void *callbackData = NULL, LinkClient::ConnectCallback connectCallback = NULL, LinkClient::DisconnectCallback disconnectCallback = NULL, LinkClient::CommandCallback commandCallback = NULL);
-	~LinkClient ();
-
-	static const int defaultPingInterval;
-	static const int reconnectPeriod;
-	static const int maxCommandSize;
+	LinkContext ();
+	~LinkContext ();
 
 	// Read-write data members
+	StdString agentId;
 	int usageCount;
-
-	// Read-only data members
+	StdString linkUrl;
 	bool isConnected;
-	bool isRunning;
-	bool isStopped;
-	bool isShutdown;
 	bool isClosing;
 	bool isClosed;
-	StdString url;
-	StdString agentId;
-
-	// Update client state as appropriate for an elapsed millisecond time period
-	void update (int msElapsed);
-
-	// Set the client's target URL and trigger a reset for its underlying websocket connection if needed
-	void setUrl (const StdString &linkUrl);
-
-	// Notify the client that it should stop any active connection and cease reconnection attempts
-	void shutdown ();
-
-	// Stop the client's operation, optionally waiting for its run thread to end before returning
-	void stop (bool shouldWait = true);
-
-	// Establish the client connection, then service protocol events until the connection ends
-	void run ();
-
-	// Execute an authorize command using the next available authorize secret, if any
-	void authorize ();
-
-	// Write a message to the client
-	void write (const StdString &message);
-
-	// Write a command to the client
-	void writeCommand (Json *sourceCommand);
-	void writeCommand (const StdString &commandJson);
-
-	// Parse the provided data buffer, as received from the WebSocket/engine.io server, and execute actions appropriate for the received message
-	void receiveData (char *data, int dataLength);
-
-	// Callback function for use as a libwebsockets protocol
-	static int protocolCallback (struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
-
-	// Execute initialization routines for libwebsockets
-	static void initLib ();
-
-	// Callback function for use with libwebsockets logging
-	static void logCallback (int level, const char *line);
-
-	// Run a thread to establish the client connection, then service protocol events until the connection ends
-	static int runThread (void *networkPtr);
-
-private:
-	// Clear data members as needed for a new client connection
-	void clear ();
-
-	// Start the client's operation by launching a background thread that connects to the configured URL
-	void start ();
-
-	// Write the next message from the queue
-	void writeNextMessage ();
-
-	// Parse a SystemInterface command from the provided socket.io message string and execute actions appropriate for that command
-	void processCommandMessage (char *data, int dataLength);
-
-	void *callbackData;
-	LinkClient::ConnectCallback connectCallback;
-	LinkClient::DisconnectCallback disconnectCallback;
-	LinkClient::CommandCallback commandCallback;
-	SDL_mutex *runMutex;
-	SDL_cond *runCond;
+	int reconnectClock;
 	struct lws_context *context;
 	struct lws *lws;
 	char *urlParseBuffer;
 	StdString urlPath;
+	bool isWriteReady;
 	std::queue<StdString> writeQueue;
 	SDL_mutex *writeQueueMutex;
-	bool isWriteReady;
 	unsigned char *writeBuffer;
 	int writeBufferSize;
 	Buffer commandBuffer;
 	StdString sessionId;
 	int pingInterval; // ms
 	int64_t nextPingTime;
-	int reconnectClock;
 	StdString authorizeToken;
 	int authorizeSecretIndex;
 	bool isAuthorizing;
 	bool isAuthorizeComplete;
+	void *callbackData;
+	LinkContext::ConnectCallback connectCallback;
+	LinkContext::DisconnectCallback disconnectCallback;
+	LinkContext::CommandCallback commandCallback;
+
+	// Parse the provided data buffer, as received from the WebSocket/engine.io server, and execute actions appropriate for the received message
+	void receiveData (char *data, int dataLength);
+
+	// Add a message to the context's write queue
+	void writeMessage (const StdString &message);
+
+	// Add a command message to the context's write queue
+	void writeCommand (Json *sourceCommand);
+	void writeCommand (const StdString &commandJson);
+
+	// Write the next message from the queue
+	void sendNextMessage ();
+
+	// Parse a SystemInterface command from the provided socket.io message string and execute actions appropriate for that command
+	void processCommandMessage (char *data, int dataLength);
+
+	// Execute an authorize command using the next available authorize secret, if any
+	void authorize ();
+};
+
+class LinkClient {
+public:
+	LinkClient (void *callbackData = NULL, LinkContext::ConnectCallback connectCallback = NULL, LinkContext::DisconnectCallback disconnectCallback = NULL, LinkContext::CommandCallback commandCallback = NULL);
+	~LinkClient ();
+
+	static const int defaultPingInterval;
+	static const int reconnectPeriod;
+	static const int maxCommandSize;
+
+	// Start the link client's operation
+	void start ();
+
+	// Disconnect all link client contexts
+	void clear ();
+
+	// Update link client state as appropriate for an elapsed millisecond time period
+	void update (int msElapsed);
+
+	// Create a context that maintains a link connection to the specified agent
+	void connect (const StdString &agentId, const StdString &linkUrl);
+
+	// Remove a previously created connection context
+	void disconnect (const StdString &agentId);
+
+	// Reset the link URL for an active agent context
+	void setLinkUrl (const StdString &agentId, const StdString &linkUrl);
+
+	// Write a command to the specified agent if it's connected. An empty agentId value causes the command to be written to all connected link clients. This method becomes responsible for deleting the command object when it's no longer needed.
+	void writeCommand (Json *command, const StdString &agentId = StdString (""));
+
+	// Callback function for use as a libwebsockets protocol
+	static int protocolCallback (struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
+
+	// Callback function for use with libwebsockets logging
+	static void logCallback (int level, const char *line);
+
+private:
+	// Update link client context state as appropriate for an elapsed millisecond time period
+	void updateActiveContext (LinkContext *ctx, int msElapsed);
+
+	void *callbackData;
+	LinkContext::ConnectCallback connectCallback;
+	LinkContext::DisconnectCallback disconnectCallback;
+	LinkContext::CommandCallback commandCallback;
+
+	std::map<StdString, LinkContext *> contextMap;
+	std::list<LinkContext *> closeContextList;
+	SDL_mutex *contextMutex;
 };
 
 #endif

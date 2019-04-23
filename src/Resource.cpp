@@ -148,39 +148,39 @@ int Resource::open () {
 
 	if (FT_Init_FreeType (&(freetype))) {
 		Log::err ("Failed to initialize freetype library");
-		return (Result::ERROR_FREETYPE_OPERATION_FAILED);
+		return (Result::FreetypeOperationFailedError);
 	}
 
 	if (dataPath.empty ()) {
-		return (Result::ERROR_INVALID_CONFIGURATION);
+		return (Result::InvalidConfigurationError);
 	}
 
 	if (stat (dataPath.c_str (), &st) != 0) {
 		Log::err ("stat failed; path=\"%s\" err=\"%s\"", dataPath.c_str (), strerror (errno));
-		return (Result::ERROR_FILE_OPERATION_FAILED);
+		return (Result::FileOperationFailedError);
 	}
 
 	if (! isBundleFile) {
 		if (! S_ISDIR (st.st_mode)) {
 			Log::err ("Failed to open resources; path=\"%s\" err=\"Invalid resource path\"", dataPath.c_str ());
-			return (Result::ERROR_MISMATCHED_TYPE);
+			return (Result::MismatchedTypeError);
 		}
 
 		isOpen = true;
-		return (Result::SUCCESS);
+		return (Result::Success);
 	}
 
 	rw = SDL_RWFromFile (dataPath.c_str (), "r");
 	if (! rw) {
 		Log::err ("Failed to open resource bundle file; path=\"%s\" error=\"%s\"", dataPath.c_str (), SDL_GetError ());
-		return (Result::ERROR_FILE_OPERATION_FAILED);
+		return (Result::FileOperationFailedError);
 	}
 
-	result = Result::SUCCESS;
+	result = Result::Success;
 	archiveEntryMap.clear ();
 	while (true) {
 		result = Resource::readUint64 (rw, &id);
-		if (result != Result::SUCCESS) {
+		if (result != Result::Success) {
 			break;
 		}
 		if (id == 0) {
@@ -188,12 +188,12 @@ int Resource::open () {
 		}
 
 		result = Resource::readUint64 (rw, &(ae.position));
-		if (result != Result::SUCCESS) {
+		if (result != Result::Success) {
 			break;
 		}
 
 		result = Resource::readUint64 (rw, &(ae.length));
-		if (result != Result::SUCCESS) {
+		if (result != Result::Success) {
 			break;
 		}
 
@@ -202,7 +202,7 @@ int Resource::open () {
 
 	SDL_RWclose (rw);
 
-	if (result == Result::SUCCESS) {
+	if (result == Result::Success) {
 		isOpen = true;
 	}
 	return (result);
@@ -712,6 +712,42 @@ SDL_Texture *Resource::createTexture (const StdString &path, SDL_Surface *surfac
 	return (texture);
 }
 
+SDL_Texture *Resource::createTexture (const StdString &path, int textureWidth, int textureHeight) {
+	std::map<StdString, Resource::TextureData>::iterator i;
+	Resource::TextureData data;
+	SDL_Texture *texture;
+
+	if ((textureWidth <= 0) || (textureHeight <= 0)) {
+		return (NULL);
+	}
+
+	texture = NULL;
+	SDL_LockMutex (textureMapMutex);
+	i = textureMap.find (path);
+	if (i != textureMap.end ()) {
+		++(i->second.refcount);
+		texture = i->second.texture;
+	}
+	SDL_UnlockMutex (textureMapMutex);
+	if (texture) {
+		return (texture);
+	}
+
+	texture = SDL_CreateTexture (App::instance->render, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, textureWidth, textureHeight);
+	if (! texture) {
+		Log::err ("SDL_CreateTextureFromSurface failed; path=\"%s\" err=\"%s\"", path.c_str (), SDL_GetError ());
+		return (NULL);
+	}
+
+	data.texture = texture;
+	data.refcount = 1;
+	SDL_LockMutex (textureMapMutex);
+	textureMap.insert (std::pair<StdString, Resource::TextureData> (path, data));
+	SDL_UnlockMutex (textureMapMutex);
+
+	return (texture);
+}
+
 void Resource::unloadTexture (const StdString &path) {
 	std::map<StdString, Resource::TextureData>::iterator i;
 
@@ -759,7 +795,7 @@ Font *Resource::loadFont (const StdString &path, int pointSize) {
 	font = new Font (freetype, key);
 	result = font->load (buffer, pointSize);
 
-	if (result != Result::SUCCESS) {
+	if (result != Result::Success) {
 		delete (font);
 		unloadFile (path);
 		Log::err ("Failed to load font resource; key=\"%s\" err=%i", key.c_str (), result);
@@ -831,7 +867,7 @@ int Resource::readUint64 (SDL_RWops *src, Uint64 *value) {
 
 	rlen = SDL_RWread (src, buf, 8, 1);
 	if (rlen < 1) {
-		return (Result::ERROR_FILE_OPERATION_FAILED);
+		return (Result::FileOperationFailedError);
 	}
 
 	val = 0;
@@ -854,5 +890,5 @@ int Resource::readUint64 (SDL_RWops *src, Uint64 *value) {
 	if (value) {
 		*value = val;
 	}
-	return (Result::SUCCESS);
+	return (Result::Success);
 }

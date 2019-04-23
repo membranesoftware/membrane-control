@@ -30,6 +30,7 @@
 */
 #include "Config.h"
 #include <stdlib.h>
+#include <math.h>
 #include <list>
 #include "SDL2/SDL.h"
 #include "Result.h"
@@ -45,6 +46,9 @@ Panel::Panel ()
 : Widget ()
 , bgColor (0.0f, 0.0f, 0.0f)
 , borderColor (0.0f, 0.0f, 0.0f)
+, dropShadowColor (0.0f, 0.0f, 0.0f, 0.8f)
+, shouldRefreshTexture (false)
+, isTextureRenderEnabled (false)
 , maxWidgetX (0.0f)
 , maxWidgetY (0.0f)
 , maxWidgetZLevel (0)
@@ -57,16 +61,20 @@ Panel::Panel ()
 , maxViewOriginY (0.0f)
 , widthPadding (0.0f)
 , heightPadding (0.0f)
-, isAlphaBlended (false)
-, alpha (1.0f)
-, alphaTarget (1.0f)
-, alphaTranslateDuration (0)
 , isFilledBg (false)
 , isBordered (false)
+, borderWidth (0.0f)
+, isDropShadowed (false)
+, dropShadowWidth (0.0f)
 , isFixedSize (false)
 , isMouseDragScrollEnabled (false)
 , isWaiting (false)
 , layout (-1)
+, isAnimating (false)
+, drawTexture (NULL)
+, drawTextureWidth (0)
+, drawTextureHeight (0)
+, isResettingDrawTexture (false)
 , isMouseInputStarted (false)
 , lastMouseLeftUpCount (0)
 , lastMouseLeftDownCount (0)
@@ -83,10 +91,18 @@ Panel::Panel ()
 
 	widgetListMutex = SDL_CreateMutex ();
 	widgetAddListMutex = SDL_CreateMutex ();
+	animationScale.assign (1.0f, 1.0f);
 }
 
 Panel::~Panel () {
 	clear ();
+
+	if (! drawTexturePath.empty ()) {
+		App::instance->resource.unloadTexture (drawTexturePath);
+		drawTexturePath.assign ("");
+	}
+	drawTexture = NULL;
+
 	if (widgetListMutex) {
 		SDL_DestroyMutex (widgetListMutex);
 		widgetListMutex = NULL;
@@ -96,6 +112,86 @@ Panel::~Panel () {
 		SDL_DestroyMutex (widgetAddListMutex);
 		widgetAddListMutex = NULL;
 	}
+}
+
+void Panel::setTextureRender (bool enable) {
+	if (! App::instance->isInterfaceAnimationEnabled) {
+		return;
+	}
+	if (isTextureRenderEnabled == enable) {
+		return;
+	}
+	isTextureRenderEnabled = enable;
+	animationScale.assignX (1.0f);
+}
+
+void Panel::resetDrawTexture (void *panelPtr) {
+	Panel *panel;
+	SDL_Texture *texture;
+
+	panel = (Panel *) panelPtr;
+	if (! panel->isTextureRenderEnabled) {
+		if (! panel->drawTexturePath.empty ()) {
+			App::instance->resource.unloadTexture (panel->drawTexturePath);
+			panel->drawTexturePath.assign ("");
+		}
+		panel->drawTexture = NULL;
+		panel->isResettingDrawTexture = false;
+		panel->release ();
+		return;
+	}
+
+	texture = panel->drawTexture;
+	if (texture) {
+		if (((int) panel->width) != panel->drawTextureWidth || (((int) panel->height) != panel->drawTextureHeight)) {
+			texture = NULL;
+		}
+	}
+
+	if (! texture) {
+		if (! panel->drawTexturePath.empty ()) {
+			App::instance->resource.unloadTexture (panel->drawTexturePath);
+		}
+		panel->drawTexture = NULL;
+
+		panel->drawTexturePath.sprintf ("*_Panel_%llx_%llx", (long long int) panel->id, (long long int) App::instance->getUniqueId ());
+		panel->drawTextureWidth = (int) panel->width;
+		panel->drawTextureHeight = (int) panel->height;
+		texture = App::instance->resource.createTexture (panel->drawTexturePath, panel->drawTextureWidth, panel->drawTextureHeight);
+	}
+	if (! texture) {
+		panel->drawTexturePath.assign ("");
+		panel->isTextureRenderEnabled = false;
+	}
+	else {
+		panel->drawTexture = texture;
+		panel->draw (texture, -(panel->position.x), -(panel->position.y));
+	}
+	panel->shouldRefreshTexture = false;
+	panel->isResettingDrawTexture = false;
+	panel->release ();
+}
+
+void Panel::animateScale (float startScale, float targetScale, int duration) {
+	if (! App::instance->isInterfaceAnimationEnabled) {
+		return;
+	}
+
+	isAnimating = true;
+	setTextureRender (true);
+	animationScale.translateX (startScale, targetScale, duration);
+}
+
+void Panel::animateNewCard () {
+	if (! App::instance->isInterfaceAnimationEnabled) {
+		return;
+	}
+
+	isAnimating = true;
+	setTextureRender (true);
+	animationScale.assignX (0.8f);
+	animationScale.plotX (0.4f, 80);
+	animationScale.plotX (-0.2f, 80);
 }
 
 void Panel::clear () {
@@ -222,7 +318,7 @@ Widget *Panel::findMouseHoverWidget (float mouseX, float mouseY) {
 	while (i != end) {
 		widget = *i;
 		++i;
-		if (widget->isDestroyed || (! widget->isVisible) || (! widget->isDrawable)) {
+		if (widget->isDestroyed || (! widget->isVisible) || (! widget->hasScreenPosition)) {
 			continue;
 		}
 
@@ -231,8 +327,8 @@ Widget *Panel::findMouseHoverWidget (float mouseX, float mouseY) {
 		if ((w <= 0.0f) || (h <= 0.0f)) {
 			continue;
 		}
-		x = widget->drawX;
-		y = widget->drawY;
+		x = widget->screenX;
+		y = widget->screenY;
 		if ((mouseX >= x) && (mouseX <= (x + w)) && (mouseY >= y) && (mouseY <= (y + h))) {
 			item = widget;
 			break;
@@ -247,7 +343,7 @@ Widget *Panel::findMouseHoverWidget (float mouseX, float mouseY) {
 		while (i != end) {
 			widget = *i;
 			++i;
-			if (widget->isDestroyed || (! widget->isVisible) || (! widget->isDrawable)) {
+			if (widget->isDestroyed || (! widget->isVisible) || (! widget->hasScreenPosition)) {
 				continue;
 			}
 
@@ -256,8 +352,8 @@ Widget *Panel::findMouseHoverWidget (float mouseX, float mouseY) {
 			if ((w <= 0.0f) || (h <= 0.0f)) {
 				continue;
 			}
-			x = widget->drawX;
-			y = widget->drawY;
+			x = widget->screenX;
+			y = widget->screenY;
 			if ((mouseX >= x) && (mouseX <= (x + w)) && (mouseY >= y) && (mouseY <= (y + h))) {
 				item = widget;
 				break;
@@ -279,7 +375,7 @@ Widget *Panel::findMouseHoverWidget (float mouseX, float mouseY) {
 	return (item);
 }
 
-void Panel::doUpdate (int msElapsed, float originX, float originY) {
+void Panel::doUpdate (int msElapsed) {
 	std::list<Widget *> addlist;
 	std::list<Widget *>::iterator i, end;
 	Widget *widget;
@@ -289,20 +385,12 @@ void Panel::doUpdate (int msElapsed, float originX, float originY) {
 
 	bgColor.update (msElapsed);
 	borderColor.update (msElapsed);
-
-	if (alphaTranslateDuration > 0) {
-		if (alpha < alphaTarget) {
-			alpha += (1.0f / ((float) alphaTranslateDuration)) * (float) msElapsed;
-			if (alpha >= alphaTarget) {
-				alpha = alphaTarget;
-				alphaTranslateDuration = 0;
-			}
-		}
-		else {
-			alpha -= (1.0f / ((float) alphaTranslateDuration)) * (float) msElapsed;
-			if (alpha <= alphaTarget) {
-				alpha = alphaTarget;
-				alphaTranslateDuration = 0;
+	if (isAnimating) {
+		animationScale.update (msElapsed);
+		if (! animationScale.isTranslating) {
+			isAnimating = false;
+			if (FLOAT_EQUALS (animationScale.x, 1.0f)) {
+				setTextureRender (false);
 			}
 		}
 	}
@@ -353,10 +441,18 @@ void Panel::doUpdate (int msElapsed, float originX, float originY) {
 	end = widgetList.end ();
 	while (i != end) {
 		widget = *i;
-		widget->update (msElapsed, drawX - viewOriginX, drawY - viewOriginY);
+		widget->update (msElapsed, screenX - viewOriginX, screenY - viewOriginY);
 		++i;
 	}
 	SDL_UnlockMutex (widgetListMutex);
+
+	if (! isResettingDrawTexture) {
+		if ((isTextureRenderEnabled && (! drawTexture)) || ((! isTextureRenderEnabled) && drawTexture)) {
+			isResettingDrawTexture = true;
+			retain ();
+			App::instance->addRenderTask (Panel::resetDrawTexture, this);
+		}
+	}
 }
 
 void Panel::processInput () {
@@ -408,15 +504,15 @@ void Panel::processInput () {
 	while (i != iend) {
 		widget = *i;
 		++i;
-		if (widget->isDestroyed || widget->isInputSuspended || (! widget->isVisible) || (! widget->isDrawable)) {
+		if (widget->isDestroyed || widget->isInputSuspended || (! widget->isVisible) || (! widget->hasScreenPosition)) {
 			continue;
 		}
 
 		if ((widget->width > 0.0f) && (widget->height > 0.0f)) {
-			if ((x >= (int) widget->drawX) && (x <= (int) (widget->drawX + widget->width)) && (y >= (int) widget->drawY) && (y <= (int) (widget->drawY + widget->height))) {
+			if ((x >= (int) widget->screenX) && (x <= (int) (widget->screenX + widget->width)) && (y >= (int) widget->screenY) && (y <= (int) (widget->screenY + widget->height))) {
 				item = widget;
-				enterdx = x - widget->drawX;
-				enterdy = y - widget->drawY;
+				enterdx = x - widget->screenX;
+				enterdy = y - widget->screenY;
 				break;
 			}
 		}
@@ -438,7 +534,7 @@ void Panel::processInput () {
 	while (i != iend) {
 		widget = *i;
 		++i;
-		if (widget->isDestroyed || widget->isInputSuspended || (! widget->isVisible) || (! widget->isDrawable)) {
+		if (widget->isDestroyed || widget->isInputSuspended || (! widget->isVisible) || (! widget->hasScreenPosition)) {
 			continue;
 		}
 
@@ -466,7 +562,7 @@ void Panel::processInput () {
 
 		mousestate.isLeftClickEntered = false;
 		if (mousestate.isLeftClickReleased && (lastMouseDownX >= 0)) {
-			if ((lastMouseDownX >= (int) widget->drawX) && (lastMouseDownX <= (int) (widget->drawX + widget->width)) && (lastMouseDownY >= (int) widget->drawY) && (lastMouseDownY <= (int) (widget->drawY + widget->height))) {
+			if ((lastMouseDownX >= (int) widget->screenX) && (lastMouseDownX <= (int) (widget->screenX + widget->width)) && (lastMouseDownY >= (int) widget->screenY) && (lastMouseDownY <= (int) (widget->screenY + widget->height))) {
 				mousestate.isLeftClickEntered = true;
 				lastMouseDownX = -1;
 				lastMouseDownY = -1;
@@ -483,6 +579,10 @@ bool Panel::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isCon
 	std::list<Widget *>::iterator i, end;
 	Widget *widget;
 	bool result;
+
+	if (isTextureRenderEnabled) {
+		return (false);
+	}
 
 	result = false;
 	SDL_LockMutex (widgetListMutex);
@@ -513,6 +613,10 @@ void Panel::doProcessMouseState (const Widget::MouseState &mouseState) {
 	Widget::MouseState m;
 	float x, y;
 
+	if (isTextureRenderEnabled) {
+		return;
+	}
+
 	input = &(App::instance->input);
 	x = input->mouseX;
 	y = input->mouseY;
@@ -524,7 +628,7 @@ void Panel::doProcessMouseState (const Widget::MouseState &mouseState) {
 	while (i != end) {
 		widget = *i;
 		++i;
-		if (widget->isDestroyed || widget->isInputSuspended || (! widget->isVisible) || (! widget->isDrawable)) {
+		if (widget->isDestroyed || widget->isInputSuspended || (! widget->isVisible) || (! widget->hasScreenPosition)) {
 			continue;
 		}
 
@@ -534,10 +638,10 @@ void Panel::doProcessMouseState (const Widget::MouseState &mouseState) {
 		m.enterDeltaY = 0.0f;
 		if ((! found) && mouseState.isEntered) {
 			if ((widget->width > 0.0f) && (widget->height > 0.0f)) {
-				if ((x >= (int) widget->drawX) && (x <= (int) (widget->drawX + widget->width)) && (y >= (int) widget->drawY) && (y <= (int) (widget->drawY + widget->height))) {
+				if ((x >= (int) widget->screenX) && (x <= (int) (widget->screenX + widget->width)) && (y >= (int) widget->screenY) && (y <= (int) (widget->screenY + widget->height))) {
 					m.isEntered = true;
-					m.enterDeltaX = x - widget->drawX;
-					m.enterDeltaY = y - widget->drawY;
+					m.enterDeltaX = x - widget->screenX;
+					m.enterDeltaY = y - widget->screenY;
 					found = true;
 				}
 			}
@@ -578,33 +682,66 @@ void Panel::doResetInputState () {
 	SDL_UnlockMutex (widgetListMutex);
 }
 
-void Panel::doDraw () {
+void Panel::doDraw (SDL_Texture *targetTexture, float originX, float originY) {
+	SDL_Renderer *render;
 	SDL_Rect rect;
 	std::list<Widget *>::iterator i, end;
 	Widget *widget;
+	int x0, y0;
+	float w, h;
 
-	rect.x = (int) drawX;
-	rect.y = (int) drawY;
+	render = App::instance->render;
+	x0 = (int) (originX + position.x);
+	y0 = (int) (originY + position.y);
+
+	if ((! targetTexture) && isTextureRenderEnabled) {
+		if (drawTexture) {
+			if (shouldRefreshTexture) {
+				shouldRefreshTexture = false;
+				doDraw (drawTexture, -(position.x), -(position.y));
+			}
+			rect.x = x0;
+			rect.y = y0;
+			w = drawTextureWidth;
+			h = drawTextureHeight;
+			if (! FLOAT_EQUALS (animationScale.x, 1.0f)) {
+				w *= animationScale.x;
+				h *= animationScale.x;
+				rect.x += (int) ((width - w) / 2.0f);
+				rect.y += (int) ((height - h) / 2.0f);
+			}
+
+			rect.w = (int) w;
+			rect.h = (int) h;
+			SDL_RenderCopy (render, drawTexture, NULL, &rect);
+		}
+		return;
+	}
+
+	SDL_SetRenderTarget (render, targetTexture);
+	rect.x = x0;
+	rect.y = y0;
 	rect.w = (int) width;
 	rect.h = (int) height;
 	App::instance->pushClipRect (&rect);
 
-	if (isFilledBg) {
-		rect.x = (int) drawX;
-		rect.y = (int) drawY;
+	if (isFilledBg && (bgColor.aByte > 0)) {
+		rect.x = x0;
+		rect.y = y0;
 		rect.w = (int) width;
 		rect.h = (int) height;
-		if (isAlphaBlended) {
-			SDL_SetRenderDrawColor (App::instance->render, bgColor.rByte, bgColor.gByte, bgColor.bByte, (Uint8) (alpha * 255.0f));
-			SDL_SetRenderDrawBlendMode (App::instance->render, SDL_BLENDMODE_BLEND);
+
+		SDL_SetRenderTarget (render, targetTexture);
+		if (bgColor.aByte < 255) {
+			SDL_SetRenderDrawBlendMode (render, SDL_BLENDMODE_BLEND);
 		}
-		else {
-			SDL_SetRenderDrawColor (App::instance->render, bgColor.rByte, bgColor.gByte, bgColor.bByte, 255);
+		SDL_SetRenderDrawColor (render, bgColor.rByte, bgColor.gByte, bgColor.bByte, bgColor.aByte);
+		SDL_RenderFillRect (render, &rect);
+		if (bgColor.aByte < 255) {
+			SDL_SetRenderDrawBlendMode (render, SDL_BLENDMODE_NONE);
 		}
-		SDL_RenderFillRect (App::instance->render, &rect);
-		if (isAlphaBlended) {
-			SDL_SetRenderDrawBlendMode (App::instance->render, SDL_BLENDMODE_NONE);
-		}
+		SDL_SetRenderDrawColor (render, 0, 0, 0, 0);
+		SDL_SetRenderTarget (render, NULL);
 	}
 
 	SDL_LockMutex (widgetListMutex);
@@ -613,34 +750,70 @@ void Panel::doDraw () {
 	while (i != end) {
 		widget = *i;
 		++i;
-		if (widget->isDestroyed || (! widget->isVisible) || (! widget->isDrawable)) {
+		if (widget->isDestroyed || (! widget->isVisible)) {
 			continue;
 		}
 
-		widget->draw ();
+		widget->draw (targetTexture, x0 - (int) viewOriginX, y0 - (int) viewOriginY);
 	}
 	SDL_UnlockMutex (widgetListMutex);
 
-	if (isBordered) {
-		rect.x = (int) drawX;
-		rect.y = (int) drawY;
-		rect.w = (int) width;
-		rect.h = (int) height;
+	App::instance->popClipRect ();
 
-		if (isAlphaBlended) {
-			SDL_SetRenderDrawColor (App::instance->render, borderColor.rByte, borderColor.gByte, borderColor.bByte, (Uint8) (alpha * 255.0f));
-			SDL_SetRenderDrawBlendMode (App::instance->render, SDL_BLENDMODE_BLEND);
+	if (isBordered && (borderColor.aByte > 0) && (borderWidth >= 1.0f)) {
+		SDL_SetRenderTarget (render, targetTexture);
+		if (borderColor.aByte < 255) {
+			SDL_SetRenderDrawBlendMode (render, SDL_BLENDMODE_BLEND);
 		}
-		else {
-			SDL_SetRenderDrawColor (App::instance->render, borderColor.rByte, borderColor.gByte, borderColor.bByte, 255);
+		SDL_SetRenderDrawColor (render, borderColor.rByte, borderColor.gByte, borderColor.bByte, borderColor.aByte);
+
+		rect.x = x0;
+		rect.y = y0;
+		rect.w = (int) width;
+		rect.h = (int) borderWidth;
+		SDL_RenderFillRect (render, &rect);
+
+		rect.y = y0 + (int) (height - borderWidth);
+		SDL_RenderFillRect (render, &rect);
+
+		rect.y = y0 + (int) borderWidth;
+		rect.w = (int) borderWidth;
+		rect.h = ((int) height) - (int) (borderWidth * 2.0f);
+		SDL_RenderFillRect (render, &rect);
+
+		rect.x = x0 + (int) (width - borderWidth);
+		SDL_RenderFillRect (render, &rect);
+
+		if (borderColor.aByte < 255) {
+			SDL_SetRenderDrawBlendMode (render, SDL_BLENDMODE_NONE);
 		}
-		SDL_RenderDrawRect (App::instance->render, &rect);
-		if (isAlphaBlended) {
-			SDL_SetRenderDrawBlendMode (App::instance->render, SDL_BLENDMODE_NONE);
-		}
+		SDL_SetRenderDrawColor (render, 0, 0, 0, 0);
+		SDL_SetRenderTarget (render, NULL);
 	}
 
-	App::instance->popClipRect ();
+	if (isDropShadowed && (dropShadowColor.aByte > 0) && (dropShadowWidth >= 1.0f)) {
+		SDL_SetRenderTarget (render, targetTexture);
+		App::instance->suspendClipRect ();
+		SDL_SetRenderDrawBlendMode (render, SDL_BLENDMODE_BLEND);
+		SDL_SetRenderDrawColor (render, dropShadowColor.rByte, dropShadowColor.gByte, dropShadowColor.bByte, dropShadowColor.aByte);
+
+		rect.x = x0 + (int) width;
+		rect.y = y0 + (int) dropShadowWidth;
+		rect.w = (int) dropShadowWidth;
+		rect.h = (int) height;
+		SDL_RenderFillRect (render, &rect);
+
+		rect.x = x0 + (int) dropShadowWidth;
+		rect.y = y0 + (int) height;
+		rect.w = (int) (width - dropShadowWidth);
+		rect.h = (int) dropShadowWidth;
+		SDL_RenderFillRect (render, &rect);
+
+		SDL_SetRenderDrawBlendMode (render, SDL_BLENDMODE_NONE);
+		SDL_SetRenderDrawColor (render, 0, 0, 0, 0);
+		App::instance->unsuspendClipRect ();
+		SDL_SetRenderTarget (render, NULL);
+	}
 }
 
 void Panel::doRefresh () {
@@ -729,7 +902,7 @@ void Panel::refreshLayout () {
 	float x, y, maxw;
 
 	switch (layout) {
-		case Panel::VERTICAL: {
+		case Panel::VerticalLayout: {
 			uiconfig = &(App::instance->uiConfig);
 			x = widthPadding;
 			y = heightPadding;
@@ -765,7 +938,7 @@ void Panel::refreshLayout () {
 			SDL_UnlockMutex (widgetAddListMutex);
 			break;
 		}
-		case Panel::VERTICAL_RIGHT_JUSTIFIED: {
+		case Panel::VerticalRightJustifiedLayout: {
 			uiconfig = &(App::instance->uiConfig);
 			x = widthPadding;
 			y = heightPadding;
@@ -836,7 +1009,7 @@ void Panel::refreshLayout () {
 			SDL_UnlockMutex (widgetAddListMutex);
 			break;
 		}
-		case Panel::HORIZONTAL: {
+		case Panel::HorizontalLayout: {
 			uiconfig = &(App::instance->uiConfig);
 			x = widthPadding;
 			y = heightPadding;
@@ -925,65 +1098,41 @@ void Panel::setLayout (int layoutType) {
 	refresh ();
 }
 
-void Panel::setAlphaBlend (bool enable, float blendAlpha) {
-	isAlphaBlended = enable;
-	if (isAlphaBlended) {
-		alpha = blendAlpha;
-	}
-}
-
-void Panel::translateAlphaBlend (float startAlpha, float targetAlpha, int durationMs) {
-	if (startAlpha < 0.0f) {
-		startAlpha = 0.0f;
-	}
-	if (startAlpha > 1.0f) {
-		startAlpha = 1.0f;
-	}
-	if (targetAlpha < 0.0f) {
-		targetAlpha = 0.0f;
-	}
-	if (targetAlpha > 1.0f) {
-		targetAlpha = 1.0f;
-	}
-
-	if (durationMs < 0) {
-		durationMs = 0;
-	}
-	alphaTranslateDuration = durationMs;
-	if (alphaTranslateDuration <= 0) {
-		setAlphaBlend (true, targetAlpha);
-		return;
-	}
-
-	setAlphaBlend (true, startAlpha);
-	alphaTarget = targetAlpha;
-}
-
 void Panel::setFillBg (bool enable, const Color &color) {
-	setFillBg (enable, color.r, color.g, color.b);
-}
-
-void Panel::setFillBg (bool enable, float r, float g, float b) {
 	if (enable) {
+		bgColor.assign (color);
 		isFilledBg = true;
-		bgColor.assign (r, g, b);
 	}
 	else {
 		isFilledBg = false;
 	}
 }
 
-void Panel::setBorder (bool enable, const Color &color) {
-	setBorder (enable, color.r, color.g, color.b);
-}
-
-void Panel::setBorder (bool enable, float r, float g, float b) {
+void Panel::setBorder (bool enable, const Color &color, float borderWidthValue) {
 	if (enable) {
+		borderColor.assign (color);
+		if (borderWidthValue < 1.0f) {
+			borderWidthValue = 1.0f;
+		}
+		borderWidth = borderWidthValue;
 		isBordered = true;
-		borderColor.assign (r, g, b);
 	}
 	else {
 		isBordered = false;
+	}
+}
+
+void Panel::setDropShadow (bool enable, const Color &color, float dropShadowWidthValue) {
+	if (enable) {
+		dropShadowColor.assign (color);
+		if (dropShadowWidthValue < 1.0f) {
+			dropShadowWidthValue = 1.0f;
+		}
+		dropShadowWidth = dropShadowWidthValue;
+		isDropShadowed = true;
+	}
+	else {
+		isDropShadowed = false;
 	}
 }
 
@@ -1057,8 +1206,7 @@ void Panel::setWaiting (bool enable) {
 
 		panel = (Panel *) addWidget (new Panel ());
 		panel->setFixedSize (true, width, height);
-		panel->setFillBg (true, 0.0f, 0.0f, 0.0f);
-		panel->setAlphaBlend (true, uiconfig->waitingShadeAlpha);
+		panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->waitingShadeAlpha));
 		panel->zLevel = maxWidgetZLevel + 1;
 
 		bar = (ProgressBar *) panel->addWidget (new ProgressBar (width, uiconfig->progressBarHeight));

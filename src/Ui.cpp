@@ -110,25 +110,25 @@ int Ui::load () {
 	int result;
 
 	if (isLoaded) {
-		return (Result::SUCCESS);
+		return (Result::Success);
 	}
 
 	path = getSpritePath ();
 	if (! path.empty ()) {
 		result = sprites.load (path);
-		if (result != Result::SUCCESS) {
+		if (result != Result::Success) {
 			Log::err ("Failed to load sprite resources");
 			return (result);
 		}
 	}
 
 	result = doLoad ();
-	if (result != Result::SUCCESS) {
+	if (result != Result::Success) {
 		return (result);
 	}
 
 	isLoaded = true;
-	return (Result::SUCCESS);
+	return (Result::Success);
 }
 
 void Ui::unload () {
@@ -158,7 +158,7 @@ Widget *Ui::createBreadcrumbWidget () {
 
 int Ui::doLoad () {
 	// Default implementation does nothing
-	return (Result::SUCCESS);
+	return (Result::Success);
 }
 
 void Ui::doUnload () {
@@ -178,11 +178,11 @@ void Ui::showShutdownWindow () {
 	clearPopupWidgets ();
 
 	panel = new Panel ();
-	panel->setFillBg (true, 0.0f, 0.0f, 0.0f);
-	panel->translateAlphaBlend (0.0f, uiconfig->overlayWindowAlpha, uiconfig->backgroundCrossFadeDuration);
+	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, 0.0f));
+	panel->bgColor.translate (0.0f, 0.0f, 0.0f, uiconfig->overlayWindowAlpha, uiconfig->backgroundCrossFadeDuration);
 	panel->setFixedSize (true, App::instance->rootPanel->width, App::instance->rootPanel->height);
 
-	label = new LabelWindow (new Label (uitext->getText (UiTextString::shuttingDownApp), UiConfiguration::CAPTION, uiconfig->primaryTextColor));
+	label = new LabelWindow (new Label (uitext->getText (UiTextString::shuttingDownApp), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
 	label->setFillBg (true, uiconfig->lightBackgroundColor);
 
 	bar = new ProgressBar (label->width, uiconfig->progressBarHeight);
@@ -199,6 +199,10 @@ void Ui::showShutdownWindow () {
 }
 
 bool Ui::keyEvent (void *uiPtr, SDL_Keycode keycode, bool isShiftDown, bool isControlDown) {
+	return (((Ui *) uiPtr)->processKeyEvent (keycode, isShiftDown, isControlDown));
+}
+
+bool Ui::processKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown) {
 	if (isControlDown) {
 		switch (keycode) {
 			case SDLK_s: {
@@ -216,6 +220,11 @@ bool Ui::keyEvent (void *uiPtr, SDL_Keycode keycode, bool isShiftDown, bool isCo
 		}
 	}
 
+	return (doProcessKeyEvent (keycode, isShiftDown, isControlDown));
+}
+
+bool Ui::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown) {
+	// Default implementation does nothing
 	return (false);
 }
 

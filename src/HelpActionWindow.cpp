@@ -56,9 +56,9 @@ HelpActionWindow::HelpActionWindow (float windowWidth, const StdString &helpActi
 
 	uiconfig = &(App::instance->uiConfig);
 
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::INFO_ICON)));
+	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::InfoIconSprite)));
 
-	actionText = (TextArea *) addWidget (new TextArea (UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor, uiconfig->textAreaMediumLineLength, windowWidth - iconImage->width - (uiconfig->paddingSize * 2.0f)));
+	actionText = (TextArea *) addWidget (new TextArea (UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor, uiconfig->textAreaMediumLineLength, windowWidth - iconImage->width - (uiconfig->paddingSize * 2.0f)));
 	actionText->setText (helpActionText);
 
 	if ((! helpLinkText.empty ()) && (! helpLinkUrl.empty ())) {

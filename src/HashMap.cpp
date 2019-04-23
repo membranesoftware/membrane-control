@@ -141,7 +141,7 @@ int HashMap::read (const StdString &filename, bool shouldClear) {
 
 	fp = fopen (filename.c_str (), "rb");
 	if (! fp) {
-		return (Result::ERROR_FILE_OPEN_FAILED);
+		return (Result::FileOpenFailedError);
 	}
 
 	buffer = new Buffer ();
@@ -232,7 +232,7 @@ int HashMap::read (Buffer *buffer, bool shouldClear) {
 		}
 	}
 
-	return (Result::SUCCESS);
+	return (Result::Success);
 }
 
 int HashMap::read (Json *json, bool shouldClear) {
@@ -240,7 +240,7 @@ int HashMap::read (Json *json, bool shouldClear) {
 	StringList::iterator i, end;
 
 	if (! json) {
-		return (Result::ERROR_INVALID_PARAM);
+		return (Result::InvalidParamError);
 	}
 
 	if (shouldClear) {
@@ -262,7 +262,7 @@ int HashMap::read (Json *json, bool shouldClear) {
 		++i;
 	}
 
-	return (Result::SUCCESS);
+	return (Result::Success);
 }
 
 int HashMap::write (const StdString &filename) {
@@ -284,12 +284,12 @@ int HashMap::write (const StdString &filename) {
 
 	fp = fopen (filename.c_str (), "wb");
 	if (! fp) {
-		return (Result::ERROR_FILE_OPEN_FAILED);
+		return (Result::FileOpenFailedError);
 	}
 	fprintf (fp, "%s", out.c_str ());
 	fclose (fp);
 
-	return (Result::SUCCESS);
+	return (Result::Success);
 }
 
 bool HashMap::exists (const StdString &key) {

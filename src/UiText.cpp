@@ -60,7 +60,7 @@ int UiText::load (const StdString &language) {
 		buffer = App::instance->resource.loadFile (path);
 	}
 	if (! buffer) {
-		return (Result::ERROR_FILE_OPEN_FAILED);
+		return (Result::FileOpenFailedError);
 	}
 
 	text.assignBuffer (buffer);
@@ -80,7 +80,7 @@ int UiText::load (const StdString &language) {
 	}
 
 	App::instance->resource.unloadFile (path);
-	return (Result::SUCCESS);
+	return (Result::Success);
 }
 
 StdString UiText::getText (int stringIndex) {

@@ -48,7 +48,7 @@ protected:
 	StdString toStringDetail ();
 
 	// Execute operations to update object state as appropriate for an elapsed millisecond time period and origin position
-	void doUpdate (int msElapsed, float originX, float originY);
+	void doUpdate (int msElapsed);
 
 	// Execute subclass-specific operations to refresh the widget's layout as appropriate for the current set of UiConfiguration values
 	void doRefresh ();

@@ -70,11 +70,11 @@ ServerContactWindow::ServerContactWindow (const StdString &displayName, const St
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::SERVER_ICON)));
-	nameLabel = (Label *) addWidget (new Label (agentDisplayName, UiConfiguration::HEADLINE, uiconfig->primaryTextColor));
-	statusLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::serverUiContactingAgentDescription), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
+	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::ServerIconSprite)));
+	nameLabel = (Label *) addWidget (new Label (agentDisplayName, UiConfiguration::HeadlineFont, uiconfig->primaryTextColor));
+	statusLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::serverUiContactingAgentDescription), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 
-	detailText = (TextArea *) addWidget (new TextArea (UiConfiguration::CAPTION, uiconfig->primaryTextColor, uiconfig->textAreaShortLineLength));
+	detailText = (TextArea *) addWidget (new TextArea (UiConfiguration::CaptionFont, uiconfig->primaryTextColor, uiconfig->textAreaShortLineLength));
 	detailText->isVisible = false;
 
 	progressBar = (ProgressBar *) addWidget (new ProgressBar (1.0f, uiconfig->progressBarHeight));
@@ -82,7 +82,7 @@ ServerContactWindow::ServerContactWindow (const StdString &displayName, const St
 	progressBar->setIndeterminate (true);
 	progressBar->isVisible = false;
 
-	deleteButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::DELETE_BUTTON)));
+	deleteButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
 	deleteButton->setMouseClickCallback (ServerContactWindow::deleteButtonClicked, this);
 	deleteButton->setImageColor (uiconfig->flatButtonTextColor);
 	deleteButton->isVisible = false;
@@ -117,12 +117,11 @@ void ServerContactWindow::setStateChangeCallback (Widget::EventCallback callback
 	stateChangeCallbackData = callbackData;
 }
 
-void ServerContactWindow::doUpdate (int msElapsed, float originX, float originY) {
+void ServerContactWindow::doUpdate (int msElapsed) {
 	UiText *uitext;
 	int curlayout;
 
-	Panel::doUpdate (msElapsed, originX, originY);
-
+	Panel::doUpdate (msElapsed);
 	uitext = &(App::instance->uiText);
 	curlayout = layout;
 	if (App::instance->agentControl.isContacted (agentHostname, agentPort)) {

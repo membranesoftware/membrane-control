@@ -83,8 +83,8 @@ protected:
 	// Execute operations appropriate when the widget receives new mouse state
 	void doProcessMouseState (const Widget::MouseState &mouseState);
 
-	// Execute operations to update object state as appropriate for an elapsed millisecond time period and origin position
-	void doUpdate (int msElapsed, float originX, float originY);
+	// Execute operations to update object state as appropriate for an elapsed millisecond time period
+	void doUpdate (int msElapsed);
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
 	void refreshLayout ();

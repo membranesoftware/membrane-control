@@ -59,12 +59,12 @@ IconCardWindow::IconCardWindow (Sprite *iconSprite, const StdString &cardName, c
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
 	iconImage = (Image *) addWidget (new Image (iconSprite));
-	nameLabel = (Label *) addWidget (new Label (cardName, UiConfiguration::HEADLINE, uiconfig->primaryTextColor));
+	nameLabel = (Label *) addWidget (new Label (cardName, UiConfiguration::HeadlineFont, uiconfig->primaryTextColor));
 	if (! cardSubtitle.empty ()) {
-		subtitleLabel = (Label *) addWidget (new Label (cardSubtitle, UiConfiguration::CAPTION, uiconfig->primaryTextColor));
+		subtitleLabel = (Label *) addWidget (new Label (cardSubtitle, UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
 	}
 	if (! cardDetailText.empty ()) {
-		detailText = (TextArea *) addWidget (new TextArea (UiConfiguration::CAPTION, uiconfig->primaryTextColor));
+		detailText = (TextArea *) addWidget (new TextArea (UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
 		detailText->setText (cardDetailText);
 	}
 
@@ -92,7 +92,7 @@ void IconCardWindow::setDetailText (const StdString &text) {
 	}
 	else {
 		if (! detailText) {
-			detailText = (TextArea *) addWidget (new TextArea (UiConfiguration::CAPTION, uiconfig->primaryTextColor));
+			detailText = (TextArea *) addWidget (new TextArea (UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
 		}
 		detailText->setText (text);
 		refreshLayout ();

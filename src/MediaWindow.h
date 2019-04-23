@@ -35,22 +35,24 @@
 
 #include "StdString.h"
 #include "Json.h"
+#include "Widget.h"
 #include "Label.h"
 #include "LabelWindow.h"
 #include "ImageWindow.h"
 #include "TextArea.h"
+#include "Button.h"
 #include "Panel.h"
 
 class MediaWindow : public Panel {
 public:
 	// Constants to use for layout types
 	enum {
-		LOW_DETAIL = 0,
-		MEDIUM_DETAIL = 1,
-		HIGH_DETAIL = 2
+		LowDetailLayout = 0,
+		MediumDetailLayout = 1,
+		HighDetailLayout = 2
 	};
 
-	MediaWindow (Json *mediaItem, int layoutType = MediaWindow::LOW_DETAIL, float maxMediaImageWidth = 64.0f);
+	MediaWindow (Json *mediaItem, int layoutType = MediaWindow::LowDetailLayout, float maxMediaImageWidth = 64.0f);
 	virtual ~MediaWindow ();
 
 	// Read-only data members
@@ -59,6 +61,7 @@ public:
 	StdString agentId;
 	StdString mediaPath;
 	StdString thumbnailPath;
+	StdString hlsStreamPath;
 	int thumbnailCount;
 	int mediaWidth, mediaHeight;
 	float mediaDuration;
@@ -68,9 +71,29 @@ public:
 	StdString streamId;
 	StdString streamAgentId;
 	StdString streamAgentName;
+	float displayTimestamp;
+	bool isSelected;
 
 	// Set the card's layout type and reset widgets to show the specified content
 	void setLayout (int layoutType, float maxImageWidth);
+
+	// Set a callback that should be invoked when the media image is clicked
+	void setMediaImageClickCallback (Widget::EventCallback callback, void *callbackData);
+
+	// Set a callback that should be invoked when the window's select state changes
+	void setSelectStateChangeCallback (Widget::EventCallback callback, void *callbackData);
+
+	// Set a callback that should be invoked when the view button is clicked
+	void setViewButtonClickCallback (Widget::EventCallback callback, void *callbackData);
+
+	// Set the URL that should be used to load the window's thumbnail image
+	void setImageUrl (const StdString &url);
+
+	// Set the timestamp that should be shown for the media item, with a negative value specifying that no timestamp should be shown
+	void setDisplayTimestamp (float timestamp);
+
+	// Set the window's select state, then execute any select state change callback that might be configured unless shouldSkipStateChangeCallback is true
+	void setSelected (bool selected, bool shouldSkipStateChangeCallback = false);
 
 	// Return a boolean value indicating if the window is configured to load thumbnail images
 	bool hasThumbnails ();
@@ -85,6 +108,9 @@ public:
 	static MediaWindow *castWidget (Widget *widget);
 
 	// Callback functions
+	static void mediaImageClicked (void *windowPtr, Widget *widgetPtr);
+	static void mediaImageLoaded (void *windowPtr, Widget *widgetPtr);
+	static void viewButtonClicked (void *windowPtr, Widget *widgetPtr);
 	static bool matchStreamSourceId (void *idStringPtr, Json *record);
 
 protected:
@@ -103,6 +129,15 @@ private:
 	TextArea *detailText;
 	LabelWindow *mouseoverLabel;
 	LabelWindow *detailNameLabel;
+	Button *viewButton;
+	LabelWindow *timestampLabel;
+	ImageWindow *streamIconImage;
+	Widget::EventCallback mediaImageClickCallback;
+	void *mediaImageClickCallbackData;
+	Widget::EventCallback viewButtonClickCallback;
+	void *viewButtonClickCallbackData;
+	Widget::EventCallback selectStateChangeCallback;
+	void *selectStateChangeCallbackData;
 };
 
 #endif

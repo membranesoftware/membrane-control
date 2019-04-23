@@ -115,13 +115,13 @@ void StatsWindow::setItem (const StdString &itemName, const StdString &itemValue
 	}
 
 	if (! found) {
-		label = (Label *) addWidget (new Label (itemName, UiConfiguration::CAPTION, uiconfig->primaryTextColor));
+		label = (Label *) addWidget (new Label (itemName, UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
 		if (label->maxLineHeight > maxLineHeight) {
 			maxLineHeight = label->maxLineHeight;
 		}
 		item.nameLabel = label;
 
-		label = (Label *) addWidget (new Label (itemValue, UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
+		label = (Label *) addWidget (new Label (itemValue, UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 		if (label->maxLineHeight > maxLineHeight) {
 			maxLineHeight = label->maxLineHeight;
 		}

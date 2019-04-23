@@ -79,12 +79,61 @@ MediaLibraryWindow::MediaLibraryWindow (const StdString &agentId)
 , expandStateChangeCallbackData (NULL)
 {
 	UiConfiguration *uiconfig;
+	UiText *uitext;
 
 	uiconfig = &(App::instance->uiConfig);
-	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
+	uitext = &(App::instance->uiText);
+	setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
-	populate ();
+	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeMediaIconSprite)));
+	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::BodyFont, uiconfig->primaryTextColor));
+
+	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	descriptionLabel->isVisible = false;
+
+	taskCountIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::TaskCountIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	taskCountIcon->setPadding (0.0f, 0.0f);
+	taskCountIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
+	taskCountIcon->isVisible = false;
+
+	storageIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::StorageIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	storageIcon->setPadding (0.0f, 0.0f);
+	storageIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
+	storageIcon->setMouseHoverTooltip (uitext->getText (UiTextString::storageTooltip));
+	storageIcon->isVisible = false;
+
+	mediaCountIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallMediaIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	mediaCountIcon->setPadding (0.0f, 0.0f);
+	mediaCountIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
+	mediaCountIcon->isVisible = false;
+
+	streamCountIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	streamCountIcon->setPadding (0.0f, 0.0f);
+	streamCountIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
+	streamCountIcon->isVisible = false;
+
+	statsWindow = (StatsWindow *) addWidget (new StatsWindow ());
+	statsWindow->setPadding (uiconfig->paddingSize, 0.0f);
+	statsWindow->isVisible = false;
+
+	menuButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::MainMenuButtonSprite)));
+	menuButton->setMouseClickCallback (MediaLibraryWindow::menuButtonClicked, this);
+	menuButton->setImageColor (uiconfig->flatButtonTextColor);
+	menuButton->setMouseHoverTooltip (uitext->getText (UiTextString::moreActionsTooltip));
+	menuButton->isVisible = false;
+
+	selectToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::StarOutlineButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::StarButtonSprite)));
+	selectToggle->setImageColor (uiconfig->flatButtonTextColor);
+	selectToggle->setStateChangeCallback (MediaLibraryWindow::selectToggleStateChanged, this);
+	selectToggle->setMouseHoverTooltip (uitext->getText (UiTextString::selectToggleTooltip));
+	selectToggle->isVisible = false;
+
+	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
+	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
+	expandToggle->setStateChangeCallback (MediaLibraryWindow::expandToggleStateChanged, this);
+	expandToggle->setMouseHoverTooltip (uitext->getText (UiTextString::expandToggleTooltip));
+
 	refreshLayout ();
 }
 
@@ -107,62 +156,6 @@ bool MediaLibraryWindow::isWidgetType (Widget *widget) {
 
 MediaLibraryWindow *MediaLibraryWindow::castWidget (Widget *widget) {
 	return (MediaLibraryWindow::isWidgetType (widget) ? (MediaLibraryWindow *) widget : NULL);
-}
-
-void MediaLibraryWindow::populate () {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
-
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LARGE_MEDIA_ICON)));
-	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::HEADLINE, uiconfig->primaryTextColor));
-
-	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
-	descriptionLabel->isVisible = false;
-
-	taskCountIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::TASK_COUNT_ICON), StdString (""), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
-	taskCountIcon->setPadding (0.0f, 0.0f);
-	taskCountIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
-	taskCountIcon->isVisible = false;
-
-	storageIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::STORAGE_ICON), StdString (""), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
-	storageIcon->setPadding (0.0f, 0.0f);
-	storageIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
-	storageIcon->setMouseHoverTooltip (uitext->getText (UiTextString::storageTooltip));
-	storageIcon->isVisible = false;
-
-	mediaCountIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SMALL_MEDIA_ICON), StdString (""), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
-	mediaCountIcon->setPadding (0.0f, 0.0f);
-	mediaCountIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
-	mediaCountIcon->isVisible = false;
-
-	streamCountIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SMALL_STREAM_ICON), StdString (""), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
-	streamCountIcon->setPadding (0.0f, 0.0f);
-	streamCountIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
-	streamCountIcon->isVisible = false;
-
-	statsWindow = (StatsWindow *) addWidget (new StatsWindow ());
-	statsWindow->setPadding (uiconfig->paddingSize, 0.0f);
-	statsWindow->isVisible = false;
-
-	menuButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::MAIN_MENU_BUTTON)));
-	menuButton->setMouseClickCallback (MediaLibraryWindow::menuButtonClicked, this);
-	menuButton->setImageColor (uiconfig->flatButtonTextColor);
-	menuButton->setMouseHoverTooltip (uitext->getText (UiTextString::moreActionsTooltip));
-	menuButton->isVisible = false;
-
-	selectToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::STAR_OUTLINE_BUTTON), uiconfig->coreSprites.getSprite (UiConfiguration::STAR_BUTTON)));
-	selectToggle->setImageColor (uiconfig->flatButtonTextColor);
-	selectToggle->setStateChangeCallback (MediaLibraryWindow::selectToggleStateChanged, this);
-	selectToggle->setMouseHoverTooltip (uitext->getText (UiTextString::selectToggleTooltip));
-	selectToggle->isVisible = false;
-
-	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::EXPAND_MORE_BUTTON), uiconfig->coreSprites.getSprite (UiConfiguration::EXPAND_LESS_BUTTON)));
-	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
-	expandToggle->setStateChangeCallback (MediaLibraryWindow::expandToggleStateChanged, this);
-	expandToggle->setMouseHoverTooltip (uitext->getText (UiTextString::expandToggleTooltip));
 }
 
 void MediaLibraryWindow::syncRecordStore () {
@@ -239,23 +232,18 @@ void MediaLibraryWindow::setExpandStateChangeCallback (Widget::EventCallback cal
 }
 
 void MediaLibraryWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallback) {
-	Widget::EventCallback callback;
-	void *callbackdata;
+	UiConfiguration *uiconfig;
 
 	if (expanded == isExpanded) {
 		return;
 	}
-	callback = NULL;
-	callbackdata = NULL;
-	if (shouldSkipStateChangeCallback) {
-		callback = expandStateChangeCallback;
-		callbackdata = expandStateChangeCallbackData;
-		expandStateChangeCallback = NULL;
-		expandStateChangeCallbackData = NULL;
-	}
+
+	uiconfig = &(App::instance->uiConfig);
 	isExpanded = expanded;
 	if (isExpanded) {
-		expandToggle->setChecked (true);
+		setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
+		expandToggle->setChecked (true, shouldSkipStateChangeCallback);
+		nameLabel->setFont (UiConfiguration::HeadlineFont);
 		descriptionLabel->isVisible = true;
 		statsWindow->isVisible = true;
 		if (agentTaskCount > 0) {
@@ -269,7 +257,9 @@ void MediaLibraryWindow::setExpanded (bool expanded, bool shouldSkipStateChangeC
 		streamCountIcon->isVisible = true;
 	}
 	else {
-		expandToggle->setChecked (false);
+		setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
+		expandToggle->setChecked (false, shouldSkipStateChangeCallback);
+		nameLabel->setFont (UiConfiguration::BodyFont);
 		descriptionLabel->isVisible = false;
 		statsWindow->isVisible = false;
 		taskCountIcon->isVisible = false;
@@ -279,10 +269,6 @@ void MediaLibraryWindow::setExpanded (bool expanded, bool shouldSkipStateChangeC
 	}
 
 	refreshLayout ();
-	if (shouldSkipStateChangeCallback) {
-		expandStateChangeCallback = callback;
-		expandStateChangeCallbackData = callbackdata;
-	}
 }
 
 void MediaLibraryWindow::refreshLayout () {
@@ -336,7 +322,7 @@ void MediaLibraryWindow::refreshLayout () {
 
 	resetSize ();
 
-	x = width - uiconfig->paddingSize;
+	x = width - widthPadding;
 	if (selectToggle->isVisible) {
 		selectToggle->flowLeft (&x);
 	}

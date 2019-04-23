@@ -47,11 +47,17 @@ class ServerUi : public Ui {
 public:
 	// Constants to use for sprite indexes
 	enum {
-		BREADCRUMB_ICON = 0,
-		ADDRESS_BUTTON = 1,
-		BROADCAST_BUTTON = 2,
-		ADDRESS_ICON = 3,
-		CONFIGURE_SERVER_BUTTON = 4
+		BreadcrumbIconSprite = 0,
+		AddressButtonSprite = 1,
+		BroadcastButtonSprite = 2,
+		AddressIconSprite = 3,
+		ConfigureServerButtonSprite = 4
+	};
+
+	// Constants to use for card view row numbers
+	enum {
+		AgentRow = 0,
+		ActionRow = 1
 	};
 
 	ServerUi ();

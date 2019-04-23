@@ -37,6 +37,16 @@
 #include "SystemInterface.h"
 #include "Agent.h"
 
+const char *Agent::AgentIdKey = "a";
+const char *Agent::InvokeHostnameKey = "b";
+const char *Agent::InvokeTcpPort1Key = "c";
+const char *Agent::InvokeTcpPort2Key = "d";
+const char *Agent::LinkPathKey = "e";
+const char *Agent::DisplayNameKey = "f";
+const char *Agent::UrlHostnameKey = "g";
+const char *Agent::TcpPort1Key = "h";
+const char *Agent::TcpPort2Key = "i";
+
 Agent::Agent ()
 : lastStatusTime (0)
 , invokeTcpPort1 (0)
@@ -195,45 +205,36 @@ StdString Agent::getLinkUrl () {
 	return (url);
 }
 
-static const char *AGENT_ID_KEY = "a";
-static const char *INVOKE_HOSTNAME_KEY = "b";
-static const char *INVOKE_TCP_PORT1_KEY = "c";
-static const char *INVOKE_TCP_PORT2_KEY = "d";
-static const char *LINK_PATH_KEY = "e";
-static const char *DISPLAY_NAME_KEY = "f";
-static const char *URL_HOSTNAME_KEY = "g";
-static const char *TCP_PORT1_KEY = "h";
-static const char *TCP_PORT2_KEY = "i";
 StdString Agent::toPrefsJsonString () {
 	Json *obj;
 	StdString s;
 
 	obj = new Json ();
 
-	obj->set (AGENT_ID_KEY, id);
+	obj->set (Agent::AgentIdKey, id);
 	if (! invokeHostname.empty ()) {
-		obj->set (INVOKE_HOSTNAME_KEY, invokeHostname);
+		obj->set (Agent::InvokeHostnameKey, invokeHostname);
 	}
 	if (invokeTcpPort1 > 0) {
-		obj->set (INVOKE_TCP_PORT1_KEY, invokeTcpPort1);
+		obj->set (Agent::InvokeTcpPort1Key, invokeTcpPort1);
 	}
 	if (invokeTcpPort2 > 0) {
-		obj->set (INVOKE_TCP_PORT2_KEY, invokeTcpPort2);
+		obj->set (Agent::InvokeTcpPort2Key, invokeTcpPort2);
 	}
 	if (! linkPath.empty ()) {
-		obj->set (LINK_PATH_KEY, linkPath);
+		obj->set (Agent::LinkPathKey, linkPath);
 	}
 	if (! displayName.empty ()) {
-		obj->set (DISPLAY_NAME_KEY, displayName);
+		obj->set (Agent::DisplayNameKey, displayName);
 	}
 	if (! urlHostname.empty ()) {
-		obj->set (URL_HOSTNAME_KEY, urlHostname);
+		obj->set (Agent::UrlHostnameKey, urlHostname);
 	}
 	if (tcpPort1 > 0) {
-		obj->set (TCP_PORT1_KEY, tcpPort1);
+		obj->set (Agent::TcpPort1Key, tcpPort1);
 	}
 	if (tcpPort2 > 0) {
-		obj->set (TCP_PORT2_KEY, tcpPort2);
+		obj->set (Agent::TcpPort2Key, tcpPort2);
 	}
 
 	s = obj->toString ();
@@ -247,22 +248,26 @@ int Agent::readPrefsJson (const StdString &prefsJson) {
 	int result;
 
 	obj = new Json ();
-	result = obj->parse (prefsJson);
-	if (result == Result::SUCCESS) {
-		id = obj->getString (AGENT_ID_KEY, "");
+	result = Result::Success;
+	if (! obj->parse (prefsJson)) {
+		result = Result::JsonParseFailedError;
+	}
+	else {
+		id = obj->getString (Agent::AgentIdKey, "");
 		if (id.empty ()) {
-			result = Result::ERROR_MALFORMED_DATA;
+			result = Result::MalformedDataError;
 		}
 	}
-	if (result == Result::SUCCESS) {
-		invokeHostname = obj->getString (INVOKE_HOSTNAME_KEY, "");
-		invokeTcpPort1 = obj->getNumber (INVOKE_TCP_PORT1_KEY, (int) 0);
-		invokeTcpPort2 = obj->getNumber (INVOKE_TCP_PORT2_KEY, (int) 0);
-		linkPath = obj->getString (LINK_PATH_KEY, "");
-		displayName = obj->getString (DISPLAY_NAME_KEY, "");
-		urlHostname = obj->getString (URL_HOSTNAME_KEY, "");
-		tcpPort1 = obj->getNumber (TCP_PORT1_KEY, (int) 0);
-		tcpPort2 = obj->getNumber (TCP_PORT2_KEY, (int) 0);
+
+	if (result == Result::Success) {
+		invokeHostname = obj->getString (Agent::InvokeHostnameKey, "");
+		invokeTcpPort1 = obj->getNumber (Agent::InvokeTcpPort1Key, (int) 0);
+		invokeTcpPort2 = obj->getNumber (Agent::InvokeTcpPort2Key, (int) 0);
+		linkPath = obj->getString (Agent::LinkPathKey, "");
+		displayName = obj->getString (Agent::DisplayNameKey, "");
+		urlHostname = obj->getString (Agent::UrlHostnameKey, "");
+		tcpPort1 = obj->getNumber (Agent::TcpPort1Key, (int) 0);
+		tcpPort2 = obj->getNumber (Agent::TcpPort2Key, (int) 0);
 	}
 	delete (obj);
 

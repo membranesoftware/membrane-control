@@ -34,7 +34,6 @@
 #define AGENT_CONTROL_H
 
 #include <map>
-#include <list>
 #include <vector>
 #include "SDL2/SDL.h"
 #include "StdString.h"
@@ -52,15 +51,13 @@ public:
 	~AgentControl ();
 
 	static const StdString localHostname;
+	static const int commandListIdleTimeout;
 
 	// Read-write data members
 	int agentDatagramPort;
 	StdString agentId;
 	StdString urlHostname;
 	RecordStore recordStore;
-
-	// Read-only data members
-	int linkClientConnectionCount;
 
 	// Start the agent control's operation. Returns a Result value.
 	int start ();
@@ -82,12 +79,6 @@ public:
 
 	// Write a command to the specified link client. An empty agentId value causes the command to be written to all connected link clients. This method becomes responsible for deleting the command object when it's no longer needed.
 	void writeLinkCommand (Json *command, const StdString &agentId = StdString (""));
-
-	// Return a boolean value indicating if the specified link client is connected
-	bool isLinkClientConnected (const StdString &agentId);
-
-	// Return the number of active link client connections
-	int getLinkClientCount ();
 
 	// Return a boolean value indicating if an agent has been contacted at the specified hostname and port
 	bool isContacted (const StdString &invokeHostname, int invokePort);
@@ -158,25 +149,20 @@ public:
 	StdString getStringHash (const StdString &sourceString);
 
 	// Callback functions
-	static void linkClientConnect (void *agentControlPtr, LinkClient *client);
-	static void linkClientDisconnect (void *agentControlPtr, LinkClient *client, const StdString &errorDescription);
-	static void linkClientCommand (void *agentControlPtr, LinkClient *client, Json *command);
+	static void linkClientConnect (void *agentControlPtr, const StdString &agentId);
+	static void linkClientDisconnect (void *agentControlPtr, const StdString &agentId, const StdString &errorDescription);
+	static void linkClientCommand (void *agentControlPtr, const StdString &agentId, Json *command);
 	static void invokeGetStatusComplete (void *agentControlPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
 	static void hashUpdate (void *contextPtr, unsigned char *data, int dataLength);
 	static StdString hashDigest (void *contextPtr);
 
 private:
-	// Remove all items from the link client map
-	void clearLinkClients ();
-
-	// Update link clients as appropriate for an elapsed millisecond time period
-	void updateLinkClients (int msElapsed);
+	// Constants to use as object field names
+	static const char *NameKey;
+	static const char *SecretKey;
 
 	// Remove all items from the command map
 	void clearCommandMap ();
-
-	// Update the command map as appropriate for an elapsed millisecond time period
-	void updateCommandMap (int msElapsed);
 
 	// Write an application preferences value containing cached agent status data
 	void writePrefs ();
@@ -192,9 +178,7 @@ private:
 	std::map<StdString, Agent>::iterator findAgent (const StdString &invokeHostname, int invokePort);
 
 	bool isStarted;
-	std::map<StdString, LinkClient *> linkClientMap;
-	std::list<LinkClient *> linkClientCloseList;
-	SDL_mutex *linkClientMutex;
+	LinkClient linkClient;
 
 	std::map<StdString, Agent> agentMap;
 	SDL_mutex *agentMapMutex;

@@ -82,8 +82,8 @@ public:
 	void setValueChangeCallback (Widget::EventCallback callback, void *callbackData);
 
 protected:
-	// Execute operations to update object state as appropriate for an elapsed millisecond time period and origin position
-	virtual void doUpdate (int msElapsed, float originX, float originY);
+	// Execute operations to update object state as appropriate for an elapsed millisecond time period
+	virtual void doUpdate (int msElapsed);
 
 	// Execute operations appropriate when the widget receives new mouse state
 	virtual void doProcessMouseState (const Widget::MouseState &mouseState);

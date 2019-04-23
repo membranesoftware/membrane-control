@@ -49,6 +49,7 @@
 Toggle::Toggle (Sprite *uncheckedButtonSprite, Sprite *checkedButtonSprite)
 : Panel ()
 , shortcutKey (SDLK_UNKNOWN)
+, isFocusDropShadowDisabled (false)
 , isChecked (false)
 , isFocused (false)
 , uncheckedButton (NULL)
@@ -68,11 +69,13 @@ Toggle::Toggle (Sprite *uncheckedButtonSprite, Sprite *checkedButtonSprite)
 		checkedButton = (Button *) addWidget (new Button (StdString (""), checkedButtonSprite));
 	}
 	else {
-		uncheckedButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::TOGGLE_CHECKBOX_OUTLINE)));
-		checkedButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::TOGGLE_CHECKBOX)));
+		uncheckedButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::ToggleCheckboxOutlineSprite)));
+		checkedButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::ToggleCheckboxSprite)));
 	}
 	uncheckedButton->isInputSuspended = true;
 	checkedButton->isInputSuspended = true;
+	uncheckedButton->isFocusDropShadowDisabled = true;
+	checkedButton->isFocusDropShadowDisabled = true;
 	checkedButton->isVisible = false;
 
 	setMouseEnterCallback (Toggle::mouseEntered, this);
@@ -161,11 +164,16 @@ bool Toggle::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isCo
 
 void Toggle::mouseEntered (void *togglePtr, Widget *widgetPtr) {
 	Toggle *toggle;
+	UiConfiguration *uiconfig;
 
 	toggle = (Toggle *) togglePtr;
+	uiconfig = &(App::instance->uiConfig);
 	toggle->isFocused = true;
 	toggle->checkedButton->mouseEnter ();
 	toggle->uncheckedButton->mouseEnter ();
+	if (! toggle->isFocusDropShadowDisabled) {
+		toggle->setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
+	}
 }
 
 void Toggle::mouseExited (void *togglePtr, Widget *widgetPtr) {
@@ -175,6 +183,9 @@ void Toggle::mouseExited (void *togglePtr, Widget *widgetPtr) {
 	toggle->isFocused = false;
 	toggle->checkedButton->mouseExit ();
 	toggle->uncheckedButton->mouseExit ();
+	if (! toggle->isFocusDropShadowDisabled) {
+		toggle->setDropShadow (false);
+	}
 }
 
 void Toggle::mousePressed (void *togglePtr, Widget *widgetPtr) {

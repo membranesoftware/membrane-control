@@ -48,17 +48,27 @@ class WebKioskUi : public Ui {
 public:
 	// Constants to use for sprite indexes
 	enum {
-		BREADCRUMB_ICON = 0,
-		DISPLAY_ICON = 1,
-		BROWSE_URL_BUTTON = 2,
-		SHOW_URL_BUTTON = 3,
-		ADD_INTENT_BUTTON = 4,
-		INTENT_ICON = 5,
-		ADD_URL_BUTTON = 6,
-		WRITE_INTENT_BUTTON = 7,
-		CLEAR_DISPLAY_BUTTON = 8,
-		SMALL_DISPLAY_ICON = 9,
-		SMALL_INTENT_ICON = 10
+		BreadcrumbIconSprite = 0,
+		ClearDisplayButtonSprite = 1,
+		BrowseUrlButtonSprite = 2,
+		ShowUrlButtonSprite = 3,
+		AddPlaylistButtonSprite = 4,
+		PlaylistIconSprite = 5,
+		AddUrlButtonSprite = 6,
+		WritePlaylistButtonSprite = 7
+	};
+
+	// Constants to use for card view row numbers
+	enum {
+		AgentRow = 0,
+		PlaylistRow = 1
+	};
+
+	// Constants to use for toolbar modes
+	enum {
+		MonitorMode = 0,
+		PlaylistMode = 1,
+		ModeCount = 2
 	};
 
 	WebKioskUi ();
@@ -69,6 +79,9 @@ public:
 	// Set fields in the provided HelpWindow widget as appropriate for the UI's help content
 	void setHelpWindowContent (HelpWindow *helpWindow);
 
+	// Clear the provided string if the widget is of the correct type and matches its content by name
+	static void matchPlaylistName (void *stringPtr, Widget *widgetPtr);
+
 	// Callback functions
 	static void reloadButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void reloadAgent (void *uiPtr, Widget *widgetPtr);
@@ -76,15 +89,18 @@ public:
 	static void appendPlaylistJson (void *stringListPtr, Widget *widgetPtr);
 	static void appendSelectedAgentId (void *stringListPtr, Widget *widgetPtr);
 	static void appendExpandedAgentId (void *stringListPtr, Widget *widgetPtr);
-	static void matchPlaylistName (void *stringPtr, Widget *widgetPtr);
 	static void agentSelectStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void agentExpandStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void playlistSelectStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void playlistExpandStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void modeButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void monitorModeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void playlistModeActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void addUrlButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void browseUrlButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void showUrlButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void addPlaylistButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void deletePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static bool matchWebKioskAgentStatus (void *ptr, Json *record);
 	static void addPlaylistUrl (void *urlStringPtr, Widget *widgetPtr);
 	static void writePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr);
@@ -92,9 +108,6 @@ public:
 	static void playlistNameClicked (void *uiPtr, Widget *widgetPtr);
 	static void playlistNameEdited (void *uiPtr, Widget *widgetPtr);
 	static void playlistUrlListChanged (void *uiPtr, Widget *widgetPtr);
-	static void playlistMenuClicked (void *uiPtr, Widget *widgetPtr);
-	static void renamePlaylistActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void removePlaylistActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void clearDisplayButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr);
 	static void commandButtonMouseExited (void *uiPtr, Widget *widgetPtr);
@@ -136,10 +149,16 @@ protected:
 	// Reload subclass-specific interface resources as needed to account for a new application window size
 	void doResize ();
 
+	// Execute subclass-specific actions appropriate for a received keypress event and return a boolean value indicating if the event was consumed and should no longer be processed
+	bool doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
+
 	// Execute subclass-specific operations to sync state with records present in the application's RecordStore object, which has been locked prior to invocation
 	void doSyncRecordStore ();
 
 private:
+	// Set the control mode for the secondary toolbar, optionally forcing the reset even if the requested mode matches the mode already active
+	void setToolbarMode (int mode, bool forceReset = false);
+
 	// Return the provided base value, after appending suffixes as needed to generate an unused playlist name
 	StdString getAvailablePlaylistName ();
 
@@ -149,6 +168,7 @@ private:
 	// Return a string containing the set of selected agent names, appropriate for use in a command popup and truncated to fit within the specified maximum width, or an empty string if no agents are selected
 	StdString getSelectedAgentNames (float maxWidth);
 
+	int toolbarMode;
 	int agentCount;
 	HashMap selectedAgentMap;
 	StdString selectedPlaylistId;
@@ -160,8 +180,9 @@ private:
 	Button *addPlaylistButton;
 	Button *writePlaylistButton;
 	Button *clearDisplayButton;
+	Button *deletePlaylistButton;
 	WidgetHandle commandPopup;
-	WidgetHandle commandButton;
+	WidgetHandle commandPopupSource;
 };
 
 #endif

@@ -76,11 +76,11 @@ public:
 	static void createThumbTexture (void *sliderPtr);
 
 protected:
-	// Execute subclass-specific operations to update object state as appropriate for an elapsed millisecond time period and origin position
-	virtual void doUpdate (int msElapsed, float originX, float originY);
+	// Execute subclass-specific operations to update object state as appropriate for an elapsed millisecond time period
+	virtual void doUpdate (int msElapsed);
 
-	// Add subclass-specific draw commands for execution by the App
-	virtual void doDraw ();
+	// Add subclass-specific draw commands for execution by the App. If targetTexture is non-NULL, it has been set as the render target and draw commands should adjust coordinates as appropriate.
+	virtual void doDraw (SDL_Texture *targetTexture, float originX, float originY);
 
 	// Execute operations appropriate when the widget receives new mouse state
 	virtual void doProcessMouseState (const Widget::MouseState &mouseState);

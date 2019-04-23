@@ -70,20 +70,20 @@ HelpWindow::HelpWindow (float windowWidth, float windowHeight)
 	headerImage = (ImageWindow *) addWidget (new ImageWindow ());
 	headerImage->setLoadResourcePath (StdString::createSprintf ("bg/help/%i.png", App::instance->imageScale));
 
-	titleLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::help).capitalized (), UiConfiguration::TITLE, uiconfig->primaryTextColor)));
+	titleLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::help).capitalized (), UiConfiguration::TitleFont, uiconfig->primaryTextColor)));
 	titleLabel->setPadding (0.0f, 0.0f);
 
-	closeButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::EXIT_BUTTON)));
+	closeButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::ExitButtonSprite)));
 	closeButton->zLevel = 1;
 	closeButton->setMouseClickCallback (HelpWindow::closeButtonClicked, this);
 	closeButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
 
-	helpTitleLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::TITLE, uiconfig->primaryTextColor));
-	helpText = (TextArea *) addWidget (new TextArea (UiConfiguration::CAPTION, uiconfig->primaryTextColor, uiconfig->textAreaLongLineLength, windowWidth - (uiconfig->paddingSize * 2.0f)));
-	linkTitleLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::moreHelpTopics).capitalized (), UiConfiguration::TITLE, uiconfig->primaryTextColor));
-	linkIconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::WEB_LINK_ICON)));
+	helpTitleLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::TitleFont, uiconfig->primaryTextColor));
+	helpText = (TextArea *) addWidget (new TextArea (UiConfiguration::CaptionFont, uiconfig->primaryTextColor, uiconfig->textAreaLongLineLength, windowWidth - (uiconfig->paddingSize * 2.0f)));
+	linkTitleLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::moreHelpTopics).capitalized (), UiConfiguration::TitleFont, uiconfig->primaryTextColor));
+	linkIconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::WebLinkIconSprite)));
 
-	versionLabel = (Label *) addWidget (new Label (StdString::createSprintf ("%s %s", BUILD_ID, BUILD_DATE), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
+	versionLabel = (Label *) addWidget (new Label (StdString::createSprintf ("%s %s", BUILD_ID, BUILD_DATE), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 
 	refreshLayout ();
 }
@@ -135,9 +135,8 @@ void HelpWindow::addTopicLink (const StdString &linkText, const StdString &linkU
 	refreshLayout ();
 }
 
-void HelpWindow::doUpdate (int msElapsed, float originX, float originY) {
-	Panel::doUpdate (msElapsed, originX, originY);
-
+void HelpWindow::doUpdate (int msElapsed) {
+	Panel::doUpdate (msElapsed);
 	if (! isHeaderImageLoaded) {
 		if (headerImage->isLoaded ()) {
 			isHeaderImageLoaded = true;
@@ -164,7 +163,6 @@ void HelpWindow::refreshLayout () {
 		headerImage->isVisible = false;
 
 		titleLabel->setFillBg (false);
-		titleLabel->setAlphaBlend (false);
 		titleLabel->setTextColor (uiconfig->primaryTextColor);
 		titleLabel->position.assign (x, y);
 
@@ -178,8 +176,7 @@ void HelpWindow::refreshLayout () {
 		x += uiconfig->paddingSize;
 		titleLabel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 		titleLabel->setTextColor (uiconfig->inverseTextColor);
-		titleLabel->setFillBg (true, 0.0f, 0.0f, 0.0f);
-		titleLabel->setAlphaBlend (true, uiconfig->scrimBackgroundAlpha);
+		titleLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
 		titleLabel->position.assign (x, y + headerImage->height - titleLabel->height - uiconfig->paddingSize);
 		closeButton->position.assign (width - closeButton->width - uiconfig->paddingSize, y + headerImage->height - closeButton->height - uiconfig->paddingSize);
 		y += headerImage->height + uiconfig->marginSize;

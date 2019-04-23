@@ -37,6 +37,7 @@
 #include <list>
 #include "SDL2/SDL.h"
 #include "Color.h"
+#include "Position.h"
 #include "WidgetHandle.h"
 #include "Widget.h"
 
@@ -47,16 +48,19 @@ public:
 
 	// Constants to use for layout types
 	enum {
-		VERTICAL = 0,
-		VERTICAL_RIGHT_JUSTIFIED = 1,
-		HORIZONTAL = 2
+		VerticalLayout = 0,
+		VerticalRightJustifiedLayout = 1,
+		HorizontalLayout = 2
 	};
 
 	// Read-write data members
 	Color bgColor;
 	Color borderColor;
+	Color dropShadowColor;
+	bool shouldRefreshTexture;
 
 	// Read-only data members
+	bool isTextureRenderEnabled;
 	float maxWidgetX, maxWidgetY;
 	int maxWidgetZLevel;
 	float viewOriginX, viewOriginY;
@@ -64,30 +68,35 @@ public:
 	float minViewOriginX, minViewOriginY;
 	float maxViewOriginX, maxViewOriginY;
 	float widthPadding, heightPadding;
-	bool isAlphaBlended;
-	float alpha;
-	float alphaTarget;
-	int alphaTranslateDuration;
 	bool isFilledBg;
 	bool isBordered;
+	float borderWidth;
+	bool isDropShadowed;
+	float dropShadowWidth;
 	bool isFixedSize;
 	bool isMouseDragScrollEnabled;
 	bool isWaiting;
 	int layout;
+	bool isAnimating;
+	Position animationScale;
 
-	// Set the panel's alpha blend option. If enabled, the panel's fill bg and border are drawn with alpha blending of the specified amount.
-	void setAlphaBlend (bool enable, float blendAlpha = 1.0f);
+	// Set the panel's texture render option. If enabled, the panel renders content to a texture.
+	void setTextureRender (bool enable);
 
-	// Begin translating the panel's alpha blend using the specified start value, target value, and millisecond duration
-	void translateAlphaBlend (float startAlpha, float targetAlpha, int durationMs);
+	// Execute a texture render animation to translate the panel's draw scale over the specified duration
+	void animateScale (float startScale, float targetScale, int duration);
+
+	// Execute a texture render animation appropriate for a panel that has just appeared as a new item in a card view
+	void animateNewCard ();
 
 	// Set the panel's fill bg option. If enabled, the panel is drawn with a background fill using the specified color.
-	void setFillBg (bool enable, float r = 0.0f, float g = 0.0f, float b = 0.0f);
-	void setFillBg (bool enable, const Color &color);
+	void setFillBg (bool enable, const Color &color = Color ());
 
-	// Set the panel's border option. If enabled, the panel is drawn with a border using the specified color.
-	void setBorder (bool enable, float r = 0.0f, float g = 0.0f, float b = 0.0f);
-	void setBorder (bool enable, const Color &color);
+	// Set the panel's border option. If enabled, the panel is drawn with a border using the specified color and width.
+	void setBorder (bool enable, const Color &color = Color (), float borderWidthValue = 1.0f);
+
+	// Set the panel's drop shadow option. If enabled, the panel is drawn with a drop shadow effect using the specified color and width.
+	void setDropShadow (bool enable, const Color &color = Color (), float dropShadowWidthValue = 1.0f);
 
 	// Set the layout type that should be used to arrange the panel's widgets
 	void setLayout (int layoutType);
@@ -131,12 +140,15 @@ public:
 	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
 	virtual void syncRecordStore ();
 
-protected:
-	// Execute operations to update object state as appropriate for an elapsed millisecond time period and origin position
-	virtual void doUpdate (int msElapsed, float originX, float originY);
+	// Reset the panel's draw texture as appropriate for a new enable state
+	static void resetDrawTexture (void *panelPtr);
 
-	// Add subclass-specific draw commands for execution by the App
-	virtual void doDraw ();
+protected:
+	// Execute operations to update object state as appropriate for an elapsed millisecond time period
+	virtual void doUpdate (int msElapsed);
+
+	// Add subclass-specific draw commands for execution by the App. If targetTexture is non-NULL, it has been set as the render target and draw commands should adjust coordinates as appropriate.
+	virtual void doDraw (SDL_Texture *targetTexture, float originX, float originY);
 
 	// Execute subclass-specific operations to refresh the widget's layout as appropriate for the current set of UiConfiguration values
 	virtual void doRefresh ();
@@ -156,9 +168,13 @@ protected:
 	// Reset the panel's widget layout as appropriate for its content and configuration
 	virtual void refreshLayout ();
 
-	// Check if the widget list is correctly sorted for drawing by z-level, and sort the list if not. This method should only be invoked while holding a lock on widgetListMutex.
+	// Check if the widget list is correctly sorted for drawing by z-level, and sort the list if not. This method must only be invoked while holding a lock on widgetListMutex.
 	void sortWidgetList ();
 
+	SDL_Texture *drawTexture;
+	int drawTextureWidth, drawTextureHeight;
+	StdString drawTexturePath;
+	bool isResettingDrawTexture;
 	bool isMouseInputStarted;
 	int lastMouseLeftUpCount, lastMouseLeftDownCount;
 	int lastMouseRightUpCount, lastMouseRightDownCount;

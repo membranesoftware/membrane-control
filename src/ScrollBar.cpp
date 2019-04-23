@@ -68,19 +68,18 @@ ScrollBar::ScrollBar (float maxScrollTrackLength)
 
 	uiconfig = &(App::instance->uiConfig);
 
-	setFillBg (true, 0.0f, 0.0f, 0.0f);
-	setBorder (true, uiconfig->darkBackgroundColor);
-	setAlphaBlend (true, uiconfig->overlayWindowAlpha);
+	setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->overlayWindowAlpha));
+	setBorder (true, Color (uiconfig->darkBackgroundColor.r, uiconfig->darkBackgroundColor.g, uiconfig->darkBackgroundColor.b, uiconfig->overlayWindowAlpha));
 
 	// Only vertical orientation is supported in this implementation
 
-	upArrowImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::SCROLL_UP_ARROW)));
+	upArrowImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::ScrollUpArrowSprite)));
 	upArrowImage->zLevel = 1;
 	upArrowImage->isInputSuspended = true;
 	w = upArrowImage->width;
 	h = upArrowImage->height;
 
-	downArrowImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::SCROLL_DOWN_ARROW)));
+	downArrowImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::ScrollDownArrowSprite)));
 	downArrowImage->zLevel = 1;
 	downArrowImage->isInputSuspended = true;
 	if (downArrowImage->width > w) {
@@ -194,19 +193,18 @@ void ScrollBar::refreshLayout () {
 	downArrowImage->position.assign (0.0f, arrowPanel->position.y + arrowPanel->height - downArrowImage->height);
 }
 
-void ScrollBar::doUpdate (int msElapsed, float originX, float originY) {
+void ScrollBar::doUpdate (int msElapsed) {
 	Input *input;
 	float dy, val;
 
-	Panel::doUpdate (msElapsed, originX, originY);
-
+	Panel::doUpdate (msElapsed);
 	if (isFollowingMouse) {
 		input = &(App::instance->input);
 		if (! input->isMouseLeftButtonDown) {
 			isFollowingMouse = false;
 		}
 		else {
-			dy = ((float) input->mouseY) - drawY;
+			dy = ((float) input->mouseY) - screenY;
 			if (dy < 0.0f) {
 				dy = 0.0f;
 			}
@@ -231,7 +229,7 @@ void ScrollBar::doProcessMouseState (const Widget::MouseState &mouseState) {
 	if (! isFollowingMouse) {
 		if (mouseState.isEntered && mouseState.isLeftClicked) {
 			isFollowingMouse = true;
-			dy = ((float) input->mouseY) - drawY;
+			dy = ((float) input->mouseY) - screenY;
 			if (dy < 0.0f) {
 				dy = 0.0f;
 			}

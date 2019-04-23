@@ -214,60 +214,67 @@ void Slider::addSnapValue (float snapValue) {
 	}
 }
 
-void Slider::doUpdate (int msElapsed, float originX, float originY) {
+void Slider::doUpdate (int msElapsed) {
 	if (!(isThumbSpriteLoaded || isThumbSpriteLoading)) {
 		loadThumbSprite ();
 	}
 }
 
-void Slider::doDraw () {
+void Slider::doDraw (SDL_Texture *targetTexture, float originX, float originY) {
+	SDL_Renderer *render;
 	SDL_Rect rect;
 	SDL_Texture *texture;
+	int x0, y0;
 	float w, h;
 
 	if (! isThumbSpriteLoaded) {
 		return;
 	}
 
+	render = App::instance->render;
+	x0 = (int) (originX + position.x);
+	y0 = (int) (originY + position.y);
 	h = (thumbSize - trackHeight) / 2.0f;
-	rect.x = (int) drawX;
-	rect.y = (int) (drawY + h);
+	rect.x = x0;
+	rect.y = (int) (y0 + h);
 	rect.w = (int) trackWidth;
 	rect.h = (int) trackHeight;
-	SDL_SetRenderDrawColor (App::instance->render, trackColor.rByte, trackColor.gByte, trackColor.bByte, 255);
-	SDL_RenderFillRect (App::instance->render, &rect);
+	SDL_SetRenderDrawColor (render, trackColor.rByte, trackColor.gByte, trackColor.bByte, 255);
+	SDL_RenderFillRect (render, &rect);
 
 	if (isHovering && (! isDragging) && (! FLOAT_EQUALS (hoverValue, value))) {
-		rect.x = (int) drawX;
+		rect.x = x0;
 		if (maxValue > minValue) {
 			w = width - hoverSize;
 			rect.x += (int) (w * ((hoverValue - minValue) / (maxValue - minValue)));
 		}
-		rect.y = (int) (drawY + h);
+		rect.y = (int) (y0 + h);
 		rect.w = (int) hoverSize;
 		rect.h = (int) trackHeight;
-		SDL_SetRenderDrawColor (App::instance->render, hoverColor.rByte, hoverColor.gByte, hoverColor.bByte, 255);
-		SDL_RenderFillRect (App::instance->render, &rect);
+		SDL_SetRenderDrawColor (render, hoverColor.rByte, hoverColor.gByte, hoverColor.bByte, 255);
+		SDL_RenderFillRect (render, &rect);
 	}
 
-	rect.x = (int) drawX;
+	rect.x = x0;
 	if (maxValue > minValue) {
 		w = width - thumbSize;
 		rect.x += (int) (w * ((value - minValue) / (maxValue - minValue)));
 	}
-	rect.y = (int) drawY;
+	rect.y = y0;
 	rect.w = (int) thumbSize;
 	rect.h = (int) thumbSize;
 	if (thumbSprite) {
 		texture = thumbSprite->getTexture (0);
 		SDL_SetTextureColorMod (texture, thumbColor.rByte, thumbColor.gByte, thumbColor.bByte);
 		SDL_SetTextureBlendMode (texture, SDL_BLENDMODE_BLEND);
-		SDL_RenderCopy (App::instance->render, texture, NULL, &rect);
+		SDL_RenderCopy (render, texture, NULL, &rect);
 	}
 	else {
-		SDL_SetRenderDrawColor (App::instance->render, thumbColor.rByte, thumbColor.gByte, thumbColor.bByte, 255);
-		SDL_RenderFillRect (App::instance->render, &rect);
+		SDL_SetRenderDrawColor (render, thumbColor.rByte, thumbColor.gByte, thumbColor.bByte, 255);
+		SDL_RenderFillRect (render, &rect);
 	}
+
+	SDL_SetRenderDrawColor (render, 0, 0, 0, 0);
 }
 
 void Slider::doProcessMouseState (const Widget::MouseState &mouseState) {
@@ -312,7 +319,7 @@ void Slider::doProcessMouseState (const Widget::MouseState &mouseState) {
 	}
 
 	if (isDragging || isHovering) {
-		dx = ((float) input->mouseX) - drawX;
+		dx = ((float) input->mouseX) - screenX;
 		if (dx < 0.0f) {
 			dx = 0.0f;
 		}

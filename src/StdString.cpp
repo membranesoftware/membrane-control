@@ -274,7 +274,7 @@ int StdString::urlDecode () {
 	char *d, *end, c;
 	int rval, code, codechars;
 
-	rval = Result::SUCCESS;
+	rval = Result::Success;
 	s.assign ("");
 	d = (char *) c_str ();
 	end = d + length ();
@@ -306,7 +306,7 @@ int StdString::urlDecode () {
 				++codechars;
 			}
 			else {
-				rval = Result::ERROR_MALFORMED_DATA;
+				rval = Result::MalformedDataError;
 				break;
 			}
 
@@ -319,7 +319,7 @@ int StdString::urlDecode () {
 		++d;
 	}
 
-	if (rval == Result::SUCCESS) {
+	if (rval == Result::Success) {
 		assign (s.c_str ());
 	}
 	return (rval);
@@ -331,7 +331,7 @@ StdString StdString::urlDecoded () const {
 
 	s.assign (c_str ());
 	result = s.urlDecode ();
-	if (result != Result::SUCCESS) {
+	if (result != Result::Success) {
 		return (StdString (""));
 	}
 

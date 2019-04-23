@@ -54,10 +54,10 @@ Chip::Chip (const StdString &chipText, Sprite *iconSprite, bool shouldDestroySpr
 	setFillBg (true, uiconfig->mediumPrimaryColor);
 
 	if (! chipText.empty ()) {
-		textLabel = (Label *) addWidget (new Label (chipText, UiConfiguration::CAPTION, uiconfig->inverseTextColor));
+		textLabel = (Label *) addWidget (new Label (chipText, UiConfiguration::CaptionFont, uiconfig->inverseTextColor));
 	}
 	if (iconSprite) {
-		iconImage = (Image *) addWidget (new Image (iconSprite, UiConfiguration::CHIP_ICON_FRAME, shouldDestroySprite));
+		iconImage = (Image *) addWidget (new Image (iconSprite, UiConfiguration::ChipIconFrame, shouldDestroySprite));
 	}
 
 	refreshLayout ();
@@ -83,7 +83,7 @@ void Chip::setText (const StdString &text) {
 	}
 	else {
 		if (! textLabel) {
-			textLabel = (Label *) addWidget (new Label (text, UiConfiguration::CAPTION, uiconfig->inverseTextColor));
+			textLabel = (Label *) addWidget (new Label (text, UiConfiguration::CaptionFont, uiconfig->inverseTextColor));
 		}
 		else {
 			textLabel->setText (text);
@@ -98,7 +98,7 @@ void Chip::setIconSprite (Sprite *iconSprite, bool shouldDestroySprite) {
 		iconImage = NULL;
 	}
 	if (iconSprite) {
-		iconImage = (Image *) addWidget (new Image (iconSprite, UiConfiguration::CHIP_ICON_FRAME, shouldDestroySprite));
+		iconImage = (Image *) addWidget (new Image (iconSprite, UiConfiguration::ChipIconFrame, shouldDestroySprite));
 	}
 	refreshLayout ();
 }

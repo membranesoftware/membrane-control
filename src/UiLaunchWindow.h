@@ -48,10 +48,9 @@ class UiLaunchWindow : public Panel {
 public:
 	// Constants to use for UI types
 	enum {
-		SERVER_UI = 0,
-		MEDIA_UI = 1,
-		MONITOR_UI = 2,
-		WEB_KIOSK_UI = 3
+		ServerUi = 0,
+		MediaUi = 1,
+		WebKioskUi = 2
 	};
 
 	UiLaunchWindow (int uiType, SpriteGroup *mainUiSpriteGroup);
@@ -91,16 +90,13 @@ protected:
 	void refreshLayout ();
 
 private:
-	// Populate widgets as appropriate for the configured intent type
-	void populate ();
-
 	// Return the total of all mediaCount fields on MediaServer agents
 	int countMediaItems (RecordStore *store);
 
 	// Return the total of all streamCount fields on StreamServer agents
 	int countStreamItems (RecordStore *store);
 
-	SpriteGroup *spriteGroup;
+	SpriteGroup *sprites;
 	Image *iconImage;
 	Label *nameLabel;
 	TextArea *descriptionText;

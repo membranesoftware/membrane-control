@@ -88,7 +88,7 @@ void RecordStore::addRecord (Json *record, const StdString &recordId) {
 	}
 
 	item = new Json ();
-	item->copy (record);
+	item->copyValue (record);
 	lock ();
 	pos = recordMap.find (id);
 	if (pos != recordMap.end ()) {

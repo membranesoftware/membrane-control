@@ -74,8 +74,6 @@ MonitorWindow::MonitorWindow (const StdString &agentId)
 , selectToggle (NULL)
 , expandToggle (NULL)
 , cacheButton (NULL)
-, streamButton (NULL)
-, playlistButton (NULL)
 , menuClickCallback (NULL)
 , menuClickCallbackData (NULL)
 , selectStateChangeCallback (NULL)
@@ -86,22 +84,64 @@ MonitorWindow::MonitorWindow (const StdString &agentId)
 , cacheButtonMouseEnterCallback (NULL)
 , cacheButtonMouseExitCallback (NULL)
 , cacheButtonCallbackData (NULL)
-, streamButtonClickCallback (NULL)
-, streamButtonMouseEnterCallback (NULL)
-, streamButtonMouseExitCallback (NULL)
-, streamButtonCallbackData (NULL)
-, playlistButtonClickCallback (NULL)
-, playlistButtonMouseEnterCallback (NULL)
-, playlistButtonMouseExitCallback (NULL)
-, playlistButtonCallbackData (NULL)
 {
 	UiConfiguration *uiconfig;
+	UiText *uitext;
 
 	uiconfig = &(App::instance->uiConfig);
-	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
+	uitext = &(App::instance->uiText);
+	setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
-	populate ();
+	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeDisplayIconSprite)));
+	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::BodyFont, uiconfig->primaryTextColor));
+
+	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	descriptionLabel->isVisible = false;
+
+	statusIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::ActivityStateIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	statusIcon->setPadding (0.0f, 0.0f);
+	statusIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
+	statusIcon->setMouseHoverTooltip (uitext->getText (UiTextString::monitorActivityIconTooltip));
+	statusIcon->isVisible = false;
+
+	taskCountIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::TaskCountIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	taskCountIcon->setPadding (0.0f, 0.0f);
+	taskCountIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
+	taskCountIcon->isVisible = false;
+
+	storageIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::StorageIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	storageIcon->setPadding (0.0f, 0.0f);
+	storageIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
+	storageIcon->setMouseHoverTooltip (uitext->getText (UiTextString::storageTooltip));
+	storageIcon->isVisible = false;
+
+	streamCountIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	streamCountIcon->setPadding (0.0f, 0.0f);
+	streamCountIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
+	streamCountIcon->isVisible = false;
+
+	statsWindow = (StatsWindow *) addWidget (new StatsWindow ());
+	statsWindow->setPadding (uiconfig->paddingSize, 0.0f);
+	statsWindow->isVisible = false;
+
+	menuButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::MainMenuButtonSprite)));
+	menuButton->setMouseClickCallback (MonitorWindow::menuButtonClicked, this);
+	menuButton->setImageColor (uiconfig->flatButtonTextColor);
+	menuButton->setMouseHoverTooltip (uitext->getText (UiTextString::moreActionsTooltip));
+	menuButton->isVisible = false;
+
+	selectToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::StarOutlineButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::StarButtonSprite)));
+	selectToggle->setImageColor (uiconfig->flatButtonTextColor);
+	selectToggle->setStateChangeCallback (MonitorWindow::selectToggleStateChanged, this);
+	selectToggle->setMouseHoverTooltip (uitext->getText (UiTextString::selectToggleTooltip));
+	selectToggle->isVisible = false;
+
+	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
+	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
+	expandToggle->setStateChangeCallback (MonitorWindow::expandToggleStateChanged, this);
+	expandToggle->setMouseHoverTooltip (uitext->getText (UiTextString::expandToggleTooltip));
+
 	refreshLayout ();
 }
 
@@ -124,63 +164,6 @@ bool MonitorWindow::isWidgetType (Widget *widget) {
 
 MonitorWindow *MonitorWindow::castWidget (Widget *widget) {
 	return (MonitorWindow::isWidgetType (widget) ? (MonitorWindow *) widget : NULL);
-}
-
-void MonitorWindow::populate () {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
-
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::DISPLAY_ICON)));
-	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::HEADLINE, uiconfig->primaryTextColor));
-
-	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
-	descriptionLabel->isVisible = false;
-
-	statusIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::ACTIVITY_STATE_ICON), StdString (""), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
-	statusIcon->setPadding (0.0f, 0.0f);
-	statusIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
-	statusIcon->setMouseHoverTooltip (uitext->getText (UiTextString::monitorActivityIconTooltip));
-	statusIcon->isVisible = false;
-
-	taskCountIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::TASK_COUNT_ICON), StdString (""), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
-	taskCountIcon->setPadding (0.0f, 0.0f);
-	taskCountIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
-	taskCountIcon->isVisible = false;
-
-	storageIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::STORAGE_ICON), StdString (""), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
-	storageIcon->setPadding (0.0f, 0.0f);
-	storageIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
-	storageIcon->setMouseHoverTooltip (uitext->getText (UiTextString::storageTooltip));
-	storageIcon->isVisible = false;
-
-	streamCountIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SMALL_STREAM_ICON), StdString (""), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
-	streamCountIcon->setPadding (0.0f, 0.0f);
-	streamCountIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
-	streamCountIcon->isVisible = false;
-
-	statsWindow = (StatsWindow *) addWidget (new StatsWindow ());
-	statsWindow->setPadding (uiconfig->paddingSize, 0.0f);
-	statsWindow->isVisible = false;
-
-	menuButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::MAIN_MENU_BUTTON)));
-	menuButton->setMouseClickCallback (MonitorWindow::menuButtonClicked, this);
-	menuButton->setImageColor (uiconfig->flatButtonTextColor);
-	menuButton->setMouseHoverTooltip (uitext->getText (UiTextString::moreActionsTooltip));
-	menuButton->isVisible = false;
-
-	selectToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::STAR_OUTLINE_BUTTON), uiconfig->coreSprites.getSprite (UiConfiguration::STAR_BUTTON)));
-	selectToggle->setImageColor (uiconfig->flatButtonTextColor);
-	selectToggle->setStateChangeCallback (MonitorWindow::selectToggleStateChanged, this);
-	selectToggle->setMouseHoverTooltip (uitext->getText (UiTextString::selectToggleTooltip));
-	selectToggle->isVisible = false;
-
-	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::EXPAND_MORE_BUTTON), uiconfig->coreSprites.getSprite (UiConfiguration::EXPAND_LESS_BUTTON)));
-	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
-	expandToggle->setStateChangeCallback (MonitorWindow::expandToggleStateChanged, this);
-	expandToggle->setMouseHoverTooltip (uitext->getText (UiTextString::expandToggleTooltip));
 }
 
 void MonitorWindow::syncRecordStore () {
@@ -243,11 +226,11 @@ void MonitorWindow::syncRecordStore () {
 		}
 	}
 	if (text.empty ()) {
-		statusIcon->setIconImageFrame (UiConfiguration::INACTIVE_STATE_ICON_FRAME);
+		statusIcon->setIconImageFrame (UiConfiguration::InactiveStateIconFrame);
 		statusIcon->setText (uitext->getText (UiTextString::inactive).capitalized ());
 	}
 	else {
-		statusIcon->setIconImageFrame (UiConfiguration::ACTIVE_STATE_ICON_FRAME);
+		statusIcon->setIconImageFrame (UiConfiguration::ActiveStateIconFrame);
 		statusIcon->setText (text);
 	}
 
@@ -316,47 +299,27 @@ void MonitorWindow::setStorageDisplayEnabled (bool enable) {
 }
 
 void MonitorWindow::setSelected (bool selected, bool shouldSkipStateChangeCallback) {
-	Widget::EventCallback callback;
-	void *callbackdata;
-
 	if (selected == isSelected) {
 		return;
 	}
-	callback = NULL;
-	callbackdata = NULL;
-	if (shouldSkipStateChangeCallback) {
-		callback = selectStateChangeCallback;
-		callbackdata = selectStateChangeCallbackData;
-		selectStateChangeCallback = NULL;
-		selectStateChangeCallbackData = NULL;
-	}
 	isSelected = selected;
-	selectToggle->setChecked (isSelected);
+	selectToggle->setChecked (isSelected, shouldSkipStateChangeCallback);
 	refreshLayout ();
-	if (shouldSkipStateChangeCallback) {
-		selectStateChangeCallback = callback;
-		selectStateChangeCallbackData = callbackdata;
-	}
 }
 
 void MonitorWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallback) {
-	Widget::EventCallback callback;
-	void *callbackdata;
+	UiConfiguration *uiconfig;
 
 	if (expanded == isExpanded) {
 		return;
 	}
-	callback = NULL;
-	callbackdata = NULL;
-	if (shouldSkipStateChangeCallback) {
-		callback = expandStateChangeCallback;
-		callbackdata = expandStateChangeCallbackData;
-		expandStateChangeCallback = NULL;
-		expandStateChangeCallbackData = NULL;
-	}
+
+	uiconfig = &(App::instance->uiConfig);
 	isExpanded = expanded;
 	if (isExpanded) {
-		expandToggle->setChecked (true);
+		setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
+		expandToggle->setChecked (true, shouldSkipStateChangeCallback);
+		nameLabel->setFont (UiConfiguration::HeadlineFont);
 		descriptionLabel->isVisible = true;
 		statusIcon->isVisible = true;
 		statsWindow->isVisible = true;
@@ -380,15 +343,11 @@ void MonitorWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallba
 		if (cacheButton) {
 			cacheButton->isVisible = true;
 		}
-		if (streamButton) {
-			streamButton->isVisible = true;
-		}
-		if (playlistButton) {
-			playlistButton->isVisible = true;
-		}
 	}
 	else {
-		expandToggle->setChecked (false);
+		setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
+		expandToggle->setChecked (false, shouldSkipStateChangeCallback);
+		nameLabel->setFont (UiConfiguration::BodyFont);
 		descriptionLabel->isVisible = false;
 		statusIcon->isVisible = false;
 		statsWindow->isVisible = false;
@@ -398,19 +357,9 @@ void MonitorWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallba
 		if (cacheButton) {
 			cacheButton->isVisible = false;
 		}
-		if (streamButton) {
-			streamButton->isVisible = false;
-		}
-		if (playlistButton) {
-			playlistButton->isVisible = false;
-		}
 	}
 
 	refreshLayout ();
-	if (shouldSkipStateChangeCallback) {
-		expandStateChangeCallback = callback;
-		expandStateChangeCallbackData = callbackdata;
-	}
 }
 
 void MonitorWindow::refreshLayout () {
@@ -469,27 +418,15 @@ void MonitorWindow::refreshLayout () {
 	if (cacheButton && cacheButton->isVisible) {
 		cacheButton->flowRight (&x, y, &x2, &y2);
 	}
-	if (streamButton && streamButton->isVisible) {
-		streamButton->flowRight (&x, y, &x2, &y2);
-	}
-	if (playlistButton && playlistButton->isVisible) {
-		playlistButton->flowRight (&x, y, &x2, &y2);
-	}
 
 	resetSize ();
 
-	x = width - uiconfig->paddingSize;
+	x = width - widthPadding;
 	if (cacheButton && cacheButton->isVisible) {
 		cacheButton->flowLeft (&x);
 	}
-	if (streamButton && streamButton->isVisible) {
-		streamButton->flowLeft (&x);
-	}
-	if (playlistButton && playlistButton->isVisible) {
-		playlistButton->flowLeft (&x);
-	}
 
-	x = width - uiconfig->paddingSize;
+	x = width - widthPadding;
 	if (selectToggle->isVisible) {
 		selectToggle->flowLeft (&x);
 	}
@@ -551,7 +488,7 @@ void MonitorWindow::addCacheButton (Sprite *sprite, Widget::EventCallback clickC
 	cacheButton->setMouseClickCallback (MonitorWindow::cacheButtonClicked, this);
 	cacheButton->setMouseEnterCallback (MonitorWindow::cacheButtonMouseEntered, this);
 	cacheButton->setMouseExitCallback (MonitorWindow::cacheButtonMouseExited, this);
-	cacheButton->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::monitorUiViewCacheTooltip));
+	cacheButton->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::viewMonitorCacheTooltip));
 
 	if (isExpanded) {
 		cacheButton->isVisible = true;
@@ -594,131 +531,5 @@ void MonitorWindow::cacheButtonMouseExited (void *windowPtr, Widget *widgetPtr) 
 
 	if (window->cacheButtonMouseExitCallback) {
 		window->cacheButtonMouseExitCallback (window->cacheButtonCallbackData, window);
-	}
-}
-
-void MonitorWindow::addStreamButton (Sprite *sprite, Widget::EventCallback clickCallback, Widget::EventCallback mouseEnterCallback, Widget::EventCallback mouseExitCallback, void *callbackData) {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::instance->uiConfig);
-
-	if (streamButton) {
-		streamButton->isDestroyed = true;
-	}
-	streamButtonClickCallback = clickCallback;
-	streamButtonMouseEnterCallback = mouseEnterCallback;
-	streamButtonMouseExitCallback = mouseExitCallback;
-	streamButtonCallbackData = callbackData;
-	streamButton = (Button *) addWidget (new Button (StdString (""), sprite));
-	streamButton->setImageColor (uiconfig->flatButtonTextColor);
-	streamButton->setMouseClickCallback (MonitorWindow::streamButtonClicked, this);
-	streamButton->setMouseEnterCallback (MonitorWindow::streamButtonMouseEntered, this);
-	streamButton->setMouseExitCallback (MonitorWindow::streamButtonMouseExited, this);
-	streamButton->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::monitorUiAddCacheStreamTooltip));
-
-	if (isExpanded) {
-		streamButton->isVisible = true;
-	}
-	else {
-		streamButton->isVisible = false;
-	}
-	refreshLayout ();
-}
-
-void MonitorWindow::streamButtonClicked (void *windowPtr, Widget *widgetPtr) {
-	MonitorWindow *window;
-
-	window = (MonitorWindow *) windowPtr;
-	if (window->streamButtonClickCallback) {
-		window->streamButtonClickCallback (window->streamButtonCallbackData, window);
-	}
-}
-
-void MonitorWindow::streamButtonMouseEntered (void *windowPtr, Widget *widgetPtr) {
-	MonitorWindow *window;
-	Button *button;
-
-	window = (MonitorWindow *) windowPtr;
-	button = (Button *) widgetPtr;
-	Button::mouseEntered (button, button);
-
-	if (window->streamButtonMouseEnterCallback) {
-		window->streamButtonMouseEnterCallback (window->streamButtonCallbackData, window);
-	}
-}
-
-void MonitorWindow::streamButtonMouseExited (void *windowPtr, Widget *widgetPtr) {
-	MonitorWindow *window;
-	Button *button;
-
-	window = (MonitorWindow *) windowPtr;
-	button = (Button *) widgetPtr;
-	Button::mouseExited (button, button);
-
-	if (window->streamButtonMouseExitCallback) {
-		window->streamButtonMouseExitCallback (window->streamButtonCallbackData, window);
-	}
-}
-
-void MonitorWindow::addPlaylistButton (Sprite *sprite, Widget::EventCallback clickCallback, Widget::EventCallback mouseEnterCallback, Widget::EventCallback mouseExitCallback, void *callbackData) {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::instance->uiConfig);
-
-	if (playlistButton) {
-		playlistButton->isDestroyed = true;
-	}
-	playlistButtonClickCallback = clickCallback;
-	playlistButtonCallbackData = callbackData;
-	playlistButtonMouseEnterCallback = mouseEnterCallback;
-	playlistButtonMouseExitCallback = mouseExitCallback;
-	playlistButton = (Button *) addWidget (new Button (StdString (""), sprite));
-	playlistButton->setImageColor (uiconfig->flatButtonTextColor);
-	playlistButton->setMouseClickCallback (MonitorWindow::playlistButtonClicked, this);
-	playlistButton->setMouseEnterCallback (MonitorWindow::playlistButtonMouseEntered, this);
-	playlistButton->setMouseExitCallback (MonitorWindow::playlistButtonMouseExited, this);
-	playlistButton->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::monitorUiAddCachePlaylistTooltip));
-
-	if (isExpanded) {
-		playlistButton->isVisible = true;
-	}
-	else {
-		playlistButton->isVisible = false;
-	}
-	refreshLayout ();
-}
-
-void MonitorWindow::playlistButtonClicked (void *windowPtr, Widget *widgetPtr) {
-	MonitorWindow *window;
-
-	window = (MonitorWindow *) windowPtr;
-	if (window->playlistButtonClickCallback) {
-		window->playlistButtonClickCallback (window->playlistButtonCallbackData, window);
-	}
-}
-
-void MonitorWindow::playlistButtonMouseEntered (void *windowPtr, Widget *widgetPtr) {
-	MonitorWindow *window;
-	Button *button;
-
-	window = (MonitorWindow *) windowPtr;
-	button = (Button *) widgetPtr;
-	Button::mouseEntered (button, button);
-
-	if (window->playlistButtonMouseEnterCallback) {
-		window->playlistButtonMouseEnterCallback (window->playlistButtonCallbackData, window);
-	}
-}
-
-void MonitorWindow::playlistButtonMouseExited (void *windowPtr, Widget *widgetPtr) {
-	MonitorWindow *window;
-	Button *button;
-
-	window = (MonitorWindow *) windowPtr;
-	button = (Button *) widgetPtr;
-	Button::mouseExited (button, button);
-
-	if (window->playlistButtonMouseExitCallback) {
-		window->playlistButtonMouseExitCallback (window->playlistButtonCallbackData, window);
 	}
 }

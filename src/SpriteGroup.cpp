@@ -71,17 +71,17 @@ int SpriteGroup::load (const StdString &path, int imageScale) {
 
 	if (isLoaded) {
 		if (! loadPath.equals (path)) {
-			return (Result::ERROR_ALREADY_LOADED);
+			return (Result::AlreadyLoadedError);
 		}
 
-		return (Result::SUCCESS);
+		return (Result::Success);
 	}
 
 	resource = &(App::instance->resource);
 	if (imageScale < 0) {
 		imageScale = App::instance->imageScale;
 	}
-	result = Result::SUCCESS;
+	result = Result::Success;
 	i = 0;
 	while (true) {
 		if (! resource->fileExists (StdString::createSprintf ("%s/%03i/000_%i.png", path.c_str (), i, imageScale))) {
@@ -92,7 +92,7 @@ int SpriteGroup::load (const StdString &path, int imageScale) {
 
 		sprite = new Sprite ();
 		result = sprite->load (StdString::createSprintf ("%s/%03i", path.c_str (), i), imageScale);
-		if (result != Result::SUCCESS) {
+		if (result != Result::Success) {
 			delete (sprite);
 			break;
 		}
@@ -101,7 +101,7 @@ int SpriteGroup::load (const StdString &path, int imageScale) {
 		++i;
 	}
 
-	if (result == Result::SUCCESS) {
+	if (result == Result::Success) {
 		loadPath.assign (path);
 		isLoaded = true;
 	}
@@ -139,7 +139,7 @@ void SpriteGroup::resize (int imageScale) {
 		if (resource->fileExists (StdString::createSprintf ("%s/%03i/000_%i.png", loadPath.c_str (), index, imageScale))) {
 			sprite->unload ();
 			result = sprite->load (StdString::createSprintf ("%s/%03i", loadPath.c_str (), index), imageScale);
-			if (result != Result::SUCCESS) {
+			if (result != Result::Success) {
 				Log::err ("Failed to reload textures; path=\"%s\" index=%i err=%i", loadPath.c_str (), index, result);
 			}
 		}

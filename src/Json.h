@@ -56,15 +56,18 @@ public:
 	// Reassign the Json object to a newly created empty object, clearing any pointer that might already be present
 	void setEmpty ();
 
-	// Parse a JSON string containing key-value pairs and store the resulting data. Returns a Result value.
-	int parse (const StdString &data);
-	int parse (const char *data, const int dataLength);
+	// Parse a JSON string containing key-value pairs and store the resulting data. Returns a boolean value indicating if the parse succeeded.
+	bool parse (const StdString &data);
+	bool parse (const char *data, const int dataLength);
 
 	// Return a JSON string containing object fields
 	StdString toString ();
 
 	// Replace the Json object's content with a copy of the provided source object
-	void copy (Json *sourceJson);
+	void copyValue (Json *sourceJson);
+
+	// Return a newly created Json object with contents copied from this object
+	Json *copy ();
 
 	// Return a boolean value indicating if the object's content matches that of another
 	bool deepEquals (Json *other);

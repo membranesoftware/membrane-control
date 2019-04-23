@@ -70,7 +70,6 @@ O=ActionWindow.o \
 	MediaWindow.o \
 	Menu.o \
 	MonitorCacheUi.o \
-	MonitorUi.o \
 	MonitorWindow.o \
 	Network.o \
 	OsUtil.o \
@@ -80,7 +79,6 @@ O=ActionWindow.o \
 	ProgressBar.o \
 	RecordStore.o \
 	Resource.o \
-	RowView.o \
 	ScrollBar.o \
 	ScrollView.o \
 	ServerAdminUi.o \

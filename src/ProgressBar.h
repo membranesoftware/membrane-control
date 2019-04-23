@@ -54,11 +54,11 @@ public:
 	void setIndeterminate (bool indeterminate);
 
 protected:
-	// Execute operations to update object state as appropriate for an elapsed millisecond time period and origin position
-	virtual void doUpdate (int msElapsed, float originX, float originY);
+	// Execute operations to update object state as appropriate for an elapsed millisecond time period
+	virtual void doUpdate (int msElapsed);
 
-	// Add subclass-specific draw commands for execution by the App
-	virtual void doDraw ();
+	// Add subclass-specific draw commands for execution by the App. If targetTexture is non-NULL, it has been set as the render target and draw commands should adjust coordinates as appropriate.
+	virtual void doDraw (SDL_Texture *targetTexture, float originX, float originY);
 
 	// Execute subclass-specific operations to refresh the widget's layout as appropriate for the current set of UiConfiguration values
 	virtual void doRefresh ();

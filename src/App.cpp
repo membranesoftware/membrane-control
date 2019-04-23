@@ -53,33 +53,36 @@ const int App::numWindowSizes = 5;
 const float App::fontScales[] = { 0.66f, 0.8f, 1.0f, 1.25f, 1.5f };
 const int App::numFontScales = 5;
 const StdString App::serverUrl = StdString ("https://membranesoftware.com/");
-const StdString App::prefsNetworkThreads = StdString ("NetworkThreads");
-const StdString App::prefsWindowWidth = StdString ("WindowWidth");
-const StdString App::prefsWindowHeight = StdString ("WindowHeight");
-const StdString App::prefsFontScale = StdString ("FontScale");
-const StdString App::prefsHttps = StdString ("Https");
-const StdString App::prefsShowClock = StdString ("ShowClock");
-const StdString App::prefsIsFirstLaunchComplete = StdString ("IsFirstLaunchComplete");
-const StdString App::prefsAgentStatus = StdString ("AgentStatus");
-const StdString App::prefsMediaImageSize = StdString ("Media_ImageSize");
-const StdString App::prefsMonitorImageSize = StdString ("Monitor_ImageSize");
-const StdString App::prefsMediaItemImageSize = StdString ("MediaItem_ImageSize");
-const StdString App::prefsStreamItemImageSize = StdString ("StreamItem_ImageSize");
-const StdString App::prefsServerAdminSecrets = StdString ("ServerAdminSecrets");
-const StdString App::prefsServerTimeout = StdString ("ServerTimeout");
 const int64_t App::defaultServerTimeout = 180;
-const StdString App::prefsServerPath = StdString ("ServerPath");
-const StdString App::prefsApplicationName = StdString ("ApplicationName");
-const StdString App::prefsWebKioskUiSelectedAgents = StdString ("WebKiosk_SelectedAgents");
-const StdString App::prefsWebKioskUiExpandedAgents = StdString ("WebKiosk_ExpandedAgents");
-const StdString App::prefsWebKioskUiPlaylists = StdString ("WebKiosk_Playlists");
-const StdString App::prefsMediaUiExpandedAgents = StdString ("Media_ExpandedAgents");
-const StdString App::prefsMonitorUiPlaylists = StdString ("Monitor_Playlists");
-const StdString App::prefsMonitorUiSelectedAgents = StdString ("Monitor_SelectedAgents");
-const StdString App::prefsMonitorUiExpandedAgents = StdString ("Monitor_ExpandedAgents");
-const StdString App::prefsMainUiShowAllEnabled = StdString ("Main_ShowAllEnabled");
-const StdString App::prefsMainUiApplicationNewsItems = StdString ("Main_ApplicationNewsItems");
-const StdString App::prefsMediaItemUiVideoQuality = StdString ("MediaItem_VideoQuality");
+
+const char *App::NetworkThreadsKey = "NetworkThreads";
+const char *App::WindowWidthKey = "WindowWidth";
+const char *App::WindowHeightKey = "WindowHeight";
+const char *App::FontScaleKey = "FontScale";
+const char *App::HttpsKey = "Https";
+const char *App::ShowInterfaceAnimationsKey = "ShowInterfaceAnimations";
+const char *App::ShowClockKey = "ShowClock";
+const char *App::IsFirstLaunchCompleteKey = "IsFirstLaunchComplete";
+const char *App::AgentStatusKey = "AgentStatus";
+const char *App::MediaImageSizeKey = "Media_ImageSize";
+const char *App::MonitorImageSizeKey = "Monitor_ImageSize";
+const char *App::MediaItemImageSizeKey = "MediaItem_ImageSize";
+const char *App::StreamItemImageSizeKey = "StreamItem_ImageSize";
+const char *App::ServerAdminSecretsKey = "ServerAdminSecrets";
+const char *App::ServerTimeoutKey = "ServerTimeout";
+const char *App::WebKioskUiSelectedAgentsKey = "WebKiosk_SelectedAgents";
+const char *App::WebKioskUiExpandedAgentsKey = "WebKiosk_ExpandedAgents";
+const char *App::WebKioskUiPlaylistsKey = "WebKiosk_Playlists";
+const char *App::WebKioskUiToolbarModeKey = "WebKiosk_ToolbarMode";
+const char *App::MediaUiSelectedAgentsKey = "Media_SelectedAgents";
+const char *App::MediaUiExpandedAgentsKey = "Media_ExpandedAgents";
+const char *App::MediaUiPlaylistsKey = "Media_Playlists";
+const char *App::MediaUiToolbarModeKey = "Media_ToolbarMode";
+const char *App::MainUiShowAllEnabledKey = "Main_ShowAllEnabled";
+const char *App::MainUiApplicationNewsItemsKey = "Main_ApplicationNewsItems";
+const char *App::MediaItemUiVideoQualityKey = "MediaItem_VideoQuality";
+const char *App::MediaUiVideoQualityKey = "Media_VideoQuality";
+const char *App::MediaUiVisibilityKey = "Media_Visibility";
 
 App *App::instance = NULL;
 
@@ -90,7 +93,7 @@ void App::createInstance () {
 	App::instance = new App ();
 }
 
-void App::destroyInstance () {
+void App::freeInstance () {
 	if (App::instance) {
 		delete (App::instance);
 		App::instance = NULL;
@@ -102,6 +105,7 @@ void App::destroyInstance () {
 App::App ()
 : shouldRefreshUi (false)
 , shouldSyncRecordStore (false)
+, isInterfaceAnimationEnabled (false)
 , nextFontScale (1.0f)
 , nextWindowWidth (0)
 , nextWindowHeight (0)
@@ -115,6 +119,7 @@ App::App ()
 , isHttpsEnabled (false)
 , window (NULL)
 , render (NULL)
+, isTextureRenderEnabled (false)
 , rootPanel (NULL)
 , displayDdpi (0.0f)
 , displayHdpi (0.0f)
@@ -207,6 +212,7 @@ int App::getImageScale (int w, int h) {
 
 int App::run () {
 	SDL_version version1, version2;
+	SDL_RendererInfo renderinfo;
 	SDL_Rect rect;
 	int result, delay, i;
 	int64_t endtime, elapsed, t1, t2;
@@ -220,17 +226,17 @@ int App::run () {
 	}
 	else {
 		result = prefsMap.read (prefsPath, true);
-		if (result != Result::SUCCESS) {
+		if (result != Result::Success) {
 			Log::debug ("Failed to read preferences file; prefsPath=\"%s\" err=%i", prefsPath.c_str (), result);
 			prefsMap.clear ();
 		}
 	}
 
-	isHttpsEnabled = prefsMap.find (App::prefsHttps, true);
-	windowWidth = prefsMap.find (App::prefsWindowWidth, 0);
-	windowHeight = prefsMap.find (App::prefsWindowHeight, 0);
+	isHttpsEnabled = prefsMap.find (App::HttpsKey, true);
+	windowWidth = prefsMap.find (App::WindowWidthKey, 0);
+	windowHeight = prefsMap.find (App::WindowHeightKey, 0);
 	imageScale = getImageScale (windowWidth, windowHeight);
-	i = prefsMap.find (App::prefsFontScale, App::numFontScales / 2);
+	i = prefsMap.find (App::FontScaleKey, App::numFontScales / 2);
 	if ((i >= 0) && (i < App::numFontScales)) {
 		fontScale = App::fontScales[i];
 		nextFontScale = fontScale;
@@ -245,35 +251,35 @@ int App::run () {
 
 	if (SDL_Init (SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
 		Log::err ("Failed to start SDL: %s", SDL_GetError ());
-		return (Result::ERROR_SDL_OPERATION_FAILED);
+		return (Result::SdlOperationFailedError);
 	}
 
 	if (IMG_Init (IMG_INIT_JPG | IMG_INIT_PNG) != (IMG_INIT_JPG | IMG_INIT_PNG)) {
 		Log::err ("Failed to start SDL_image: %s", IMG_GetError ());
-		return (Result::ERROR_SDL_OPERATION_FAILED);
+		return (Result::SdlOperationFailedError);
 	}
 
 	result = resource.open ();
-	if (result != Result::SUCCESS) {
+	if (result != Result::Success) {
 		Log::err ("Failed to open application resources; err=%i", result);
 		return (result);
 	}
 
 	result = uiText.load (OsUtil::getEnvLanguage (UiText::defaultLanguage));
-	if (result != Result::SUCCESS) {
+	if (result != Result::Success) {
 		Log::err ("Failed to load text resources; err=%i", result);
 		return (result);
 	}
 
 	result = input.start ();
-	if (result != Result::SUCCESS) {
+	if (result != Result::Success) {
 		Log::err ("Failed to acquire application input devices; err=%i", result);
 		return (result);
 	}
 
 	network.httpUserAgent.sprintf ("membrane-control/%s_%s", BUILD_ID, PLATFORM_ID);
-	result = network.start (prefsMap.find (App::prefsNetworkThreads, Network::defaultRequestThreadCount));
-	if (result != Result::SUCCESS) {
+	result = network.start (prefsMap.find (App::NetworkThreadsKey, Network::defaultRequestThreadCount));
+	if (result != Result::Success) {
 		Log::err ("Failed to acquire application network resources; err=%i", result);
 		return (result);
 	}
@@ -284,7 +290,7 @@ int App::run () {
 		Log::warning ("Failed to determine local hostname, network services may not be available");
 	}
 	result = agentControl.start ();
-	if (result != Result::SUCCESS) {
+	if (result != Result::Success) {
 		Log::err ("Failed to start agent control processes; err=%i", result);
 		return (result);
 	}
@@ -319,14 +325,26 @@ int App::run () {
 	result = SDL_CreateWindowAndRenderer (windowWidth, windowHeight, 0, &window, &render);
 	if (result != 0) {
 		Log::err ("Failed to create application window: %s", SDL_GetError ());
-		return (Result::ERROR_SDL_OPERATION_FAILED);
+		return (Result::SdlOperationFailedError);
 	}
+	result = SDL_GetRendererInfo (render, &renderinfo);
+	if (result != 0) {
+		Log::err ("Failed to create application renderer: %s", SDL_GetError ());
+		return (Result::SdlOperationFailedError);
+	}
+	if ((renderinfo.flags & (SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE)) == (SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE)) {
+		isTextureRenderEnabled = true;
+	}
+	if (isTextureRenderEnabled) {
+		isInterfaceAnimationEnabled = prefsMap.find (App::ShowInterfaceAnimationsKey, true);
+	}
+
 	SDL_SetWindowTitle (window, uiText.getText (UiTextString::windowTitle).c_str ());
 
 	startTime = OsUtil::getTime ();
 	uiConfig.resetScale ();
 	result = uiConfig.load (fontScale);
-	if (result != Result::SUCCESS) {
+	if (result != Result::Success) {
 		Log::err ("Failed to load application resources; err=%i", result);
 		return (result);
 	}
@@ -339,7 +357,7 @@ int App::run () {
 
 	SDL_VERSION (&version1);
 	SDL_GetVersion (&version2);
-	Log::info ("Application started; buildId=\"%s\" sdlBuildVersion=%i.%i.%i sdlLinkVersion=%i.%i.%i windowSize=%ix%i windowFlags=0x%x diagonalDpi=%.2f horizontalDpi=%.2f verticalDpi=%.2f imageScale=%i minDrawFrameDelay=%i minUpdateFrameDelay=%i lang=%s", BUILD_ID, version1.major, version1.minor, version1.patch, version2.major, version2.minor, version2.patch, windowWidth, windowHeight, (unsigned int) SDL_GetWindowFlags (window), displayDdpi, displayHdpi, displayVdpi, imageScale, minDrawFrameDelay, minUpdateFrameDelay, OsUtil::getEnvLanguage ("").c_str ());
+	Log::info ("Application started; buildId=\"%s\" sdlBuildVersion=%i.%i.%i sdlLinkVersion=%i.%i.%i windowSize=%ix%i windowFlags=0x%x renderFlags=0x%x isTextureRenderEnabled=%s diagonalDpi=%.2f horizontalDpi=%.2f verticalDpi=%.2f imageScale=%i minDrawFrameDelay=%i minUpdateFrameDelay=%i lang=%s", BUILD_ID, version1.major, version1.minor, version1.patch, version2.major, version2.minor, version2.patch, windowWidth, windowHeight, (unsigned int) SDL_GetWindowFlags (window), (unsigned int) renderinfo.flags, BOOL_STRING (isTextureRenderEnabled), displayDdpi, displayHdpi, displayVdpi, imageScale, minDrawFrameDelay, minUpdateFrameDelay, OsUtil::getEnvLanguage ("").c_str ());
 
 	while (true) {
 		if (isShutdown) {
@@ -364,7 +382,7 @@ int App::run () {
 #endif
 
 		if (! FLOAT_EQUALS (fontScale, nextFontScale)) {
-			if (uiConfig.reloadFonts (nextFontScale) != Result::SUCCESS) {
+			if (uiConfig.reloadFonts (nextFontScale) != Result::Success) {
 				nextFontScale = fontScale;
 			}
 			else {
@@ -372,7 +390,7 @@ int App::run () {
 				fontScale = nextFontScale;
 				for (i = 0; i < App::numFontScales; ++i) {
 					if (FLOAT_EQUALS (fontScale, App::fontScales[i])) {
-						prefsMap.insert (App::prefsFontScale, i);
+						prefsMap.insert (App::FontScaleKey, i);
 						break;
 					}
 				}
@@ -430,7 +448,7 @@ int App::run () {
 	}
 	Log::info ("Application ended; updateCount=%lli drawCount=%lli runtime=%.3fs FPS=%f", (long long) updateCount, (long long) drawCount, ((double) elapsed) / 1000.0f, fps);
 
-	return (Result::SUCCESS);
+	return (Result::Success);
 }
 
 void App::populateWidgets () {
@@ -724,6 +742,14 @@ void App::popClipRect () {
 	}
 }
 
+void App::suspendClipRect () {
+	SDL_RenderSetClipRect (render, NULL);
+}
+
+void App::unsuspendClipRect () {
+	SDL_RenderSetClipRect (render, &clipRect);
+}
+
 void App::addRenderTask (RenderTaskFunction fn, void *fnData) {
 	App::RenderTaskContext ctx;
 
@@ -747,7 +773,7 @@ void App::writePrefsMap () {
 
 	if (prefsMap.isWriteDirty) {
 		result = prefsMap.write (prefsPath);
-		if (result != Result::SUCCESS) {
+		if (result != Result::Success) {
 			Log::err ("Failed to write prefs file; prefsPath=\"%s\" err=%i", prefsPath.c_str (), result);
 			isPrefsWriteDisabled = true;
 		}
@@ -783,7 +809,7 @@ void App::resizeWindow () {
 
 	uiConfig.coreSprites.resize ();
 	result = uiConfig.reloadFonts (fontScale);
-	if (result != Result::SUCCESS) {
+	if (result != Result::Success) {
 		Log::err ("Failed to reload fonts; fontScale=%.2f err=%i", fontScale, result);
 	}
 	if (! backgroundTextureBasePath.empty ()) {
@@ -798,8 +824,8 @@ void App::resizeWindow () {
 	SDL_CondBroadcast (updateCond);
 	SDL_UnlockMutex (updateMutex);
 
-	prefsMap.insert (App::prefsWindowWidth, windowWidth);
-	prefsMap.insert (App::prefsWindowHeight, windowHeight);
+	prefsMap.insert (App::WindowWidthKey, windowWidth);
+	prefsMap.insert (App::WindowHeightKey, windowHeight);
 }
 
 int App::getRandomInt (int i1, int i2) {

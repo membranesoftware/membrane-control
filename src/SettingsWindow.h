@@ -59,6 +59,7 @@ public:
 	static void windowSizeSliderChanged (void *windowPtr, Widget *widgetPtr);
 	static void textSizeSliderChanged (void *windowPtr, Widget *widgetPtr);
 	static void showClockToggleStateChanged (void *windowPtr, Widget *widgetPtr);
+	static void showInterfaceAnimationsToggleStateChanged (void *windowPtr, Widget *widgetPtr);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
@@ -68,7 +69,7 @@ protected:
 	void doRefresh ();
 
 	// Execute operations to update object state as appropriate for an elapsed millisecond time period and origin position
-	void doUpdate (int msElapsed, float originX, float originY);
+	void doUpdate (int msElapsed);
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
 	void refreshLayout ();
@@ -83,6 +84,7 @@ private:
 	Label *textSizeLabel;
 	SliderWindow *textSizeSlider;
 	ToggleWindow *showClockToggle;
+	ToggleWindow *showInterfaceAnimationsToggle;
 };
 
 #endif

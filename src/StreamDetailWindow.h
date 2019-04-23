@@ -35,15 +35,15 @@
 
 #include "StdString.h"
 #include "Json.h"
+#include "SpriteGroup.h"
 #include "Image.h"
 #include "Label.h"
-#include "Button.h"
-#include "StatsWindow.h"
+#include "IconLabelWindow.h"
 #include "Panel.h"
 
 class StreamDetailWindow : public Panel {
 public:
-	StreamDetailWindow (const StdString &recordId);
+	StreamDetailWindow (const StdString &recordId, SpriteGroup *streamItemUiSpriteGroup);
 	virtual ~StreamDetailWindow ();
 
 	// Read-only data members
@@ -55,10 +55,6 @@ public:
 	float streamFrameRate;
 	int64_t streamSize;
 	int64_t streamBitrate;
-	float menuPositionY;
-
-	// Set a callback function that should be invoked when the window's menu button is pressed
-	void setMenuClickCallback (Widget::EventCallback callback, void *callbackData);
 
 	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
 	void syncRecordStore ();
@@ -69,9 +65,6 @@ public:
 	// Return a typecasted pointer to the provided widget, or NULL if the widget does not appear to be of the correct type
 	static StreamDetailWindow *castWidget (Widget *widget);
 
-	// Callback functions
-	static void menuButtonClicked (void *windowPtr, Widget *widgetPtr);
-
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
@@ -80,16 +73,13 @@ protected:
 	void refreshLayout ();
 
 private:
-	// Populate widgets as appropriate for the window's initial state
-	void populate ();
-
+	SpriteGroup *sprites;
 	Image *iconImage;
 	Label *nameLabel;
 	Label *descriptionLabel;
-	StatsWindow *statsWindow;
-	Button *menuButton;
-	Widget::EventCallback menuClickCallback;
-	void *menuClickCallbackData;
+	IconLabelWindow *attributesIcon;
+	IconLabelWindow *fileSizeIcon;
+	IconLabelWindow *durationIcon;
 };
 
 #endif

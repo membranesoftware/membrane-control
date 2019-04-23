@@ -75,7 +75,7 @@ StdString ServerUi::getSpritePath () {
 }
 
 Widget *ServerUi::createBreadcrumbWidget () {
-	return (new Chip (App::instance->uiText.getText (UiTextString::servers).capitalized (), sprites.getSprite (ServerUi::BREADCRUMB_ICON)));
+	return (new Chip (App::instance->uiText.getText (UiTextString::servers).capitalized (), sprites.getSprite (ServerUi::BreadcrumbIconSprite)));
 }
 
 void ServerUi::setHelpWindowContent (HelpWindow *helpWindow) {
@@ -105,16 +105,16 @@ int ServerUi::doLoad () {
 
 	cardView = (CardView *) addWidget (new CardView (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight));
 	cardView->isKeyboardScrollEnabled = true;
-	cardView->setRowHeader (0, uitext->getText (UiTextString::serverUiNetworkAgentsTitle), UiConfiguration::TITLE, uiconfig->inverseTextColor);
+	cardView->setRowHeader (ServerUi::AgentRow, uitext->getText (UiTextString::serverUiNetworkAgentsTitle), UiConfiguration::TitleFont, uiconfig->inverseTextColor);
 	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 
 	adminSecretWindow = new AdminSecretWindow ();
 	adminSecretWindow->setAddButtonClickCallback (ServerUi::adminSecretAddButtonClicked, this);
 	adminSecretWindow->setExpandStateChangeCallback (ServerUi::adminSecretExpandStateChanged, this);
 	adminSecretWindow->setExpanded (false);
-	cardView->addItem (adminSecretWindow, StdString (""), 1);
+	cardView->addItem (adminSecretWindow, StdString (""), ServerUi::ActionRow);
 
-	return (Result::SUCCESS);
+	return (Result::Success);
 }
 
 void ServerUi::doUnload () {
@@ -126,7 +126,7 @@ void ServerUi::doUnload () {
 void ServerUi::doAddMainToolbarItems (Toolbar *toolbar) {
 	Button *button;
 
-	button = new Button (StdString (""), App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::RELOAD_BUTTON));
+	button = new Button (StdString (""), App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::ReloadButtonSprite));
 	button->setInverseColor (true);
 	button->setMouseClickCallback (ServerUi::reloadButtonClicked, this);
 	button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::reloadTooltip));
@@ -140,14 +140,14 @@ void ServerUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
 
 	uiconfig = &(App::instance->uiConfig);
 
-	button = new Button (StdString (""), sprites.getSprite (ServerUi::BROADCAST_BUTTON));
+	button = new Button (StdString (""), sprites.getSprite (ServerUi::BroadcastButtonSprite));
 	button->setInverseColor (true);
 	button->shortcutKey = SDLK_F2;
 	button->setMouseClickCallback (ServerUi::broadcastButtonClicked, this);
 	button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::serverUiBroadcastTooltip));
 	toolbar->addRightItem (button);
 
-	toggle = new Toggle (sprites.getSprite (ServerUi::ADDRESS_BUTTON), uiconfig->coreSprites.getSprite (UiConfiguration::CANCEL_BUTTON));
+	toggle = new Toggle (sprites.getSprite (ServerUi::AddressButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::CancelButtonSprite));
 	toggle->setInverseColor (true);
 	toggle->shortcutKey = SDLK_F1;
 	toggle->setStateChangeCallback (ServerUi::addressToggleStateChanged, this);
@@ -259,12 +259,12 @@ void ServerUi::doSyncRecordStore () {
 	}
 	else {
 		if (! window) {
-			window = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::ERROR_ICON), uitext->getText (UiTextString::serverUiEmptyAgentStatusTitle), StdString (""), uitext->getText (UiTextString::serverUiEmptyAgentStatusText));
+			window = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::ErrorIconSprite), uitext->getText (UiTextString::serverUiEmptyAgentStatusTitle), StdString (""), uitext->getText (UiTextString::serverUiEmptyAgentStatusText));
 			window->setLink (uitext->getText (UiTextString::learnMore).capitalized (), App::getHelpUrl ("servers"));
 			emptyServerWindow.assign (window);
 
 			window->itemId.assign (cardView->getAvailableItemId ());
-			cardView->addItem (window, window->itemId, 0);
+			cardView->addItem (window, window->itemId, ServerUi::AgentRow);
 		}
 	}
 
@@ -295,7 +295,8 @@ void ServerUi::processAgentStatus (void *uiPtr, Json *record, const StdString &r
 		window->sortKey.assign (interface->getCommandAgentName (record).lowercased ());
 		window->setMenuClickCallback (ServerUi::agentMenuClicked, ui);
 		window->itemId.assign (recordId);
-		ui->cardView->addItem (window, recordId, 0);
+		ui->cardView->addItem (window, recordId, ServerUi::AgentRow);
+		window->animateNewCard ();
 	}
 }
 
@@ -341,7 +342,7 @@ void ServerUi::addressToggleStateChanged (void *uiPtr, Widget *widgetPtr) {
 	toolbar = App::instance->uiStack.secondaryToolbar;
 
 	if (toggle->isChecked) {
-		textfield = new TextFieldWindow (toolbar->getLeftWidth (), App::instance->uiText.getText (UiTextString::enterAddressPrompt), ui->sprites.getSprite (ServerUi::ADDRESS_ICON));
+		textfield = new TextFieldWindow (toolbar->getLeftWidth (), App::instance->uiText.getText (UiTextString::enterAddressPrompt), ui->sprites.getSprite (ServerUi::AddressIconSprite));
 		textfield->setWindowHeight (toolbar->height);
 		textfield->setButtonsEnabled (true, false, false, false);
 		textfield->setFillBg (true, uiconfig->lightPrimaryColor);
@@ -392,7 +393,7 @@ void ServerUi::addressTextFieldEdited (void *uiPtr, Widget *widgetPtr) {
 		window->setStateChangeCallback (ServerUi::serverContactWindowStateChanged, ui);
 		window->sortKey.assign (address.lowercased ());
 		window->itemId.assign (key);
-		ui->cardView->addItem (window, window->itemId, 0);
+		ui->cardView->addItem (window, window->itemId, ServerUi::AgentRow);
 	}
 	App::instance->shouldSyncRecordStore = true;
 }
@@ -403,7 +404,7 @@ void ServerUi::addressSnackbarHelpClicked (void *uiPtr, Widget *widgetPtr) {
 
 	url.assign (App::getHelpUrl ("servers"));
 	result = OsUtil::openUrl (url);
-	if (result != Result::SUCCESS) {
+	if (result != Result::Success) {
 		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::openHelpUrlError));
 	}
 	else {
@@ -438,16 +439,16 @@ void ServerUi::agentMenuClicked (void *uiPtr, Widget *widgetPtr) {
 	ui->actionWidget.assign (action);
 	ui->actionTarget.assign (target);
 
-	action->addItem (uitext->getText (UiTextString::adminConsole).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::AGENT_ADMIN_BUTTON), ServerUi::agentAdminActionClicked, ui);
+	action->addItem (uitext->getText (UiTextString::adminConsole).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::AgentAdminButtonSprite), ServerUi::agentAdminActionClicked, ui);
 	if (! target->applicationId.empty ()) {
-		action->addItem (uitext->getText (UiTextString::checkForUpdates).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::UPDATE_BUTTON), ServerUi::agentUpdateActionClicked, ui);
+		action->addItem (uitext->getText (UiTextString::checkForUpdates).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::UpdateButtonSprite), ServerUi::agentUpdateActionClicked, ui);
 	}
 
-	action->addItem (uitext->getText (UiTextString::remove).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::DELETE_BUTTON), ServerUi::agentRemoveActionClicked, ui);
+	action->addItem (uitext->getText (UiTextString::remove).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite), ServerUi::agentRemoveActionClicked, ui);
 
 	action->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
 	action->isClickDestroyEnabled = true;
-	action->position.assign (target->drawX + target->width - action->width - uiconfig->marginSize, target->drawY + target->menuPositionY);
+	action->position.assign (target->screenX + target->width - action->width - uiconfig->marginSize, target->screenY + target->menuPositionY);
 }
 
 void ServerUi::agentAdminActionClicked (void *uiPtr, Widget *widgetPtr) {
@@ -478,7 +479,7 @@ void ServerUi::agentUpdateActionClicked (void *uiPtr, Widget *widgetPtr) {
 	ui->clearPopupWidgets ();
 	url.assign (App::getUpdateUrl (target->applicationId));
 	result = OsUtil::openUrl (url);
-	if (result != Result::SUCCESS) {
+	if (result != Result::Success) {
 		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::openUpdateUrlError));
 	}
 	else {
@@ -525,7 +526,7 @@ void ServerUi::adminSecretAddButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	App::instance->rootPanel->addWidget (action);
 	ui->actionWidget.assign (action);
 	ui->actionTarget.assign (target);
-	action->position.assign (target->drawX + target->width, target->drawY + target->height - action->height);
+	action->position.assign (target->screenX + target->width, target->screenY + target->height - action->height);
 }
 
 void ServerUi::adminSecretAddActionClosed (void *uiPtr, Widget *widgetPtr) {

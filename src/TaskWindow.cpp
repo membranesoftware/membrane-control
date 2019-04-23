@@ -64,12 +64,12 @@ TaskWindow::TaskWindow (const StdString &taskId)
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->darkBackgroundColor);
 
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::TASK_IN_PROGRESS_ICON)));
-	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::BODY, uiconfig->primaryTextColor));
-	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
+	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::TaskInProgressIconSprite)));
+	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::BodyFont, uiconfig->primaryTextColor));
+	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	progressBar = (ProgressBar *) addWidget (new ProgressBar (((float) App::instance->windowWidth) * 0.16f, uiconfig->progressBarHeight));
 
-	deleteButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::DELETE_BUTTON)));
+	deleteButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
 	deleteButton->setMouseClickCallback (TaskWindow::deleteButtonClicked, this);
 	deleteButton->setImageColor (uiconfig->flatButtonTextColor);
 	deleteButton->isVisible = false;
@@ -116,7 +116,7 @@ void TaskWindow::syncRecordStore () {
 		if (pct >= 100.0f) {
 			isTaskComplete = true;
 			iconImage->isDestroyed = true;
-			iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::TASK_COMPLETE_ICON)));
+			iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::TaskCompleteIconSprite)));
 		}
 	}
 	refreshLayout ();

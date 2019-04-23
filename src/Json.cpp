@@ -290,7 +290,7 @@ bool Json::isArray (const char *key) const {
 	return (isArray (StdString (key)));
 }
 
-int Json::parse (const char *data, const int dataLength) {
+bool Json::parse (const char *data, const int dataLength) {
 	json_settings settings;
 	json_value *value;
 	char buf[json_error_max];
@@ -299,21 +299,21 @@ int Json::parse (const char *data, const int dataLength) {
 	settings.value_extra = json_builder_extra;
 	value = json_parse_ex (&settings, data, dataLength, buf);
 	if (! value) {
-		return (Result::ERROR_JSON_PARSE_FAILED);
+		return (false);
 	}
 
 	clear ();
 	json = value;
 	shouldFreeJson = true;
 	isJsonBuilder = false;
-	return (Result::SUCCESS);
+	return (true);
 }
 
-int Json::parse (const StdString &data) {
+bool Json::parse (const StdString &data) {
 	return (parse (data.c_str (), data.length ()));
 }
 
-void Json::copy (Json *sourceJson) {
+void Json::copyValue (Json *sourceJson) {
 	setEmpty ();
 	if (! sourceJson->json) {
 		return;
@@ -321,6 +321,15 @@ void Json::copy (Json *sourceJson) {
 
 	setJsonValue (copyJsonValue (sourceJson->json), true);
 	shouldFreeJson = true;
+}
+
+Json *Json::copy () {
+	Json *j;
+
+	j = new Json ();
+	j->copyValue (this);
+
+	return (j);
 }
 
 json_value *Json::copyJsonValue (json_value *sourceValue) {

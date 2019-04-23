@@ -78,10 +78,10 @@ ServerWindow::ServerWindow (const StdString &agentId)
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::SERVER_ICON)));
-	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::HEADLINE, uiconfig->primaryTextColor));
+	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::ServerIconSprite)));
+	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::HeadlineFont, uiconfig->primaryTextColor));
 
-	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor));
+	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	descriptionLabel->isVisible = false;
 
 	statsWindow = (StatsWindow *) addWidget (new StatsWindow ());
@@ -93,7 +93,7 @@ ServerWindow::ServerWindow (const StdString &agentId)
 	statsWindow->setItem (uitext->getText (UiTextString::platform).capitalized (), "");
 	statsWindow->isVisible = false;
 
-	menuButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::MAIN_MENU_BUTTON)));
+	menuButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::MainMenuButtonSprite)));
 	menuButton->setMouseClickCallback (ServerWindow::menuButtonClicked, this);
 	menuButton->setImageColor (uiconfig->flatButtonTextColor);
 	menuButton->setMouseHoverTooltip (uitext->getText (UiTextString::moreActionsTooltip));
@@ -182,19 +182,19 @@ void ServerWindow::syncRecordStore () {
 		menuButton->isVisible = true;
 	}
 
-	icontype = UiConfiguration::SERVER_ICON;
+	icontype = UiConfiguration::ServerIconSprite;
 	if (interface->getCommandObjectParam (record, "streamServerStatus", &serverstatus)) {
 		statsWindow->setItem (uitext->getText (UiTextString::storage).capitalized (), OsUtil::getStorageAmountDisplayString (serverstatus.getNumber ("freeStorage", (int64_t) 0), serverstatus.getNumber ("totalStorage", (int64_t) 0)));
 	}
 	if (interface->getCommandObjectParam (record, "mediaServerStatus", &serverstatus)) {
-		icontype = UiConfiguration::LARGE_MEDIA_ICON;
+		icontype = UiConfiguration::LargeMediaIconSprite;
 		statsWindow->setItem (uitext->getText (UiTextString::mediaItems).capitalized (), StdString::createSprintf ("%i", serverstatus.getNumber ("mediaCount", (int) 0)));
 	}
 	if (interface->getCommandObjectParam (record, "streamServerStatus", &serverstatus)) {
 		statsWindow->setItem (uitext->getText (UiTextString::videoStreams).capitalized (), StdString::createSprintf ("%i", serverstatus.getNumber ("streamCount", (int) 0)));
 	}
 	if (interface->getCommandObjectParam (record, "monitorServerStatus", &serverstatus)) {
-		icontype = UiConfiguration::DISPLAY_ICON;
+		icontype = UiConfiguration::LargeDisplayIconSprite;
 		statsWindow->setItem (uitext->getText (UiTextString::storage).capitalized (), OsUtil::getStorageAmountDisplayString (serverstatus.getNumber ("freeStorage", (int64_t) 0), serverstatus.getNumber ("totalStorage", (int64_t) 0)));
 		statsWindow->setItem (uitext->getText (UiTextString::cachedStreams).capitalized (), StdString::createSprintf ("%i", serverstatus.getNumber ("streamCount", (int) 0)));
 		statsWindow->setItem (uitext->getText (UiTextString::program).capitalized (), serverstatus.getString ("intentName", ""));

@@ -70,6 +70,8 @@ UiConfiguration::UiConfiguration ()
 , raisedButtonTextColor (Color::getByteValue (0x18), Color::getByteValue (0x22), Color::getByteValue (0x7C))
 , raisedButtonInverseTextColor (Color::getByteValue (0x51), Color::getByteValue (0x4A), Color::getByteValue (0xAC))
 , raisedButtonBackgroundColor (Color::getByteValue (0xD0), Color::getByteValue (0xD0), Color::getByteValue (0xD0))
+, dropShadowColor (0.0f, 0.0f, 0.0f, 0.78f)
+, dropShadowWidth (2.0f)
 , buttonFocusedShadeAlpha (0.12f)
 , buttonPressedShadeAlpha (0.28f)
 , buttonDisabledShadeAlpha (0.58f)
@@ -86,6 +88,8 @@ UiConfiguration::UiConfiguration ()
 , textLineHeightMargin (1.0f)
 , textUnderlineMargin (2.0f)
 , menuDividerLineWidth (2.0f)
+, selectionBorderWidth (5.0f)
+, selectionBorderAlpha (0.72f)
 , sliderThumbSize (16.0f)
 , sliderTrackWidth (200.0f)
 , sliderTrackHeight (8.0f)
@@ -102,27 +106,27 @@ UiConfiguration::UiConfiguration ()
 , recordSyncDelayDuration (700)
 , smallThumbnailImageScale (0.123f)
 , mediumThumbnailImageScale (0.240f)
-, largeThumbnailImageScale (0.480f)
+, largeThumbnailImageScale (0.450f)
 , coreSpritesPath ("ui/CoreSprites")
 , isLoaded (false)
 {
 	memset (fonts, 0, sizeof (fonts));
 	memset (fontSizes, 0, sizeof (fontSizes));
 
-	fontNames[UiConfiguration::CAPTION].assign ("font/Roboto-Regular.ttf");
-	fontBaseSizes[UiConfiguration::CAPTION] = 10;
+	fontNames[UiConfiguration::CaptionFont].assign ("font/Roboto-Regular.ttf");
+	fontBaseSizes[UiConfiguration::CaptionFont] = 10;
 
-	fontNames[UiConfiguration::BODY].assign ("font/Roboto-Regular.ttf");
-	fontBaseSizes[UiConfiguration::BODY] = 12;
+	fontNames[UiConfiguration::BodyFont].assign ("font/Roboto-Regular.ttf");
+	fontBaseSizes[UiConfiguration::BodyFont] = 12;
 
-	fontNames[UiConfiguration::BUTTON].assign ("font/Roboto-Medium.ttf");
-	fontBaseSizes[UiConfiguration::BUTTON] = 12;
+	fontNames[UiConfiguration::ButtonFont].assign ("font/Roboto-Medium.ttf");
+	fontBaseSizes[UiConfiguration::ButtonFont] = 12;
 
-	fontNames[UiConfiguration::TITLE].assign ("font/Roboto-Medium.ttf");
-	fontBaseSizes[UiConfiguration::TITLE] = 14;
+	fontNames[UiConfiguration::TitleFont].assign ("font/Roboto-Medium.ttf");
+	fontBaseSizes[UiConfiguration::TitleFont] = 14;
 
-	fontNames[UiConfiguration::HEADLINE].assign ("font/Roboto-Regular.ttf");
-	fontBaseSizes[UiConfiguration::HEADLINE] = 16;
+	fontNames[UiConfiguration::HeadlineFont].assign ("font/Roboto-Regular.ttf");
+	fontBaseSizes[UiConfiguration::HeadlineFont] = 16;
 }
 
 UiConfiguration::~UiConfiguration () {
@@ -135,23 +139,23 @@ int UiConfiguration::load (float fontScale) {
 	int i, result, sz;
 
 	if (fontScale <= 0.0f) {
-		return (Result::ERROR_INVALID_PARAM);
+		return (Result::InvalidParamError);
 	}
 
 	if (isLoaded) {
-		return (Result::SUCCESS);
+		return (Result::Success);
 	}
 
 	resource = &(App::instance->resource);
 
-	for (i = 0; i < UiConfiguration::NUM_FONT_TYPES; ++i) {
+	for (i = 0; i < UiConfiguration::FontCount; ++i) {
 		sz = (int) (fontScale * (float) fontBaseSizes[i]);
 		if (sz < 1) {
 			sz = 1;
 		}
 		font = resource->loadFont (fontNames[i], sz);
 		if (! font) {
-			return (Result::ERROR_FREETYPE_OPERATION_FAILED);
+			return (Result::FreetypeOperationFailedError);
 		}
 		fonts[i] = font;
 		fontSizes[i] = sz;
@@ -159,14 +163,14 @@ int UiConfiguration::load (float fontScale) {
 
 	if (! coreSpritesPath.empty ()) {
 		result = coreSprites.load (coreSpritesPath);
-		if (result != Result::SUCCESS) {
+		if (result != Result::Success) {
 			return (result);
 		}
 	}
 
 
 	isLoaded = true;
-	return (Result::SUCCESS);
+	return (Result::Success);
 }
 
 void UiConfiguration::unload () {
@@ -176,7 +180,7 @@ void UiConfiguration::unload () {
 	resource = &(App::instance->resource);
 	isLoaded = false;
 
-	for (i = 0; i < UiConfiguration::NUM_FONT_TYPES; ++i) {
+	for (i = 0; i < UiConfiguration::FontCount; ++i) {
 		if (fonts[i]) {
 			fonts[i] = NULL;
 			resource->unloadFont (fontNames[i], fontSizes[i]);
@@ -192,19 +196,19 @@ int UiConfiguration::reloadFonts (float fontScale) {
 	int i, sz;
 
 	if (fontScale <= 0.0f) {
-		return (Result::ERROR_INVALID_PARAM);
+		return (Result::InvalidParamError);
 	}
 
 	resource = &(App::instance->resource);
 
-	for (i = 0; i < UiConfiguration::NUM_FONT_TYPES; ++i) {
+	for (i = 0; i < UiConfiguration::FontCount; ++i) {
 		sz = (int) (fontScale * (float) fontBaseSizes[i]);
 		if (sz < 1) {
 			sz = 1;
 		}
 		font = resource->loadFont (fontNames[i], sz);
 		if (! font) {
-			return (Result::ERROR_FREETYPE_OPERATION_FAILED);
+			return (Result::FreetypeOperationFailedError);
 		}
 		if (fonts[i]) {
 			resource->unloadFont (fontNames[i], fontSizes[i]);
@@ -212,9 +216,9 @@ int UiConfiguration::reloadFonts (float fontScale) {
 		fonts[i] = font;
 		fontSizes[i] = sz;
 	}
-	Log::debug ("Fonts reloaded; fontScale=%.2f captionFontSize=%i bodyFontSize=%i buttonFontSize=%i titleFontSize=%i headlineFontSize=%i", fontScale, fontSizes[UiConfiguration::CAPTION], fontSizes[UiConfiguration::BODY], fontSizes[UiConfiguration::BUTTON], fontSizes[UiConfiguration::TITLE], fontSizes[UiConfiguration::HEADLINE]);
+	Log::debug ("Fonts reloaded; fontScale=%.2f captionFontSize=%i bodyFontSize=%i buttonFontSize=%i titleFontSize=%i headlineFontSize=%i", fontScale, fontSizes[UiConfiguration::CaptionFont], fontSizes[UiConfiguration::BodyFont], fontSizes[UiConfiguration::ButtonFont], fontSizes[UiConfiguration::TitleFont], fontSizes[UiConfiguration::HeadlineFont]);
 
-	return (Result::SUCCESS);
+	return (Result::Success);
 }
 
 void UiConfiguration::resetScale () {
@@ -224,11 +228,11 @@ void UiConfiguration::resetScale () {
 			marginSize = 6.0f;
 			sliderTrackWidth = 100.0f;
 			timelineMarkerWidth = 12.0f;
-			fontBaseSizes[UiConfiguration::CAPTION] = 8;
-			fontBaseSizes[UiConfiguration::BODY] = 10;
-			fontBaseSizes[UiConfiguration::BUTTON] = 10;
-			fontBaseSizes[UiConfiguration::TITLE] = 12;
-			fontBaseSizes[UiConfiguration::HEADLINE] = 14;
+			fontBaseSizes[UiConfiguration::CaptionFont] = 8;
+			fontBaseSizes[UiConfiguration::BodyFont] = 10;
+			fontBaseSizes[UiConfiguration::ButtonFont] = 10;
+			fontBaseSizes[UiConfiguration::TitleFont] = 12;
+			fontBaseSizes[UiConfiguration::HeadlineFont] = 14;
 			break;
 		}
 		case 1: {
@@ -236,11 +240,11 @@ void UiConfiguration::resetScale () {
 			marginSize = 12.0f;
 			sliderTrackWidth = 130.0f;
 			timelineMarkerWidth = 16.0f;
-			fontBaseSizes[UiConfiguration::CAPTION] = 8;
-			fontBaseSizes[UiConfiguration::BODY] = 10;
-			fontBaseSizes[UiConfiguration::BUTTON] = 10;
-			fontBaseSizes[UiConfiguration::TITLE] = 12;
-			fontBaseSizes[UiConfiguration::HEADLINE] = 14;
+			fontBaseSizes[UiConfiguration::CaptionFont] = 8;
+			fontBaseSizes[UiConfiguration::BodyFont] = 10;
+			fontBaseSizes[UiConfiguration::ButtonFont] = 10;
+			fontBaseSizes[UiConfiguration::TitleFont] = 12;
+			fontBaseSizes[UiConfiguration::HeadlineFont] = 14;
 			break;
 		}
 		case 2: {
@@ -248,11 +252,11 @@ void UiConfiguration::resetScale () {
 			marginSize = 16.0f;
 			sliderTrackWidth = 180.0f;
 			timelineMarkerWidth = 16.0f;
-			fontBaseSizes[UiConfiguration::CAPTION] = 10;
-			fontBaseSizes[UiConfiguration::BODY] = 12;
-			fontBaseSizes[UiConfiguration::BUTTON] = 12;
-			fontBaseSizes[UiConfiguration::TITLE] = 14;
-			fontBaseSizes[UiConfiguration::HEADLINE] = 16;
+			fontBaseSizes[UiConfiguration::CaptionFont] = 10;
+			fontBaseSizes[UiConfiguration::BodyFont] = 12;
+			fontBaseSizes[UiConfiguration::ButtonFont] = 12;
+			fontBaseSizes[UiConfiguration::TitleFont] = 14;
+			fontBaseSizes[UiConfiguration::HeadlineFont] = 16;
 			break;
 		}
 		case 3: {
@@ -260,11 +264,11 @@ void UiConfiguration::resetScale () {
 			marginSize = 16.0f;
 			sliderTrackWidth = 240.0f;
 			timelineMarkerWidth = 20.0f;
-			fontBaseSizes[UiConfiguration::CAPTION] = 10;
-			fontBaseSizes[UiConfiguration::BODY] = 12;
-			fontBaseSizes[UiConfiguration::BUTTON] = 12;
-			fontBaseSizes[UiConfiguration::TITLE] = 16;
-			fontBaseSizes[UiConfiguration::HEADLINE] = 20;
+			fontBaseSizes[UiConfiguration::CaptionFont] = 10;
+			fontBaseSizes[UiConfiguration::BodyFont] = 12;
+			fontBaseSizes[UiConfiguration::ButtonFont] = 12;
+			fontBaseSizes[UiConfiguration::TitleFont] = 16;
+			fontBaseSizes[UiConfiguration::HeadlineFont] = 20;
 			break;
 		}
 		case 4: {
@@ -272,11 +276,11 @@ void UiConfiguration::resetScale () {
 			marginSize = 20.0f;
 			sliderTrackWidth = 300.0f;
 			timelineMarkerWidth = 20.0f;
-			fontBaseSizes[UiConfiguration::CAPTION] = 10;
-			fontBaseSizes[UiConfiguration::BODY] = 12;
-			fontBaseSizes[UiConfiguration::BUTTON] = 12;
-			fontBaseSizes[UiConfiguration::TITLE] = 16;
-			fontBaseSizes[UiConfiguration::HEADLINE] = 20;
+			fontBaseSizes[UiConfiguration::CaptionFont] = 10;
+			fontBaseSizes[UiConfiguration::BodyFont] = 12;
+			fontBaseSizes[UiConfiguration::ButtonFont] = 12;
+			fontBaseSizes[UiConfiguration::TitleFont] = 16;
+			fontBaseSizes[UiConfiguration::HeadlineFont] = 20;
 			break;
 		}
 		default: {
@@ -284,11 +288,11 @@ void UiConfiguration::resetScale () {
 			marginSize = 16.0f;
 			sliderTrackWidth = 200.0f;
 			timelineMarkerWidth = 16.0f;
-			fontBaseSizes[UiConfiguration::CAPTION] = 10;
-			fontBaseSizes[UiConfiguration::BODY] = 12;
-			fontBaseSizes[UiConfiguration::BUTTON] = 12;
-			fontBaseSizes[UiConfiguration::TITLE] = 14;
-			fontBaseSizes[UiConfiguration::HEADLINE] = 16;
+			fontBaseSizes[UiConfiguration::CaptionFont] = 10;
+			fontBaseSizes[UiConfiguration::BodyFont] = 12;
+			fontBaseSizes[UiConfiguration::ButtonFont] = 12;
+			fontBaseSizes[UiConfiguration::TitleFont] = 14;
+			fontBaseSizes[UiConfiguration::HeadlineFont] = 16;
 			break;
 		}
 	}

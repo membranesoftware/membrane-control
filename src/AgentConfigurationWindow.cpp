@@ -77,10 +77,10 @@ AgentConfigurationWindow::AgentConfigurationWindow (const StdString &agentId)
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::CONFIGURATION_ICON)));
-	titleLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::configuration).capitalized (), UiConfiguration::HEADLINE, uiconfig->primaryTextColor));
+	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::ConfigurationIconSprite)));
+	titleLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::configuration).capitalized (), UiConfiguration::HeadlineFont, uiconfig->primaryTextColor));
 
-	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::EXPAND_MORE_BUTTON), uiconfig->coreSprites.getSprite (UiConfiguration::EXPAND_LESS_BUTTON)));
+	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
 	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
 	expandToggle->setStateChangeCallback (AgentConfigurationWindow::expandToggleStateChanged, this);
 	expandToggle->setMouseHoverTooltip (uitext->getText (UiTextString::expandToggleTooltip));
@@ -205,7 +205,7 @@ void AgentConfigurationWindow::loadConfiguration () {
 
 	retain ();
 	result = App::instance->agentControl.invokeCommand (agentId, App::instance->createCommand (SystemInterface::Command_GetAgentConfiguration, SystemInterface::Constant_DefaultCommandType), AgentConfigurationWindow::invokeGetAgentConfigurationComplete, this);
-	if (result != Result::SUCCESS) {
+	if (result != Result::Success) {
 		release ();
 		Log::debug ("Failed to invoke GetAgentConfiguration command; err=%i agentId=\"%s\"", result, agentId.c_str ());
 		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
@@ -224,13 +224,13 @@ void AgentConfigurationWindow::invokeGetAgentConfigurationComplete (void *window
 		return;
 	}
 
-	if (invokeResult != Result::SUCCESS) {
+	if (invokeResult != Result::Success) {
 		Log::debug ("Failed to invoke GetAgentConfiguration command; err=%i agentId=\"%s\"", invokeResult, agentId.c_str ());
 		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::getAgentConfigurationServerContactError));
 	}
 	else {
 		result = window->populateConfiguration (responseCommand);
-		if (result != Result::SUCCESS) {
+		if (result != Result::Success) {
 			Log::debug ("Failed to invoke GetAgentConfiguration command; err=%i agentId=\"%s\"", result, agentId.c_str ());
 			App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
 		}
@@ -257,10 +257,10 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 	uitext = &(App::instance->uiText);
 
 	if ((! command) || (interface->getCommandId (command) != SystemInterface::CommandId_AgentConfiguration)) {
-		return (Result::ERROR_INVALID_PARAM);
+		return (Result::InvalidParamError);
 	}
 
-	agentConfiguration.copy (command);
+	agentConfiguration.copyValue (command);
 	if (actionWindow) {
 		actionWindow->isDestroyed = true;
 	}
@@ -274,7 +274,7 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 	toggle->setChecked (interface->getCommandBooleanParam (&agentConfiguration, "isEnabled", false));
 	actionWindow->addOption (uitext->getText (UiTextString::enabled).capitalized (), toggle, uitext->getText (UiTextString::agentEnabledDescription));
 
-	textfield = new TextField (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CAPTION]->maxGlyphWidth, uitext->getText (UiTextString::agentDisplayNamePrompt));
+	textfield = new TextField (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, uitext->getText (UiTextString::agentDisplayNamePrompt));
 	textfield->setPromptErrorColor (true);
 	textfield->setValue (interface->getCommandStringParam (&agentConfiguration, "displayName", ""));
 	actionWindow->addOption (uitext->getText (UiTextString::displayName).capitalized (), textfield, uitext->getText (UiTextString::agentDisplayNameDescription));
@@ -287,7 +287,7 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 		else {
 			prompt = uitext->getText (UiTextString::sourceMediaPathPrompt);
 		}
-		textfield = new TextField (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CAPTION]->maxGlyphWidth, prompt);
+		textfield = new TextField (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, prompt);
 		textfield->setPromptErrorColor (true);
 		textfield->setValue (cfg.getString ("mediaPath", ""));
 		actionWindow->addOption (uitext->getText (UiTextString::sourceMediaPath).capitalized (), textfield, uitext->getText (UiTextString::sourceMediaPathDescription));
@@ -299,7 +299,7 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 		else {
 			prompt = uitext->getText (UiTextString::mediaDataPathPrompt);
 		}
-		textfield = new TextField (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CAPTION]->maxGlyphWidth, prompt);
+		textfield = new TextField (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, prompt);
 		textfield->setPromptErrorColor (true);
 		textfield->setValue (cfg.getString ("dataPath", ""));
 		actionWindow->addOption (uitext->getText (UiTextString::mediaDataPath).capitalized (), textfield, uitext->getText (UiTextString::mediaDataPathDescription));
@@ -329,7 +329,7 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 		else {
 			prompt = uitext->getText (UiTextString::streamDataPathPrompt);
 		}
-		textfield = new TextField (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CAPTION]->maxGlyphWidth, prompt);
+		textfield = new TextField (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, prompt);
 		textfield->setPromptErrorColor (true);
 		textfield->setValue (cfg.getString ("dataPath", ""));
 		actionWindow->addOption (uitext->getText (UiTextString::streamDataPath).capitalized (), textfield, uitext->getText (UiTextString::streamDataPathDescription));
@@ -342,14 +342,14 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 
 	expandToggle->isVisible = true;
 	if ((! interface->getCommandBooleanParam (&agentConfiguration, "isEnabled", false)) || (! actionWindow->isOptionDataValid)) {
-		setExpanded (true);
+		setExpanded (true, true);
 	}
 	else {
-		setExpanded (false);
+		setExpanded (false, true);
 	}
 
 	refreshLayout ();
-	return (Result::SUCCESS);
+	return (Result::Success);
 }
 
 StdString AgentConfigurationWindow::mediaScanPeriodSliderValueName (float sliderValue) {
@@ -449,7 +449,7 @@ void AgentConfigurationWindow::applyButtonClicked (void *windowPtr, Widget *widg
 
 	window->retain ();
 	result = App::instance->agentControl.invokeCommand (window->agentId, App::instance->createCommand (SystemInterface::Command_UpdateAgentConfiguration, SystemInterface::Constant_DefaultCommandType, params), AgentConfigurationWindow::invokeUpdateAgentConfigurationComplete, window);
-	if (result != Result::SUCCESS) {
+	if (result != Result::Success) {
 		window->release ();
 		Log::debug ("Failed to invoke UpdateAgentConfiguration command; err=%i agentId=\"%s\"", result, window->agentId.c_str ());
 		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
@@ -469,7 +469,7 @@ void AgentConfigurationWindow::invokeUpdateAgentConfigurationComplete (void *win
 	}
 
 	interface = &(App::instance->systemInterface);
-	if (invokeResult != Result::SUCCESS) {
+	if (invokeResult != Result::Success) {
 		Log::debug ("Failed to invoke UpdateAgentConfiguration command; err=%i agentId=\"%s\"", invokeResult, agentId.c_str ());
 		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::serverContactError));
 	}

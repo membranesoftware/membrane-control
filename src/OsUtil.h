@@ -44,13 +44,13 @@ public:
 
 	// Return a string containing a formatted value representing the specified millisecond duration
 	enum {
-		MILLISECONDS = 0,
-		SECONDS = 1,
-		MINUTES = 2,
-		HOURS = 3,
-		DAYS = 4
+		MillisecondsUnit = 0,
+		SecondsUnit = 1,
+		MinutesUnit = 2,
+		HoursUnit = 3,
+		DaysUnit = 4
 	};
-	static StdString getDurationString (int64_t duration, int minUnitType = OsUtil::MILLISECONDS);
+	static StdString getDurationString (int64_t duration, int minUnitType = OsUtil::MillisecondsUnit);
 
 	// Return a string containing a value representing the specified millisecond duration in readable format
 	static StdString getDurationDisplayString (int64_t duration);

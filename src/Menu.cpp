@@ -60,6 +60,7 @@ Menu::Menu ()
 
 	uiconfig = &(App::instance->uiConfig);
 	setFillBg (true, uiconfig->lightBackgroundColor);
+	setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
 
 	focusBackgroundPanel = (Panel *) addWidget (new Panel ());
 	focusBackgroundPanel->zLevel = Widget::minZLevel;
@@ -100,9 +101,9 @@ void Menu::addItem (const StdString &name, Sprite *sprite, Widget::EventCallback
 	addWidget (panel);
 	item.panel = panel;
 
-	item.label = (Label *) panel->addWidget (new Label (name, UiConfiguration::BODY, uiconfig->primaryTextColor));
+	item.label = (Label *) panel->addWidget (new Label (name, UiConfiguration::BodyFont, uiconfig->primaryTextColor));
 	if (sprite) {
-		item.image = (Image *) panel->addWidget (new Image (sprite, UiConfiguration::BLACK_BUTTON_FRAME));
+		item.image = (Image *) panel->addWidget (new Image (sprite, UiConfiguration::BlackButtonFrame));
 	}
 	item.callback = callback;
 	item.callbackData = callbackData;
@@ -111,7 +112,7 @@ void Menu::addItem (const StdString &name, Sprite *sprite, Widget::EventCallback
 	if (item.selectionGroup >= 0) {
 		item.isSelected = isSelected;
 		if (checkmarkImageMap.count (item.selectionGroup) <= 0) {
-			image = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::CHECKMARK)));
+			image = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::CheckmarkSprite)));
 			image->isVisible = false;
 			image->zLevel = panel->zLevel + 1;
 			w = image->width + (uiconfig->paddingSize / 2.0f);

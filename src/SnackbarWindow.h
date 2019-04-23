@@ -65,8 +65,8 @@ protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
 
-	// Execute operations to update object state as appropriate for an elapsed millisecond time period and origin position
-	void doUpdate (int msElapsed, float originX, float originY);
+	// Execute operations to update object state as appropriate for an elapsed millisecond time period
+	void doUpdate (int msElapsed);
 
 	// Execute operations appropriate when the widget receives new mouse state
 	void doProcessMouseState (const Widget::MouseState &mouseState);

@@ -52,13 +52,13 @@ LogoWindow::LogoWindow ()
 	UiConfiguration *uiconfig;
 
 	uiconfig = &(App::instance->uiConfig);
-	logoImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::APP_LOGO)));
+	logoImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::AppLogoSprite)));
 	logoImage->setDrawColor (true, uiconfig->mediumSecondaryColor);
 
-	dateLabel = (Label *) addWidget (new Label (OsUtil::getDateString (), UiConfiguration::CAPTION, uiconfig->inverseTextColor));
-	timeLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CAPTION, uiconfig->inverseTextColor));
+	dateLabel = (Label *) addWidget (new Label (OsUtil::getDateString (), UiConfiguration::CaptionFont, uiconfig->inverseTextColor));
+	timeLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->inverseTextColor));
 	timeLabel->setText (OsUtil::getTimeString ());
-	if (! App::instance->prefsMap.find (App::prefsShowClock, false)) {
+	if (! App::instance->prefsMap.find (App::ShowClockKey, false)) {
 		dateLabel->isVisible = false;
 		timeLabel->isVisible = false;
 	}
@@ -75,7 +75,7 @@ StdString LogoWindow::toStringDetail () {
 }
 
 void LogoWindow::doRefresh () {
-	if (App::instance->prefsMap.find (App::prefsShowClock, false)) {
+	if (App::instance->prefsMap.find (App::ShowClockKey, false)) {
 		dateLabel->setText (OsUtil::getDateString ());
 		timeLabel->setText (OsUtil::getTimeString ());
 		dateLabel->isVisible = true;
@@ -111,11 +111,10 @@ void LogoWindow::refreshLayout () {
 	resetSize ();
 }
 
-void LogoWindow::doUpdate (int msElapsed, float originX, float originY) {
+void LogoWindow::doUpdate (int msElapsed) {
 	int64_t t;
 
-	Panel::doUpdate (msElapsed, originX, originY);
-
+	Panel::doUpdate (msElapsed);
 	if (dateLabel->isVisible || timeLabel->isVisible) {
 		t = OsUtil::getTime ();
 		t /= 1000;

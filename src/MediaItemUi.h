@@ -41,30 +41,40 @@
 #include "HashMap.h"
 #include "HelpWindow.h"
 #include "TimelineWindow.h"
-#include "MediaWindow.h"
 #include "CardView.h"
 #include "Ui.h"
 
 class MediaItemUi : public Ui {
 public:
-	MediaItemUi (MediaWindow *mediaWindow);
+	MediaItemUi (const StdString &mediaId, const StdString &mediaName);
 	~MediaItemUi ();
 
 	// Constants to use for sprite indexes
 	enum {
-		CREATE_STREAM_BUTTON = 0,
-		LARGE_THUMBNAILS_ICON = 1,
-		MEDIUM_THUMBNAILS_ICON = 2,
-		SMALL_THUMBNAILS_ICON = 3,
-		THUMBNAIL_SIZE_BUTTON = 4,
-		TIME_ICON = 5
+		ConfigureStreamButtonSprite = 0,
+		LargeThumbnailsIconSprite = 1,
+		MediumThumbnailsIconSprite = 2,
+		SmallThumbnailsIconSprite = 3,
+		ThumbnailSizeButtonSprite = 4,
+		TimeIconSprite = 5,
+		AttributesIconSprite = 6,
+		DurationIconSprite = 7
 	};
+
+	// Read-only data members
+	StdString mediaId;
+	StdString mediaName;
+	StdString agentId;
+	int64_t duration;
+	int frameWidth;
+	int frameHeight;
+	StdString thumbnailPath;
+	int thumbnailCount;
 
 	// Set fields in the provided HelpWindow widget as appropriate for the UI's help content
 	void setHelpWindowContent (HelpWindow *helpWindow);
 
 	// Callback functions
-	static void processStreamItem (void *uiPtr, Json *record, const StdString &recordId);
 	static void thumbnailSizeButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void smallThumbnailActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void mediumThumbnailActionClicked (void *uiPtr, Widget *widgetPtr);
@@ -72,12 +82,9 @@ public:
 	static void thumbnailMouseEntered (void *uiPtr, Widget *widgetPtr);
 	static void thumbnailMouseExited (void *uiPtr, Widget *widgetPtr);
 	static void resetCardLayout (void *uiPtr, Widget *widgetPtr);
-	static void streamDetailMenuClicked (void *uiPtr, Widget *widgetPtr);
-	static void removeActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void createStreamButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void createStreamActionClosed (void *uiPtr, Widget *widgetPtr);
-	static void createMediaStreamComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
-	static void removeStreamComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
+	static void configureStreamButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void configureStreamActionClosed (void *uiPtr, Widget *widgetPtr);
+	static void configureMediaStreamComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
 
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
@@ -98,9 +105,6 @@ protected:
 	// Add subclass-specific items to the provided secondary toolbar object
 	void doAddSecondaryToolbarItems (Toolbar *toolbar);
 
-	// Remove and destroy any subclass-specific popup widgets that have been created by the UI
-	void doClearPopupWidgets ();
-
 	// Execute subclass-specific operations to refresh the interface's layout as appropriate for the current set of UiConfiguration values
 	void doRefresh ();
 
@@ -110,9 +114,6 @@ protected:
 	// Update subclass-specific interface state as appropriate when the Ui becomes inactive
 	void doPause ();
 
-	// Update subclass-specific interface state as appropriate for an elapsed millisecond time period
-	void doUpdate (int msElapsed);
-
 	// Reload subclass-specific interface resources as needed to account for a new application window size
 	void doResize ();
 
@@ -120,23 +121,15 @@ protected:
 	void doSyncRecordStore ();
 
 private:
-	// Execute actions appropriate when the thumbnail size button is clicked
-	void handleThumbnailSizeButtonClick (Widget *buttonWidget);
+	// Find the source MediaItem record and populate the interface based on its fields
+	void syncMediaItem ();
 
-	// Send a CreateMediaStream command to a remote agent, as specified by the currently held action widget
-	void invokeCreateMediaStream ();
-
-	// Send a RemoveMediaStream command to a remote agent, as specified by the currently held action widget
-	void invokeRemoveMediaStream ();
-
-	WidgetHandle sourceMediaWindow;
+	bool isRecordSynced;
 	CardView *cardView;
 	int cardLayout;
 	float cardMaxImageWidth;
 	TimelineWindow *timelineWindow;
-	WidgetHandle thumbnailSizeMenu;
 	HashMap streamServerAgentMap;
-	int streamCount;
 };
 
 #endif

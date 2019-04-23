@@ -90,13 +90,98 @@ StreamPlaylistWindow::StreamPlaylistWindow ()
 , listChangeCallbackData (NULL)
 {
 	UiConfiguration *uiconfig;
+	UiText *uitext;
 
 	uiconfig = &(App::instance->uiConfig);
-	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
+	uitext = &(App::instance->uiText);
+	setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 	windowWidth = App::instance->windowWidth * StreamPlaylistWindow::windowWidthMultiplier;
 
-	populate ();
+	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::ProgramIconSprite)));
+	nameLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::BodyFont, uiconfig->primaryTextColor)));
+	nameLabel->setMouseClickCallback (StreamPlaylistWindow::nameLabelClicked, this);
+	nameLabel->setMouseHoverTooltip (uitext->getText (UiTextString::clickRenameTooltip));
+
+	itemCountLabel = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite), StdString ("0"), UiConfiguration::TitleFont));
+	itemCountLabel->setPadding (0.0f, 0.0f);
+	itemCountLabel->setMouseHoverTooltip (uitext->getCountText (0, UiTextString::streamPlaylistItem, UiTextString::streamPlaylistItems));
+
+	selectToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::StarOutlineButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::StarButtonSprite)));
+	selectToggle->setImageColor (uiconfig->flatButtonTextColor);
+	selectToggle->setStateChangeCallback (StreamPlaylistWindow::selectToggleStateChanged, this);
+	selectToggle->setMouseHoverTooltip (uitext->getText (UiTextString::selectToggleTooltip));
+
+	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
+	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
+	expandToggle->setStateChangeCallback (StreamPlaylistWindow::expandToggleStateChanged, this);
+	expandToggle->setMouseHoverTooltip (uitext->getText (UiTextString::expandToggleTooltip));
+
+	itemListView = (ListView *) addWidget (new ListView ((windowWidth - (widthPadding * 2.0f)), 6, UiConfiguration::CaptionFont, StdString (""), uitext->getText (UiTextString::emptyStreamPlaylistText)));
+	itemListView->setListChangeCallback (StreamPlaylistWindow::itemListChanged, this);
+	itemListView->isVisible = false;
+
+	menuButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::MainMenuButtonSprite)));
+	menuButton->setMouseClickCallback (StreamPlaylistWindow::menuButtonClicked, this);
+	menuButton->setImageColor (uiconfig->flatButtonTextColor);
+	menuButton->setMouseHoverTooltip (uitext->getText (UiTextString::moreActionsTooltip));
+	menuButton->isVisible = false;
+
+	shuffleToggle = (ToggleWindow *) addWidget (new ToggleWindow (new Toggle (), uitext->getText (UiTextString::shuffle).capitalized ()));
+	shuffleToggle->setPadding (0.0f, 0.0f);
+	shuffleToggle->setImageColor (uiconfig->flatButtonTextColor);
+	shuffleToggle->setMouseHoverTooltip (uitext->getText (UiTextString::shuffleTooltip));
+	shuffleToggle->isVisible = false;
+
+	startPositionValueLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString ("WWWW - WWWW"), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor)));
+	startPositionValueLabel->setWindowWidth (startPositionValueLabel->width);
+	startPositionValueLabel->zLevel = 1;
+	startPositionValueLabel->isVisible = false;
+
+	startPositionLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::startPosition).capitalized (), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
+	startPositionLabel->zLevel = 1;
+	startPositionLabel->isVisible = false;
+
+	startPositionMinSlider = (Slider *) addWidget (new Slider ());
+	startPositionMinSlider->setValueHoverCallback (StreamPlaylistWindow::startPositionSliderValueHovered, this);
+	startPositionMinSlider->setValueChangeCallback (StreamPlaylistWindow::startPositionSliderValueChanged, this);
+	startPositionMinSlider->setTrackWidthScale (0.6f);
+	startPositionMinSlider->isVisible = false;
+
+	startPositionMaxSlider = (Slider *) addWidget (new Slider ());
+	startPositionMaxSlider->setValueHoverCallback (StreamPlaylistWindow::startPositionSliderValueHovered, this);
+	startPositionMaxSlider->setValueChangeCallback (StreamPlaylistWindow::startPositionSliderValueChanged, this);
+	startPositionMaxSlider->setTrackWidthScale (0.6f);
+	startPositionMaxSlider->isVisible = false;
+
+	playDurationValueLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString ("WWWW - WWWW"), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor)));
+	playDurationValueLabel->setWindowWidth (playDurationValueLabel->width);
+	playDurationValueLabel->zLevel = 1;
+	playDurationValueLabel->isVisible = false;
+
+	playDurationLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::playDuration).capitalized (), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
+	playDurationLabel->zLevel = 1;
+	playDurationLabel->isVisible = false;
+
+	playDurationMinSlider = (Slider *) addWidget (new Slider (15.0f, 10800.0f));
+	playDurationMinSlider->setValueHoverCallback (StreamPlaylistWindow::playDurationSliderValueHovered, this);
+	playDurationMinSlider->setValueChangeCallback (StreamPlaylistWindow::playDurationSliderValueChanged, this);
+	playDurationMinSlider->setTrackWidthScale (0.6f);
+	playDurationMinSlider->isVisible = false;
+
+	playDurationMaxSlider = (Slider *) addWidget (new Slider (15.0f, 10800.0f));
+	playDurationMaxSlider->setValueHoverCallback (StreamPlaylistWindow::playDurationSliderValueHovered, this);
+	playDurationMaxSlider->setValueChangeCallback (StreamPlaylistWindow::playDurationSliderValueChanged, this);
+	playDurationMaxSlider->setTrackWidthScale (0.6f);
+	playDurationMaxSlider->isVisible = false;
+
+	startPositionMinSlider->setValue (0.0f, true);
+	startPositionMaxSlider->setValue (0.0f, true);
+	playDurationMinSlider->setValue (60.0f, true);
+	playDurationMaxSlider->setValue (300.0f, true);
+	startPositionValueLabel->setText (StdString::createSprintf ("%i%%", (int) startPositionMinSlider->value));
+	playDurationValueLabel->setText (StdString::createSprintf ("%s - %s", OsUtil::getDurationDisplayString ((int64_t) playDurationMinSlider->value * 1000).c_str (), OsUtil::getDurationDisplayString ((int64_t) playDurationMaxSlider->value * 1000).c_str ()));
+
 	refreshLayout ();
 }
 
@@ -121,97 +206,6 @@ StreamPlaylistWindow *StreamPlaylistWindow::castWidget (Widget *widget) {
 	return (StreamPlaylistWindow::isWidgetType (widget) ? (StreamPlaylistWindow *) widget : NULL);
 }
 
-void StreamPlaylistWindow::populate () {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
-
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::PROGRAM_ICON)));
-	nameLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::HEADLINE, uiconfig->primaryTextColor)));
-	nameLabel->setMouseClickCallback (StreamPlaylistWindow::nameLabelClicked, this);
-	nameLabel->setMouseHoverTooltip (uitext->getText (UiTextString::clickRenameTooltip));
-
-	itemCountLabel = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SMALL_STREAM_ICON), StdString ("0"), UiConfiguration::TITLE));
-	itemCountLabel->setPadding (0.0f, 0.0f);
-	itemCountLabel->setMouseHoverTooltip (uitext->getCountText (0, UiTextString::streamPlaylistItem, UiTextString::streamPlaylistItems));
-
-	selectToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::STAR_OUTLINE_BUTTON), uiconfig->coreSprites.getSprite (UiConfiguration::STAR_BUTTON)));
-	selectToggle->setImageColor (uiconfig->flatButtonTextColor);
-	selectToggle->setStateChangeCallback (StreamPlaylistWindow::selectToggleStateChanged, this);
-	selectToggle->setMouseHoverTooltip (uitext->getText (UiTextString::selectToggleTooltip));
-
-	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::EXPAND_MORE_BUTTON), uiconfig->coreSprites.getSprite (UiConfiguration::EXPAND_LESS_BUTTON)));
-	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
-	expandToggle->setStateChangeCallback (StreamPlaylistWindow::expandToggleStateChanged, this);
-	expandToggle->setMouseHoverTooltip (uitext->getText (UiTextString::expandToggleTooltip));
-
-	itemListView = (ListView *) addWidget (new ListView ((windowWidth - (widthPadding * 2.0f)), 6, UiConfiguration::CAPTION, StdString (""), uitext->getText (UiTextString::emptyStreamPlaylistText)));
-	itemListView->setListChangeCallback (StreamPlaylistWindow::itemListChanged, this);
-	itemListView->isVisible = false;
-
-	menuButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::MAIN_MENU_BUTTON)));
-	menuButton->setMouseClickCallback (StreamPlaylistWindow::menuButtonClicked, this);
-	menuButton->setImageColor (uiconfig->flatButtonTextColor);
-	menuButton->setMouseHoverTooltip (uitext->getText (UiTextString::moreActionsTooltip));
-
-	shuffleToggle = (ToggleWindow *) addWidget (new ToggleWindow (new Toggle (), uitext->getText (UiTextString::shuffle).capitalized ()));
-	shuffleToggle->setPadding (0.0f, 0.0f);
-	shuffleToggle->setImageColor (uiconfig->flatButtonTextColor);
-	shuffleToggle->setMouseHoverTooltip (uitext->getText (UiTextString::shuffleTooltip));
-	shuffleToggle->isVisible = false;
-
-	startPositionValueLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString ("WWWW - WWWW"), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor)));
-	startPositionValueLabel->setWindowWidth (startPositionValueLabel->width);
-	startPositionValueLabel->zLevel = 1;
-	startPositionValueLabel->isVisible = false;
-
-	startPositionLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::startPosition).capitalized (), UiConfiguration::CAPTION, uiconfig->primaryTextColor));
-	startPositionLabel->zLevel = 1;
-	startPositionLabel->isVisible = false;
-
-	startPositionMinSlider = (Slider *) addWidget (new Slider ());
-	startPositionMinSlider->setValueHoverCallback (StreamPlaylistWindow::startPositionSliderValueHovered, this);
-	startPositionMinSlider->setValueChangeCallback (StreamPlaylistWindow::startPositionSliderValueChanged, this);
-	startPositionMinSlider->setTrackWidthScale (0.6f);
-	startPositionMinSlider->isVisible = false;
-
-	startPositionMaxSlider = (Slider *) addWidget (new Slider ());
-	startPositionMaxSlider->setValueHoverCallback (StreamPlaylistWindow::startPositionSliderValueHovered, this);
-	startPositionMaxSlider->setValueChangeCallback (StreamPlaylistWindow::startPositionSliderValueChanged, this);
-	startPositionMaxSlider->setTrackWidthScale (0.6f);
-	startPositionMaxSlider->isVisible = false;
-
-	playDurationValueLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString ("WWWW - WWWW"), UiConfiguration::CAPTION, uiconfig->lightPrimaryTextColor)));
-	playDurationValueLabel->setWindowWidth (playDurationValueLabel->width);
-	playDurationValueLabel->zLevel = 1;
-	playDurationValueLabel->isVisible = false;
-
-	playDurationLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::playDuration).capitalized (), UiConfiguration::CAPTION, uiconfig->primaryTextColor));
-	playDurationLabel->zLevel = 1;
-	playDurationLabel->isVisible = false;
-
-	playDurationMinSlider = (Slider *) addWidget (new Slider (15.0f, 10800.0f));
-	playDurationMinSlider->setValueHoverCallback (StreamPlaylistWindow::playDurationSliderValueHovered, this);
-	playDurationMinSlider->setValueChangeCallback (StreamPlaylistWindow::playDurationSliderValueChanged, this);
-	playDurationMinSlider->setTrackWidthScale (0.6f);
-	playDurationMinSlider->isVisible = false;
-
-	playDurationMaxSlider = (Slider *) addWidget (new Slider (15.0f, 10800.0f));
-	playDurationMaxSlider->setValueHoverCallback (StreamPlaylistWindow::playDurationSliderValueHovered, this);
-	playDurationMaxSlider->setValueChangeCallback (StreamPlaylistWindow::playDurationSliderValueChanged, this);
-	playDurationMaxSlider->setTrackWidthScale (0.6f);
-	playDurationMaxSlider->isVisible = false;
-
-	startPositionMinSlider->setValue (0.0f, true);
-	startPositionMaxSlider->setValue (0.0f, true);
-	playDurationMinSlider->setValue (60.0f, true);
-	playDurationMaxSlider->setValue (300.0f, true);
-	startPositionValueLabel->setText (StdString::createSprintf ("%i%%", (int) startPositionMinSlider->value));
-	playDurationValueLabel->setText (StdString::createSprintf ("%s - %s", OsUtil::getDurationDisplayString ((int64_t) playDurationMinSlider->value * 1000).c_str (), OsUtil::getDurationDisplayString ((int64_t) playDurationMaxSlider->value * 1000).c_str ()));
-}
-
 void StreamPlaylistWindow::setSelectStateChangeCallback (Widget::EventCallback callback, void *callbackData) {
 	selectStateChangeCallback = callback;
 	selectStateChangeCallbackData = callbackData;
@@ -230,6 +224,13 @@ void StreamPlaylistWindow::setRenameClickCallback (Widget::EventCallback callbac
 void StreamPlaylistWindow::setMenuClickCallback (Widget::EventCallback callback, void *callbackData) {
 	menuClickCallback = callback;
 	menuClickCallbackData = callbackData;
+	if (menuClickCallback) {
+		menuButton->isVisible = true;
+	}
+	else {
+		menuButton->isVisible = false;
+	}
+	refreshLayout ();
 }
 
 void StreamPlaylistWindow::setListChangeCallback (Widget::EventCallback callback, void *callbackData) {
@@ -272,23 +273,18 @@ void StreamPlaylistWindow::setSelected (bool selected, bool shouldSkipStateChang
 }
 
 void StreamPlaylistWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallback) {
-	Widget::EventCallback callback;
-	void *callbackdata;
+	UiConfiguration *uiconfig;
 
 	if (expanded == isExpanded) {
 		return;
 	}
-	callback = NULL;
-	callbackdata = NULL;
-	if (shouldSkipStateChangeCallback) {
-		callback = expandStateChangeCallback;
-		callbackdata = expandStateChangeCallbackData;
-		expandStateChangeCallback = NULL;
-		expandStateChangeCallbackData = NULL;
-	}
+
+	uiconfig = &(App::instance->uiConfig);
 	isExpanded = expanded;
 	if (isExpanded) {
-		expandToggle->setChecked (true);
+		setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
+		expandToggle->setChecked (true, shouldSkipStateChangeCallback);
+		nameLabel->setFont (UiConfiguration::HeadlineFont);
 		itemListView->isVisible = true;
 		shuffleToggle->isVisible = true;
 		startPositionMinSlider->isVisible = true;
@@ -301,7 +297,9 @@ void StreamPlaylistWindow::setExpanded (bool expanded, bool shouldSkipStateChang
 		playDurationLabel->isVisible = true;
 	}
 	else {
-		expandToggle->setChecked (false);
+		setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
+		expandToggle->setChecked (false, shouldSkipStateChangeCallback);
+		nameLabel->setFont (UiConfiguration::BodyFont);
 		itemListView->isVisible = false;
 		shuffleToggle->isVisible = false;
 		startPositionMinSlider->isVisible = false;
@@ -315,11 +313,6 @@ void StreamPlaylistWindow::setExpanded (bool expanded, bool shouldSkipStateChang
 	}
 	refreshLayout ();
 	resetNameLabel ();
-
-	if (shouldSkipStateChangeCallback) {
-		expandStateChangeCallback = callback;
-		expandStateChangeCallbackData = callbackdata;
-	}
 }
 
 void StreamPlaylistWindow::doRefresh () {
@@ -343,7 +336,9 @@ void StreamPlaylistWindow::refreshLayout () {
 	iconImage->flowRight (&x, y, &x2, &y2);
 	nameLabel->flowRight (&x, y, &x2, &y2);
 	if (! isExpanded) {
-		menuButton->flowRight (&x, y, &x2, &y2);
+		if (menuButton->isVisible) {
+			menuButton->flowRight (&x, y, &x2, &y2);
+		}
 		itemCountLabel->flowRight (&x, y, &x2, &y2);
 	}
 	expandToggle->flowRight (&x, y, &x2, &y2);
@@ -361,7 +356,9 @@ void StreamPlaylistWindow::refreshLayout () {
 		x2 = 0.0f;
 		itemCountLabel->flowRight (&x, y, &x2, &y2);
 		shuffleToggle->flowRight (&x, y, &x2, &y2);
-		menuButton->flowRight (&x, y, &x2, &y2);
+		if (menuButton->isVisible) {
+			menuButton->flowRight (&x, y, &x2, &y2);
+		}
 
 		itemCountLabel->centerVertical (y0, y2);
 		shuffleToggle->centerVertical (y0, y2);
@@ -406,13 +403,17 @@ void StreamPlaylistWindow::refreshLayout () {
 	selectToggle->flowLeft (&x);
 	expandToggle->flowLeft (&x);
 	if (! isExpanded) {
-		menuButton->flowLeft (&x);
+		if (menuButton->isVisible) {
+			menuButton->flowLeft (&x);
+		}
 		itemCountLabel->flowLeft (&x);
 	}
 
 	if (isExpanded) {
 		x = width - widthPadding;
-		menuButton->flowLeft (&x);
+		if (menuButton->isVisible) {
+			menuButton->flowLeft (&x);
+		}
 	}
 
 	menuPositionX = menuButton->position.x;
@@ -432,7 +433,7 @@ void StreamPlaylistWindow::resetNameLabel () {
 	}
 	w -= nameLabel->position.x;
 	w -= uiconfig->marginSize;
-	nameLabel->setText (Label::getTruncatedText (playlistName, UiConfiguration::HEADLINE, w, StdString ("...")));
+	nameLabel->setText (Label::getTruncatedText (playlistName, UiConfiguration::HeadlineFont, w, StdString ("...")));
 	refreshLayout ();
 }
 
@@ -502,7 +503,7 @@ void StreamPlaylistWindow::addItem (const StdString &streamUrl, const StdString 
 	item->streamId.assign (streamId);
 	item->mediaName.assign (mediaName);
 	item->startPosition = startPosition;
-	itemListView->addItem (StdString::createSprintf ("%s %s", OsUtil::getDurationString (startPosition * 1000.0f, OsUtil::HOURS).c_str (), mediaName.c_str ()), item, StreamPlaylistWindow::freeItem);
+	itemListView->addItem (StdString::createSprintf ("%s %s", OsUtil::getDurationString (startPosition * 1000.0f, OsUtil::HoursUnit).c_str (), mediaName.c_str ()), item, StreamPlaylistWindow::freeItem);
 }
 
 void StreamPlaylistWindow::freeItem (void *itemPtr) {

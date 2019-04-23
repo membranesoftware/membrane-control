@@ -43,7 +43,7 @@
 
 class Label : public Widget {
 public:
-	Label (const StdString &text, int fontType = UiConfiguration::BODY, const Color &color = Color (0.0f, 0.0f, 0.0f));
+	Label (const StdString &text, int fontType = UiConfiguration::BodyFont, const Color &color = Color (0.0f, 0.0f, 0.0f));
 	~Label ();
 
 	// Read-write data members
@@ -94,14 +94,14 @@ public:
 	virtual void centerVertical (float topExtent, float bottomExtent);
 
 protected:
-	// Execute operations to update object state as appropriate for an elapsed millisecond time period and origin position
-	virtual void doUpdate (int msElapsed, float originX, float originY);
+	// Execute operations to update object state as appropriate for an elapsed millisecond time period
+	virtual void doUpdate (int msElapsed);
 
 	// Execute subclass-specific operations to refresh the widget's layout as appropriate for the current set of UiConfiguration values
 	virtual void doRefresh ();
 
-	// Add subclass-specific draw commands for execution by the App
-	virtual void doDraw ();
+	// Add subclass-specific draw commands for execution by the App. If targetTexture is non-NULL, it has been set as the render target and draw commands should adjust coordinates as appropriate.
+	virtual void doDraw (SDL_Texture *targetTexture, float originX, float originY);
 
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();

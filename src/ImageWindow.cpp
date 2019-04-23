@@ -58,6 +58,9 @@ ImageWindow::ImageWindow (Image *image)
 , isImageUrlLoaded (false)
 , isLoadingImageUrl (false)
 , isImageUrlLoadDisabled (false)
+, shouldInvokeLoadCallback (false)
+, loadCallback (NULL)
+, loadCallbackData (NULL)
 {
 	if (image) {
 		addWidget (image);
@@ -85,6 +88,11 @@ StdString ImageWindow::toStringDetail () {
 	return (s);
 }
 
+void ImageWindow::setLoadCallback (Widget::EventCallback callback, void *callbackData) {
+	loadCallback = callback;
+	loadCallbackData = callbackData;
+}
+
 void ImageWindow::setPadding (float widthPadding, float heightPadding) {
 	Panel::setPadding (widthPadding, heightPadding);
 	refreshLayout ();
@@ -108,8 +116,8 @@ bool ImageWindow::shouldShowUrlImage () {
 	// TODO: Possibly use a different draw boundary here (currently using 2x the app window dimensions)
 	w = ((float) App::instance->windowWidth) * 2.0f;
 	h = ((float) App::instance->windowHeight) * 2.0f;
-	if ((drawX >= -w) && (drawX <= w)) {
-		if ((drawY >= -h) && (drawY <= h)) {
+	if ((screenX >= -w) && (screenX <= w)) {
+		if ((screenY >= -h) && (screenY <= h)) {
 			return (true);
 		}
 	}
@@ -204,6 +212,10 @@ void ImageWindow::setLoadResourcePath (const StdString &loadPath, bool shouldLoa
 	isImageResourceLoaded = true;
 	isLoadingImageResource = false;
 	refreshLayout ();
+
+	if (loadCallback) {
+		shouldInvokeLoadCallback = true;
+	}
 }
 
 bool ImageWindow::isLoadUrlEmpty () {
@@ -233,11 +245,10 @@ void ImageWindow::refreshLayout () {
 	}
 }
 
-void ImageWindow::doUpdate (int msElapsed, float originX, float originY) {
+void ImageWindow::doUpdate (int msElapsed) {
 	bool shouldload;
 
-	Panel::doUpdate (msElapsed, originX, originY);
-
+	Panel::doUpdate (msElapsed);
 	if (! imageResourcePath.empty ()) {
 		shouldload = false;
 		if ((! isImageResourceLoaded) && (! isLoadingImageResource)) {
@@ -264,6 +275,13 @@ void ImageWindow::doUpdate (int msElapsed, float originX, float originY) {
 			}
 		}
 	}
+
+	if (shouldInvokeLoadCallback) {
+		shouldInvokeLoadCallback = false;
+		if (loadCallback) {
+			loadCallback (loadCallbackData, this);
+		}
+	}
 }
 
 void ImageWindow::loadImageResource () {
@@ -281,6 +299,9 @@ void ImageWindow::endLoadImageResource (bool clearResourcePath) {
 		imageResourcePath.assign ("");
 	}
 	isLoadingImageResource = false;
+	if (loadCallback && isLoaded ()) {
+		shouldInvokeLoadCallback = true;
+	}
 	release ();
 }
 
@@ -335,6 +356,9 @@ void ImageWindow::endRequestImage (bool disableLoad) {
 		imageResourceData = NULL;
 	}
 	isLoadingImageUrl = false;
+	if (loadCallback && isLoaded ()) {
+		shouldInvokeLoadCallback = true;
+	}
 	release ();
 }
 

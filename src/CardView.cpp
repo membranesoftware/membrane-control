@@ -33,6 +33,7 @@
 #include <math.h>
 #include <list>
 #include <map>
+#include "SDL2/SDL.h"
 #include "App.h"
 #include "Result.h"
 #include "Log.h"
@@ -47,10 +48,14 @@
 #include "ScrollView.h"
 #include "CardView.h"
 
+const float CardView::smallItemScale = 0.83f;
+const int CardView::animateScaleDuration = 80; // ms
+
 CardView::CardView (float viewWidth, float viewHeight)
 : ScrollView (viewWidth, viewHeight)
 , cardAreaWidth (viewWidth)
 , itemMarginSize (0.0f)
+, itemMutex (NULL)
 , isSorted (false)
 , scrollBar (NULL)
 {
@@ -60,27 +65,39 @@ CardView::CardView (float viewWidth, float viewHeight)
 
 	uiconfig = &(App::instance->uiConfig);
 	itemMarginSize = uiconfig->marginSize;
+	itemMutex = SDL_CreateMutex ();
 	scrollBar = (ScrollBar *) addWidget (new ScrollBar (viewHeight - (uiconfig->paddingSize * 2.0f)));
 	scrollBar->setPositionChangeCallback (CardView::scrollBarPositionChanged, this);
 	scrollBar->zLevel = 2;
 	scrollBar->isVisible = false;
 
-	cardAreaWidth = width - scrollBar->width - uiconfig->paddingSize - (uiconfig->marginSize * 0.25f);
+	cardAreaWidth = width - scrollBar->width - (uiconfig->paddingSize * 2.0f) - (uiconfig->marginSize * 0.25f);
 }
 
 CardView::~CardView () {
 	std::list<CardView::Item>::iterator i, end;
 
+	if (itemMutex) {
+		SDL_LockMutex (itemMutex);
+	}
 	i = itemList.begin ();
 	end = itemList.end ();
 	while (i != end) {
-		if (i->widget) {
-			i->widget->isDestroyed = true;
-			i->widget->release ();
+		if (i->panel) {
+			i->panel->isDestroyed = true;
+			i->panel->release ();
 		}
 		++i;
 	}
 	itemList.clear ();
+	if (itemMutex) {
+		SDL_UnlockMutex (itemMutex);
+	}
+
+	if (itemMutex) {
+		SDL_DestroyMutex (itemMutex);
+		itemMutex = NULL;
+	}
 }
 
 void CardView::setViewSize (float viewWidth, float viewHeight) {
@@ -89,7 +106,7 @@ void CardView::setViewSize (float viewWidth, float viewHeight) {
 	uiconfig = &(App::instance->uiConfig);
 	setFixedSize (true, viewWidth, viewHeight);
 	scrollBar->setMaxTrackLength (viewHeight - (uiconfig->paddingSize * 2.0f));
-	cardAreaWidth = width - scrollBar->width - uiconfig->paddingSize - (uiconfig->marginSize * 0.25f);
+	cardAreaWidth = width - scrollBar->width - (uiconfig->paddingSize * 2.0f) - (uiconfig->marginSize * 0.25f);
 	refreshLayout ();
 }
 
@@ -110,8 +127,7 @@ void CardView::setRowHeader (int row, const StdString &headerText, int headerFon
 	label = (LabelWindow *) addWidget (new LabelWindow (new Label (headerText, headerFontType, color)));
 	label->isVisible = false;
 	label->zLevel = 1;
-	label->setFillBg (true, 0.0f, 0.0f, 0.0f);
-	label->setAlphaBlend (true, uiconfig->scrimBackgroundAlpha);
+	label->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
 
 	pos = getRow (row);
 	if (pos->second.headerLabel) {
@@ -133,14 +149,160 @@ void CardView::setRowItemMarginSize (int row, float marginSize) {
 	refreshLayout ();
 }
 
-void CardView::doProcessMouseState (const Widget::MouseState &mouseState) {
-	float y;
+void CardView::setRowSelectionAnimated (int row, bool enable) {
+	std::map<int, CardView::Row>::iterator pos;
 
-	y = viewOriginY;
+	if (! App::instance->isInterfaceAnimationEnabled) {
+		return;
+	}
+
+	pos = getRow (row);
+	if (enable == pos->second.isSelectionAnimated) {
+		return;
+	}
+	pos->second.isSelectionAnimated = enable;
+	refreshLayout ();
+}
+
+bool CardView::isRowSelectionAnimated (int row) {
+	std::map<int, CardView::Row>::iterator rowpos;
+
+	if (rowMap.count (row) <= 0) {
+		return (false);
+	}
+	rowpos = getRow (row);
+	return (rowpos->second.isSelectionAnimated);
+}
+
+void CardView::doUpdate (int msElapsed) {
+	std::map<int, CardView::Row>::iterator i, iend;
+	std::list<CardView::Item>::iterator j, jend;
+	bool refresh;
+
+	ScrollView::doUpdate (msElapsed);
+
+	refresh = false;
+	i = rowMap.begin ();
+	iend = rowMap.end ();
+	while (i != iend) {
+		if (i->second.isSelectionAnimated) {
+			SDL_LockMutex (itemMutex);
+			j = itemList.begin ();
+			jend = itemList.end ();
+			while (j != jend) {
+				if (j->row == i->first) {
+					if (! j->panel->isVisible) {
+						j->panel->animateScale (0.99f, CardView::smallItemScale, CardView::animateScaleDuration);
+						j->panel->isVisible = true;
+						refresh = true;
+					}
+				}
+				++j;
+			}
+			SDL_UnlockMutex (itemMutex);
+		}
+		++i;
+	}
+
+	if (refresh) {
+		refreshLayout ();
+	}
+}
+
+void CardView::doProcessMouseState (const Widget::MouseState &mouseState) {
+	std::map<int, CardView::Row>::iterator i, iend;
+	std::list<CardView::Item>::iterator j, jend, item;
+	int mousex, mousey;
+	float x1, y1, x2, y2, dx, dy;
+	bool highlight;
+
+	y1 = viewOriginY;
 	ScrollView::doProcessMouseState (mouseState);
-	if (! FLOAT_EQUALS (y, viewOriginY)) {
+	if (! FLOAT_EQUALS (y1, viewOriginY)) {
 		scrollBar->setPosition (viewOriginY, true);
 		scrollBar->position.assignY (viewOriginY + App::instance->uiConfig.paddingSize);
+	}
+
+	mousex = App::instance->input.mouseX;
+	mousey = App::instance->input.mouseY;
+	if (! highlightedItemId.empty ()) {
+		SDL_LockMutex (itemMutex);
+		item = findItemPosition (highlightedItemId);
+		if (item == itemList.end ()) {
+			highlightedItemId.assign ("");
+		}
+		else {
+			highlight = true;
+			if (! mouseState.isEntered) {
+				highlight = false;
+			}
+			else {
+				x1 = item->panel->screenX;
+				y1 = item->panel->screenY;
+				x2 = x1 + item->panel->width;
+				y2 = y1 + item->panel->height;
+				if (!((mousex >= (int) x1) && (mousey >= (int) y1) && (mousex <= (int) x2) && (mousey <= (int) y2))) {
+					highlight = false;
+				}
+			}
+
+			if (! highlight) {
+				item->isHighlighted = false;
+				item->panel->zLevel = -1;
+				item->panel->animateScale (1.0f, CardView::smallItemScale, CardView::animateScaleDuration * 2);
+				highlightedItemId.assign ("");
+			}
+		}
+		SDL_UnlockMutex (itemMutex);
+	}
+
+	if (highlightedItemId.empty ()) {
+		i = rowMap.begin ();
+		iend = rowMap.end ();
+		while (i != iend) {
+			if (i->second.isSelectionAnimated) {
+				SDL_LockMutex (itemMutex);
+				j = itemList.begin ();
+				jend = itemList.end ();
+				while (j != jend) {
+					if ((j->row == i->first) && j->panel->isVisible) {
+						highlight = false;
+						if (mouseState.isEntered && highlightedItemId.empty ()) {
+							x1 = j->panel->screenX;
+							y1 = j->panel->screenY;
+							x2 = x1 + j->panel->width;
+							y2 = y1 + j->panel->height;
+							dx = (1.0f - CardView::smallItemScale) * j->panel->width;
+							dy = (1.0f - CardView::smallItemScale) * j->panel->height;
+							x1 += (dx / 2.0f);
+							y1 += (dy / 2.0f);
+							x2 -= (dx / 2.0f);
+							y2 -= (dy / 2.0f);
+							if ((mousex >= (int) x1) && (mousey >= (int) y1) && (mousex <= (int) x2) && (mousey <= (int) y2)) {
+								highlight = true;
+							}
+						}
+
+						if (highlight) {
+							j->isHighlighted = true;
+							j->panel->zLevel = 1;
+							j->panel->animateScale (CardView::smallItemScale, 1.0f, CardView::animateScaleDuration);
+							highlightedItemId.assign (j->id);
+						}
+						else {
+							if (j->isHighlighted) {
+								j->isHighlighted = false;
+								j->panel->zLevel = -1;
+								j->panel->animateScale (1.0f, CardView::smallItemScale, CardView::animateScaleDuration * 2);
+							}
+						}
+					}
+					++j;
+				}
+				SDL_UnlockMutex (itemMutex);
+			}
+			++i;
+		}
 	}
 }
 
@@ -158,12 +320,44 @@ bool CardView::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool is
 	return (result);
 }
 
+void CardView::resetRowSelection (int row) {
+	std::list<CardView::Item>::iterator i, end;
+
+	if (! isRowSelectionAnimated (row)) {
+		return;
+	}
+
+	SDL_LockMutex (itemMutex);
+	i = itemList.begin ();
+	end = itemList.end ();
+	while (i != end) {
+		if (i->row == row) {
+			i->panel->isVisible = false;
+			i->panel->setTextureRender (false);
+		}
+		++i;
+	}
+	SDL_UnlockMutex (itemMutex);
+}
+
 bool CardView::empty () {
-	return (itemList.empty ());
+	bool result;
+
+	SDL_LockMutex (itemMutex);
+	result = itemList.empty ();
+	SDL_UnlockMutex (itemMutex);
+
+	return (result);
 }
 
 bool CardView::contains (const StdString &itemId) {
-	return (itemIdMap.exists (itemId));
+	bool result;
+
+	SDL_LockMutex (itemMutex);
+	result = itemIdMap.exists (itemId);
+	SDL_UnlockMutex (itemMutex);
+
+	return (result);
 }
 
 bool CardView::contains (const char *itemId) {
@@ -183,12 +377,13 @@ StdString CardView::getAvailableItemId () {
 	return (id);
 }
 
-Widget *CardView::addItem (Widget *itemWidget, const char *itemId, int row, bool shouldSkipRefreshLayout) {
-	return (addItem (itemWidget, StdString (itemId ? itemId : ""), row, shouldSkipRefreshLayout));
+Widget *CardView::addItem (Panel *itemPanel, const char *itemId, int row, bool shouldSkipRefreshLayout) {
+	return (addItem (itemPanel, StdString (itemId ? itemId : ""), row, shouldSkipRefreshLayout));
 }
 
-Widget *CardView::addItem (Widget *itemWidget, const StdString &itemId, int row, bool shouldSkipRefreshLayout) {
+Widget *CardView::addItem (Panel *itemPanel, const StdString &itemId, int row, bool shouldSkipRefreshLayout) {
 	CardView::Item item;
+	std::map<int, CardView::Row>::iterator rowpos;
 	StdString id;
 
 	if (itemId.empty ()) {
@@ -197,58 +392,70 @@ Widget *CardView::addItem (Widget *itemWidget, const StdString &itemId, int row,
 	else {
 		id.assign (itemId);
 	}
-
-	addWidget (itemWidget);
-
-	isSorted = false;
-	item.id.assign (id);
-	item.widget = itemWidget;
-	item.widget->retain ();
-
 	if (row < 0) {
 		row = 0;
 	}
+
+	addWidget (itemPanel);
+
+	item.id.assign (id);
+	item.panel = itemPanel;
+	item.panel->retain ();
 	item.row = row;
+	rowpos = getRow (row);
+	if (rowpos->second.isSelectionAnimated) {
+		item.panel->isVisible = false;
+	}
+
+	SDL_LockMutex (itemMutex);
 	itemList.push_back (item);
+	isSorted = false;
+	SDL_UnlockMutex (itemMutex);
 
 	if (! shouldSkipRefreshLayout) {
 		refreshLayout ();
 	}
-
-	return (itemWidget);
+	return (itemPanel);
 }
 
-void CardView::removeItem (const StdString &itemId) {
+void CardView::removeItem (const StdString &itemId, bool shouldSkipRefreshLayout) {
 	std::list<CardView::Item>::iterator pos;
+	bool found;
 
+	found = false;
+	SDL_LockMutex (itemMutex);
 	pos = findItemPosition (itemId);
-	if (pos == itemList.end ()) {
-		return;
+	if (pos != itemList.end ()) {
+		found = true;
+		pos->panel->isDestroyed = true;
+		pos->panel->release ();
+		itemList.erase (pos);
+		resetItemIdMap ();
 	}
+	SDL_UnlockMutex (itemMutex);
 
-	pos->widget->isDestroyed = true;
-	pos->widget->release ();
-	itemList.erase (pos);
-	isSorted = false;
-	refreshLayout ();
+	if (found && (! shouldSkipRefreshLayout)) {
+		refreshLayout ();
+	}
 }
 
-void CardView::removeItem (const char *itemId) {
-	removeItem (StdString (itemId));
+void CardView::removeItem (const char *itemId, bool shouldSkipRefreshLayout) {
+	removeItem (StdString (itemId), shouldSkipRefreshLayout);
 }
 
 void CardView::removeRowItems (int row) {
 	std::list<CardView::Item>::iterator i, end;
 	bool found;
 
+	SDL_LockMutex (itemMutex);
 	while (true) {
 		found = false;
 		i = itemList.begin ();
 		end = itemList.end ();
 		while (i != end) {
 			if (i->row == row) {
-				i->widget->isDestroyed = true;
-				i->widget->release ();
+				i->panel->isDestroyed = true;
+				i->panel->release ();
 				itemList.erase (i);
 				found = true;
 				break;
@@ -260,36 +467,42 @@ void CardView::removeRowItems (int row) {
 			break;
 		}
 	}
-
 	isSorted = false;
+	SDL_UnlockMutex (itemMutex);
+
 	refreshLayout ();
 }
 
 void CardView::removeAllItems () {
 	std::list<CardView::Item>::iterator i, end;
 
+	SDL_LockMutex (itemMutex);
 	i = itemList.begin ();
 	end = itemList.end ();
 	while (i != end) {
-		i->widget->isDestroyed = true;
-		i->widget->release ();
+		i->panel->isDestroyed = true;
+		i->panel->release ();
 		++i;
 	}
 	itemList.clear ();
 	itemIdMap.clear ();
 	isSorted = true;
+	SDL_UnlockMutex (itemMutex);
+
 	refreshLayout ();
 }
 
 void CardView::processItems (Widget::EventCallback fn, void *fnData, bool shouldRefreshLayout) {
 	std::list<CardView::Item>::iterator i, end;
 
+	SDL_LockMutex (itemMutex);
 	i = itemList.begin ();
 	end = itemList.end ();
 	while (i != end) {
-		fn (fnData, i->widget);
+		fn (fnData, i->panel);
 		++i;
 	}
+	SDL_UnlockMutex (itemMutex);
 
 	if (shouldRefreshLayout) {
 		refreshLayout ();
@@ -299,14 +512,16 @@ void CardView::processItems (Widget::EventCallback fn, void *fnData, bool should
 void CardView::processRowItems (int row, Widget::EventCallback fn, void *fnData, bool shouldRefreshLayout) {
 	std::list<CardView::Item>::iterator i, end;
 
+	SDL_LockMutex (itemMutex);
 	i = itemList.begin ();
 	end = itemList.end ();
 	while (i != end) {
 		if (i->row == row) {
-			fn (fnData, i->widget);
+			fn (fnData, i->panel);
 		}
 		++i;
 	}
+	SDL_UnlockMutex (itemMutex);
 
 	if (shouldRefreshLayout) {
 		refreshLayout ();
@@ -316,44 +531,48 @@ void CardView::processRowItems (int row, Widget::EventCallback fn, void *fnData,
 void CardView::scrollToItem (const StdString &itemId) {
 	std::list<CardView::Item>::iterator pos;
 	UiConfiguration *uiconfig;
-	Widget *widget;
 
+	SDL_LockMutex (itemMutex);
 	pos = findItemPosition (itemId);
-	if (pos == itemList.end ()) {
-		return;
+	if (pos != itemList.end ()) {
+		uiconfig = &(App::instance->uiConfig);
+		setViewOrigin (0.0f, pos->panel->position.y - (height / 2.0f) + (pos->panel->height / 2.0f));
+		scrollBar->setPosition (viewOriginY, true);
+		scrollBar->position.assignY (viewOriginY + uiconfig->paddingSize);
 	}
-
-	widget = pos->widget;
-	uiconfig = &(App::instance->uiConfig);
-	setViewOrigin (0.0f, widget->position.y - (height / 2.0f) + (widget->height / 2.0f));
-	scrollBar->setPosition (viewOriginY, true);
-	scrollBar->position.assignY (viewOriginY + uiconfig->paddingSize);
+	SDL_UnlockMutex (itemMutex);
 }
 
 void CardView::refreshLayout () {
 	UiConfiguration *uiconfig;
 	std::list<CardView::Item>::iterator i, end;
 	std::map<int, CardView::Row>::iterator rowpos;
-	Widget *widget;
+	Panel *itempanel;
 	LabelWindow *label;
-	float x, y, x0, rowh, rowmargin;
+	float x, y, dx, dy, x0, itemw, itemh, rowh, rowmargin;
 	int row;
 
 	uiconfig = &(App::instance->uiConfig);
-	if (! isSorted) {
-		doSort ();
-	}
-
 	row = -1;
 	x0 = uiconfig->paddingSize;
 	y = uiconfig->paddingSize;
 	x = x0;
 	rowmargin = itemMarginSize;
 	rowh = 0.0f;
+
+	SDL_LockMutex (itemMutex);
+	if (! isSorted) {
+		doSort ();
+	}
 	i = itemList.begin ();
 	end = itemList.end ();
 	while (i != end) {
-		widget = i->widget;
+		itempanel = i->panel;
+		itemw = itempanel->width;
+		itemh = itempanel->height;
+		dx = 0.0f;
+		dy = 0.0f;
+
 		if (row != i->row) {
 			if (row >= 0) {
 				x = x0;
@@ -376,20 +595,31 @@ void CardView::refreshLayout () {
 			}
 		}
 
-		if ((x + widget->width) >= cardAreaWidth) {
+		if (row >= 0) {
+			rowpos = getRow (row);
+			if (rowpos->second.isSelectionAnimated) {
+				itemw *= CardView::smallItemScale;
+				itemh *= CardView::smallItemScale;
+				dx = (itempanel->width - itemw) / -4.0f;
+				dy = (itempanel->height - itemh) / -4.0f;
+			}
+		}
+
+		if ((x + itemw) >= cardAreaWidth) {
 			x = x0;
 			y += rowh + rowmargin;
 			rowh = 0.0f;
 		}
-		if (widget->height > rowh) {
-			rowh = widget->height;
+		if (itemh > rowh) {
+			rowh = itemh;
 		}
 
-		widget->position.assign (x, y);
-		x += widget->width + rowmargin;
+		itempanel->position.assign (x + dx, y + dy);
+		x += itemw + rowmargin;
 
 		++i;
 	}
+	SDL_UnlockMutex (itemMutex);
 
 	y += rowh;
 	y += (uiconfig->paddingSize * 2.0f);
@@ -419,7 +649,7 @@ void CardView::doSort () {
 	std::map<int, CardView::Row>::iterator ri, rend;
 	std::list<CardView::Item> outlist, rowlist;
 	std::list<CardView::Item>::iterator i, iend;
-	int row, nextrow, index;
+	int row, nextrow;
 
 	ri = rowMap.begin ();
 	rend = rowMap.end ();
@@ -472,16 +702,7 @@ void CardView::doSort () {
 	}
 
 	itemList.swap (outlist);
-
-	itemIdMap.clear ();
-	index = 0;
-	i = itemList.begin ();
-	iend = itemList.end ();
-	while (i != iend) {
-		itemIdMap.insert (i->id, index);
-		++index;
-		++i;
-	}
+	resetItemIdMap ();
 
 	ri = rowMap.begin ();
 	rend = rowMap.end ();
@@ -499,31 +720,38 @@ void CardView::doSort () {
 	isSorted = true;
 }
 
+void CardView::resetItemIdMap () {
+	std::list<CardView::Item>::iterator i, end;
+	int index;
+
+	itemIdMap.clear ();
+	index = 0;
+	i = itemList.begin ();
+	end = itemList.end ();
+	while (i != end) {
+		itemIdMap.insert (i->id, index);
+		++index;
+		++i;
+	}
+}
+
 bool CardView::compareItems (const CardView::Item &a, const CardView::Item &b) {
-	return (a.widget->sortKey.compare (b.widget->sortKey) <= 0);
+	return (a.panel->sortKey.compare (b.panel->sortKey) <= 0);
 }
 
 std::list<CardView::Item>::iterator CardView::findItemPosition (const StdString &itemId) {
-	std::list<CardView::Item>::iterator i, end, pos;
-	int index, curindex;
+	std::list<CardView::Item>::iterator pos;
+	int index;
 
 	index = itemIdMap.find (itemId, -1);
 	if ((index < 0) || (index >= (int) itemList.size ())) {
 		return (itemList.end ());
 	}
 
-	// TODO: Possibly modify this logic and associated data structures to avoid the need for iteration here (i.e. by directly accessing the element index instead)
-	curindex = 0;
-	i = itemList.begin ();
-	end = itemList.end ();
-	pos = end;
-	while (i != end) {
-		if (curindex == index) {
-			pos = i;
-			break;
-		}
-		++curindex;
-		++i;
+	pos = itemList.begin ();
+	while (index > 0) {
+		++pos;
+		--index;
 	}
 
 	return (pos);
@@ -544,12 +772,17 @@ std::map<int, CardView::Row>::iterator CardView::getRow (int rowNumber) {
 
 Widget *CardView::getItem (const StdString &itemId) {
 	std::list<CardView::Item>::iterator pos;
+	Widget *result;
 
+	result = NULL;
+	SDL_LockMutex (itemMutex);
 	pos = findItemPosition (itemId);
-	if (pos == itemList.end ()) {
-		return (NULL);
+	if (pos != itemList.end ()) {
+		result = pos->panel;
 	}
-	return (pos->widget);
+	SDL_UnlockMutex (itemMutex);
+
+	return (result);
 }
 
 Widget *CardView::getItem (const char *itemId) {
@@ -557,24 +790,35 @@ Widget *CardView::getItem (const char *itemId) {
 }
 
 int CardView::getItemCount () {
-	return ((int) itemList.size ());
+	int result;
+
+	SDL_LockMutex (itemMutex);
+	result = (int) itemList.size ();
+	SDL_UnlockMutex (itemMutex);
+
+	return (result);
 }
 
 Widget *CardView::findItem (CardView::MatchFunction fn, void *fnData) {
 	std::list<CardView::Item>::iterator i, end;
+	Widget *result;
 
+	result = NULL;
+	SDL_LockMutex (itemMutex);
 	i = itemList.begin ();
 	end = itemList.end ();
 	while (i != end) {
-		if (i->widget) {
-			if (fn (fnData, i->widget)) {
-				return (i->widget);
+		if (i->panel) {
+			if (fn (fnData, i->panel)) {
+				result = i->panel;
+				break;
 			}
 		}
 		++i;
 	}
+	SDL_UnlockMutex (itemMutex);
 
-	return (NULL);
+	return (result);
 }
 
 void CardView::scrollBarPositionChanged (void *windowPtr, Widget *widgetPtr) {

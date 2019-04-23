@@ -80,6 +80,9 @@ public:
 	// Create a texture from a surface and associate it with a path. Returns a pointer to the resulting SDL_Texture, or NULL if the texture could not be created. The surface object is not modified or freed by this method. This method must be invoked only from the application's main thread.
 	SDL_Texture *createTexture (const StdString &path, SDL_Surface *surface);
 
+	// Create a render target texture of the specified size and associate it with a path. Returns a pointer to the resulting SDL_Texture, or NULL if the texture could not be created. This method must be invoked only from the application's main thread.
+	SDL_Texture *createTexture (const StdString &path, int textureWidth, int textureHeight);
+
 	// Unload previously acquired texture resources from the specified path
 	void unloadTexture (const StdString &path);
 

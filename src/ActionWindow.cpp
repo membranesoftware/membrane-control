@@ -71,7 +71,7 @@ ActionWindow::ActionWindow ()
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->lightBackgroundColor);
 
-	titleLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::TITLE, uiconfig->primaryTextColor));
+	titleLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::TitleFont, uiconfig->primaryTextColor));
 	titleLabel->isVisible = false;
 
 	confirmButton = (Button *) addWidget (new Button (uitext->getText (UiTextString::ok).uppercased ()));
@@ -175,19 +175,19 @@ void ActionWindow::setInverseColor (bool inverse) {
 	while (i != end) {
 		i->nameLabel->textColor.assign (isInverseColor ? uiconfig->inverseTextColor : uiconfig->primaryTextColor);
 		switch (i->type) {
-			case ActionWindow::COMBO_BOX: {
+			case ActionWindow::ComboBoxItem: {
 				((ComboBox *) i->optionWidget)->setInverseColor (isInverseColor);
 				break;
 			}
-			case ActionWindow::TEXT_FIELD: {
+			case ActionWindow::TextFieldItem: {
 				((TextField *) i->optionWidget)->setInverseColor (isInverseColor);
 				break;
 			}
-			case ActionWindow::TEXT_FIELD_WINDOW: {
+			case ActionWindow::TextFieldWindowItem: {
 				((TextFieldWindow *) i->optionWidget)->setInverseColor (isInverseColor);
 				break;
 			}
-			case ActionWindow::TOGGLE: {
+			case ActionWindow::ToggleItem: {
 				((Toggle *) i->optionWidget)->setInverseColor (isInverseColor);
 				break;
 			}
@@ -209,31 +209,31 @@ void ActionWindow::setCloseCallback (Widget::EventCallback callback, void *callb
 void ActionWindow::addOption (const StdString &optionName, ComboBox *comboBox, const StdString &descriptionText) {
 	comboBox->setValueChangeCallback (ActionWindow::optionValueChanged, this);
 	comboBox->setInverseColor (isInverseColor);
-	doAddOption (ActionWindow::COMBO_BOX, optionName, comboBox, descriptionText);
+	doAddOption (ActionWindow::ComboBoxItem, optionName, comboBox, descriptionText);
 }
 
 void ActionWindow::addOption (const StdString &optionName, TextField *textField, const StdString &descriptionText) {
 	textField->setValueChangeCallback (ActionWindow::optionValueChanged, this);
 	textField->setInverseColor (isInverseColor);
-	doAddOption (ActionWindow::TEXT_FIELD, optionName, textField, descriptionText);
+	doAddOption (ActionWindow::TextFieldItem, optionName, textField, descriptionText);
 }
 
 void ActionWindow::addOption (const StdString &optionName, TextFieldWindow *textFieldWindow, const StdString &descriptionText) {
 	textFieldWindow->setEditCallback (ActionWindow::optionValueChanged, this);
 	textFieldWindow->setInverseColor (isInverseColor);
-	doAddOption (ActionWindow::TEXT_FIELD_WINDOW, optionName, textFieldWindow, descriptionText);
+	doAddOption (ActionWindow::TextFieldWindowItem, optionName, textFieldWindow, descriptionText);
 }
 
 void ActionWindow::addOption (const StdString &optionName, Toggle *toggle, const StdString &descriptionText) {
 	toggle->setStateChangeCallback (ActionWindow::optionValueChanged, this);
 	toggle->setInverseColor (isInverseColor);
-	doAddOption (ActionWindow::TOGGLE, optionName, toggle, descriptionText);
+	doAddOption (ActionWindow::ToggleItem, optionName, toggle, descriptionText);
 }
 
 void ActionWindow::addOption (const StdString &optionName, SliderWindow *slider, const StdString &descriptionText) {
 	slider->setValueChangeCallback (ActionWindow::optionValueChanged, this);
 	slider->setInverseColor (isInverseColor);
-	doAddOption (ActionWindow::SLIDER, optionName, slider, descriptionText);
+	doAddOption (ActionWindow::SliderItem, optionName, slider, descriptionText);
 }
 
 void ActionWindow::doAddOption (int itemType, const StdString &optionName, Widget *optionWidget, const StdString &descriptionText) {
@@ -246,7 +246,7 @@ void ActionWindow::doAddOption (int itemType, const StdString &optionName, Widge
 	if (item != itemList.end ()) {
 		item->type = itemType;
 		if (! item->nameLabel) {
-			item->nameLabel = (Label *) addWidget (new Label (item->name, UiConfiguration::CAPTION, isInverseColor ? uiconfig->inverseTextColor : uiconfig->primaryTextColor));
+			item->nameLabel = (Label *) addWidget (new Label (item->name, UiConfiguration::CaptionFont, isInverseColor ? uiconfig->inverseTextColor : uiconfig->primaryTextColor));
 		}
 		else {
 			item->nameLabel->setText (item->name);
@@ -257,7 +257,7 @@ void ActionWindow::doAddOption (int itemType, const StdString &optionName, Widge
 			item->descriptionText = NULL;
 		}
 		if (! descriptionText.empty ()) {
-			item->descriptionText = (TextArea *) addWidget (new TextArea (UiConfiguration::CAPTION, isInverseColor ? uiconfig->darkInverseTextColor : uiconfig->lightPrimaryTextColor, 0, uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CAPTION]->maxGlyphWidth));
+			item->descriptionText = (TextArea *) addWidget (new TextArea (UiConfiguration::CaptionFont, isInverseColor ? uiconfig->darkInverseTextColor : uiconfig->lightPrimaryTextColor, 0, uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth));
 			item->descriptionText->setText (descriptionText);
 		}
 
@@ -279,16 +279,16 @@ StdString ActionWindow::getStringValue (const StdString &optionName, const StdSt
 	}
 
 	switch (item->type) {
-		case ActionWindow::COMBO_BOX: {
+		case ActionWindow::ComboBoxItem: {
 			return (((ComboBox *) item->optionWidget)->getValue ());
 		}
-		case ActionWindow::TEXT_FIELD: {
+		case ActionWindow::TextFieldItem: {
 			return (((TextField *) item->optionWidget)->getValue ());
 		}
-		case ActionWindow::TEXT_FIELD_WINDOW: {
+		case ActionWindow::TextFieldWindowItem: {
 			return (((TextFieldWindow *) item->optionWidget)->getValue ());
 		}
-		case ActionWindow::TOGGLE: {
+		case ActionWindow::ToggleItem: {
 			return (((Toggle *) item->optionWidget)->isChecked ? "true" : "false");
 		}
 	}
@@ -311,28 +311,28 @@ int ActionWindow::getNumberValue (const StdString &optionName, int defaultValue)
 	}
 
 	switch (item->type) {
-		case ActionWindow::COMBO_BOX: {
+		case ActionWindow::ComboBoxItem: {
 			s = ((ComboBox *) item->optionWidget)->getValue ();
 			if (s.parseFloat (&val)) {
 				return ((int) val);
 			}
 			break;
 		}
-		case ActionWindow::TEXT_FIELD: {
+		case ActionWindow::TextFieldItem: {
 			s = ((TextField *) item->optionWidget)->getValue ();
 			if (s.parseFloat (&val)) {
 				return ((int) val);
 			}
 			break;
 		}
-		case ActionWindow::TEXT_FIELD_WINDOW: {
+		case ActionWindow::TextFieldWindowItem: {
 			s = ((TextFieldWindow *) item->optionWidget)->getValue ();
 			if (s.parseFloat (&val)) {
 				return ((int) val);
 			}
 			break;
 		}
-		case ActionWindow::SLIDER: {
+		case ActionWindow::SliderItem: {
 			return ((int) ((SliderWindow *) item->optionWidget)->value);
 		}
 	}
@@ -351,28 +351,28 @@ float ActionWindow::getNumberValue (const StdString &optionName, float defaultVa
 	}
 
 	switch (item->type) {
-		case ActionWindow::COMBO_BOX: {
+		case ActionWindow::ComboBoxItem: {
 			s = ((ComboBox *) item->optionWidget)->getValue ();
 			if (s.parseFloat (&val)) {
 				return (val);
 			}
 			break;
 		}
-		case ActionWindow::TEXT_FIELD: {
+		case ActionWindow::TextFieldItem: {
 			s = ((TextField *) item->optionWidget)->getValue ();
 			if (s.parseFloat (&val)) {
 				return (val);
 			}
 			break;
 		}
-		case ActionWindow::TEXT_FIELD_WINDOW: {
+		case ActionWindow::TextFieldWindowItem: {
 			s = ((TextFieldWindow *) item->optionWidget)->getValue ();
 			if (s.parseFloat (&val)) {
 				return (val);
 			}
 			break;
 		}
-		case ActionWindow::SLIDER: {
+		case ActionWindow::SliderItem: {
 			return (((SliderWindow *) item->optionWidget)->value);
 		}
 	}
@@ -389,7 +389,7 @@ bool ActionWindow::getBooleanValue (const StdString &optionName, bool defaultVal
 	}
 
 	switch (item->type) {
-		case ActionWindow::TOGGLE: {
+		case ActionWindow::ToggleItem: {
 			return (((Toggle *) item->optionWidget)->isChecked);
 		}
 	}
@@ -554,7 +554,7 @@ void ActionWindow::verifyOptions () {
 	while (i != end) {
 		optionvalid = true;
 		switch (i->type) {
-			case ActionWindow::COMBO_BOX: {
+			case ActionWindow::ComboBoxItem: {
 				s = ((ComboBox *) i->optionWidget)->getValue ();
 				if (i->isNotEmptyString) {
 					if (s.empty ()) {
@@ -565,7 +565,7 @@ void ActionWindow::verifyOptions () {
 
 				break;
 			}
-			case ActionWindow::TEXT_FIELD: {
+			case ActionWindow::TextFieldItem: {
 				s = ((TextField *) i->optionWidget)->getValue ();
 				if (i->isNotEmptyString) {
 					if (s.empty ()) {
@@ -576,7 +576,7 @@ void ActionWindow::verifyOptions () {
 
 				break;
 			}
-			case ActionWindow::TEXT_FIELD_WINDOW: {
+			case ActionWindow::TextFieldWindowItem: {
 				s = ((TextFieldWindow *) i->optionWidget)->getValue ();
 				if (i->isNotEmptyString) {
 					if (s.empty ()) {
@@ -587,7 +587,7 @@ void ActionWindow::verifyOptions () {
 
 				break;
 			}
-			case ActionWindow::TOGGLE: {
+			case ActionWindow::ToggleItem: {
 				break;
 			}
 		}

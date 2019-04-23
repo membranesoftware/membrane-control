@@ -36,14 +36,15 @@
 #include "StdString.h"
 #include "Json.h"
 #include "Image.h"
+#include "SpriteGroup.h"
 #include "Label.h"
 #include "Button.h"
-#include "StatsWindow.h"
+#include "IconLabelWindow.h"
 #include "Panel.h"
 
 class MediaDetailWindow : public Panel {
 public:
-	MediaDetailWindow (const StdString &recordId);
+	MediaDetailWindow (const StdString &recordId, SpriteGroup *mediaItemUiSpriteGroup);
 	virtual ~MediaDetailWindow ();
 
 	// Read-only data members
@@ -73,13 +74,13 @@ protected:
 	void refreshLayout ();
 
 private:
-	// Populate widgets as appropriate for the window's initial state
-	void populate ();
-
+	SpriteGroup *sprites;
 	Image *iconImage;
 	Label *nameLabel;
 	Label *descriptionLabel;
-	StatsWindow *statsWindow;
+	IconLabelWindow *attributesIcon;
+	IconLabelWindow *fileSizeIcon;
+	IconLabelWindow *durationIcon;
 };
 
 #endif

@@ -55,7 +55,7 @@ TooltipWindow::TooltipWindow (const StdString &tipText)
 
 	x = uiconfig->paddingSize;
 	y = uiconfig->paddingSize;
-	addWidget (new Label (tipText, UiConfiguration::CAPTION, uiconfig->inverseTextColor), x, y);
+	addWidget (new Label (tipText, UiConfiguration::CaptionFont, uiconfig->inverseTextColor), x, y);
 
 	resetSize ();
 }

@@ -49,8 +49,8 @@ class ServerAdminUi : public Ui {
 public:
 	// Constants to use for sprite indexes
 	enum {
-		BREADCRUMB_ICON = 0,
-		LOCK_BUTTON = 1
+		BreadcrumbIconSprite = 0,
+		LockButtonSprite = 1
 	};
 
 	ServerAdminUi (const StdString &agentId, const StdString &agentDisplayName);

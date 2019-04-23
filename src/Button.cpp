@@ -45,9 +45,12 @@
 #include "UiConfiguration.h"
 #include "Button.h"
 
+const float Button::focusTextOffset = 2.0f;
+
 Button::Button (const StdString &labelText, Sprite *sprite, bool shouldDestroySprite)
 : Panel ()
 , shortcutKey (SDLK_UNKNOWN)
+, isFocusDropShadowDisabled (false)
 , maxImageWidth (0.0f)
 , maxImageHeight (0.0f)
 , isFocused (false)
@@ -67,10 +70,10 @@ Button::Button (const StdString &labelText, Sprite *sprite, bool shouldDestroySp
 	uiconfig = &(App::instance->uiConfig);
 	if (! labelText.empty ()) {
 		normalTextColor.assign (uiconfig->flatButtonTextColor);
-		label = (Label *) addWidget (new Label (labelText, UiConfiguration::BUTTON, normalTextColor));
+		label = (Label *) addWidget (new Label (labelText, UiConfiguration::ButtonFont, normalTextColor));
 	}
 	if (sprite) {
-		image = (Image *) addWidget (new Image (sprite, UiConfiguration::WHITE_BUTTON_FRAME, shouldDestroySprite));
+		image = (Image *) addWidget (new Image (sprite, UiConfiguration::WhiteButtonFrame, shouldDestroySprite));
 		image->drawAlpha = uiconfig->activeFocusedIconAlpha;
 		maxImageWidth = image->maxSpriteWidth;
 		maxImageHeight = image->maxSpriteHeight;
@@ -145,7 +148,7 @@ void Button::setText (const StdString &text) {
 	}
 	else {
 		if (! label) {
-			label = (Label *) addWidget (new Label (text, UiConfiguration::BUTTON, normalTextColor));
+			label = (Label *) addWidget (new Label (text, UiConfiguration::ButtonFont, normalTextColor));
 		}
 		label->setText (text);
 		refreshLayout ();
@@ -254,8 +257,8 @@ void Button::mouseReleased (void *buttonPtr, Widget *widgetPtr) {
 	button->setFocused (button->isMouseEntered);
 }
 
-void Button::doUpdate (int msElapsed, float originX, float originY) {
-	Panel::doUpdate (msElapsed, originX, originY);
+void Button::doUpdate (int msElapsed) {
+	Panel::doUpdate (msElapsed);
 	if (pressClock > 0) {
 		pressClock -= msElapsed;
 		if (pressClock <= 0) {
@@ -298,15 +301,13 @@ void Button::doRefresh () {
 void Button::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y, h, spacew, paddingh, bgalpha;
-	bool shouldfillbg, iswhiteframe;
+	bool shouldfillbg, iswhiteframe, isdropshadowed;
 	Color bgcolor, bordercolor, shadecolor;
 
-	// TODO: Handle borders / shadows in this operation
-
 	uiconfig = &(App::instance->uiConfig);
-
 	shouldfillbg = false;
-	bgalpha = -1.0f;
+	isdropshadowed = false;
+	bgalpha = 1.0f;
 	if (isRaised) {
 		shouldfillbg = true;
 		bgcolor.assign (raiseNormalBgColor);
@@ -322,7 +323,7 @@ void Button::refreshLayout () {
 	iswhiteframe = (isInverseColor || isImageColorEnabled);
 	if (isDisabled) {
 		if (image) {
-			image->setFrame (iswhiteframe ? UiConfiguration::WHITE_BUTTON_FRAME : UiConfiguration::BLACK_BUTTON_FRAME);
+			image->setFrame (iswhiteframe ? UiConfiguration::WhiteButtonFrame : UiConfiguration::BlackButtonFrame);
 			image->drawAlpha = uiconfig->activeUnfocusedIconAlpha;
 		}
 
@@ -332,7 +333,7 @@ void Button::refreshLayout () {
 	}
 	else if (isPressed) {
 		if (image) {
-			image->setFrame (iswhiteframe ? UiConfiguration::WHITE_LARGE_BUTTON_FRAME : UiConfiguration::BLACK_LARGE_BUTTON_FRAME);
+			image->setFrame (iswhiteframe ? UiConfiguration::WhiteLargeButtonFrame : UiConfiguration::BlackLargeButtonFrame);
 			image->drawAlpha = uiconfig->activeFocusedIconAlpha;
 		}
 
@@ -347,10 +348,11 @@ void Button::refreshLayout () {
 	}
 	else if (isFocused) {
 		if (image) {
-			image->setFrame (iswhiteframe ? UiConfiguration::WHITE_LARGE_BUTTON_FRAME : UiConfiguration::BLACK_LARGE_BUTTON_FRAME);
+			image->setFrame (iswhiteframe ? UiConfiguration::WhiteLargeButtonFrame : UiConfiguration::BlackLargeButtonFrame);
 			image->drawAlpha = uiconfig->activeFocusedIconAlpha;
 		}
 
+		isdropshadowed = true;
 		shouldfillbg = true;
 		if (isRaised) {
 			bgcolor.blend (shadecolor, uiconfig->buttonFocusedShadeAlpha);
@@ -362,24 +364,24 @@ void Button::refreshLayout () {
 	}
 	else {
 		if (image) {
-			image->setFrame (iswhiteframe ? UiConfiguration::WHITE_BUTTON_FRAME : UiConfiguration::BLACK_BUTTON_FRAME);
+			image->setFrame (iswhiteframe ? UiConfiguration::WhiteButtonFrame : UiConfiguration::BlackButtonFrame);
 			image->drawAlpha = uiconfig->activeUnfocusedIconAlpha;
 		}
 	}
 
 	if (shouldfillbg) {
-		if (bgalpha >= 0.0f) {
-			setAlphaBlend (true, bgalpha);
-		}
-		else {
-			setAlphaBlend (false);
-		}
-
+		bgcolor.assign (bgcolor.r, bgcolor.g, bgcolor.b, bgalpha);
 		setFillBg (true, bgcolor);
 	}
 	else {
 		setFillBg (false);
-		setBorder (false);
+	}
+
+	if (isdropshadowed && (! isFocusDropShadowDisabled)) {
+		setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
+	}
+	else {
+		setDropShadow (false);
 	}
 
 	if (label) {
@@ -420,6 +422,10 @@ void Button::refreshLayout () {
 		spacew = uiconfig->marginSize;
 		if (label->height > h) {
 			h = label->height;
+		}
+
+		if (isFocused && (! isFocusDropShadowDisabled)) {
+			label->position.move (-(Button::focusTextOffset), -(Button::focusTextOffset));
 		}
 	}
 

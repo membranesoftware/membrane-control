@@ -34,18 +34,21 @@
 #include "StdString.h"
 #include "Color.h"
 
-Color::Color (float r, float g, float b)
+Color::Color (float r, float g, float b, float a)
 : r (r)
 , g (g)
 , b (b)
+, a (a)
 , isTranslating (false)
 , translateDuration (0)
 , targetR (0.0f)
 , targetG (0.0f)
 , targetB (0.0f)
+, targetA (0.0f)
 , deltaR (0.0f)
 , deltaG (0.0f)
 , deltaB (0.0f)
+, deltaA (0.0f)
 {
 	normalize ();
 }
@@ -73,26 +76,46 @@ void Color::normalize () {
 	else if (b > 1.0f) {
 		b = 1.0f;
 	}
+	if (a < 0.0f) {
+		a = 0.0f;
+	}
+	else if (a > 1.0f) {
+		a = 1.0f;
+	}
 
 	rByte = (uint8_t) (r * 255.0f);
 	gByte = (uint8_t) (g * 255.0f);
 	bByte = (uint8_t) (b * 255.0f);
+	aByte = (uint8_t) (a * 255.0f);
 }
 
 StdString Color::toString () {
-	return (StdString::createSprintf ("{color: r=%.2f g=%.2f b=%.2f rByte=%i gByte=%i bByte=%i isTranslating=%s deltaR=%.2f deltaG=%.2f deltaB=%.2f}", r, g, b, rByte, gByte, bByte, BOOL_STRING (isTranslating), deltaR, deltaG, deltaB));
+	return (StdString::createSprintf ("{color: r=%.2f g=%.2f b=%.2f a=%.2f rByte=%i gByte=%i bByte=%i aByte=%i isTranslating=%s deltaR=%.2f deltaG=%.2f deltaB=%.2f}", r, g, b, a, rByte, gByte, bByte, aByte, BOOL_STRING (isTranslating), deltaR, deltaG, deltaB));
 }
 
-void Color::assign (float r, float g, float b) {
-	this->r = r;
-	this->g = g;
-	this->b = b;
+Color Color::copy (float aValue) {
+	return (Color (r, g, b, (aValue >= 0.0f) ? aValue : a));
+}
+
+void Color::assign (float rValue, float gValue, float bValue) {
+	r = rValue;
+	g = gValue;
+	b = bValue;
+	isTranslating = false;
+	normalize ();
+}
+
+void Color::assign (float rValue, float gValue, float bValue, float aValue) {
+	r = rValue;
+	g = gValue;
+	b = bValue;
+	a = aValue;
 	isTranslating = false;
 	normalize ();
 }
 
 void Color::assign (const Color &sourceColor) {
-	assign (sourceColor.r, sourceColor.g, sourceColor.b);
+	assign (sourceColor.r, sourceColor.g, sourceColor.b, sourceColor.a);
 }
 
 void Color::blend (float r, float g, float b, float alpha) {
@@ -182,8 +205,22 @@ void Color::update (int msElapsed) {
 			}
 		}
 
+		a += (deltaA * (float) msElapsed);
+		if (deltaA < 0.0f) {
+			if (a <= targetA) {
+				a = targetA;
+				++matchcount;
+			}
+		}
+		else {
+			if (a >= targetA) {
+				a = targetA;
+				++matchcount;
+			}
+		}
+
 		normalize ();
-		if (matchcount >= 3) {
+		if (matchcount >= 4) {
 			isTranslating = false;
 		}
 	}
@@ -233,26 +270,86 @@ void Color::translate (float translateTargetR, float translateTargetG, float tra
 	targetR = translateTargetR;
 	targetG = translateTargetG;
 	targetB = translateTargetB;
+	targetA = a;
 	deltaR = dr / ((float) durationMs);
 	deltaG = dg / ((float) durationMs);
 	deltaB = db / ((float) durationMs);
+	deltaA = 0.0f;
+}
+
+void Color::translate (float translateTargetR, float translateTargetG, float translateTargetB, float translateTargetA, int durationMs) {
+	float dr, dg, db, da;
+
+	if (translateTargetR < 0.0f) {
+		translateTargetR = 0.0f;
+	}
+	else if (translateTargetR > 1.0f) {
+		translateTargetR = 1.0f;
+	}
+	if (translateTargetG < 0.0f) {
+		translateTargetG = 0.0f;
+	}
+	else if (translateTargetG > 1.0f) {
+		translateTargetG = 1.0f;
+	}
+	if (translateTargetB < 0.0f) {
+		translateTargetB = 0.0f;
+	}
+	else if (translateTargetB > 1.0f) {
+		translateTargetB = 1.0f;
+	}
+	if (translateTargetA < 0.0f) {
+		translateTargetA = 0.0f;
+	}
+	else if (translateTargetA > 1.0f) {
+		translateTargetA = 1.0f;
+	}
+
+	if (durationMs <= 0) {
+		assign (translateTargetR, translateTargetG, translateTargetB, translateTargetA);
+		return;
+	}
+
+	dr = translateTargetR - r;
+	dg = translateTargetG - g;
+	db = translateTargetB - b;
+	da = translateTargetA - a;
+	if ((fabs (dr) < CONFIG_FLOAT_EPSILON) && (fabs (dg) < CONFIG_FLOAT_EPSILON) && (fabs (db) < CONFIG_FLOAT_EPSILON) && (fabs (da) <= CONFIG_FLOAT_EPSILON)) {
+		isTranslating = false;
+		return;
+	}
+
+	if (isTranslating && FLOAT_EQUALS (translateTargetR, targetR) && FLOAT_EQUALS (translateTargetG, targetG) && FLOAT_EQUALS (translateTargetB, targetB) && FLOAT_EQUALS (translateTargetA, targetA) && (translateDuration == durationMs)) {
+		return;
+	}
+
+	isTranslating = true;
+	translateDuration = durationMs;
+	targetR = translateTargetR;
+	targetG = translateTargetG;
+	targetB = translateTargetB;
+	targetA = translateTargetA;
+	deltaR = dr / ((float) durationMs);
+	deltaG = dg / ((float) durationMs);
+	deltaB = db / ((float) durationMs);
+	deltaA = da / ((float) durationMs);
 }
 
 void Color::translate (const Color &targetColor, int durationMs) {
-	translate (targetColor.r, targetColor.g, targetColor.b, durationMs);
+	translate (targetColor.r, targetColor.g, targetColor.b, targetColor.a, durationMs);
 }
 
 void Color::translate (const Color &startColor, const Color &targetColor, int durationMs) {
 	assign (startColor);
-	translate (targetColor.r, targetColor.g, targetColor.b, durationMs);
+	translate (targetColor.r, targetColor.g, targetColor.b, targetColor.a, durationMs);
 }
 
 bool Color::equals (const Color &other) const {
-	return ((rByte == other.rByte) && (gByte == other.gByte) && (bByte == other.bByte));
+	return ((rByte == other.rByte) && (gByte == other.gByte) && (bByte == other.bByte) && (aByte == other.aByte));
 }
 
-Color Color::fromByteValues (uint8_t r, uint8_t g, uint8_t b) {
-	return (Color (Color::getByteValue (r), Color::getByteValue (g), Color::getByteValue (b)));
+Color Color::fromByteValues (uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+	return (Color (Color::getByteValue (r), Color::getByteValue (g), Color::getByteValue (b), Color::getByteValue (a)));
 }
 
 float Color::getByteValue (uint8_t byte) {

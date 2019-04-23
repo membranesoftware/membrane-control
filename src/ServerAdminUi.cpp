@@ -79,7 +79,7 @@ StdString ServerAdminUi::getSpritePath () {
 }
 
 Widget *ServerAdminUi::createBreadcrumbWidget () {
-	return (new Chip (agentDisplayName, sprites.getSprite (ServerAdminUi::BREADCRUMB_ICON)));
+	return (new Chip (agentDisplayName, sprites.getSprite (ServerAdminUi::BreadcrumbIconSprite)));
 }
 
 void ServerAdminUi::setHelpWindowContent (HelpWindow *helpWindow) {
@@ -100,7 +100,7 @@ int ServerAdminUi::doLoad () {
 
 	cardView = (CardView *) addWidget (new CardView (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight));
 	cardView->isKeyboardScrollEnabled = true;
-	cardView->setRowHeader (2, uitext->getText (UiTextString::tasks).capitalized (), UiConfiguration::TITLE, uiconfig->inverseTextColor);
+	cardView->setRowHeader (2, uitext->getText (UiTextString::tasks).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor);
 	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 
 	adminSecretWindow = new AdminSecretWindow ();
@@ -111,7 +111,7 @@ int ServerAdminUi::doLoad () {
 
 	App::instance->shouldSyncRecordStore = true;
 
-	return (Result::SUCCESS);
+	return (Result::Success);
 }
 
 void ServerAdminUi::doUnload () {
@@ -122,10 +122,10 @@ void ServerAdminUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
 	UiText *uitext;
 
 	uitext = &(App::instance->uiText);
-	lockButton = new Button (StdString (""), sprites.getSprite (ServerAdminUi::LOCK_BUTTON));
+	lockButton = new Button (StdString (""), sprites.getSprite (ServerAdminUi::LockButtonSprite));
 	lockButton->setInverseColor (true);
 	lockButton->setMouseClickCallback (ServerAdminUi::lockButtonClicked, this);
-	lockButton->setMouseHoverTooltip (uitext->getText (UiTextString::serverAdminUiLockTooltip), Widget::LEFT);
+	lockButton->setMouseHoverTooltip (uitext->getText (UiTextString::serverAdminUiLockTooltip), Widget::LeftAlignment);
 	toolbar->addRightItem (lockButton);
 }
 
@@ -203,7 +203,7 @@ void ServerAdminUi::doSyncRecordStore () {
 	}
 	else {
 		if (! iconcardwindow) {
-			iconcardwindow = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::INFO_ICON), uitext->getText (UiTextString::serverAdminUiEmptyTaskListTitle), StdString (""), uitext->getText (UiTextString::serverAdminUiEmptyTaskListText));
+			iconcardwindow = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::InfoIconSprite), uitext->getText (UiTextString::serverAdminUiEmptyTaskListTitle), StdString (""), uitext->getText (UiTextString::serverAdminUiEmptyTaskListText));
 			emptyTaskWindow.assign (iconcardwindow);
 			iconcardwindow->itemId.assign (cardView->getAvailableItemId ());
 			cardView->addItem (iconcardwindow, iconcardwindow->itemId, 2);
@@ -262,7 +262,7 @@ void ServerAdminUi::adminSecretAddButtonClicked (void *uiPtr, Widget *widgetPtr)
 	App::instance->rootPanel->addWidget (action);
 	ui->actionWidget.assign (action);
 	ui->actionTarget.assign (target);
-	action->position.assign (target->drawX + target->width, target->drawY + target->height - action->height);
+	action->position.assign (target->screenX + target->width, target->screenY + target->height - action->height);
 }
 
 void ServerAdminUi::adminSecretAddActionClosed (void *uiPtr, Widget *widgetPtr) {
@@ -294,6 +294,7 @@ void ServerAdminUi::adminSecretExpandStateChanged (void *uiPtr, Widget *widgetPt
 
 void ServerAdminUi::lockButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	ServerAdminUi *ui;
+	UiConfiguration *uiconfig;
 	UiText *uitext;
 	ActionWindow *action;
 	ComboBox *combobox;
@@ -303,6 +304,7 @@ void ServerAdminUi::lockButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	bool show;
 
 	ui = (ServerAdminUi *) uiPtr;
+	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 
 	show = true;
@@ -316,6 +318,7 @@ void ServerAdminUi::lockButtonClicked (void *uiPtr, Widget *widgetPtr) {
 
 	action = new ActionWindow ();
 	action->setInverseColor (true);
+	action->setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
 	action->setTitleText (uitext->getText (UiTextString::setAdminPassword).capitalized ());
 	action->setConfirmButtonText (uitext->getText (UiTextString::apply).uppercased ());
 	action->setCloseCallback (ServerAdminUi::setAdminPasswordActionClosed, ui);
@@ -349,7 +352,7 @@ void ServerAdminUi::lockButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	ui->actionWidget.assign (action);
 	ui->actionTarget.assign (widgetPtr);
 	action->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
-	action->position.assign (widgetPtr->drawX + widgetPtr->width - action->width, widgetPtr->drawY - action->height);
+	action->position.assign (widgetPtr->screenX + widgetPtr->width - action->width, widgetPtr->screenY - action->height);
 }
 
 void ServerAdminUi::setAdminPasswordActionClosed (void *uiPtr, Widget *widgetPtr) {
@@ -379,7 +382,7 @@ void ServerAdminUi::setAdminPasswordActionClosed (void *uiPtr, Widget *widgetPtr
 	params->set ("secret", secret);
 	ui->retain ();
 	result = App::instance->agentControl.invokeCommand (ui->agentId, App::instance->createCommand (SystemInterface::Command_SetAdminSecret, SystemInterface::Constant_DefaultCommandType, params), ServerAdminUi::setAdminSecretComplete, ui);
-	if (result != Result::SUCCESS) {
+	if (result != Result::Success) {
 		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
 		ui->release ();
 	}

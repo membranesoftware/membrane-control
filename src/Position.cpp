@@ -31,6 +31,7 @@
 #include "Config.h"
 #include <stdlib.h>
 #include <math.h>
+#include <queue>
 #include "Position.h"
 
 Position::Position (float x, float y)
@@ -42,6 +43,7 @@ Position::Position (float x, float y)
 , translateDx (0.0f)
 , translateDy (0.0f)
 , translateDuration (0)
+, translateClock (0)
 {
 }
 
@@ -50,40 +52,57 @@ Position::~Position () {
 }
 
 void Position::update (int msElapsed) {
+	Position::Translation t;
 	float dx, dy;
+	int ms, dt;
 
-	if (! isTranslating) {
-		return;
-	}
+	ms = msElapsed;
+	while (isTranslating && (ms > 0)) {
+		dt = ms;
+		if (dt > translateClock) {
+			dt = translateClock;
+		}
+		translateClock -= dt;
+		ms -= dt;
 
-	dx = translateDx * msElapsed;
-	x += dx;
-	if (translateDx < 0.0f) {
-		if (x < translateTargetX) {
+		dx = translateDx * (float) dt;
+		x += dx;
+		if (translateDx < 0.0f) {
+			if (x < translateTargetX) {
+				x = translateTargetX;
+			}
+		}
+		else {
+			if (x > translateTargetX) {
+				x = translateTargetX;
+			}
+		}
+
+		dy = translateDy * (float) dt;
+		y += dy;
+		if (translateDy < 0.0f) {
+			if (y < translateTargetY) {
+				y = translateTargetY;
+			}
+		}
+		else {
+			if (y > translateTargetY) {
+				y = translateTargetY;
+			}
+		}
+
+		if (translateClock <= 0) {
 			x = translateTargetX;
-		}
-	}
-	else {
-		if (x > translateTargetX) {
-			x = translateTargetX;
-		}
-	}
-
-	dy = translateDy * msElapsed;
-	y += dy;
-	if (translateDy < 0.0f) {
-		if (y < translateTargetY) {
 			y = translateTargetY;
+			if (translationQueue.empty ()) {
+				isTranslating = false;
+			}
+			else {
+				t = translationQueue.front ();
+				translationQueue.pop ();
+				translate (x + t.deltaX, y + t.deltaY, t.duration);
+			}
 		}
-	}
-	else {
-		if (y > translateTargetY) {
-			y = translateTargetY;
-		}
-	}
-
-	if (FLOAT_EQUALS (x, translateTargetX) && FLOAT_EQUALS (translateTargetY, y)) {
-		isTranslating = false;
 	}
 }
 
@@ -91,28 +110,25 @@ void Position::assign (float positionX, float positionY) {
 	x = positionX;
 	y = positionY;
 	isTranslating = false;
+	while (! translationQueue.empty ()) {
+		translationQueue.pop ();
+	}
 }
 
 void Position::assign (const Position &otherPosition) {
-	x = otherPosition.x;
-	y = otherPosition.y;
-	isTranslating = false;
+	assign (otherPosition.x, otherPosition.y);
 }
 
 void Position::assign (const Position &otherPosition, float dx, float dy) {
-	x = otherPosition.x + dx;
-	y = otherPosition.y + dy;
-	isTranslating = false;
+	assign (otherPosition.x + dx, otherPosition.y + dy);
 }
 
 void Position::assignX (float positionX) {
-	x = positionX;
-	isTranslating = false;
+	assign (positionX, y);
 }
 
 void Position::assignY (float positionY) {
-	y = positionY;
-	isTranslating = false;
+	assign (x, positionY);
 }
 
 void Position::assignBounded (float positionX, float positionY, float minX, float minY, float maxX, float maxY) {
@@ -140,22 +156,30 @@ bool Position::equals (const Position &otherPosition) const {
 }
 
 void Position::move (float dx, float dy) {
-	x += dx;
-	y += dy;
-	isTranslating = false;
+	assign (x + dx, y + dy);
 }
 
 void Position::translate (float targetX, float targetY, int durationMs) {
 	float dx, dy;
 
 	if (durationMs <= 0) {
-		assign (targetX, targetY);
+		x = targetX;
+		y = targetY;
+		translateTargetX = targetX;
+		translateTargetY = targetY;
+		translateDuration = 0;
+		translateClock = 0;
+		translateDx = 0.0f;
+		translateDy = 0.0f;
+		if (translationQueue.empty ()) {
+			isTranslating = false;
+		}
 		return;
 	}
 
 	dx = targetX - x;
 	dy = targetY - y;
-	if ((fabs (dx) <= CONFIG_FLOAT_EPSILON) && (fabs (dy) <= CONFIG_FLOAT_EPSILON)) {
+	if ((fabs (dx) <= CONFIG_FLOAT_EPSILON) && (fabs (dy) <= CONFIG_FLOAT_EPSILON) && translationQueue.empty ()) {
 		isTranslating = false;
 		return;
 	}
@@ -168,6 +192,7 @@ void Position::translate (float targetX, float targetY, int durationMs) {
 	translateTargetX = targetX;
 	translateTargetY = targetY;
 	translateDuration = durationMs;
+	translateClock = durationMs;
 	translateDx = dx / (float) durationMs;
 	translateDy = dy / (float) durationMs;
 }
@@ -202,4 +227,29 @@ void Position::translateY (float targetY, int durationMs) {
 void Position::translateY (float startY, float targetY, int durationMs) {
 	assignY (startY);
 	translate (x, targetY, durationMs);
+}
+
+void Position::plot (float deltaX, float deltaY, int durationMs) {
+	Position::Translation t;
+
+	if (! isTranslating) {
+		while (! translationQueue.empty ()) {
+			translationQueue.pop ();
+		}
+		translate (x + deltaX, y + deltaY, durationMs);
+		return;
+	}
+
+	t.deltaX = deltaX;
+	t.deltaY = deltaY;
+	t.duration = durationMs;
+	translationQueue.push (t);
+}
+
+void Position::plotX (float deltaX, int durationMs) {
+	plot (deltaX, 0.0f, durationMs);
+}
+
+void Position::plotY (float deltaY, int durationMs) {
+	plot (0.0f, deltaY, durationMs);
 }

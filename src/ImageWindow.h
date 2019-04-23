@@ -37,12 +37,16 @@
 #include "SharedBuffer.h"
 #include "Image.h"
 #include "Sprite.h"
+#include "Widget.h"
 #include "Panel.h"
 
 class ImageWindow : public Panel {
 public:
 	ImageWindow (Image *image = NULL);
 	virtual ~ImageWindow ();
+
+	// Set a callback that should be invoked after the image window's content successfully loads
+	void setLoadCallback (Widget::EventCallback callback, void *callbackData);
 
 	// Set the amount of size padding that should be applied to the window
 	void setPadding (float widthPadding, float heightPadding);
@@ -86,8 +90,8 @@ protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
 
-	// Execute operations to update object state as appropriate for an elapsed millisecond time period and origin position
-	void doUpdate (int msElapsed, float originX, float originY);
+	// Execute operations to update object state as appropriate for an elapsed millisecond time period
+	void doUpdate (int msElapsed);
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
 	void refreshLayout ();
@@ -118,6 +122,9 @@ private:
 	bool isImageUrlLoaded;
 	bool isLoadingImageUrl;
 	bool isImageUrlLoadDisabled;
+	bool shouldInvokeLoadCallback;
+	Widget::EventCallback loadCallback;
+	void *loadCallbackData;
 };
 
 #endif

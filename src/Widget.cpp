@@ -47,14 +47,14 @@ Widget::Widget ()
 , id (0)
 , isDestroyed (false)
 , isVisible (true)
+, isTextureTargetDrawEnabled (true)
 , isInputSuspended (false)
 , zLevel (0)
-, isFixedPosition (false)
 , isMouseHoverEnabled (false)
-, isDrawable (false)
-, drawX (0.0f)
-, drawY (0.0f)
-, tooltipAlignment (Widget::BOTTOM)
+, hasScreenPosition (false)
+, screenX (0.0f)
+, screenY (0.0f)
+, tooltipAlignment (Widget::BottomAlignment)
 , width (0.0f)
 , height (0.0f)
 , destroyClock (0)
@@ -150,15 +150,11 @@ void Widget::update (int msElapsed, float originX, float originY) {
 	}
 
 	position.update (msElapsed);
-	drawX = position.x;
-	drawY = position.y;
-	if (! isFixedPosition) {
-		drawX += originX;
-		drawY += originY;
-	}
-	isDrawable = true;
+	screenX = position.x + originX;
+	screenY = position.y + originY;
+	hasScreenPosition = true;
 
-	doUpdate (msElapsed, originX, originY);
+	doUpdate (msElapsed);
 
 	if (isFixedCenter) {
 		fixedCenterPosition.update (msElapsed);
@@ -168,8 +164,8 @@ void Widget::update (int msElapsed, float originX, float originY) {
 		// TODO: Possibly use a smooth translation here
 		if (! position.equals (x, y)) {
 			position.assign (x, y);
-			drawX = originX + position.x;
-			drawY = originY + position.y;
+			screenX = position.x + originX;
+			screenY = position.y + originY;
 		}
 	}
 
@@ -178,18 +174,27 @@ void Widget::update (int msElapsed, float originX, float originY) {
 	}
 }
 
-void Widget::doUpdate (int msElapsed, float originX, float originY) {
+void Widget::doUpdate (int msElapsed) {
 	// Default implementation does nothing
 }
 
-void Widget::draw () {
+void Widget::draw (SDL_Texture *targetTexture, float originX, float originY) {
 	if (isDestroyed) {
 		return;
 	}
-	doDraw ();
+	if (targetTexture) {
+		if (! isTextureTargetDrawEnabled) {
+			return;
+		}
+		SDL_SetRenderTarget (App::instance->render, targetTexture);
+	}
+	doDraw (targetTexture, originX, originY);
+	if (targetTexture) {
+		SDL_SetRenderTarget (App::instance->render, NULL);
+	}
 }
 
-void Widget::doDraw () {
+void Widget::doDraw (SDL_Texture *targetTexture, float originX, float originY) {
 	// Default implementation does nothing
 }
 

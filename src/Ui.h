@@ -103,17 +103,20 @@ public:
 	// Set fields in the provided HelpWindow widget as appropriate for the UI's help content
 	virtual void setHelpWindowContent (HelpWindow *helpWindow);
 
-	// Execute operations appropriate when an agent control link client becomes connected
+	// Execute actions appropriate when an agent control link client becomes connected
 	virtual void handleLinkClientConnect (const StdString &agentId);
 
-	// Execute operations appropriate when an agent control link client becomes disconnected
+	// Execute actions appropriate when an agent control link client becomes disconnected
 	virtual void handleLinkClientDisconnect (const StdString &agentId, const StdString &errorDescription);
 
 	// Execute actions appropriate for a command received from an agent control link client
 	virtual void handleLinkClientCommand (const StdString &agentId, int commandId, Json *command);
 
-	// Execute operations to sync state with records present in the application's RecordStore object, which has been locked prior to invocation
+	// Execute actions to sync state with records present in the application's RecordStore object, which has been locked prior to invocation
 	void syncRecordStore ();
+
+	// Execute actions appropriate for a received keypress event and return a boolean value indicating if the event was consumed and should no longer be processed
+	bool processKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
 
 	// Callback functions
 	static bool keyEvent (void *uiPtr, SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
@@ -146,11 +149,14 @@ protected:
 	// Add subclass-specific draw commands for execution by the application
 	virtual void doDraw ();
 
-	// Execute subclass-specific operations to refresh the interface's layout as appropriate for the current set of UiConfiguration values
+	// Execute subclass-specific actions to refresh the interface's layout as appropriate for the current set of UiConfiguration values
 	virtual void doRefresh ();
 
 	// Reload subclass-specific interface resources as needed to account for a new application window size
 	virtual void doResize ();
+
+	// Execute subclass-specific actions appropriate for a received keypress event and return a boolean value indicating if the event was consumed and should no longer be processed
+	virtual bool doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
 
 	// Add subclass-specific items to the provided main toolbar object
 	virtual void doAddMainToolbarItems (Toolbar *toolbar);
@@ -158,7 +164,7 @@ protected:
 	// Add subclass-specific items to the provided secondary toolbar object
 	virtual void doAddSecondaryToolbarItems (Toolbar *toolbar);
 
-	// Execute subclass-specific operations to sync state with records present in the application's RecordStore object, which has been locked prior to invocation
+	// Execute subclass-specific actions to sync state with records present in the application's RecordStore object, which has been locked prior to invocation
 	virtual void doSyncRecordStore ();
 
 	// Set the link client connection state that should be maintained for agents with ID values appearing in linkAgentIds

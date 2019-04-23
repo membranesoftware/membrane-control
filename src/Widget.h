@@ -57,16 +57,16 @@ public:
 	uint64_t id;
 	bool isDestroyed;
 	bool isVisible;
+	bool isTextureTargetDrawEnabled;
 	bool isInputSuspended;
 	Position position;
 	int zLevel;
-	bool isFixedPosition;
 	bool isMouseHoverEnabled;
 	StdString sortKey;
 
 	// Read-only data members
-	bool isDrawable;
-	float drawX, drawY;
+	bool hasScreenPosition;
+	float screenX, screenY;
 	StdString tooltipText;
 	int tooltipAlignment;
 
@@ -88,8 +88,8 @@ public:
 	// Execute operations to update object state as appropriate for an elapsed millisecond time period and origin position
 	void update (int msElapsed, float originX, float originY);
 
-	// Add draw commands for execution by the App
-	void draw ();
+	// Add draw commands for execution by the App. If targetTexture is non-NULL, render to that texture instead the default render target.
+	void draw (SDL_Texture *targetTexture = NULL, float originX = 0.0f, float originY = 0.0f);
 
 	// Refresh the widget's layout as appropriate for the current set of UiConfiguration values
 	void refresh ();
@@ -122,12 +122,12 @@ public:
 
 	// Set the widget to display the specified tooltip text on mouse hover
 	enum {
-		TOP = 0,
-		LEFT = 1,
-		RIGHT = 2,
-		BOTTOM = 3
+		TopAlignment = 0,
+		LeftAlignment = 1,
+		RightAlignment = 2,
+		BottomAlignment = 3
 	};
-	void setMouseHoverTooltip (const StdString &text, int alignment = Widget::BOTTOM);
+	void setMouseHoverTooltip (const StdString &text, int alignment = Widget::BottomAlignment);
 
 	// Set the widget to destroy itself after the specified number of milliseconds passes
 	void setDestroyDelay (int delayMs);
@@ -187,11 +187,11 @@ public:
 	static bool compareZLevel (Widget *first, Widget *second);
 
 protected:
-	// Execute subclass-specific operations to update object state as appropriate for an elapsed millisecond time period and origin position
-	virtual void doUpdate (int msElapsed, float originX, float originY);
+	// Execute subclass-specific operations to update object state as appropriate for an elapsed millisecond time period
+	virtual void doUpdate (int msElapsed);
 
-	// Add subclass-specific draw commands for execution by the App
-	virtual void doDraw ();
+	// Add subclass-specific draw commands for execution by the App. If targetTexture is non-NULL, it has been set as the render target and draw commands should adjust coordinates as appropriate.
+	virtual void doDraw (SDL_Texture *targetTexture, float originX, float originY);
 
 	// Execute subclass-specific operations to refresh the widget's layout as appropriate for the current set of UiConfiguration values
 	virtual void doRefresh ();

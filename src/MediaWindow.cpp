@@ -60,17 +60,30 @@ MediaWindow::MediaWindow (Json *mediaItem, int layoutType, float maxMediaImageWi
 , mediaFrameRate (0.0f)
 , mediaSize (0)
 , mediaBitrate (0)
+, displayTimestamp (-1.0f)
+, isSelected (false)
 , mediaImage (NULL)
 , nameLabel (NULL)
 , detailText (NULL)
 , mouseoverLabel (NULL)
 , detailNameLabel (NULL)
+, viewButton (NULL)
+, timestampLabel (NULL)
+, streamIconImage (NULL)
+, mediaImageClickCallback (NULL)
+, mediaImageClickCallbackData (NULL)
+, viewButtonClickCallback (NULL)
+, viewButtonClickCallbackData (NULL)
+, selectStateChangeCallback (NULL)
+, selectStateChangeCallbackData (NULL)
 {
 	SystemInterface *interface;
 	UiConfiguration *uiconfig;
+	UiText *uitext;
 
 	interface = &(App::instance->systemInterface);
 	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 	mediaId = interface->getCommandStringParam (mediaItem, "id", "");
@@ -79,27 +92,55 @@ MediaWindow::MediaWindow (Json *mediaItem, int layoutType, float maxMediaImageWi
 	mediaWidth = interface->getCommandNumberParam (mediaItem, "width", (int) 0);
 	mediaHeight = interface->getCommandNumberParam (mediaItem, "height", (int) 0);
 
-	mediaImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LOADING_IMAGE_ICON))));
-	nameLabel = (Label *) addWidget (new Label (mediaName, UiConfiguration::BODY, uiconfig->primaryTextColor));
+	mediaImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LoadingImageIconSprite))));
+	mediaImage->setMouseClickCallback (MediaWindow::mediaImageClicked, this);
+	mediaImage->setLoadCallback (MediaWindow::mediaImageLoaded, this);
 
-	detailText = (TextArea *) addWidget (new TextArea (UiConfiguration::CAPTION, uiconfig->inverseTextColor));
-	detailText->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	detailText->setFillBg (true, 0.0f, 0.0f, 0.0f);
-	detailText->setAlphaBlend (true, uiconfig->scrimBackgroundAlpha);
+	nameLabel = (Label *) addWidget (new Label (mediaName, UiConfiguration::BodyFont, uiconfig->primaryTextColor));
+	nameLabel->isInputSuspended = true;
+
+	detailText = (TextArea *) addWidget (new TextArea (UiConfiguration::CaptionFont, uiconfig->inverseTextColor));
+	detailText->setPadding (uiconfig->paddingSize, uiconfig->paddingSize / 2.0f);
+	detailText->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
+	detailText->zLevel = 2;
+	detailText->isInputSuspended = true;
 	detailText->isVisible = false;
 
-	mouseoverLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CAPTION, uiconfig->inverseTextColor)));
+	mouseoverLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->inverseTextColor)));
 	mouseoverLabel->zLevel = 1;
-	mouseoverLabel->setFillBg (true, 0.0f, 0.0f, 0.0f);
-	mouseoverLabel->setAlphaBlend (true, uiconfig->scrimBackgroundAlpha);
+	mouseoverLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
+	mouseoverLabel->isTextureTargetDrawEnabled = false;
+	mouseoverLabel->isInputSuspended = true;
 	mouseoverLabel->isVisible = false;
 
-	detailNameLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (mediaName, UiConfiguration::HEADLINE, uiconfig->inverseTextColor)));
+	detailNameLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (mediaName, UiConfiguration::HeadlineFont, uiconfig->inverseTextColor)));
 	detailNameLabel->zLevel = 1;
 	detailNameLabel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	detailNameLabel->setFillBg (true, 0.0f, 0.0f, 0.0f);
-	detailNameLabel->setAlphaBlend (true, uiconfig->scrimBackgroundAlpha);
+	detailNameLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
+	detailNameLabel->isInputSuspended = true;
 	detailNameLabel->isVisible = false;
+
+	viewButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::ImageButtonSprite)));
+	viewButton->zLevel = 3;
+	viewButton->isTextureTargetDrawEnabled = false;
+	viewButton->setImageColor (uiconfig->flatButtonTextColor);
+	viewButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
+	viewButton->setMouseHoverTooltip (uitext->getText (UiTextString::viewTimelineImagesTooltip));
+	viewButton->setMouseClickCallback (MediaWindow::viewButtonClicked, this);
+
+	timestampLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->primaryTextColor)));
+	timestampLabel->zLevel = 2;
+	timestampLabel->setFillBg (true, uiconfig->darkBackgroundColor);
+	timestampLabel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize / 2.0f);
+	timestampLabel->isInputSuspended = true;
+	timestampLabel->isVisible = false;
+
+	streamIconImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite))));
+	streamIconImage->zLevel = 3;
+	streamIconImage->setFillBg (true, uiconfig->darkBackgroundColor);
+	streamIconImage->setPadding (uiconfig->paddingSize / 2.0f, 0.0f);
+	streamIconImage->setMouseHoverTooltip (uitext->getText (UiTextString::streamIconTooltip));
+	streamIconImage->isVisible = false;
 
 	setLayout (layoutType, maxMediaImageWidth);
 }
@@ -125,6 +166,65 @@ MediaWindow *MediaWindow::castWidget (Widget *widget) {
 	return (MediaWindow::isWidgetType (widget) ? (MediaWindow *) widget : NULL);
 }
 
+void MediaWindow::setImageUrl (const StdString &url) {
+	UiConfiguration *uiconfig;
+
+	uiconfig = &(App::instance->uiConfig);
+	mediaImage->setLoadUrl (url, uiconfig->coreSprites.getSprite (UiConfiguration::LoadingImageIconSprite));
+}
+
+void MediaWindow::setDisplayTimestamp (float timestamp) {
+	if (FLOAT_EQUALS (timestamp, displayTimestamp)) {
+		return;
+	}
+	displayTimestamp = timestamp;
+	if (displayTimestamp < 0.0f) {
+		timestampLabel->isVisible = false;
+	}
+	else {
+		timestampLabel->setText (OsUtil::getDurationString ((int64_t) displayTimestamp, OsUtil::HoursUnit));
+		timestampLabel->isVisible = true;
+	}
+
+	refreshLayout ();
+}
+
+void MediaWindow::setMediaImageClickCallback (Widget::EventCallback callback, void *callbackData) {
+	mediaImageClickCallback = callback;
+	mediaImageClickCallbackData = callbackData;
+}
+
+void MediaWindow::setSelectStateChangeCallback (Widget::EventCallback callback, void *callbackData) {
+	selectStateChangeCallback = callback;
+	selectStateChangeCallbackData = callbackData;
+}
+
+void MediaWindow::setViewButtonClickCallback (Widget::EventCallback callback, void *callbackData) {
+	viewButtonClickCallback = callback;
+	viewButtonClickCallbackData = callbackData;
+}
+
+void MediaWindow::setSelected (bool selected, bool shouldSkipStateChangeCallback) {
+	UiConfiguration *uiconfig;
+
+	if (selected == isSelected) {
+		return;
+	}
+	uiconfig = &(App::instance->uiConfig);
+	isSelected = selected;
+	if (isSelected) {
+		setBorder (true, uiconfig->mediumSecondaryColor.copy (uiconfig->selectionBorderAlpha), uiconfig->selectionBorderWidth);
+	}
+	else {
+		setBorder (false);
+	}
+	refreshLayout ();
+	if (selectStateChangeCallback && (! shouldSkipStateChangeCallback)) {
+		selectStateChangeCallback (selectStateChangeCallbackData, this);
+	}
+	shouldRefreshTexture = true;
+}
+
 bool MediaWindow::hasThumbnails () {
 	return ((! agentId.empty ()) && (! thumbnailPath.empty ()) && (thumbnailCount > 0) && (mediaWidth > 0) && (mediaHeight > 0));
 }
@@ -134,7 +234,7 @@ void MediaWindow::syncRecordStore () {
 	SystemInterface *interface;
 	UiConfiguration *uiconfig;
 	Json *mediaitem, *agentstatus, serverstatus, *streamitem, *params;
-	StdString agentid, recordid, agentname;
+	StdString agentid, recordid, agentname, hlspath;
 
 	store = &(App::instance->agentControl.recordStore);
 	interface = &(App::instance->systemInterface);
@@ -166,13 +266,14 @@ void MediaWindow::syncRecordStore () {
 	mediaBitrate = interface->getCommandNumberParam (mediaitem, "bitrate", (int64_t) 0);
 
 	streamitem = store->findRecord (MediaWindow::matchStreamSourceId, &mediaId);
-
 	// TODO: Check for a relevant TaskItem record and show a progress widget if one is found
 
 	if (! streamitem) {
 		streamAgentId.assign ("");
 		streamId.assign ("");
 		streamAgentName.assign ("");
+		hlsStreamPath.assign ("");
+		streamIconImage->isVisible = false;
 	}
 	else {
 		recordid = interface->getCommandRecordId (streamitem);
@@ -183,13 +284,21 @@ void MediaWindow::syncRecordStore () {
 			agentstatus = store->findRecord (RecordStore::matchAgentStatusSource, &agentid);
 			if (agentstatus) {
 				agentname = interface->getCommandAgentName (agentstatus);
+				if (interface->getCommandObjectParam (agentstatus, "streamServerStatus", &serverstatus)) {
+					hlspath = serverstatus.getString ("hlsStreamPath", "");
+				}
 			}
 		}
 
-		if ((! recordid.empty ()) && (! agentid.empty ()) && (! agentname.empty ())) {
+		if (recordid.empty () || agentid.empty () || agentname.empty () || hlspath.empty ()) {
+			streamIconImage->isVisible = false;
+		}
+		else {
 			streamId.assign (recordid);
 			streamAgentId.assign (agentid);
 			streamAgentName.assign (agentname);
+			hlsStreamPath.assign (hlspath);
+			streamIconImage->isVisible = true;
 		}
 	}
 
@@ -197,7 +306,7 @@ void MediaWindow::syncRecordStore () {
 		params = new Json ();
 		params->set ("id", mediaId);
 		params->set ("thumbnailIndex", (thumbnailCount / 4));
-		mediaImage->setLoadUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetThumbnailImage, SystemInterface::Constant_Media, params), thumbnailPath), uiconfig->coreSprites.getSprite (UiConfiguration::LOADING_IMAGE_ICON));
+		mediaImage->setLoadUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetThumbnailImage, SystemInterface::Constant_Media, params), thumbnailPath), uiconfig->coreSprites.getSprite (UiConfiguration::LoadingImageIconSprite));
 	}
 
 	refreshLayout ();
@@ -221,28 +330,30 @@ bool MediaWindow::matchStreamSourceId (void *idStringPtr, Json *record) {
 
 void MediaWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
-	UiText *uitext;
-	StdString text;
 	float x, y;
 
 	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
 	mouseoverLabel->isVisible = false;
 	x = 0.0f;
 	y = 0.0f;
 	mediaImage->position.assign (x, y);
 
 	switch (layout) {
-		case MediaWindow::LOW_DETAIL: {
+		case MediaWindow::LowDetailLayout: {
 			nameLabel->isVisible = false;
 			detailNameLabel->isVisible = false;
 			detailText->isVisible = false;
 
-			mouseoverLabel->position.assign (0.0f, mediaImage->height - mouseoverLabel->height);
+			if (streamIconImage->isVisible) {
+				streamIconImage->position.assign (mediaImage->position.x, mediaImage->position.y + mediaImage->height - streamIconImage->height);
+			}
+			mouseoverLabel->position.assign (0.0f, 0.0f);
+
 			setFixedSize (true, mediaImage->width, mediaImage->height);
+			viewButton->position.assign (mediaImage->position.x + mediaImage->width - viewButton->width - uiconfig->dropShadowWidth, mediaImage->position.y, mediaImage->height - viewButton->height);
 			break;
 		}
-		case MediaWindow::MEDIUM_DETAIL: {
+		case MediaWindow::MediumDetailLayout: {
 			detailNameLabel->isVisible = false;
 			detailText->isVisible = false;
 
@@ -250,33 +361,44 @@ void MediaWindow::refreshLayout () {
 			y += mediaImage->height + uiconfig->marginSize;
 			nameLabel->position.assign (x, y);
 			nameLabel->isVisible = true;
-			resetSize ();
-			setFixedSize (true, mediaImage->width, maxWidgetY + uiconfig->paddingSize);
-			break;
-		}
-		case MediaWindow::HIGH_DETAIL: {
-			nameLabel->isVisible = false;
 
-			detailNameLabel->position.assign (x, y);
-			detailNameLabel->isVisible = true;
-
-			text.sprintf ("%ix%i  %s  %s  %s", mediaWidth, mediaHeight, MediaUtil::getBitrateDisplayString (mediaBitrate).c_str (), OsUtil::getByteCountDisplayString (mediaSize).c_str (), OsUtil::getDurationDisplayString (mediaDuration).c_str ());
-			if (! streamAgentName.empty ()) {
-				text.appendSprintf ("\n%s: %s", uitext->getText (UiTextString::streamServer).capitalized ().c_str (), streamAgentName.c_str ());
+			if (streamIconImage->isVisible) {
+				streamIconImage->position.assign (mediaImage->position.x, mediaImage->position.y + mediaImage->height - streamIconImage->height);
 			}
 
-			detailText->setText (text);
-			detailText->position.assign (mediaImage->position.x, mediaImage->position.y + mediaImage->height - detailText->height);
-			detailText->isVisible = true;
-			setFixedSize (true, mediaImage->width, mediaImage->height);
+			resetSize ();
+			setFixedSize (true, mediaImage->width, maxWidgetY + uiconfig->paddingSize);
+			viewButton->position.assign (mediaImage->position.x + mediaImage->width - viewButton->width - uiconfig->dropShadowWidth, mediaImage->position.y, mediaImage->height - viewButton->height);
 			break;
 		}
+		case MediaWindow::HighDetailLayout: {
+			nameLabel->isVisible = false;
+
+			detailNameLabel->position.assign (mediaImage->position.x, mediaImage->position.y);
+			detailNameLabel->isVisible = true;
+
+			if (streamIconImage->isVisible) {
+				streamIconImage->position.assign (x, mediaImage->position.y + mediaImage->height - streamIconImage->height);
+				x += streamIconImage->width;
+			}
+
+			detailText->setText (StdString::createSprintf ("%ix%i  %s  %s  %s", mediaWidth, mediaHeight, MediaUtil::getBitrateDisplayString (mediaBitrate).c_str (), OsUtil::getByteCountDisplayString (mediaSize).c_str (), OsUtil::getDurationDisplayString (mediaDuration).c_str ()));
+			detailText->position.assign (x, mediaImage->position.y + mediaImage->height - detailText->height);
+			detailText->isVisible = true;
+			setFixedSize (true, mediaImage->width, mediaImage->height);
+			viewButton->position.assign (mediaImage->position.x + mediaImage->width - viewButton->width - uiconfig->dropShadowWidth, mediaImage->position.y, mediaImage->height - viewButton->height);
+			break;
+		}
+	}
+
+	if (timestampLabel->isVisible) {
+		timestampLabel->position.assign (mediaImage->position.x + mediaImage->width - timestampLabel->width, mediaImage->position.y);
 	}
 }
 
 void MediaWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 	Panel::doProcessMouseState (mouseState);
-	if (layout == MediaWindow::LOW_DETAIL) {
+	if (layout == MediaWindow::LowDetailLayout) {
 		if (mouseState.isEntered) {
 			mouseoverLabel->isVisible = true;
 		}
@@ -289,7 +411,7 @@ void MediaWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 void MediaWindow::setLayout (int layoutType, float maxImageWidth) {
 	float w, h;
 
-	if (layoutType == layout) {
+	if ((layoutType == layout) || (mediaWidth <= 0)) {
 		return;
 	}
 	layout = layoutType;
@@ -302,15 +424,40 @@ void MediaWindow::setLayout (int layoutType, float maxImageWidth) {
 	mediaImage->setWindowSize (w, h);
 	mediaImage->reload ();
 
-	if (layout == MediaWindow::HIGH_DETAIL) {
-		nameLabel->setFont (UiConfiguration::BODY);
+	if (layout == MediaWindow::HighDetailLayout) {
+		nameLabel->setFont (UiConfiguration::BodyFont);
 	}
 	else {
-		nameLabel->setFont (UiConfiguration::CAPTION);
+		nameLabel->setFont (UiConfiguration::CaptionFont);
 	}
 
-	if (layout == MediaWindow::LOW_DETAIL) {
+	if (layout == MediaWindow::LowDetailLayout) {
 		mouseoverLabel->setText (mediaName);
 	}
 	refreshLayout ();
+}
+
+void MediaWindow::mediaImageClicked (void *windowPtr, Widget *widgetPtr) {
+	MediaWindow *window;
+
+	window = (MediaWindow *) windowPtr;
+	if (window->mediaImageClickCallback) {
+		window->mediaImageClickCallback (window->mediaImageClickCallbackData, window);
+	}
+}
+
+void MediaWindow::mediaImageLoaded (void *windowPtr, Widget *widgetPtr) {
+	MediaWindow *window;
+
+	window = (MediaWindow *) windowPtr;
+	window->shouldRefreshTexture = true;
+}
+
+void MediaWindow::viewButtonClicked (void *windowPtr, Widget *widgetPtr) {
+	MediaWindow *window;
+
+	window = (MediaWindow *) windowPtr;
+	if (window->viewButtonClickCallback) {
+		window->viewButtonClickCallback (window->viewButtonClickCallbackData, window);
+	}
 }

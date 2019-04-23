@@ -52,8 +52,8 @@ ComboBox::ComboBox ()
 , valueChangeCallback (NULL)
 , valueChangeCallbackData (NULL)
 , isExpanded (false)
-, expandDrawX (0.0f)
-, expandDrawY (0.0f)
+, expandScreenX (0.0f)
+, expandScreenY (0.0f)
 , isFocused (false)
 , selectedItemLabel (NULL)
 , maxTextWidth (0.0f)
@@ -164,7 +164,7 @@ void ComboBox::addItem (const StdString &itemValue, const StdString &itemData) {
 	LabelWindow *labelwindow;
 	Label *label;
 
-	label = new Label (itemValue, UiConfiguration::CAPTION, normalItemTextColor);
+	label = new Label (itemValue, UiConfiguration::CaptionFont, normalItemTextColor);
 	if (label->width > maxTextWidth) {
 		maxTextWidth = label->width;
 	}
@@ -293,8 +293,8 @@ void ComboBox::doProcessMouseState (const Widget::MouseState &mouseState) {
 			if ((! shouldunexpand) && panel) {
 				x = App::instance->input.mouseX;
 				y = App::instance->input.mouseY;
-				x1 = (int) panel->drawX;
-				y1 = (int) panel->drawY;
+				x1 = (int) panel->screenX;
+				y1 = (int) panel->screenY;
 				x2 = x1 + (int) panel->width;
 				y2 = y1 + (int) panel->height;
 				if ((x < x1) || (x > x2) || (y < y1) || (y > y2)) {
@@ -343,7 +343,7 @@ void ComboBox::expand () {
 	end = itemList.end ();
 	while (i != end) {
 		if (i->label != selectedItemLabel) {
-			label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (i->value, UiConfiguration::CAPTION, normalItemTextColor)), x, y);
+			label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (i->value, UiConfiguration::CaptionFont, normalItemTextColor)), x, y);
 			label->setFillBg (true, normalBgColor);
 			label->setWindowWidth (maxTextWidth + (uiconfig->paddingSize * 2.0f), true);
 			label->setMouseoverHighlight (true, normalItemTextColor, normalBgColor, focusItemTextColor, focusBgColor, uiconfig->shortColorTranslateDuration);
@@ -355,14 +355,14 @@ void ComboBox::expand () {
 	}
 	panel->refresh ();
 	expandPanel.assign (panel);
-	expandDrawX = drawX;
-	expandDrawY = drawY;
+	expandScreenX = screenX;
+	expandScreenY = screenY;
 
-	y = expandDrawY + height;
+	y = expandScreenY + height;
 	if ((y + panel->height) >= App::instance->windowHeight) {
-		y = expandDrawY - panel->height;
+		y = expandScreenY - panel->height;
 	}
-	App::instance->rootPanel->addWidget (panel, expandDrawX, y, App::instance->rootPanel->maxWidgetZLevel + 1);
+	App::instance->rootPanel->addWidget (panel, expandScreenX, y, App::instance->rootPanel->maxWidgetZLevel + 1);
 
 	isExpanded = true;
 }
@@ -375,11 +375,10 @@ void ComboBox::unexpand (const StdString &value) {
 	expandPanel.destroyAndClear ();
 }
 
-void ComboBox::doUpdate (int msElapsed, float originX, float originY) {
-	Panel::doUpdate (msElapsed, originX, originY);
-
+void ComboBox::doUpdate (int msElapsed) {
+	Panel::doUpdate (msElapsed);
 	if (isExpanded) {
-		if ((! expandPanel.widget) || (! FLOAT_EQUALS (drawX, expandDrawX)) || (! FLOAT_EQUALS (drawY, expandDrawY))) {
+		if ((! expandPanel.widget) || (! FLOAT_EQUALS (screenX, expandScreenX)) || (! FLOAT_EQUALS (screenY, expandScreenY))) {
 			unexpand ();
 		}
 	}

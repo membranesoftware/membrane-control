@@ -151,7 +151,7 @@ void Image::resetSize () {
 	height = ((float) th) * drawScale;
 }
 
-void Image::doUpdate (int msElapsed, float originX, float originY) {
+void Image::doUpdate (int msElapsed) {
 	if (isMouseHighlightScaled) {
 		if (isMouseEntered) {
 			if (! FLOAT_EQUALS (drawScale, mouseHighlightScale)) {
@@ -177,13 +177,13 @@ void Image::doRefresh () {
 	resetSize ();
 }
 
-void Image::doDraw () {
+void Image::doDraw (SDL_Texture *targetTexture, float originX, float originY) {
 	SDL_Texture *texture;
 	SDL_Rect rect;
 
 	texture = spriteHandle.getTexture ();
-	rect.x = (int) drawX;
-	rect.y = (int) drawY;
+	rect.x = (int) (originX + position.x);
+	rect.y = (int) (originY + position.y);
 	rect.w = (int) width;
 	rect.h = (int) height;
 

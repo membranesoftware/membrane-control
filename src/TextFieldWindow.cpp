@@ -62,6 +62,7 @@ TextFieldWindow::TextFieldWindow (float windowWidth, const StdString &promptText
 , iconImage (NULL)
 , visibilityToggle (NULL)
 , shouldResetEditing (false)
+, isCancelled (false)
 {
 	UiConfiguration *uiconfig;
 	UiText *uitext;
@@ -81,31 +82,34 @@ TextFieldWindow::TextFieldWindow (float windowWidth, const StdString &promptText
 		iconImage->setWindowSize (image->width + uiconfig->paddingSize, textField->height);
 	}
 
-	enterButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::ENTER_TEXT_BUTTON)));
+	enterButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::EnterTextButtonSprite)));
 	enterButton->setInverseColor (true);
 	enterButton->setMouseClickCallback (TextFieldWindow::enterButtonClicked, this);
 	enterButton->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldEnterTooltip));
 	enterButton->isVisible = false;
 
-	cancelButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::CANCEL_BUTTON)));
+	cancelButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::CancelButtonSprite)));
 	cancelButton->setInverseColor (true);
 	cancelButton->setMouseClickCallback (TextFieldWindow::cancelButtonClicked, this);
 	cancelButton->setMouseHoverTooltip (uitext->getText (UiTextString::cancel).capitalized ());
 	cancelButton->isVisible = false;
 
-	pasteButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::PASTE_BUTTON)));
+	pasteButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::PasteButtonSprite)));
 	pasteButton->setMouseClickCallback (TextFieldWindow::pasteButtonClicked, this);
 	pasteButton->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldPasteTooltip));
+	pasteButton->isFocusDropShadowDisabled = true;
 	pasteButton->isVisible = false;
 
-	clearButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::CLEAR_BUTTON)));
+	clearButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::ClearButtonSprite)));
 	clearButton->setMouseClickCallback (TextFieldWindow::clearButtonClicked, this);
 	clearButton->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldClearTooltip));
+	clearButton->isFocusDropShadowDisabled = true;
 	clearButton->isVisible = false;
 
-	randomizeButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::RANDOMIZE_BUTTON)));
+	randomizeButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::RandomizeButtonSprite)));
 	randomizeButton->setMouseClickCallback (TextFieldWindow::randomizeButtonClicked, this);
 	randomizeButton->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldRandomizeTooltip));
+	randomizeButton->isFocusDropShadowDisabled = true;
 	randomizeButton->isVisible = false;
 
 	refreshLayout ();
@@ -171,7 +175,7 @@ void TextFieldWindow::setObscured (bool enable) {
 	isObscured = enable;
 	if (isObscured) {
 		textField->setObscured (true);
-		visibilityToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::VISIBILITY_OFF_BUTTON), uiconfig->coreSprites.getSprite (UiConfiguration::VISIBILITY_ON_BUTTON)));
+		visibilityToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::VisibilityOffButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::VisibilityOnButtonSprite)));
 		visibilityToggle->setInverseColor (isInverseColor);
 		visibilityToggle->setStateChangeCallback (TextFieldWindow::visibilityToggleStateChanged, this);
 		visibilityToggle->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldVisibilityToggleTooltip));
@@ -184,11 +188,15 @@ void TextFieldWindow::setObscured (bool enable) {
 }
 
 StdString TextFieldWindow::getValue () {
+	if (isCancelled) {
+		return (cancelValue);
+	}
 	return (textField->getValue ());
 }
 
 void TextFieldWindow::setValue (const StdString &valueText) {
 	textField->setValue (valueText);
+	cancelValue.assign (valueText);
 }
 
 void TextFieldWindow::setWindowWidth (float fixedWidth) {
@@ -333,9 +341,8 @@ void TextFieldWindow::refreshLayout () {
 	}
 }
 
-void TextFieldWindow::doUpdate (int msElapsed, float originX, float originY) {
-	Panel::doUpdate (msElapsed, originX, originY);
-
+void TextFieldWindow::doUpdate (int msElapsed) {
+	Panel::doUpdate (msElapsed);
 	if (shouldResetEditing) {
 		setEditing (true);
 		shouldResetEditing = false;
@@ -365,6 +372,7 @@ void TextFieldWindow::cancelButtonClicked (void *windowPtr, Widget *widgetPtr) {
 	TextFieldWindow *window;
 
 	window = (TextFieldWindow *) windowPtr;
+	window->isCancelled = true;
 	window->isDestroyed = true;
 }
 

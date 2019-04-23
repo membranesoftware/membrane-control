@@ -79,10 +79,10 @@ TextField::TextField (float fieldWidth, const StdString &promptText)
 	setBorder (true, normalBorderColor);
 
 	if (! promptText.empty ()) {
-		promptLabel = (Label *) addWidget (new Label (promptText, UiConfiguration::CAPTION, promptTextColor), widthPadding, heightPadding);
+		promptLabel = (Label *) addWidget (new Label (promptText, UiConfiguration::CaptionFont, promptTextColor), widthPadding, heightPadding);
 	}
 
-	valueLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CAPTION, normalValueTextColor), widthPadding, heightPadding);
+	valueLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, normalValueTextColor), widthPadding, heightPadding);
 
 	cursorPanel = (Panel *) addWidget (new Panel ());
 	cursorPanel->setFixedSize (true, valueLabel->maxGlyphWidth * 0.9f, valueLabel->maxLineHeight);
@@ -346,22 +346,23 @@ bool TextField::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool i
 		return (true);
 	}
 
-	c = App::instance->input.getKeyCharacter (keycode, isShiftDown);
-	if (c > 0) {
-		val = valueLabel->text;
-		val.append (1, c);
-		setValue (val, true);
-		return (true);
+	if (! isControlDown) {
+		c = App::instance->input.getKeyCharacter (keycode, isShiftDown);
+		if (c > 0) {
+			val = valueLabel->text;
+			val.append (1, c);
+			setValue (val, true);
+			return (true);
+		}
 	}
 
 	return (false);
 }
 
-void TextField::doUpdate (int msElapsed, float originX, float originY) {
+void TextField::doUpdate (int msElapsed) {
 	UiConfiguration *uiconfig;
 
-	Panel::doUpdate (msElapsed, originX, originY);
-
+	Panel::doUpdate (msElapsed);
 	uiconfig = &(App::instance->uiConfig);
 	if (isEditing && (uiconfig->blinkDuration > 0)) {
 		cursorClock -= msElapsed;

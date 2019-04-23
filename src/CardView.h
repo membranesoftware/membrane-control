@@ -35,6 +35,7 @@
 
 #include <list>
 #include <map>
+#include "SDL2/SDL.h"
 #include "StdString.h"
 #include "HashMap.h"
 #include "Label.h"
@@ -48,6 +49,8 @@ public:
 	~CardView ();
 
 	typedef bool (*MatchFunction) (void *data, Widget *widget);
+	static const float smallItemScale;
+	static const int animateScaleDuration;
 
 	// Read-only data members
 	float cardAreaWidth;
@@ -59,10 +62,19 @@ public:
 	void setItemMarginSize (float marginSize);
 
 	// Set a text string that should be shown as a header label immediately preceding items in the specified row number
-	void setRowHeader (int row, const StdString &headerText, int headerFontType = UiConfiguration::BODY, const Color &color = Color (0.0f, 0.0f, 0.0f));
+	void setRowHeader (int row, const StdString &headerText, int headerFontType = UiConfiguration::BodyFont, const Color &color = Color (0.0f, 0.0f, 0.0f));
 
 	// Set the margin size that should be used for items in the specified row, overriding any default item margin size that might have been set
 	void setRowItemMarginSize (int row, float marginSize);
+
+	// Set the animated selection option for the specified row. If enabled, the view uses scaling effects to animate selection of items in the row.
+	void setRowSelectionAnimated (int row, bool enable);
+
+	// Return a boolean value indicating whether the specified row has enabled the animated selection option
+	bool isRowSelectionAnimated (int row);
+
+	// Reset selection animation states for all items in the specified row
+	void resetRowSelection (int row);
 
 	// Return a boolean value indicating if the card view contains no items
 	bool empty ();
@@ -75,8 +87,8 @@ public:
 	StdString getAvailableItemId ();
 
 	// Add an item to the view. Returns the Widget pointer that was added. If an empty itemId value is provided, the CardView generates one of its own. If the provided row value is zero or greater, assign it for use when positioning items in the view. After adding the item, invoke refreshLayout unless shouldSkipRefreshLayout is true.
-	Widget *addItem (Widget *itemWidget, const StdString &itemId = StdString (""), int row = 0, bool shouldSkipRefreshLayout = false);
-	Widget *addItem (Widget *itemWidget, const char *itemId, int row = 0, bool shouldSkipRefreshLayout = false);
+	Widget *addItem (Panel *itemPanel, const StdString &itemId = StdString (""), int row = 0, bool shouldSkipRefreshLayout = false);
+	Widget *addItem (Panel *itemPanel, const char *itemId, int row = 0, bool shouldSkipRefreshLayout = false);
 
 	// Return a pointer to the item widget with the specified ID, or NULL if the item wasn't found
 	Widget *getItem (const StdString &itemId);
@@ -88,9 +100,9 @@ public:
 	// Return a pointer to the first item widget reported matching by the provided function, or NULL if the item wasn't found
 	Widget *findItem (CardView::MatchFunction fn, void *fnData);
 
-	// Remove the specified item from the view and destroy its underlying widget
-	void removeItem (const StdString &itemId);
-	void removeItem (const char *itemId);
+	// Remove the specified item from the view and destroy its underlying widget. After removing the item, invoke refreshLayout unless shouldSkipRefreshLayout is true.
+	void removeItem (const StdString &itemId, bool shouldSkipRefreshLayout = false);
+	void removeItem (const char *itemId, bool shouldSkipRefreshLayout = false);
 
 	// Remove all items in the specified row from the view and destroy their underlying widgets
 	void removeRowItems (int row);
@@ -111,6 +123,9 @@ public:
 	static void scrollBarPositionChanged (void *windowPtr, Widget *widgetPtr);
 
 protected:
+	// Execute subclass-specific operations to update object state as appropriate for an elapsed millisecond time period
+	virtual void doUpdate (int msElapsed);
+
 	// Execute operations appropriate when the widget receives new mouse state
 	virtual void doProcessMouseState (const Widget::MouseState &mouseState);
 
@@ -123,22 +138,27 @@ protected:
 private:
 	struct Item {
 		StdString id;
-		Widget *widget;
+		Panel *panel;
 		int row;
-		Item (): widget (NULL), row (-1) { }
+		bool isHighlighted;
+		Item (): panel (NULL), row (-1), isHighlighted (false) { }
 	};
 
 	struct Row {
 		LabelWindow *headerLabel;
 		float itemMarginSize;
+		bool isSelectionAnimated;
 		int itemCount;
-		Row (): headerLabel (NULL), itemMarginSize (-1.0f), itemCount (0) { }
+		Row (): headerLabel (NULL), itemMarginSize (-1.0f), isSelectionAnimated (false), itemCount (0) { }
 	};
 
-	// Sort the item list and populate secondary data structures
+	// Sort the item list and populate secondary data structures. This method must be invoked only while holding a lock on itemMutex.
 	void doSort ();
 
-	// Return an iterator positioned at the specified item in the item list, or the end of the item list if the item wasn't found
+	// Reset the contents of itemIdMap to match item state. This method must be invoked only while holding a lock on itemMutex.
+	void resetItemIdMap ();
+
+	// Return an iterator positioned at the specified item in the item list, or the end of the item list if the item wasn't found. This method must be invoked only while holding a lock on itemMutex.
 	std::list<CardView::Item>::iterator findItemPosition (const StdString &itemId);
 
 	// Return an iterator positioned at the specified item in the row map, creating the item if it doesn't already exist
@@ -147,12 +167,14 @@ private:
 	static bool compareItems (const CardView::Item &a, const CardView::Item &b);
 
 	float itemMarginSize;
+	SDL_mutex *itemMutex;
 	std::list<CardView::Item> itemList;
-	std::map<int, CardView::Row> rowMap;
 
 	// A map of item ID strings to numbers indicating the item's position in itemList
 	HashMap itemIdMap;
 
+	StdString highlightedItemId;
+	std::map<int, CardView::Row> rowMap;
 	bool isSorted;
 	ScrollBar *scrollBar;
 };

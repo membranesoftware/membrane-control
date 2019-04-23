@@ -43,7 +43,7 @@
 
 class ListView : public Panel {
 public:
-	ListView (float viewWidth, int minItemHeight = 0, int itemFontType = UiConfiguration::BODY, const StdString &titleText = StdString (""), const StdString &emptyStateText = StdString (""));
+	ListView (float viewWidth, int minItemHeight = 0, int itemFontType = UiConfiguration::BodyFont, const StdString &titleText = StdString (""), const StdString &emptyStateText = StdString (""));
 	~ListView ();
 
 	// Read-only data members

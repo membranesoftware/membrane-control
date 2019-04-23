@@ -128,9 +128,6 @@ protected:
 	void refreshLayout ();
 
 private:
-	// Populate widgets as appropriate for the window's initial state
-	void populate ();
-
 	// Reset the text shown by the name label, truncating it as needed to fit in its available space
 	void resetNameLabel ();
 

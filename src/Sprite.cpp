@@ -71,7 +71,7 @@ Sprite *Sprite::copy () {
 		}
 
 		result = sprite->addTexture (texture, i->loadPath);
-		if (result != Result::SUCCESS) {
+		if (result != Result::Success) {
 			resource->unloadTexture (i->loadPath);
 			delete (sprite);
 			sprite = NULL;
@@ -91,7 +91,7 @@ int Sprite::load (const StdString &path, int imageScale) {
 	int i, result;
 	bool found;
 
-	result = Result::SUCCESS;
+	result = Result::Success;
 	resource = &(App::instance->resource);
 	i = 0;
 	maxWidth = 0;
@@ -119,12 +119,12 @@ int Sprite::load (const StdString &path, int imageScale) {
 
 		texture = resource->loadTexture (loadpath);
 		if (! texture) {
-			result = Result::ERROR_SDL_OPERATION_FAILED;
+			result = Result::SdlOperationFailedError;
 			break;
 		}
 
 		result = addTexture (texture, loadpath);
-		if (result != Result::SUCCESS) {
+		if (result != Result::Success) {
 			resource->unloadTexture (loadpath);
 			break;
 		}
@@ -142,7 +142,7 @@ int Sprite::addTexture (SDL_Texture *texture, const StdString &loadPath) {
 	item.loadPath.assign (loadPath);
 	if (SDL_QueryTexture (item.texture, NULL, NULL, &(item.width), &(item.height)) != 0) {
 		Log::err ("Failed to query sprite texture; path=\"%s\" err=\"%s\"", item.loadPath.c_str (), SDL_GetError ());
-		return (Result::ERROR_SDL_OPERATION_FAILED);
+		return (Result::SdlOperationFailedError);
 	}
 
 	textureList.push_back (item);
@@ -154,7 +154,7 @@ int Sprite::addTexture (SDL_Texture *texture, const StdString &loadPath) {
 		maxHeight = item.height;
 	}
 
-	return (Result::SUCCESS);
+	return (Result::Success);
 }
 
 void Sprite::unload () {

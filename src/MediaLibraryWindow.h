@@ -91,9 +91,6 @@ protected:
 	void refreshLayout ();
 
 private:
-	// Populate widgets as appropriate for the window's initial state
-	void populate ();
-
 	Image *iconImage;
 	Label *nameLabel;
 	Label *descriptionLabel;

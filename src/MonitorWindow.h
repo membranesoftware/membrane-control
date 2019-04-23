@@ -74,12 +74,6 @@ public:
 	// Add a cache button to the window, assigning it the provided sprite and callbacks
 	void addCacheButton (Sprite *sprite, Widget::EventCallback clickCallback = NULL, Widget::EventCallback mouseEnterCallback = NULL, Widget::EventCallback mouseExitCallback = NULL, void *callbackData = NULL);
 
-	// Add a stream button to the window, assigning it the provided sprite and callbacks
-	void addStreamButton (Sprite *sprite, Widget::EventCallback clickCallback = NULL, Widget::EventCallback mouseEnterCallback = NULL, Widget::EventCallback mouseExitCallback = NULL, void *callbackData = NULL);
-
-	// Add a playlist button to the window, assigning it the provided sprite and callbacks
-	void addPlaylistButton (Sprite *sprite, Widget::EventCallback clickCallback = NULL, Widget::EventCallback mouseEnterCallback = NULL, Widget::EventCallback mouseExitCallback = NULL, void *callbackData = NULL);
-
 	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
 	void syncRecordStore ();
 
@@ -102,12 +96,6 @@ public:
 	static void cacheButtonClicked (void *windowPtr, Widget *widgetPtr);
 	static void cacheButtonMouseEntered (void *windowPtr, Widget *widgetPtr);
 	static void cacheButtonMouseExited (void *windowPtr, Widget *widgetPtr);
-	static void streamButtonClicked (void *windowPtr, Widget *widgetPtr);
-	static void streamButtonMouseEntered (void *windowPtr, Widget *widgetPtr);
-	static void streamButtonMouseExited (void *windowPtr, Widget *widgetPtr);
-	static void playlistButtonClicked (void *windowPtr, Widget *widgetPtr);
-	static void playlistButtonMouseEntered (void *windowPtr, Widget *widgetPtr);
-	static void playlistButtonMouseExited (void *windowPtr, Widget *widgetPtr);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
@@ -117,9 +105,6 @@ protected:
 	void refreshLayout ();
 
 private:
-	// Populate widgets as appropriate for the window's initial state
-	void populate ();
-
 	Image *iconImage;
 	Label *nameLabel;
 	Label *descriptionLabel;
@@ -132,8 +117,6 @@ private:
 	Toggle *selectToggle;
 	Toggle *expandToggle;
 	Button *cacheButton;
-	Button *streamButton;
-	Button *playlistButton;
 	Widget::EventCallback menuClickCallback;
 	void *menuClickCallbackData;
 	Widget::EventCallback selectStateChangeCallback;
@@ -144,14 +127,6 @@ private:
 	Widget::EventCallback cacheButtonMouseEnterCallback;
 	Widget::EventCallback cacheButtonMouseExitCallback;
 	void *cacheButtonCallbackData;
-	Widget::EventCallback streamButtonClickCallback;
-	Widget::EventCallback streamButtonMouseEnterCallback;
-	Widget::EventCallback streamButtonMouseExitCallback;
-	void *streamButtonCallbackData;
-	Widget::EventCallback playlistButtonClickCallback;
-	Widget::EventCallback playlistButtonMouseEnterCallback;
-	Widget::EventCallback playlistButtonMouseExitCallback;
-	void *playlistButtonCallbackData;
 };
 
 #endif

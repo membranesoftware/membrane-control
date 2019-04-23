@@ -65,8 +65,6 @@
 #define CONFIG_DEFAULT_RESOURCE_PATH "membrane-control.dat"
 
 #if PLATFORM_LINUX || PLATFORM_MACOS
-#define OPEN_READONLY_FLAGS O_RDONLY
-#define OPEN_CREATE_FLAGS (O_WRONLY | O_CREAT)
 #define CONFIG_NEWLINE "\n"
 #endif
 
@@ -75,8 +73,6 @@
 #include "SDL2/SDL_config_windows.h"
 #define __attribute__(X)
 #define __PRETTY_FUNCTION__ ""
-#define OPEN_READONLY_FLAGS (O_RDONLY | O_BINARY)
-#define OPEN_CREATE_FLAGS (O_WRONLY | O_CREAT | O_BINARY)
 #define S_ISDIR(X) ((X) && _S_IFDIR)
 #define SHUT_RDWR SD_BOTH
 #define CONFIG_NEWLINE "\r\n"

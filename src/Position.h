@@ -33,6 +33,8 @@
 #ifndef POSITION_H
 #define POSITION_H
 
+#include <queue>
+
 class Position {
 public:
 	Position (float x = 0.0f, float y = 0.0f);
@@ -44,6 +46,7 @@ public:
 	float translateTargetX, translateTargetY;
 	float translateDx, translateDy;
 	int translateDuration;
+	int translateClock;
 
 	// Update state as appropriate for an elapsed millisecond time period
 	void update (int msElapsed);
@@ -79,9 +82,26 @@ public:
 	void translateY (float targetY, int durationMs);
 	void translateY (float startY, float targetY, int durationMs);
 
+	// Add a translation that should be executed as part of a sequence
+	void plot (float deltaX, float deltaY, int durationMs);
+
+	// Add a translation for the position's x coordinate value that should be executed as part of a sequence
+	void plotX (float deltaX, int durationMs);
+
+	// Add a translation for the position's y coordinate value that should be executed as part of a sequence
+	void plotY (float deltaY, int durationMs);
+
 	// Return a boolean value indicating if the position is equivalent to the provided one
 	bool equals (float positionX, float positionY) const;
 	bool equals (const Position &otherPosition) const;
+
+private:
+	struct Translation {
+		float deltaX, deltaY;
+		int duration;
+		Translation (): deltaX (0.0f), deltaY (0.0f), duration (0) { }
+	};
+	std::queue<Position::Translation> translationQueue;
 };
 
 #endif
