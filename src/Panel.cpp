@@ -225,35 +225,6 @@ void Panel::clear () {
 	resetSize ();
 }
 
-void Panel::destroyAllChildWidgets () {
-	std::list<Widget *>::iterator i, end;
-	Widget *widget;
-
-	SDL_LockMutex (widgetAddListMutex);
-	i = widgetAddList.begin ();
-	end = widgetAddList.end ();
-	while (i != end) {
-		widget = *i;
-		widget->isDestroyed = true;
-		widget->destroyAllChildWidgets ();
-		++i;
-	}
-	SDL_UnlockMutex (widgetAddListMutex);
-
-	SDL_LockMutex (widgetListMutex);
-	i = widgetList.begin ();
-	end = widgetList.end ();
-	while (i != end) {
-		widget = *i;
-		widget->isDestroyed = true;
-		widget->destroyAllChildWidgets ();
-		++i;
-	}
-	SDL_UnlockMutex (widgetListMutex);
-
-	resetSize ();
-}
-
 Widget *Panel::addWidget (Widget *widget, float positionX, float positionY, int zLevel) {
 	if (widget->id <= 0) {
 		widget->id = App::instance->getUniqueId ();
@@ -306,7 +277,7 @@ void Panel::removeWidget (Widget *targetWidget) {
 	SDL_UnlockMutex (widgetListMutex);
 }
 
-Widget *Panel::findMouseHoverWidget (float mouseX, float mouseY) {
+Widget *Panel::findWidget (float screenPositionX, float screenPositionY, bool requireMouseHoverEnabled) {
 	std::list<Widget *>::reverse_iterator i, end;
 	Widget *widget, *item, *nextitem;
 	float x, y, w, h;
@@ -329,46 +300,20 @@ Widget *Panel::findMouseHoverWidget (float mouseX, float mouseY) {
 		}
 		x = widget->screenX;
 		y = widget->screenY;
-		if ((mouseX >= x) && (mouseX <= (x + w)) && (mouseY >= y) && (mouseY <= (y + h))) {
+		if ((screenPositionX >= x) && (screenPositionX <= (x + w)) && (screenPositionY >= y) && (screenPositionY <= (y + h))) {
 			item = widget;
 			break;
 		}
 	}
 	SDL_UnlockMutex (widgetListMutex);
 
-	if (! item) {
-		SDL_LockMutex (widgetAddListMutex);
-		i = widgetAddList.rbegin ();
-		end = widgetAddList.rend ();
-		while (i != end) {
-			widget = *i;
-			++i;
-			if (widget->isDestroyed || (! widget->isVisible) || (! widget->hasScreenPosition)) {
-				continue;
-			}
-
-			w = widget->width;
-			h = widget->height;
-			if ((w <= 0.0f) || (h <= 0.0f)) {
-				continue;
-			}
-			x = widget->screenX;
-			y = widget->screenY;
-			if ((mouseX >= x) && (mouseX <= (x + w)) && (mouseY >= y) && (mouseY <= (y + h))) {
-				item = widget;
-				break;
-			}
-		}
-		SDL_UnlockMutex (widgetAddListMutex);
-	}
-
 	if (item) {
-		nextitem = item->findMouseHoverWidget (mouseX, mouseY);
-		if (nextitem && nextitem->isMouseHoverEnabled) {
+		nextitem = item->findWidget (screenPositionX, screenPositionY, requireMouseHoverEnabled);
+		if (nextitem) {
 			item = nextitem;
 		}
 	}
-	if (item && (! item->isMouseHoverEnabled)) {
+	if (item && (requireMouseHoverEnabled && (! item->isMouseHoverEnabled))) {
 		item = NULL;
 	}
 
@@ -411,7 +356,6 @@ void Panel::doUpdate (int msElapsed) {
 			if (widget->isDestroyed) {
 				found = true;
 				widgetList.erase (i);
-				widget->destroyAllChildWidgets ();
 				widget->release ();
 				break;
 			}
@@ -460,7 +404,7 @@ void Panel::processInput () {
 	std::list<Widget *>::reverse_iterator i, iend;
 	std::vector<SDL_Keycode> keyevents;
 	std::vector<SDL_Keycode>::iterator j, jend;
-	Widget *widget, *item;
+	Widget *widget, *mousewidget;
 	Widget::MouseState mousestate;
 	float x, y, enterdx, enterdy;
 	bool isshiftdown, iscontroldown;
@@ -493,7 +437,7 @@ void Panel::processInput () {
 	lastMouseWheelDownCount = input->mouseWheelDownCount;
 	isMouseInputStarted = true;
 
-	item = NULL;
+	mousewidget = NULL;
 	x = input->mouseX;
 	y = input->mouseY;
 	enterdx = 0.0f;
@@ -510,7 +454,7 @@ void Panel::processInput () {
 
 		if ((widget->width > 0.0f) && (widget->height > 0.0f)) {
 			if ((x >= (int) widget->screenX) && (x <= (int) (widget->screenX + widget->width)) && (y >= (int) widget->screenY) && (y <= (int) (widget->screenY + widget->height))) {
-				item = widget;
+				mousewidget = widget;
 				enterdx = x - widget->screenX;
 				enterdy = y - widget->screenY;
 				break;
@@ -519,7 +463,7 @@ void Panel::processInput () {
 	}
 
 	if (mousestate.isLeftClicked) {
-		if (item) {
+		if (mousewidget) {
 			lastMouseDownX = x;
 			lastMouseDownY = y;
 		}
@@ -549,10 +493,19 @@ void Panel::processInput () {
 			}
 		}
 
-		if (widget == item) {
+		mousestate.isLeftClickEntered = false;
+		if (widget == mousewidget) {
 			mousestate.isEntered = true;
 			mousestate.enterDeltaX = enterdx;
 			mousestate.enterDeltaY = enterdy;
+
+			if (mousestate.isLeftClickReleased && (lastMouseDownX >= 0)) {
+				if ((lastMouseDownX >= (int) widget->screenX) && (lastMouseDownX <= (int) (widget->screenX + widget->width)) && (lastMouseDownY >= (int) widget->screenY) && (lastMouseDownY <= (int) (widget->screenY + widget->height))) {
+					mousestate.isLeftClickEntered = true;
+					lastMouseDownX = -1;
+					lastMouseDownY = -1;
+				}
+			}
 		}
 		else {
 			mousestate.isEntered = false;
@@ -560,18 +513,8 @@ void Panel::processInput () {
 			mousestate.enterDeltaY = 0.0f;
 		}
 
-		mousestate.isLeftClickEntered = false;
-		if (mousestate.isLeftClickReleased && (lastMouseDownX >= 0)) {
-			if ((lastMouseDownX >= (int) widget->screenX) && (lastMouseDownX <= (int) (widget->screenX + widget->width)) && (lastMouseDownY >= (int) widget->screenY) && (lastMouseDownY <= (int) (widget->screenY + widget->height))) {
-				mousestate.isLeftClickEntered = true;
-				lastMouseDownX = -1;
-				lastMouseDownY = -1;
-			}
-		}
-
 		widget->processMouseState (mousestate);
 	}
-
 	SDL_UnlockMutex (widgetListMutex);
 }
 

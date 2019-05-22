@@ -1198,7 +1198,7 @@ void MediaUi::playlistRenameActionClicked (void *uiPtr, Widget *widgetPtr) {
 	textfield->setEditCallback (MediaUi::playlistNameEdited, ui);
 	textfield->setFillBg (true, uiconfig->lightPrimaryColor);
 	textfield->setButtonsEnabled (true, true, true, true);
-	textfield->setEditing (true);
+	textfield->assignKeyFocus ();
 	textfield->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
 	textfield->position.assign (target->screenX + uiconfig->marginSize, target->screenY);
 }

@@ -49,9 +49,9 @@
 const int App::defaultMinFrameDelay = 20;
 const int App::windowWidths[] = { 768, 1024, 1280, 1600, 1920 };
 const int App::windowHeights[] = { 432, 576, 720, 900, 1080 };
-const int App::numWindowSizes = 5;
+const int App::windowSizeCount = 5;
 const float App::fontScales[] = { 0.66f, 0.8f, 1.0f, 1.25f, 1.5f };
-const int App::numFontScales = 5;
+const int App::fontScaleCount = 5;
 const StdString App::serverUrl = StdString ("https://membranesoftware.com/");
 const int64_t App::defaultServerTimeout = 180;
 
@@ -201,7 +201,7 @@ void App::clearRenderTaskQueue () {
 int App::getImageScale (int w, int h) {
 	int i;
 
-	for (i = 0; i < App::numWindowSizes; ++i) {
+	for (i = 0; i < App::windowSizeCount; ++i) {
 		if ((w == App::windowWidths[i]) && (h == App::windowHeights[i])) {
 			return (i);
 		}
@@ -236,8 +236,8 @@ int App::run () {
 	windowWidth = prefsMap.find (App::WindowWidthKey, 0);
 	windowHeight = prefsMap.find (App::WindowHeightKey, 0);
 	imageScale = getImageScale (windowWidth, windowHeight);
-	i = prefsMap.find (App::FontScaleKey, App::numFontScales / 2);
-	if ((i >= 0) && (i < App::numFontScales)) {
+	i = prefsMap.find (App::FontScaleKey, App::fontScaleCount / 2);
+	if ((i >= 0) && (i < App::fontScaleCount)) {
 		fontScale = App::fontScales[i];
 		nextFontScale = fontScale;
 	}
@@ -311,7 +311,7 @@ int App::run () {
 			Log::warning ("Failed to determine display usable bounds: %s", SDL_GetError ());
 		}
 		else {
-			for (i = 0; i < App::numWindowSizes; ++i) {
+			for (i = 0; i < App::windowSizeCount; ++i) {
 				if ((rect.w >= App::windowWidths[i]) && (rect.h >= App::windowHeights[i])) {
 					imageScale = i;
 					windowWidth = App::windowWidths[i];
@@ -388,7 +388,7 @@ int App::run () {
 			else {
 				shouldRefreshUi = true;
 				fontScale = nextFontScale;
-				for (i = 0; i < App::numFontScales; ++i) {
+				for (i = 0; i < App::fontScaleCount; ++i) {
 					if (FLOAT_EQUALS (fontScale, App::fontScales[i])) {
 						prefsMap.insert (App::FontScaleKey, i);
 						break;

@@ -154,6 +154,10 @@ void Toggle::doResetInputState () {
 }
 
 bool Toggle::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown) {
+	if (isShiftDown || isControlDown) {
+		return (false);
+	}
+
 	if ((shortcutKey != SDLK_UNKNOWN) && (keycode == shortcutKey)) {
 		setChecked (! isChecked);
 		return (true);

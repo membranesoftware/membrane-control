@@ -96,6 +96,10 @@ void UiStack::populateWidgets () {
 void UiStack::clear () {
 	Ui *ui;
 
+	tooltip.destroyAndClear ();
+	keyFocusTarget.clear ();
+	mouseHoverTarget.clear ();
+
 	SDL_LockMutex (uiMutex);
 	while (! uiList.empty ()) {
 		ui = uiList.back ();
@@ -201,6 +205,7 @@ void UiStack::doPopUi (void *uiStackPtr) {
 	UiStack *uistack;
 	Ui *ui;
 
+	ui = NULL;
 	uistack = (UiStack *) uiStackPtr;
 	SDL_LockMutex (uistack->uiMutex);
 	if (! uistack->uiList.empty ()) {
@@ -211,16 +216,19 @@ void UiStack::doPopUi (void *uiStackPtr) {
 			uistack->activeUi->release ();
 			uistack->activeUi = NULL;
 		}
+	}
+	SDL_UnlockMutex (uistack->uiMutex);
+
+	if (ui) {
 		ui->pause ();
 		ui->unload ();
 		ui->release ();
 	}
-	SDL_UnlockMutex (uistack->uiMutex);
 }
 
 void UiStack::update (int msElapsed) {
 	Ui *ui;
-	Widget *mousewidget;
+	Widget *keywidget, *mousewidget;
 
 #if ENABLE_TEST_KEYS
 	if (App::instance->isUiPaused) {
@@ -240,7 +248,8 @@ void UiStack::update (int msElapsed) {
 
 			tooltip.destroyAndClear ();
 			mainMenu.destroyAndClear ();
-			mouseHoverWidget.clear ();
+			keyFocusTarget.clear ();
+			mouseHoverTarget.clear ();
 			darkenPanel.destroyAndClear ();
 			settingsWindow.destroyAndClear ();
 			helpWindow.destroyAndClear ();
@@ -254,23 +263,25 @@ void UiStack::update (int msElapsed) {
 
 	tooltip.compact ();
 	mainMenu.compact ();
-	mouseHoverWidget.compact ();
+	keyFocusTarget.compact ();
+	mouseHoverTarget.compact ();
 	darkenPanel.compact ();
 	settingsWindow.compact ();
 	helpWindow.compact ();
 
-	if (darkenPanel.widget && (! settingsWindow.widget) && (! helpWindow.widget)) {
-		darkenPanel.destroyAndClear ();
+	keywidget = keyFocusTarget.widget;
+	if (keywidget && (! keywidget->isKeyFocused)) {
+		keyFocusTarget.clear ();
 	}
 
-	mousewidget = App::instance->rootPanel->findMouseHoverWidget ((float) App::instance->input.mouseX, (float) App::instance->input.mouseY);
+	mousewidget = App::instance->rootPanel->findWidget ((float) App::instance->input.mouseX, (float) App::instance->input.mouseY, true);
 	if (! mousewidget) {
-		mouseHoverWidget.clear ();
+		mouseHoverTarget.clear ();
 		deactivateMouseHover ();
 	}
 	else {
-		if (! mouseHoverWidget.equals (mousewidget)) {
-			mouseHoverWidget.assign (mousewidget);
+		if (! mouseHoverTarget.equals (mousewidget)) {
+			mouseHoverTarget.assign (mousewidget);
 			deactivateMouseHover ();
 		}
 		else {
@@ -281,6 +292,10 @@ void UiStack::update (int msElapsed) {
 				}
 			}
 		}
+	}
+
+	if (darkenPanel.widget && (! settingsWindow.widget) && (! helpWindow.widget)) {
+		darkenPanel.destroyAndClear ();
 	}
 }
 
@@ -406,6 +421,24 @@ void UiStack::showSnackbar (const StdString &messageText, const StdString &actio
 	snackbarWindow->isVisible = true;
 }
 
+void UiStack::setKeyFocusTarget (Widget *widget) {
+	Widget *target;
+
+	target = keyFocusTarget.widget;
+	if (target == widget) {
+		return;
+	}
+	if (target) {
+		target->setKeyFocus (false);
+	}
+
+	keyFocusTarget.assign (widget);
+	target = keyFocusTarget.widget;
+	if (target) {
+		target->setKeyFocus (true);
+	}
+}
+
 void UiStack::activateMouseHover () {
 	UiConfiguration *uiconfig;
 	Widget *widget;
@@ -416,7 +449,7 @@ void UiStack::activateMouseHover () {
 	uiconfig = &(App::instance->uiConfig);
 	tooltip.destroyAndClear ();
 
-	widget = mouseHoverWidget.widget;
+	widget = mouseHoverTarget.widget;
 	if (widget) {
 		text.assign (widget->tooltipText);
 	}

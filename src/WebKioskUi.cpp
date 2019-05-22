@@ -641,7 +641,7 @@ void WebKioskUi::playlistNameClicked (void *uiPtr, Widget *widgetPtr) {
 	action->setEditCallback (WebKioskUi::playlistNameEdited, ui);
 	action->setFillBg (true, uiconfig->lightPrimaryColor);
 	action->setButtonsEnabled (true, true, true, true);
-	action->setEditing (true);
+	action->assignKeyFocus ();
 	action->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
 	action->position.assign (window->screenX + uiconfig->marginSize, window->screenY);
 }

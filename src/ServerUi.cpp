@@ -347,7 +347,7 @@ void ServerUi::addressToggleStateChanged (void *uiPtr, Widget *widgetPtr) {
 		textfield->setButtonsEnabled (true, false, false, false);
 		textfield->setFillBg (true, uiconfig->lightPrimaryColor);
 		textfield->setEditCallback (ServerUi::addressTextFieldEdited, ui);
-		textfield->setEditing (true);
+		textfield->assignKeyFocus ();
 		toggle->setFillBg (true, uiconfig->mediumPrimaryColor);
 
 		toolbar->setLeftOverlay (textfield);

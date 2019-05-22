@@ -67,6 +67,7 @@ public:
 	// Read-only data members
 	bool hasScreenPosition;
 	float screenX, screenY;
+	bool isKeyFocused;
 	StdString tooltipText;
 	int tooltipAlignment;
 
@@ -97,11 +98,8 @@ public:
 	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
 	virtual void syncRecordStore ();
 
-	// Set the isDestroyed state for all child widgets, causing them to be removed during the next update cycle
-	virtual void destroyAllChildWidgets ();
-
-	// Return the topmost child widget at the specified mouse position that holds a non-zero mouseHoverId value, or NULL if no such widget was found
-	virtual Widget *findMouseHoverWidget (float mouseX, float mouseY);
+	// Return the topmost child widget at the specified screen position, or NULL if no such widget was found. If requireMouseHoverEnabled is true, return a widget only if it has enabled the isMouseHoverEnabled option.
+	virtual Widget *findWidget (float screenPositionX, float screenPositionY, bool requireMouseHoverEnabled = false);
 
 	// Update the widget as appropriate for a received keypress event and return a boolean value indicating if the event was consumed and should no longer be processed
 	bool processKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
@@ -134,6 +132,9 @@ public:
 
 	// Set the widget's fixed center option. If enabled, the widget executes translations as needed to maintain its current centered position.
 	void setFixedCenter (bool enable);
+
+	// Set the widget's key focus mode, indicating whether it should handle keypress events with edit focus
+	virtual void setKeyFocus (bool enable);
 
 	// Set the callback function that should be invoked on mouse enter events
 	void setMouseEnterCallback (Widget::EventCallback fn, void *data);

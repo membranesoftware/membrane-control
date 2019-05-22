@@ -113,6 +113,9 @@ bool ScrollView::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool 
 	if (Panel::doProcessKeyEvent (keycode, isShiftDown, isControlDown)) {
 		return (true);
 	}
+	if (isShiftDown || isControlDown) {
+		return (false);
+	}
 
 	if (isKeyboardScrollEnabled) {
 		switch (keycode) {

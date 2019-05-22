@@ -104,17 +104,14 @@ public:
 	// Remove all widgets from the panel and mark them as destroyed
 	void clear ();
 
-	// Set the isDestroyed state for all widgets in the panel, causing them to be removed during the next update cycle
-	void destroyAllChildWidgets ();
-
 	// Add a widget to the panel. Returns the Widget pointer that was added.
 	Widget *addWidget (Widget *widget, float positionX = 0.0f, float positionY = 0.0f, int zLevel = 0);
 
 	// Remove the specified widget from the panel
 	void removeWidget (Widget *targetWidget);
 
-	// Return the topmost child widget at the specified mouse position that holds a non-zero mouseHoverId value, or NULL if no such widget was found
-	Widget *findMouseHoverWidget (float mouseX, float mouseY);
+	// Return the topmost child widget at the specified screen position, or NULL if no such widget was found. If requireMouseHoverEnabled is true, return a widget only if it has enabled the isMouseHoverEnabled option.
+	Widget *findWidget (float screenPositionX, float screenPositionY, bool requireMouseHoverEnabled = false);
 
 	// Set the panel's view origin coordinates
 	void setViewOrigin (float originX, float originY);

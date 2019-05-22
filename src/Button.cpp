@@ -195,6 +195,9 @@ void Button::setImageColor (const Color &imageColor) {
 }
 
 bool Button::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown) {
+	if (isShiftDown || isControlDown) {
+		return (false);
+	}
 	if (isDisabled || isPressed) {
 		return (false);
 	}

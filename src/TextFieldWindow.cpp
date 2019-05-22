@@ -61,7 +61,6 @@ TextFieldWindow::TextFieldWindow (float windowWidth, const StdString &promptText
 , randomizeButton (NULL)
 , iconImage (NULL)
 , visibilityToggle (NULL)
-, shouldResetEditing (false)
 , isCancelled (false)
 {
 	UiConfiguration *uiconfig;
@@ -83,30 +82,35 @@ TextFieldWindow::TextFieldWindow (float windowWidth, const StdString &promptText
 	}
 
 	enterButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::EnterTextButtonSprite)));
+	enterButton->zLevel = 1;
 	enterButton->setInverseColor (true);
 	enterButton->setMouseClickCallback (TextFieldWindow::enterButtonClicked, this);
 	enterButton->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldEnterTooltip));
 	enterButton->isVisible = false;
 
 	cancelButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::CancelButtonSprite)));
+	cancelButton->zLevel = 1;
 	cancelButton->setInverseColor (true);
 	cancelButton->setMouseClickCallback (TextFieldWindow::cancelButtonClicked, this);
 	cancelButton->setMouseHoverTooltip (uitext->getText (UiTextString::cancel).capitalized ());
 	cancelButton->isVisible = false;
 
 	pasteButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::PasteButtonSprite)));
+	pasteButton->zLevel = 1;
 	pasteButton->setMouseClickCallback (TextFieldWindow::pasteButtonClicked, this);
 	pasteButton->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldPasteTooltip));
 	pasteButton->isFocusDropShadowDisabled = true;
 	pasteButton->isVisible = false;
 
 	clearButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::ClearButtonSprite)));
+	clearButton->zLevel = 1;
 	clearButton->setMouseClickCallback (TextFieldWindow::clearButtonClicked, this);
 	clearButton->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldClearTooltip));
 	clearButton->isFocusDropShadowDisabled = true;
 	clearButton->isVisible = false;
 
 	randomizeButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::RandomizeButtonSprite)));
+	randomizeButton->zLevel = 1;
 	randomizeButton->setMouseClickCallback (TextFieldWindow::randomizeButtonClicked, this);
 	randomizeButton->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldRandomizeTooltip));
 	randomizeButton->isFocusDropShadowDisabled = true;
@@ -199,6 +203,10 @@ void TextFieldWindow::setValue (const StdString &valueText) {
 	cancelValue.assign (valueText);
 }
 
+void TextFieldWindow::assignKeyFocus () {
+	App::instance->uiStack.setKeyFocusTarget (textField);
+}
+
 void TextFieldWindow::setWindowWidth (float fixedWidth) {
 	UiConfiguration *uiconfig;
 
@@ -212,10 +220,6 @@ void TextFieldWindow::setWindowHeight (float fixedHeight) {
 	isFixedHeight = true;
 	windowHeight = fixedHeight;
 	refreshLayout ();
-}
-
-void TextFieldWindow::setEditing (bool enable) {
-	textField->setEditing (enable);
 }
 
 void TextFieldWindow::setEditCallback (Widget::EventCallback callback, void *callbackData) {
@@ -341,14 +345,6 @@ void TextFieldWindow::refreshLayout () {
 	}
 }
 
-void TextFieldWindow::doUpdate (int msElapsed) {
-	Panel::doUpdate (msElapsed);
-	if (shouldResetEditing) {
-		setEditing (true);
-		shouldResetEditing = false;
-	}
-}
-
 void TextFieldWindow::textFieldValueChanged (void *windowPtr, Widget *widgetPtr) {
 	TextFieldWindow *window;
 
@@ -362,7 +358,7 @@ void TextFieldWindow::enterButtonClicked (void *windowPtr, Widget *widgetPtr) {
 	TextFieldWindow *window;
 
 	window = (TextFieldWindow *) windowPtr;
-	window->textField->setEditing (false);
+	window->textField->setKeyFocus (false);
 	if (window->editCallback) {
 		window->editCallback (window->editCallbackData, window);
 	}
@@ -378,26 +374,18 @@ void TextFieldWindow::cancelButtonClicked (void *windowPtr, Widget *widgetPtr) {
 
 void TextFieldWindow::pasteButtonClicked (void *windowPtr, Widget *widgetPtr) {
 	TextFieldWindow *window;
-	bool editing;
 
 	window = (TextFieldWindow *) windowPtr;
-	editing = window->textField->isEditing;
+	App::instance->uiStack.setKeyFocusTarget (window->textField);
 	window->textField->appendClipboardText ();
-	if (editing) {
-		window->shouldResetEditing = true;
-	}
 }
 
 void TextFieldWindow::clearButtonClicked (void *windowPtr, Widget *widgetPtr) {
 	TextFieldWindow *window;
-	bool editing;
 
 	window = (TextFieldWindow *) windowPtr;
-	editing = window->textField->isEditing;
+	App::instance->uiStack.setKeyFocusTarget (window->textField);
 	window->textField->clearValue ();
-	if (editing) {
-		window->shouldResetEditing = true;
-	}
 }
 
 static const int RANDOMIZE_STRING_LENGTH = 16;

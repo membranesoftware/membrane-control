@@ -54,6 +54,7 @@ Widget::Widget ()
 , hasScreenPosition (false)
 , screenX (0.0f)
 , screenY (0.0f)
+, isKeyFocused (false)
 , tooltipAlignment (Widget::BottomAlignment)
 , width (0.0f)
 , height (0.0f)
@@ -234,13 +235,8 @@ void Widget::syncRecordStore () {
 	// Default implementation does nothing
 }
 
-void Widget::destroyAllChildWidgets () {
+void Widget::setKeyFocus (bool enable) {
 	// Default implementation does nothing
-}
-
-Widget *Widget::findMouseHoverWidget (float mouseX, float mouseY) {
-	// Default implementation returns NULL
-	return (NULL);
 }
 
 bool Widget::processKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown) {
@@ -264,6 +260,11 @@ bool Widget::processKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isCont
 bool Widget::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown) {
 	// Default implementation does nothing
 	return (false);
+}
+
+Widget *Widget::findWidget (float screenPositionX, float screenPositionY, bool requireMouseHoverEnabled) {
+	// Default implementation returns NULL
+	return (NULL);
 }
 
 void Widget::processMouseState (const Widget::MouseState &mouseState) {

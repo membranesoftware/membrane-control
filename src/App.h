@@ -71,9 +71,9 @@ public:
 	static const int defaultMinFrameDelay;
 	static const int windowWidths[];
 	static const int windowHeights[];
-	static const int numWindowSizes;
+	static const int windowSizeCount;
 	static const float fontScales[];
-	static const int numFontScales;
+	static const int fontScaleCount;
 	static const StdString serverUrl;
 	static const int64_t defaultServerTimeout;
 

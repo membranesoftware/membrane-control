@@ -46,7 +46,6 @@
 TextField::TextField (float fieldWidth, const StdString &promptText)
 : Panel ()
 , fieldWidth (fieldWidth)
-, isEditing (false)
 , isInverseColor (false)
 , isPromptErrorColor (false)
 , isObscured (false)
@@ -221,7 +220,7 @@ void TextField::appendClipboardText () {
 			val = valueLabel->text;
 			val.append (text);
 			SDL_free (text);
-			setValue (val, isEditing);
+			setValue (val, isKeyFocused);
 		}
 	}
 }
@@ -267,7 +266,7 @@ void TextField::refreshLayout () {
 	}
 	cursorPanel->position.assign (x, (height / 2.0f) - (cursorPanel->height / 2.0f));
 
-	if (isEditing) {
+	if (isKeyFocused) {
 		bgColor.translate (editBgColor, uiconfig->shortColorTranslateDuration);
 		borderColor.translate (editBorderColor, uiconfig->shortColorTranslateDuration);
 		if (valueLabel->text.empty ()) {
@@ -316,7 +315,7 @@ bool TextField::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool i
 	char c;
 	int len;
 
-	if (! isEditing) {
+	if (! isKeyFocused) {
 		return (false);
 	}
 
@@ -337,12 +336,12 @@ bool TextField::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool i
 
 	if (keycode == SDLK_ESCAPE) {
 		setValue (lastValue, true);
-		setEditing (false);
+		setKeyFocus (false);
 		return (true);
 	}
 
 	if (keycode == SDLK_RETURN) {
-		setEditing (false);
+		setKeyFocus (false);
 		return (true);
 	}
 
@@ -364,7 +363,7 @@ void TextField::doUpdate (int msElapsed) {
 
 	Panel::doUpdate (msElapsed);
 	uiconfig = &(App::instance->uiConfig);
-	if (isEditing && (uiconfig->blinkDuration > 0)) {
+	if (isKeyFocused && (uiconfig->blinkDuration > 0)) {
 		cursorClock -= msElapsed;
 		if (cursorClock <= 0) {
 			cursorPanel->isVisible = (! cursorPanel->isVisible);
@@ -381,14 +380,11 @@ void TextField::doProcessMouseState (const Widget::MouseState &mouseState) {
 	if (mouseState.isEntered) {
 		setFocused (true);
 		if (mouseState.isLeftClickReleased && mouseState.isLeftClickEntered) {
-			setEditing (true);
+			App::instance->uiStack.setKeyFocusTarget (this);
 		}
 	}
 	else {
 		setFocused (false);
-		if (mouseState.isLeftClickReleased) {
-			setEditing (false);
-		}
 	}
 }
 
@@ -400,16 +396,16 @@ void TextField::setFocused (bool enable) {
 	refreshLayout ();
 }
 
-void TextField::setEditing (bool enable) {
-	if (enable == isEditing) {
+void TextField::setKeyFocus (bool enable) {
+	if (enable == isKeyFocused) {
 		return;
 	}
 	if (enable) {
-		isEditing = true;
+		isKeyFocused = true;
 		lastValue.assign (valueLabel->text);
 	}
 	else {
-		isEditing = false;
+		isKeyFocused = false;
 		if (! lastValue.equals (valueLabel->text)) {
 			if (valueChangeCallback) {
 				valueChangeCallback (valueChangeCallbackData, this);

@@ -76,8 +76,8 @@ public:
 	// Set the text field's value
 	void setValue (const StdString &valueText);
 
-	// Set the text field's editing state
-	void setEditing (bool enable);
+	// Assign keypress edit focus to the text field
+	void assignKeyFocus ();
 
 	// Return a boolean value indicating if the provided Widget is a member of this class
 	static bool isWidgetType (Widget *widget);
@@ -98,9 +98,6 @@ protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
 
-	// Execute operations to update object state as appropriate for an elapsed millisecond time period
-	void doUpdate (int msElapsed);
-
 	// Reset the panel's widget layout as appropriate for its content and configuration
 	void refreshLayout ();
 
@@ -118,7 +115,6 @@ private:
 	Button *randomizeButton;
 	ImageWindow *iconImage;
 	Toggle *visibilityToggle;
-	bool shouldResetEditing;
 	StdString cancelValue;
 	bool isCancelled;
 };

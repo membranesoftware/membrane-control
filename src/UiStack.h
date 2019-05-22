@@ -91,6 +91,9 @@ public:
 	// Toggle the visible state of the help window
 	void toggleHelpWindow ();
 
+	// Set the widget that should be the target of keypress text edit operations
+	void setKeyFocusTarget (Widget *widget);
+
 	// Deactivate the mouse hover widget and prevent reactivation until a new mouse hover widget is acquired
 	void suspendMouseHover ();
 
@@ -108,7 +111,7 @@ public:
 	static void exitActionClicked (void *uiStackPtr, Widget *widgetPtr);
 
 private:
-	// Execute operations appropriate when mouseHoverWidget has held its current value beyond the hover threshold
+	// Execute operations appropriate when mouseHoverTarget has held its current value beyond the hover threshold
 	void activateMouseHover ();
 
 	// Deactivate any previously activated mouse hover widgets
@@ -122,7 +125,8 @@ private:
 	Ui *activeUi;
 	SDL_mutex *uiMutex;
 	WidgetHandle tooltip;
-	WidgetHandle mouseHoverWidget;
+	WidgetHandle keyFocusTarget;
+	WidgetHandle mouseHoverTarget;
 	WidgetHandle mainMenu;
 	WidgetHandle darkenPanel;
 	WidgetHandle settingsWindow;

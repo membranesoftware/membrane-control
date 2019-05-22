@@ -43,7 +43,6 @@ public:
 
 	// Read-only data members
 	float fieldWidth;
-	bool isEditing;
 	bool isInverseColor;
 	bool isPromptErrorColor;
 	bool isObscured;
@@ -69,9 +68,6 @@ public:
 	// Read a string from the clipboard and append it to the text field's value
 	void appendClipboardText ();
 
-	// Set the field's editing state
-	void setEditing (bool enable);
-
 	// Set the text field's width
 	void setFieldWidth (float widthValue);
 
@@ -80,6 +76,9 @@ public:
 
 	// Set a callback that should be invoked when the field's value changes
 	void setValueChangeCallback (Widget::EventCallback callback, void *callbackData);
+
+	// Set the widget's key focus mode, indicating whether it should handle keypress events with edit focus
+	virtual void setKeyFocus (bool enable);
 
 protected:
 	// Execute operations to update object state as appropriate for an elapsed millisecond time period
