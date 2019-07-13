@@ -32,6 +32,7 @@
 #include <stdlib.h>
 #include <vector>
 #include "Result.h"
+#include "ClassId.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
@@ -72,6 +73,7 @@ UiLaunchWindow::UiLaunchWindow (int uiType, SpriteGroup *mainUiSpriteGroup)
 	IconLabelWindow *icon;
 	StdString name, text;
 
+	classId = ClassId::UiLaunchWindow;
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
@@ -106,6 +108,14 @@ UiLaunchWindow::UiLaunchWindow (int uiType, SpriteGroup *mainUiSpriteGroup)
 			noteIcons.push_back (icon);
 			break;
 		}
+		case UiLaunchWindow::CameraUi: {
+			name.assign (uitext->getText (UiTextString::cameras).capitalized ());
+			text.assign (uitext->getText (UiTextString::cameraUiDescription));
+
+			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallCameraIconSprite), uitext->getCountText (0, UiTextString::cameraConnected, UiTextString::camerasConnected), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
+			noteIcons.push_back (icon);
+			break;
+		}
 	}
 
 	sprite = sprites->getSprite (MainUi::UiIconSprite);
@@ -136,12 +146,7 @@ StdString UiLaunchWindow::toStringDetail () {
 }
 
 bool UiLaunchWindow::isWidgetType (Widget *widget) {
-	if (! widget) {
-		return (false);
-	}
-
-	// This operation references output from the toStringDetail method, above
-	return (widget->toString ().contains (" UiLaunchWindow"));
+	return (widget && (widget->classId == ClassId::UiLaunchWindow));
 }
 
 UiLaunchWindow *UiLaunchWindow::castWidget (Widget *widget) {
@@ -189,6 +194,12 @@ void UiLaunchWindow::syncRecordStore () {
 			icon = noteIcons.at (0);
 			count = store->countRecords (WebKioskUi::matchWebKioskAgentStatus, NULL, maxage);
 			icon->setText (uitext->getCountText (count, UiTextString::monitorConnected, UiTextString::monitorsConnected));
+			break;
+		}
+		case UiLaunchWindow::CameraUi: {
+			icon = noteIcons.at (0);
+			count = store->countAgentRecords ("cameraServerStatus", maxage);
+			icon->setText (uitext->getCountText (count, UiTextString::cameraConnected, UiTextString::camerasConnected));
 			break;
 		}
 	}
@@ -249,6 +260,12 @@ bool UiLaunchWindow::isReadyState (int uiType, RecordStore *store) {
 		}
 		case UiLaunchWindow::WebKioskUi: {
 			if (store->countRecords (WebKioskUi::matchWebKioskAgentStatus, NULL, maxage) > 0) {
+				return (true);
+			}
+			break;
+		}
+		case UiLaunchWindow::CameraUi: {
+			if (store->countAgentRecords ("cameraServerStatus", maxage) > 0) {
 				return (true);
 			}
 			break;

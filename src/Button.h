@@ -83,7 +83,7 @@ public:
 	// Set the button's pressed state, appropriate for use when the button has been activated
 	void setPressed (bool pressed);
 
-	// Set the button's disabled state, appropriate for use when the button becomes unavailable
+	// Set the button's disabled state, appropriate for use when the button becomes unavailable for interaction
 	void setDisabled (bool disabled);
 
 	// Set the button's focused state, appropriate for use when the button has input focus

@@ -97,15 +97,13 @@ void ServerUi::setHelpWindowContent (HelpWindow *helpWindow) {
 }
 
 int ServerUi::doLoad () {
-	UiConfiguration *uiconfig;
 	UiText *uitext;
 
-	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 
 	cardView = (CardView *) addWidget (new CardView (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight));
 	cardView->isKeyboardScrollEnabled = true;
-	cardView->setRowHeader (ServerUi::AgentRow, uitext->getText (UiTextString::serverUiNetworkAgentsTitle), UiConfiguration::TitleFont, uiconfig->inverseTextColor);
+	cardView->setRowHeader (ServerUi::AgentRow, createRowHeaderPanel (uitext->getText (UiTextString::serverUiNetworkAgentsTitle)));
 	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 
 	adminSecretWindow = new AdminSecretWindow ();
@@ -259,7 +257,7 @@ void ServerUi::doSyncRecordStore () {
 	}
 	else {
 		if (! window) {
-			window = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::ErrorIconSprite), uitext->getText (UiTextString::serverUiEmptyAgentStatusTitle), StdString (""), uitext->getText (UiTextString::serverUiEmptyAgentStatusText));
+			window = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::LargeErrorIconSprite), uitext->getText (UiTextString::serverUiEmptyAgentStatusTitle), StdString (""), uitext->getText (UiTextString::serverUiEmptyAgentStatusText));
 			window->setLink (uitext->getText (UiTextString::learnMore).capitalized (), App::getHelpUrl ("servers"));
 			emptyServerWindow.assign (window);
 

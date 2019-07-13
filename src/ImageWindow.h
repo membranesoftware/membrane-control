@@ -57,8 +57,14 @@ public:
 	// Clear the window's content and replace it with the provided image
 	void setImage (Image *nextImage);
 
-	// Set a source URL that should be used to load the image window's content, as well as an optional sprite that should be shown while the load is in progress
-	void setLoadUrl (const StdString &loadUrl, Sprite *loadingSprite = NULL);
+	// Set a sprite that should be shown while image content loading is in progress
+	void setLoadSprite (Sprite *sprite);
+
+	// Set a source URL that should be used to load the image window's content
+	void setLoadUrl (const StdString &loadUrl);
+
+	// Set the window's load resize option. If enabled, the window resizes to the specified width while preserving source aspect ratio after loading image content from a URL.
+	void setLoadResize (bool enable, float loadWidthValue);
 
 	// Set a path that should be used to load the image window's content from application resources. If shouldLoadNow is true, load the image resource immediately. Otherwise, queue a task to load the resource on the next render cycle.
 	void setLoadResourcePath (const StdString &loadPath, bool shouldLoadNow = false);
@@ -113,7 +119,9 @@ private:
 	bool isWindowSizeEnabled;
 	float windowWidth;
 	float windowHeight;
-	Sprite *imageLoadingSprite;
+	bool isLoadResizeEnabled;
+	float loadWidth;
+	Sprite *loadSprite;
 	StdString imageResourcePath;
 	bool isImageResourceLoaded;
 	bool isLoadingImageResource;

@@ -43,9 +43,13 @@ public:
 
 	// Read-only data members
 	float fieldWidth;
+	bool isDisabled;
 	bool isInverseColor;
 	bool isPromptErrorColor;
 	bool isObscured;
+
+	// Set the text field's disabled state, appropriate for use when the field becomes unavailable for interaction
+	void setDisabled (bool disabled);
 
 	// Set the text field's inverse color state. If enabled, the text field renders using an inverse color scheme.
 	void setInverseColor (bool inverse);
@@ -109,10 +113,13 @@ private:
 	Color normalBorderColor;
 	Color focusBgColor;
 	Color focusBorderColor;
+	Color disabledBgColor;
+	Color disabledBorderColor;
 	Color editBgColor;
 	Color editBorderColor;
 	Color normalValueTextColor;
 	Color editValueTextColor;
+	Color disabledValueTextColor;
 	Color promptTextColor;
 };
 

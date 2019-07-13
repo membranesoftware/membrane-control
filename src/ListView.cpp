@@ -62,8 +62,6 @@ ListView::ListView (float viewWidth, int minItemHeight, int itemFontType, const 
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
-	widgetType.assign ("ListView");
-
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 	setFillBg (true, uiconfig->lightBackgroundColor);

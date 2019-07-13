@@ -418,6 +418,21 @@ void LinkClient::disconnect (const StdString &agentId) {
 	SDL_UnlockMutex (contextMutex);
 }
 
+bool LinkClient::isConnected (const StdString &agentId) {
+	std::map<StdString, LinkContext *>::iterator pos;
+	bool result;
+
+	result = false;
+	SDL_LockMutex (contextMutex);
+	pos = contextMap.find (agentId);
+	if (pos != contextMap.end ()) {
+		result = pos->second->isConnected;
+	}
+	SDL_UnlockMutex (contextMutex);
+
+	return (result);
+}
+
 void LinkClient::setLinkUrl (const StdString &agentId, const StdString &linkUrl) {
 	std::map<StdString, LinkContext *>::iterator pos;
 	LinkContext *ctx;

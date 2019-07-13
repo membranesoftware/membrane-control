@@ -31,6 +31,7 @@
 #include "Config.h"
 #include <stdlib.h>
 #include "Result.h"
+#include "ClassId.h"
 #include "StdString.h"
 #include "App.h"
 #include "UiText.h"
@@ -69,6 +70,7 @@ StreamDetailWindow::StreamDetailWindow (const StdString &recordId, SpriteGroup *
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
+	classId = ClassId::StreamDetailWindow;
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
@@ -102,12 +104,7 @@ StdString StreamDetailWindow::toStringDetail () {
 }
 
 bool StreamDetailWindow::isWidgetType (Widget *widget) {
-	if (! widget) {
-		return (false);
-	}
-
-	// This operation references output from the toStringDetail method, above
-	return (widget->toString ().contains (" StreamDetailWindow recordId="));
+	return (widget && (widget->classId == ClassId::StreamDetailWindow));
 }
 
 StreamDetailWindow *StreamDetailWindow::castWidget (Widget *widget) {
@@ -205,8 +202,8 @@ void StreamDetailWindow::refreshLayout () {
 
 	y = y2 + uiconfig->marginSize;
 	x = x0;
-	durationIcon->flowRight (&x, y, &x2, &y2);
-	fileSizeIcon->flowDown (x, &y, &x2, &y2);
+	fileSizeIcon->flowRight (&x, y, &x2, &y2);
+	durationIcon->flowDown (x, &y, &x2, &y2);
 
 	resetSize ();
 }

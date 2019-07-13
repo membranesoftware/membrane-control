@@ -50,9 +50,6 @@ public:
 
 	static const int minZLevel;
 
-	// Subclasses should assign the widgetType value in their constructor
-	StdString widgetType;
-
 	// Read-write data members
 	uint64_t id;
 	bool isDestroyed;
@@ -65,6 +62,7 @@ public:
 	StdString sortKey;
 
 	// Read-only data members
+	int classId;
 	bool hasScreenPosition;
 	float screenX, screenY;
 	bool isKeyFocused;

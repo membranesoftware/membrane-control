@@ -45,6 +45,7 @@ public:
 	virtual ~Slider ();
 
 	// Read-only data members
+	bool isDisabled;
 	bool isInverseColor;
 	float trackWidthScale;
 	float value;
@@ -53,6 +54,9 @@ public:
 	float maxValue;
 	bool isHovering;
 	bool isDragging;
+
+	// Set the slider's disabled state, appropriate for use when the slider becomes unavailable for interaction
+	void setDisabled (bool disabled);
 
 	// Set the slider's inverse color option
 	void setInverseColor (bool inverse);

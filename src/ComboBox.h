@@ -50,24 +50,31 @@ public:
 	// Read-only data members
 	StdString selectedItemValue;
 	StdString selectedItemData;
+	bool isDisabled;
 	bool isInverseColor;
 	bool hasItemData;
 
 	// Set a callback that should be invoked when the combo box's value changes
 	void setValueChangeCallback (Widget::EventCallback callback, void *callbackData);
 
+	// Set the combo box's disabled state, appropriate for use when the combo box becomes unavailable for interaction
+	void setDisabled (bool disabled);
+
 	// Set the combo box's inverse color state. If enabled, the combo box renders using an inverse color scheme.
 	void setInverseColor (bool inverse);
 
-	// Add an item to the combo box
+	// Add an item to the combo box. If a non-empty itemData string is provided, the combo box provides it in place of itemValue when reporting its value.
 	void addItem (const StdString &itemValue, const StdString &itemData = StdString (""));
 
 	// Add a set of items to the combo box. If a HashMap is provided, it is treated as mapping itemName to itemData strings.
 	void addItems (StringList *nameList);
 	void addItems (HashMap *itemMap);
 
-	// Set the combo box's value to the item matching the specified string and invoke any configured change callback unless shouldSkipChangeCallback is true
+	// Set the combo box's value to the item matching the specified value string and invoke any configured change callback unless shouldSkipChangeCallback is true
 	void setValue (const StdString &value, bool shouldSkipChangeCallback = false);
+
+	// Set the combo box's value to the item matching the specified itemData string and invoke any configured change callback unless shouldSkipChangeCallback is true
+	void setValueByItemData (const StdString &itemData, bool shouldSkipChangeCallback = false);
 
 	// Return the combo box's current value, or the corresponding data string if non-empty
 	StdString getValue ();
@@ -115,8 +122,11 @@ private:
 	Color normalBorderColor;
 	Color focusBgColor;
 	Color focusBorderColor;
+	Color disabledBgColor;
+	Color disabledBorderColor;
 	Color normalItemTextColor;
 	Color focusItemTextColor;
+	Color disabledTextColor;
 };
 
 #endif

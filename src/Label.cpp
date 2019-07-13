@@ -62,7 +62,6 @@ Label::Label (const StdString &text, int fontType, const Color &color)
 , underlineMargin (0.0f)
 , textMutex (NULL)
 {
-	widgetType.assign ("Label");
 	textMutex = SDL_CreateMutex ();
 	setText (text, fontType);
 }

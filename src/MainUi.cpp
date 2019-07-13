@@ -48,13 +48,15 @@
 #include "BannerWindow.h"
 #include "ServerUi.h"
 #include "WebKioskUi.h"
+#include "CameraUi.h"
 #include "MediaUi.h"
 #include "MainUi.h"
 
 const int MainUi::uiLaunchWindowTypes[] = {
 	UiLaunchWindow::ServerUi,
 	UiLaunchWindow::MediaUi,
-	UiLaunchWindow::WebKioskUi
+	UiLaunchWindow::WebKioskUi,
+	UiLaunchWindow::CameraUi
 };
 const StdString MainUi::announcementIconType = StdString ("a");
 const StdString MainUi::updateIconType = StdString ("b");
@@ -96,15 +98,13 @@ void MainUi::setHelpWindowContent (HelpWindow *helpWindow) {
 }
 
 int MainUi::doLoad () {
-	UiConfiguration *uiconfig;
 	UiText *uitext;
 
-	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 
 	cardView = (CardView *) addWidget (new CardView (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight));
 	cardView->isKeyboardScrollEnabled = true;
-	cardView->setRowHeader (0, uitext->getText (UiTextString::mainMenu).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor);
+	cardView->setRowHeader (0, createRowHeaderPanel (uitext->getText (UiTextString::mainMenu).capitalized ()));
 	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 
 	bannerList.randomizeOrder (&(App::instance->prng));
@@ -296,6 +296,10 @@ void MainUi::uiOpenClicked (void *uiPtr, Widget *widgetPtr) {
 		}
 		case UiLaunchWindow::WebKioskUi: {
 			ui = (Ui *) new WebKioskUi ();
+			break;
+		}
+		case UiLaunchWindow::CameraUi: {
+			ui = (Ui *) new CameraUi ();
 			break;
 		}
 	}

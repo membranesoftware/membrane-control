@@ -48,6 +48,7 @@
 #include "LabelWindow.h"
 #include "ProgressBar.h"
 #include "HelpWindow.h"
+#include "IconLabelWindow.h"
 #include "Ui.h"
 
 Ui::Ui ()
@@ -410,4 +411,38 @@ void Ui::addLinkAgent (const StdString &agentId) {
 	if (isLinkConnected) {
 		App::instance->agentControl.connectLinkClient (agentId);
 	}
+}
+
+Panel *Ui::createRowHeaderPanel (const StdString &headerText, Panel *sidePanel) {
+	UiConfiguration *uiconfig;
+	Panel *panel;
+	LabelWindow *label;
+
+	uiconfig = &(App::instance->uiConfig);
+	panel = new Panel ();
+	panel->setLayout (Panel::HorizontalLayout);
+	if (! headerText.empty ()) {
+		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (headerText, UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
+		label->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
+	}
+	if (sidePanel) {
+		panel->addWidget (sidePanel);
+	}
+	panel->refresh ();
+
+	return (panel);
+}
+
+Panel *Ui::createLoadingIconWindow () {
+	UiConfiguration *uiconfig;
+	UiText *uitext;
+	IconLabelWindow *icon;
+
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
+	icon = new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallLoadingIconSprite), uitext->getText (UiTextString::loading).capitalized (), UiConfiguration::CaptionFont);
+	icon->setFillBg (true, uiconfig->lightBackgroundColor);
+	icon->setProgressBar (true);
+
+	return (icon);
 }

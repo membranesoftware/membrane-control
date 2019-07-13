@@ -77,6 +77,9 @@ public:
 	// Remove a previously requested link client connection
 	void disconnectLinkClient (const StdString &agentId);
 
+	// Return a boolean value indicating if the specified agent has an established link connection
+	bool isLinkClientConnected (const StdString &agentId);
+
 	// Write a command to the specified link client. An empty agentId value causes the command to be written to all connected link clients. This method becomes responsible for deleting the command object when it's no longer needed.
 	void writeLinkCommand (Json *command, const StdString &agentId = StdString (""));
 
@@ -109,6 +112,9 @@ public:
 
 	// Attempt to gather status from all previously known agents that have not yet been successfully contacted
 	void retryAgents ();
+
+	// Return a boolean value indicating whether the specified agent ID is currently being contacted to invoke one or more commands
+	bool isAgentInvoking (const StdString &agentId);
 
 	// Invoke the GetStatus command from the specified agent and update its record if successful
 	void refreshAgentStatus (const StdString &agentId, const StdString &queueId = StdString (""));

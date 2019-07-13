@@ -40,26 +40,27 @@
 #include "Toolbar.h"
 #include "HashMap.h"
 #include "HelpWindow.h"
-#include "TimelineWindow.h"
 #include "CardView.h"
 #include "Ui.h"
 
 class MediaItemUi : public Ui {
 public:
-	MediaItemUi (const StdString &mediaId, const StdString &mediaName);
-	~MediaItemUi ();
-
 	// Constants to use for sprite indexes
 	enum {
 		ConfigureStreamButtonSprite = 0,
-		LargeThumbnailsIconSprite = 1,
-		MediumThumbnailsIconSprite = 2,
-		SmallThumbnailsIconSprite = 3,
-		ThumbnailSizeButtonSprite = 4,
-		TimeIconSprite = 5,
-		AttributesIconSprite = 6,
-		DurationIconSprite = 7
+		TimeIconSprite = 1,
+		AttributesIconSprite = 2,
+		DurationIconSprite = 3
 	};
+
+	// Constants to use for card view row numbers
+	enum {
+		InfoRow = 0,
+		ImageRow = 1
+	};
+
+	MediaItemUi (const StdString &mediaId, const StdString &mediaName);
+	~MediaItemUi ();
 
 	// Read-only data members
 	StdString mediaId;
@@ -71,20 +72,24 @@ public:
 	StdString thumbnailPath;
 	int thumbnailCount;
 
+	// Set a callback that should be invoked when the UI's remove media function has been executed
+	void setRemoveMediaCallback (Widget::EventCallback callback, void *callbackData);
+
 	// Set fields in the provided HelpWindow widget as appropriate for the UI's help content
 	void setHelpWindowContent (HelpWindow *helpWindow);
 
 	// Callback functions
-	static void thumbnailSizeButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void smallThumbnailActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void mediumThumbnailActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void largeThumbnailActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void smallImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void mediumImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void thumbnailMouseEntered (void *uiPtr, Widget *widgetPtr);
 	static void thumbnailMouseExited (void *uiPtr, Widget *widgetPtr);
-	static void resetCardLayout (void *uiPtr, Widget *widgetPtr);
 	static void configureStreamButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void configureStreamActionClosed (void *uiPtr, Widget *widgetPtr);
 	static void configureMediaStreamComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
+	static void removeMediaActionClosed (void *uiPtr, Widget *widgetPtr);
+	static void removeMediaComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
 
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
@@ -126,10 +131,12 @@ private:
 
 	bool isRecordSynced;
 	CardView *cardView;
-	int cardLayout;
-	float cardMaxImageWidth;
-	TimelineWindow *timelineWindow;
+	int cardDetail;
+	WidgetHandle timelineWindow;
 	HashMap streamServerAgentMap;
+	bool isCreateStreamAvailable;
+	Widget::EventCallback removeMediaCallback;
+	void *removeMediaCallbackData;
 };
 
 #endif

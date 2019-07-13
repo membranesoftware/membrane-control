@@ -47,8 +47,6 @@ Chip::Chip (const StdString &chipText, Sprite *iconSprite, bool shouldDestroySpr
 {
 	UiConfiguration *uiconfig;
 
-	widgetType.assign ("Chip");
-
 	uiconfig = &(App::instance->uiConfig);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize / 2.0f);
 	setFillBg (true, uiconfig->mediumPrimaryColor);

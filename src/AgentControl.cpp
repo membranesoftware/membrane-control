@@ -201,6 +201,10 @@ void AgentControl::disconnectLinkClient (const StdString &agentId) {
 	linkClient.disconnect (agentId);
 }
 
+bool AgentControl::isLinkClientConnected (const StdString &agentId) {
+	return (linkClient.isConnected (agentId));
+}
+
 void AgentControl::linkClientConnect (void *agentControlPtr, const StdString &agentId) {
 	App::instance->handleLinkClientConnect (agentId);
 }
@@ -420,6 +424,37 @@ void AgentControl::retryAgents () {
 		refreshAgentStatus (*j);
 		++j;
 	}
+}
+
+bool AgentControl::isAgentInvoking (const StdString &agentId) {
+	CommandList *cmdlist;
+	std::map<StdString, Agent>::iterator pos;
+	StdString key, hostname;
+	int port;
+	bool result;
+
+	port = 0;
+	SDL_LockMutex (agentMapMutex);
+	pos = findAgent (agentId);
+	if (pos != agentMap.end ()) {
+		hostname.assign (pos->second.invokeHostname);
+		port = pos->second.invokeTcpPort1;
+	}
+	SDL_UnlockMutex (agentMapMutex);
+	if (hostname.empty () || (port <= 0)) {
+		return (false);
+	}
+
+	key.assign (getMapKey (hostname, port));
+	result = false;
+	SDL_LockMutex (commandMapMutex);
+	cmdlist = findCommandList (key);
+	if (cmdlist && (! cmdlist->empty ())) {
+		result = true;
+	}
+	SDL_UnlockMutex (commandMapMutex);
+
+	return (result);
 }
 
 void AgentControl::refreshAgentStatus (const StdString &agentId, const StdString &queueId) {

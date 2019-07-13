@@ -50,7 +50,8 @@ public:
 	enum {
 		ServerUi = 0,
 		MediaUi = 1,
-		WebKioskUi = 2
+		WebKioskUi = 2,
+		CameraUi = 3
 	};
 
 	UiLaunchWindow (int uiType, SpriteGroup *mainUiSpriteGroup);

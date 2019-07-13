@@ -31,6 +31,7 @@
 #include "Config.h"
 #include <stdlib.h>
 #include "Result.h"
+#include "ClassId.h"
 #include "StdString.h"
 #include "App.h"
 #include "UiText.h"
@@ -81,6 +82,7 @@ MediaLibraryWindow::MediaLibraryWindow (const StdString &agentId)
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
+	classId = ClassId::MediaLibraryWindow;
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 	setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
@@ -146,12 +148,7 @@ StdString MediaLibraryWindow::toStringDetail () {
 }
 
 bool MediaLibraryWindow::isWidgetType (Widget *widget) {
-	if (! widget) {
-		return (false);
-	}
-
-	// This operation references output from the toStringDetail method, above
-	return (widget->toString ().contains (" MediaLibraryWindow agentId="));
+	return (widget && (widget->classId == ClassId::MediaLibraryWindow));
 }
 
 MediaLibraryWindow *MediaLibraryWindow::castWidget (Widget *widget) {

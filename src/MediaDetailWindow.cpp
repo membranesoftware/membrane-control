@@ -31,6 +31,7 @@
 #include "Config.h"
 #include <stdlib.h>
 #include "Result.h"
+#include "ClassId.h"
 #include "StdString.h"
 #include "StringList.h"
 #include "App.h"
@@ -72,6 +73,7 @@ MediaDetailWindow::MediaDetailWindow (const StdString &recordId, SpriteGroup *me
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
+	classId = ClassId::MediaDetailWindow;
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
@@ -105,12 +107,7 @@ StdString MediaDetailWindow::toStringDetail () {
 }
 
 bool MediaDetailWindow::isWidgetType (Widget *widget) {
-	if (! widget) {
-		return (false);
-	}
-
-	// This operation references output from the toStringDetail method, above
-	return (widget->toString ().contains (" MediaDetailWindow recordId="));
+	return (widget && (widget->classId == ClassId::MediaDetailWindow));
 }
 
 MediaDetailWindow *MediaDetailWindow::castWidget (Widget *widget) {
@@ -140,9 +137,7 @@ void MediaDetailWindow::syncRecordStore () {
 	mediaFrameRate = interface->getCommandNumberParam (record, "frameRate", (float) 0.0f);
 	mediaBitrate = interface->getCommandNumberParam (record, "bitrate", (int64_t) 0);
 
-	mediaName.assign (interface->getCommandStringParam (record, "name", ""));
 	nameLabel->setText (mediaName);
-
 	descriptionLabel->setText (App::instance->agentControl.getAgentDisplayName (agentId));
 
 	if ((mediaWidth > 0) && (mediaHeight > 0)) {
@@ -209,8 +204,8 @@ void MediaDetailWindow::refreshLayout () {
 
 	y = y2 + uiconfig->marginSize;
 	x = x0;
-	durationIcon->flowRight (&x, y, &x2, &y2);
-	fileSizeIcon->flowDown (x, &y, &x2, &y2);
+	fileSizeIcon->flowRight (&x, y, &x2, &y2);
+	durationIcon->flowDown (x, &y, &x2, &y2);
 
 	resetSize ();
 }

@@ -44,19 +44,21 @@
 
 class StreamItemUi : public Ui {
 public:
-	StreamItemUi (const StdString &streamId, const StdString &streamName, const StdString &captionText = StdString (""));
-	~StreamItemUi ();
-
 	// Constants to use for sprite indexes
 	enum {
 		TimeIconSprite = 0,
-		LargeThumbnailsIconSprite = 1,
-		MediumThumbnailsIconSprite = 2,
-		SmallThumbnailsIconSprite = 3,
-		ThumbnailSizeButtonSprite = 4,
-		AttributesIconSprite = 5,
-		DurationIconSprite = 6
+		AttributesIconSprite = 1,
+		DurationIconSprite = 2
 	};
+
+	// Constants to use for card view row numbers
+	enum {
+		InfoRow = 0,
+		ImageRow = 1
+	};
+
+	StreamItemUi (const StdString &streamId, const StdString &streamName, const StdString &captionText = StdString (""));
+	~StreamItemUi ();
 
 	// Read-only data members
 	StdString streamId;
@@ -76,11 +78,10 @@ public:
 	void setThumbnailClickCallback (Widget::EventCallback callback, void *callbackData);
 
 	// Callback functions
-	static void thumbnailSizeButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void viewSmallActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void viewMediumActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void viewLargeActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void resetCardLayout (void *uiPtr, Widget *widgetPtr);
+	static void imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void smallImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void mediumImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void thumbnailClicked (void *uiPtr, Widget *widgetPtr);
 	static void thumbnailMouseEntered (void *uiPtr, Widget *widgetPtr);
 	static void thumbnailMouseExited (void *uiPtr, Widget *widgetPtr);
@@ -136,8 +137,7 @@ private:
 	WidgetHandle timelineWindow;
 	bool isRecordSynced;
 	CardView *cardView;
-	int cardLayout;
-	float cardMaxImageWidth;
+	int cardDetail;
 	int lastTimelineHoverPosition;
 	Widget::EventCallback thumbnailClickCallback;
 	void *thumbnailClickCallbackData;

@@ -33,9 +33,10 @@
 #ifndef MEDIA_UI_H
 #define MEDIA_UI_H
 
+#include <map>
 #include "SDL2/SDL.h"
 #include "StdString.h"
-#include "SpriteGroup.h"
+#include "HashMap.h"
 #include "Json.h"
 #include "CardView.h"
 #include "Button.h"
@@ -49,20 +50,17 @@ public:
 	// Constants to use for sprite indexes
 	enum {
 		ConfigureStreamButtonSprite = 0,
-		LargeThumbnailButtonSprite = 1,
-		MediumThumbnailButtonSprite = 2,
-		SmallThumbnailButtonSprite = 3,
+		CreatePlaylistButtonSprite = 1,
+		AddPlaylistItemButtonSprite = 2,
+		BrowserPlayButtonSprite = 3,
 		BreadcrumbIconSprite = 4,
 		SearchButtonSprite = 5,
-		ThumbnailSizeButtonSprite = 6,
+		CacheButtonSprite = 6,
 		PlayButtonSprite = 7,
 		StreamButtonSprite = 8,
 		WritePlaylistButtonSprite = 9,
 		StopButtonSprite = 10,
-		CacheButtonSprite = 11,
-		CreatePlaylistButtonSprite = 12,
-		AddPlaylistItemButtonSprite = 13,
-		BrowserPlayButtonSprite = 14
+		SortButtonSprite = 11
 	};
 
 	// Constants to use for card view row numbers
@@ -70,7 +68,8 @@ public:
 		AgentRow = 0,
 		PlaylistRow = 1,
 		EmptyMediaRow = 2,
-		MediaRow = 3
+		MediaRow = 3,
+		MediaLoadingRow = 4
 	};
 
 	// Constants to use for toolbar modes
@@ -79,6 +78,19 @@ public:
 		StreamMode = 1,
 		PlaylistMode = 2,
 		ModeCount = 3
+	};
+
+	// Constants to use as state values in findMediaStreamsMap
+	enum {
+		StreamsRequestedState = 0,
+		StreamsReceivedState = 1
+	};
+
+	// Constants to use for empty state types
+	enum {
+		EmptyAgentState = 0,
+		EmptyMediaState = 1,
+		EmptyMediaStreamState = 2
 	};
 
 	MediaUi ();
@@ -103,11 +115,10 @@ public:
 	static bool matchMediaItem (void *idPtr, Widget *widget);
 	static void appendSelectedAgentId (void *stringListPtr, Widget *widgetPtr);
 	static void appendExpandedAgentId (void *stringListPtr, Widget *widgetPtr);
-	static void thumbnailSizeButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void smallThumbnailActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void mediumThumbnailActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void largeThumbnailActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void resetMediaCardLayout (void *uiPtr, Widget *widgetPtr);
+	static void imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void smallImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void mediumImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void reloadButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void reloadAgent (void *uiPtr, Widget *widgetPtr);
 	static void cardExpandStateChanged (void *uiPtr, Widget *widgetPtr);
@@ -116,14 +127,17 @@ public:
 	static void mediaWindowSelectStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void searchFieldEdited (void *uiPtr, Widget *widgetPtr);
 	static void searchButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void visibilityToggleStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void appendMediaIdWithoutStream (void *stringListPtr, Widget *widgetPtr);
+	static void sortButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void showMediaWithoutStreamsActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void sortByNameActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void sortByNewestActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void mediaLibraryMenuClicked (void *uiPtr, Widget *widgetPtr);
 	static void mediaLibraryScanActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void monitorSelectStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void monitorCacheButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void mediaItemUiThumbnailClicked (void *uiPtr, Widget *widgetPtr);
 	static void itemUiThumbnailClicked (void *uiPtr, Widget *widgetPtr);
+	static void mediaItemUiMediaRemoved (void *uiPtr, Widget *widgetPtr);
 	static void modeButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void monitorModeActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void streamModeActionClicked (void *uiPtr, Widget *widgetPtr);
@@ -192,6 +206,16 @@ protected:
 	void doSyncRecordStore ();
 
 private:
+	struct MediaServerInfo {
+		int resultOffset;
+		int setSize;
+		int recordCount;
+		MediaServerInfo (): resultOffset (0), setSize (0), recordCount (0) { }
+	};
+
+	// Return a mediaServerMap iterator positioned at the specified entry, creating it if it doesn't already exist. This method must be invoked only while holding a lock on mediaServerMapMutex.
+	std::map<StdString, MediaUi::MediaServerInfo>::iterator getMediaServerInfo (const StdString &agentId);
+
 	// Clear all media items and request search result sets from servers
 	void loadSearchResults ();
 
@@ -225,26 +249,29 @@ private:
 	Button *createPlaylistButton;
 	Button *deletePlaylistButton;
 	WidgetHandle searchField;
-	WidgetHandle visibilityToggle;
 	WidgetHandle emptyStateWindow;
 	WidgetHandle commandPopup;
 	WidgetHandle commandPopupSource;
 	WidgetHandle lastSelectedMediaWindow;
 	WidgetHandle selectedPlaylistWindow;
-	int cardLayout;
-	float cardMaxImageWidth;
+	int cardDetail;
+	int emptyStateType;
+	bool isShowingMediaWithoutStreams;
+	int mediaSortOrder;
 	int mediaServerCount;
 	int mediaItemCount;
+	int mediaStreamCount;
 	bool findMediaComplete;
+	bool isLoadingMedia;
 	StdString searchKey;
 	int recordReceiveCount;
 	int64_t nextRecordSyncTime;
-	HashMap mediaServerResultOffsetMap;
-	HashMap mediaServerSetSizeMap;
-	HashMap mediaServerRecordCountMap;
+	std::map<StdString, MediaUi::MediaServerInfo> mediaServerMap;
 	SDL_mutex *mediaServerMapMutex;
 	HashMap selectedMonitorMap;
 	HashMap selectedMediaMap;
+	HashMap findMediaStreamsMap;
+	SDL_mutex *findMediaStreamsMapMutex;
 };
 
 #endif

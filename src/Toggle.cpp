@@ -33,6 +33,7 @@
 #include "SDL2/SDL.h"
 #include "Result.h"
 #include "Log.h"
+#include "ClassId.h"
 #include "StdString.h"
 #include "App.h"
 #include "Widget.h"
@@ -51,6 +52,7 @@ Toggle::Toggle (Sprite *uncheckedButtonSprite, Sprite *checkedButtonSprite)
 , shortcutKey (SDLK_UNKNOWN)
 , isFocusDropShadowDisabled (false)
 , isChecked (false)
+, isDisabled (false)
 , isFocused (false)
 , uncheckedButton (NULL)
 , checkedButton (NULL)
@@ -59,7 +61,7 @@ Toggle::Toggle (Sprite *uncheckedButtonSprite, Sprite *checkedButtonSprite)
 {
 	UiConfiguration *uiconfig;
 
-	widgetType.assign ("Toggle");
+	classId = ClassId::Toggle;
 
 	// TODO: Add an indeterminate toggle state (for use when disabled)
 
@@ -92,11 +94,7 @@ Toggle::~Toggle () {
 }
 
 bool Toggle::isWidgetType (Widget *widget) {
-	if (! widget) {
-		return (false);
-	}
-
-	return (widget->widgetType.equals ("Toggle"));
+	return (widget && (widget->classId == ClassId::Toggle));
 }
 
 Toggle *Toggle::castWidget (Widget *widget) {
@@ -131,6 +129,21 @@ void Toggle::setChecked (bool checked, bool shouldSkipChangeCallback) {
 	}
 }
 
+void Toggle::setDisabled (bool disabled) {
+	if (disabled == isDisabled) {
+		return;
+	}
+
+	isDisabled = disabled;
+	uncheckedButton->setDisabled (isDisabled);
+	checkedButton->setDisabled (isDisabled);
+	if (isDisabled) {
+		isFocused = false;
+		setDropShadow (false);
+	}
+	refreshLayout ();
+}
+
 void Toggle::setInverseColor (bool inverse) {
 	uncheckedButton->setInverseColor (inverse);
 	checkedButton->setInverseColor (inverse);
@@ -149,12 +162,13 @@ void Toggle::setStateChangeCallback (Widget::EventCallback callback, void *callb
 void Toggle::doResetInputState () {
 	Panel::doResetInputState ();
 	isFocused = false;
+	setDropShadow (false);
 	uncheckedButton->setFocused (false);
 	checkedButton->setFocused (false);
 }
 
 bool Toggle::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown) {
-	if (isShiftDown || isControlDown) {
+	if (isDisabled || isShiftDown || isControlDown) {
 		return (false);
 	}
 
@@ -172,6 +186,10 @@ void Toggle::mouseEntered (void *togglePtr, Widget *widgetPtr) {
 
 	toggle = (Toggle *) togglePtr;
 	uiconfig = &(App::instance->uiConfig);
+	if (toggle->isDisabled) {
+		return;
+	}
+
 	toggle->isFocused = true;
 	toggle->checkedButton->mouseEnter ();
 	toggle->uncheckedButton->mouseEnter ();
@@ -184,6 +202,10 @@ void Toggle::mouseExited (void *togglePtr, Widget *widgetPtr) {
 	Toggle *toggle;
 
 	toggle = (Toggle *) togglePtr;
+	if (toggle->isDisabled) {
+		return;
+	}
+
 	toggle->isFocused = false;
 	toggle->checkedButton->mouseExit ();
 	toggle->uncheckedButton->mouseExit ();
@@ -196,6 +218,10 @@ void Toggle::mousePressed (void *togglePtr, Widget *widgetPtr) {
 	Toggle *toggle;
 
 	toggle = (Toggle *) togglePtr;
+	if (toggle->isDisabled) {
+		return;
+	}
+
 	toggle->checkedButton->mousePress ();
 	toggle->uncheckedButton->mousePress ();
 }
@@ -204,6 +230,10 @@ void Toggle::mouseReleased (void *togglePtr, Widget *widgetPtr) {
 	Toggle *toggle;
 
 	toggle = (Toggle *) togglePtr;
+	if (toggle->isDisabled) {
+		return;
+	}
+
 	toggle->checkedButton->mouseRelease ();
 	toggle->uncheckedButton->mouseRelease ();
 }
@@ -212,5 +242,9 @@ void Toggle::mouseClicked (void *togglePtr, Widget *widgetPtr) {
 	Toggle *toggle;
 
 	toggle = (Toggle *) togglePtr;
+	if (toggle->isDisabled) {
+		return;
+	}
+
 	toggle->setChecked (! toggle->isChecked);
 }

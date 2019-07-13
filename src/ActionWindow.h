@@ -68,6 +68,9 @@ public:
 	// Set the window's title text (empty by default)
 	void setTitleText (const StdString &text);
 
+	// Set the window's description text (empty by default)
+	void setDescriptionText (const StdString &text);
+
 	// Set the text that should be shown on the window's confirm button (defaults to "OK")
 	void setConfirmButtonText (const StdString &text);
 
@@ -86,6 +89,9 @@ public:
 
 	// Set the named option to evaluate as invalid if its value is an empty string
 	void setOptionNotEmptyString (const StdString &optionName);
+
+	// Set the disabled state for the named option
+	void setOptionDisabled (const StdString &optionName, bool disable);
 
 	// Return the string value of the named option, or the specified default value if no such option was found
 	StdString getStringValue (const StdString &optionName, const StdString &defaultValue);
@@ -132,7 +138,8 @@ private:
 		TextArea *descriptionText;
 		Widget *optionWidget;
 		bool isNotEmptyString;
-		Item (): type (0), nameLabel (NULL), descriptionText (NULL), optionWidget (NULL), isNotEmptyString (false) { }
+		bool isDisabled;
+		Item (): type (0), nameLabel (NULL), descriptionText (NULL), optionWidget (NULL), isNotEmptyString (false), isDisabled (false) { }
 	};
 
 	// Return an iterator positioned at the specified item in itemList, or the end of itemList if the item wasn't found
@@ -150,6 +157,7 @@ private:
 	void *optionChangeCallbackData;
 	std::list<ActionWindow::Item> itemList;
 	Label *titleLabel;
+	TextArea *descriptionText;
 	Button *confirmButton;
 	Button *cancelButton;
 };

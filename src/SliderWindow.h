@@ -47,9 +47,13 @@ public:
 	typedef StdString (*ValueNameFunction) (float sliderValue);
 
 	// Read-only data members
+	bool isDisabled;
 	bool isInverseColor;
 	float value;
 	bool isHovering;
+
+	// Set the slider's disabled state, appropriate for use when the slider becomes unavailable for interaction
+	void setDisabled (bool disabled);
 
 	// Set the window's inverse color option
 	void setInverseColor (bool inverse);
@@ -89,7 +93,5 @@ private:
 	SliderWindow::ValueNameFunction valueNameFunction;
 	Widget::EventCallback valueChangeCallback;
 	void *valueChangeCallbackData;
-	Color normalValueTextColor;
-	Color hoverValueTextColor;
 };
 #endif

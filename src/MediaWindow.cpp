@@ -32,11 +32,15 @@
 #include <stdlib.h>
 #include <math.h>
 #include "Result.h"
+#include "ClassId.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
+#include "UiConfiguration.h"
+#include "SystemInterface.h"
 #include "OsUtil.h"
 #include "MediaUtil.h"
+#include "Json.h"
 #include "Widget.h"
 #include "Sprite.h"
 #include "SpriteGroup.h"
@@ -46,12 +50,10 @@
 #include "Image.h"
 #include "Button.h"
 #include "TextArea.h"
-#include "Json.h"
-#include "SystemInterface.h"
-#include "UiConfiguration.h"
+#include "CardView.h"
 #include "MediaWindow.h"
 
-MediaWindow::MediaWindow (Json *mediaItem, int layoutType, float maxMediaImageWidth)
+MediaWindow::MediaWindow (Json *mediaItem)
 : Panel ()
 , thumbnailCount (0)
 , mediaWidth (0)
@@ -70,6 +72,7 @@ MediaWindow::MediaWindow (Json *mediaItem, int layoutType, float maxMediaImageWi
 , viewButton (NULL)
 , timestampLabel (NULL)
 , streamIconImage (NULL)
+, createStreamUnavailableIconImage (NULL)
 , mediaImageClickCallback (NULL)
 , mediaImageClickCallbackData (NULL)
 , viewButtonClickCallback (NULL)
@@ -81,6 +84,7 @@ MediaWindow::MediaWindow (Json *mediaItem, int layoutType, float maxMediaImageWi
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
+	classId = ClassId::MediaWindow;
 	interface = &(App::instance->systemInterface);
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
@@ -92,7 +96,8 @@ MediaWindow::MediaWindow (Json *mediaItem, int layoutType, float maxMediaImageWi
 	mediaWidth = interface->getCommandNumberParam (mediaItem, "width", (int) 0);
 	mediaHeight = interface->getCommandNumberParam (mediaItem, "height", (int) 0);
 
-	mediaImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LoadingImageIconSprite))));
+	mediaImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
+	mediaImage->setLoadSprite (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
 	mediaImage->setMouseClickCallback (MediaWindow::mediaImageClicked, this);
 	mediaImage->setLoadCallback (MediaWindow::mediaImageLoaded, this);
 
@@ -142,7 +147,12 @@ MediaWindow::MediaWindow (Json *mediaItem, int layoutType, float maxMediaImageWi
 	streamIconImage->setMouseHoverTooltip (uitext->getText (UiTextString::streamIconTooltip));
 	streamIconImage->isVisible = false;
 
-	setLayout (layoutType, maxMediaImageWidth);
+	createStreamUnavailableIconImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::SmallErrorIconSprite))));
+	createStreamUnavailableIconImage->zLevel = 3;
+	createStreamUnavailableIconImage->setFillBg (true, uiconfig->darkBackgroundColor);
+	createStreamUnavailableIconImage->setPadding (uiconfig->paddingSize / 2.0f, 0.0f);
+	createStreamUnavailableIconImage->setMouseHoverTooltip (uitext->getText (UiTextString::createStreamUnavailableTooltip));
+	createStreamUnavailableIconImage->isVisible = false;
 }
 
 MediaWindow::~MediaWindow () {
@@ -154,12 +164,7 @@ StdString MediaWindow::toStringDetail () {
 }
 
 bool MediaWindow::isWidgetType (Widget *widget) {
-	if (! widget) {
-		return (false);
-	}
-
-	// This operation references output from the toStringDetail method, above
-	return (widget->toString ().contains (" MediaWindow mediaName="));
+	return (widget && (widget->classId == ClassId::MediaWindow));
 }
 
 MediaWindow *MediaWindow::castWidget (Widget *widget) {
@@ -167,10 +172,7 @@ MediaWindow *MediaWindow::castWidget (Widget *widget) {
 }
 
 void MediaWindow::setImageUrl (const StdString &url) {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::instance->uiConfig);
-	mediaImage->setLoadUrl (url, uiconfig->coreSprites.getSprite (UiConfiguration::LoadingImageIconSprite));
+	mediaImage->setLoadUrl (url);
 }
 
 void MediaWindow::setDisplayTimestamp (float timestamp) {
@@ -232,13 +234,11 @@ bool MediaWindow::hasThumbnails () {
 void MediaWindow::syncRecordStore () {
 	RecordStore *store;
 	SystemInterface *interface;
-	UiConfiguration *uiconfig;
 	Json *mediaitem, *agentstatus, serverstatus, *streamitem, *params;
 	StdString agentid, recordid, agentname, hlspath;
 
 	store = &(App::instance->agentControl.recordStore);
 	interface = &(App::instance->systemInterface);
-	uiconfig = &(App::instance->uiConfig);
 	mediaitem = store->findRecord (mediaId, SystemInterface::CommandId_MediaItem);
 	if (! mediaitem) {
 		return;
@@ -302,13 +302,21 @@ void MediaWindow::syncRecordStore () {
 		}
 	}
 
+	if (interface->getCommandBooleanParam (mediaitem, "isCreateStreamAvailable", true)) {
+		createStreamUnavailableIconImage->isVisible = false;
+	}
+	else {
+		createStreamUnavailableIconImage->isVisible = true;
+	}
+
 	if (hasThumbnails () && mediaImage->isLoadUrlEmpty ()) {
 		params = new Json ();
 		params->set ("id", mediaId);
 		params->set ("thumbnailIndex", (thumbnailCount / 4));
-		mediaImage->setLoadUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetThumbnailImage, SystemInterface::Constant_Media, params), thumbnailPath), uiconfig->coreSprites.getSprite (UiConfiguration::LoadingImageIconSprite));
+		mediaImage->setLoadUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetThumbnailImage, SystemInterface::Constant_Media, params), thumbnailPath));
 	}
 
+	shouldRefreshTexture = true;
 	refreshLayout ();
 }
 
@@ -339,13 +347,18 @@ void MediaWindow::refreshLayout () {
 	mediaImage->position.assign (x, y);
 
 	switch (layout) {
-		case MediaWindow::LowDetailLayout: {
+		case CardView::LowDetail: {
 			nameLabel->isVisible = false;
 			detailNameLabel->isVisible = false;
 			detailText->isVisible = false;
 
+			if (createStreamUnavailableIconImage->isVisible) {
+				createStreamUnavailableIconImage->position.assign (x, mediaImage->position.y + mediaImage->height - createStreamUnavailableIconImage->height);
+				x += createStreamUnavailableIconImage->width;
+			}
 			if (streamIconImage->isVisible) {
-				streamIconImage->position.assign (mediaImage->position.x, mediaImage->position.y + mediaImage->height - streamIconImage->height);
+				streamIconImage->position.assign (x, mediaImage->position.y + mediaImage->height - streamIconImage->height);
+				x += streamIconImage->width;
 			}
 			mouseoverLabel->position.assign (0.0f, 0.0f);
 
@@ -353,7 +366,7 @@ void MediaWindow::refreshLayout () {
 			viewButton->position.assign (mediaImage->position.x + mediaImage->width - viewButton->width - uiconfig->dropShadowWidth, mediaImage->position.y, mediaImage->height - viewButton->height);
 			break;
 		}
-		case MediaWindow::MediumDetailLayout: {
+		case CardView::MediumDetail: {
 			detailNameLabel->isVisible = false;
 			detailText->isVisible = false;
 
@@ -362,21 +375,32 @@ void MediaWindow::refreshLayout () {
 			nameLabel->position.assign (x, y);
 			nameLabel->isVisible = true;
 
-			if (streamIconImage->isVisible) {
-				streamIconImage->position.assign (mediaImage->position.x, mediaImage->position.y + mediaImage->height - streamIconImage->height);
+			x = 0.0f;
+			if (createStreamUnavailableIconImage->isVisible) {
+				createStreamUnavailableIconImage->position.assign (x, mediaImage->position.y + mediaImage->height - createStreamUnavailableIconImage->height);
+				x += createStreamUnavailableIconImage->width;
 			}
+			if (streamIconImage->isVisible) {
+				streamIconImage->position.assign (x, mediaImage->position.y + mediaImage->height - streamIconImage->height);
+				x += streamIconImage->width;
+			}
+
+			viewButton->position.assign (mediaImage->position.x + mediaImage->width - viewButton->width - uiconfig->dropShadowWidth, mediaImage->position.y, mediaImage->height - viewButton->height);
 
 			resetSize ();
 			setFixedSize (true, mediaImage->width, maxWidgetY + uiconfig->paddingSize);
-			viewButton->position.assign (mediaImage->position.x + mediaImage->width - viewButton->width - uiconfig->dropShadowWidth, mediaImage->position.y, mediaImage->height - viewButton->height);
 			break;
 		}
-		case MediaWindow::HighDetailLayout: {
+		case CardView::HighDetail: {
 			nameLabel->isVisible = false;
 
 			detailNameLabel->position.assign (mediaImage->position.x, mediaImage->position.y);
 			detailNameLabel->isVisible = true;
 
+			if (createStreamUnavailableIconImage->isVisible) {
+				createStreamUnavailableIconImage->position.assign (x, mediaImage->position.y + mediaImage->height - createStreamUnavailableIconImage->height);
+				x += createStreamUnavailableIconImage->width;
+			}
 			if (streamIconImage->isVisible) {
 				streamIconImage->position.assign (x, mediaImage->position.y + mediaImage->height - streamIconImage->height);
 				x += streamIconImage->width;
@@ -398,7 +422,7 @@ void MediaWindow::refreshLayout () {
 
 void MediaWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 	Panel::doProcessMouseState (mouseState);
-	if (layout == MediaWindow::LowDetailLayout) {
+	if (layout == CardView::LowDetail) {
 		if (mouseState.isEntered) {
 			mouseoverLabel->isVisible = true;
 		}
@@ -408,30 +432,30 @@ void MediaWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 	}
 }
 
-void MediaWindow::setLayout (int layoutType, float maxImageWidth) {
+void MediaWindow::setLayout (int layoutType, float maxPanelWidth) {
 	float w, h;
 
-	if ((layoutType == layout) || (mediaWidth <= 0)) {
+	if ((layoutType == layout) || (mediaWidth <= 0) || (maxPanelWidth < 1.0f)) {
 		return;
 	}
 	layout = layoutType;
-	w = maxImageWidth;
+	w = maxPanelWidth;
 	h = mediaHeight;
-	h *= maxImageWidth;
+	h *= maxPanelWidth;
 	h /= mediaWidth;
 	w = floorf (w);
 	h = floorf (h);
 	mediaImage->setWindowSize (w, h);
 	mediaImage->reload ();
 
-	if (layout == MediaWindow::HighDetailLayout) {
+	if (layout == CardView::HighDetail) {
 		nameLabel->setFont (UiConfiguration::BodyFont);
 	}
 	else {
 		nameLabel->setFont (UiConfiguration::CaptionFont);
 	}
 
-	if (layout == MediaWindow::LowDetailLayout) {
+	if (layout == CardView::LowDetail) {
 		mouseoverLabel->setText (mediaName);
 	}
 	refreshLayout ();

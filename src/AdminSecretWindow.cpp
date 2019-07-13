@@ -33,6 +33,7 @@
 #include "openssl/evp.h"
 #include "Result.h"
 #include "Log.h"
+#include "ClassId.h"
 #include "StdString.h"
 #include "App.h"
 #include "UiText.h"
@@ -71,6 +72,7 @@ AdminSecretWindow::AdminSecretWindow ()
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
+	classId = ClassId::AdminSecretWindow;
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
@@ -107,12 +109,7 @@ StdString AdminSecretWindow::toStringDetail () {
 }
 
 bool AdminSecretWindow::isWidgetType (Widget *widget) {
-	if (! widget) {
-		return (false);
-	}
-
-	// This operation references output from the toStringDetail method, above
-	return (widget->toString ().contains (" AdminSecretWindow"));
+	return (widget && (widget->classId == ClassId::AdminSecretWindow));
 }
 
 AdminSecretWindow *AdminSecretWindow::castWidget (Widget *widget) {

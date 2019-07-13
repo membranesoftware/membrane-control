@@ -49,23 +49,21 @@
 #include "IconCardWindow.h"
 #include "IconLabelWindow.h"
 #include "StreamWindow.h"
-#include "ThumbnailWindow.h"
+#include "MediaThumbnailWindow.h"
 #include "HelpWindow.h"
 #include "StreamItemUi.h"
 #include "MonitorCacheUi.h"
 
-MonitorCacheUi::MonitorCacheUi (const StdString &agentId, const StdString &agentName, int streamWindowLayout)
+MonitorCacheUi::MonitorCacheUi (const StdString &agentId, const StdString &agentName)
 : Ui ()
 , agentId (agentId)
 , agentName (agentName)
-, streamWindowLayout (streamWindowLayout)
 , cardView (NULL)
 , stopButton (NULL)
 , playButton (NULL)
 , writePlaylistButton (NULL)
 , deleteButton (NULL)
-, cardLayout (-1)
-, cardMaxImageWidth (0.0f)
+, cardDetail (-1)
 , streamCount (0)
 , streamSetSize (-1)
 , recordReceiveCount (0)
@@ -101,36 +99,19 @@ void MonitorCacheUi::setHelpWindowContent (HelpWindow *helpWindow) {
 }
 
 int MonitorCacheUi::doLoad () {
-	UiConfiguration *uiconfig;
 	UiText *uitext;
 
-	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
-
 	streamSetSize = -1;
+	cardDetail = App::instance->prefsMap.find (App::MonitorCacheUiImageSizeKey, (int) CardView::MediumDetail);
+
 	cardView = (CardView *) addWidget (new CardView (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight));
 	cardView->isKeyboardScrollEnabled = true;
-	cardView->setRowHeader (1, uitext->getText (UiTextString::videoStreams).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor);
+	cardView->setRowHeader (MonitorCacheUi::StreamRow, createRowHeaderPanel (uitext->getText (UiTextString::videoStreams).capitalized ()));
+	cardView->setRowHeader (MonitorCacheUi::EmptyStreamRow, createRowHeaderPanel (uitext->getText (UiTextString::videoStreams).capitalized ()));
+	cardView->setRowSelectionAnimated (MonitorCacheUi::StreamRow, true);
+	cardView->setRowDetail (MonitorCacheUi::StreamRow, cardDetail);
 	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
-
-	switch (streamWindowLayout) {
-		case StreamWindow::LowDetailLayout: {
-			MonitorCacheUi::smallThumbnailActionClicked (this, NULL);
-			break;
-		}
-		case StreamWindow::MediumDetailLayout: {
-			MonitorCacheUi::mediumThumbnailActionClicked (this, NULL);
-			break;
-		}
-		case StreamWindow::HighDetailLayout: {
-			MonitorCacheUi::largeThumbnailActionClicked (this, NULL);
-			break;
-		}
-		default: {
-			MonitorCacheUi::smallThumbnailActionClicked (this, NULL);
-			break;
-		}
-	}
 
 	return (Result::Success);
 }
@@ -145,9 +126,9 @@ void MonitorCacheUi::doUnload () {
 void MonitorCacheUi::doAddMainToolbarItems (Toolbar *toolbar) {
 	Button *button;
 
-	button = new Button (StdString (""), sprites.getSprite (MonitorCacheUi::ThumbnailSizeButtonSprite));
+	button = new Button (StdString (""), App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::SelectImageSizeButtonSprite));
 	button->setInverseColor (true);
-	button->setMouseClickCallback (MonitorCacheUi::thumbnailSizeButtonClicked, this);
+	button->setMouseClickCallback (MonitorCacheUi::imageSizeButtonClicked, this);
 	button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::thumbnailImageSizeTooltip));
 	toolbar->addRightItem (button);
 
@@ -264,7 +245,7 @@ void MonitorCacheUi::doSyncRecordStore () {
 			monitorwindow = new MonitorWindow (agentId);
 			monitorwindow->setStorageDisplayEnabled (true);
 			monitorwindow->setExpanded (true);
-			cardView->addItem (monitorwindow, agentId, 0);
+			cardView->addItem (monitorwindow, agentId, MonitorCacheUi::AgentRow);
 			addLinkAgent (agentId);
 		}
 	}
@@ -280,7 +261,7 @@ void MonitorCacheUi::doSyncRecordStore () {
 			emptyStreamWindow.assign (iconwindow);
 
 			iconwindow->itemId.assign (cardView->getAvailableItemId ());
-			cardView->addItem (iconwindow, iconwindow->itemId, 1);
+			cardView->addItem (iconwindow, iconwindow->itemId, MonitorCacheUi::EmptyStreamRow);
 		}
 	}
 	else {
@@ -331,13 +312,15 @@ void MonitorCacheUi::handleLinkClientCommand (const StdString &linkAgentId, int 
 	}
 }
 
-void MonitorCacheUi::thumbnailSizeButtonClicked (void *uiPtr, Widget *widgetPtr) {
+void MonitorCacheUi::imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	MonitorCacheUi *ui;
+	UiConfiguration *uiconfig;
 	UiText *uitext;
 	Menu *action;
 	bool show;
 
 	ui = (MonitorCacheUi *) uiPtr;
+	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 
 	show = true;
@@ -354,106 +337,54 @@ void MonitorCacheUi::thumbnailSizeButtonClicked (void *uiPtr, Widget *widgetPtr)
 	action = (Menu *) App::instance->rootPanel->addWidget (new Menu ());
 	action->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
 	action->isClickDestroyEnabled = true;
-	action->addItem (uitext->getText (UiTextString::small).capitalized (), ui->sprites.getSprite (MonitorCacheUi::SmallThumbnailButtonSprite), MonitorCacheUi::smallThumbnailActionClicked, ui, 0, ui->cardLayout == StreamWindow::LowDetailLayout);
-	action->addItem (uitext->getText (UiTextString::medium).capitalized (), ui->sprites.getSprite (MonitorCacheUi::MediumThumbnailButtonSprite), MonitorCacheUi::mediumThumbnailActionClicked, ui, 0, ui->cardLayout == StreamWindow::MediumDetailLayout);
-	action->addItem (uitext->getText (UiTextString::large).capitalized (), ui->sprites.getSprite (MonitorCacheUi::LargeThumbnailButtonSprite), MonitorCacheUi::largeThumbnailActionClicked, ui, 0, ui->cardLayout == StreamWindow::HighDetailLayout);
+	action->addItem (uitext->getText (UiTextString::small).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::SmallSizeButtonSprite), MonitorCacheUi::smallImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::LowDetail);
+	action->addItem (uitext->getText (UiTextString::medium).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::MediumSizeButtonSprite), MonitorCacheUi::mediumImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::MediumDetail);
+	action->addItem (uitext->getText (UiTextString::large).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::LargeSizeButtonSprite), MonitorCacheUi::largeImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::HighDetail);
 	action->position.assign (widgetPtr->position.x + widgetPtr->width - action->width, widgetPtr->position.y + widgetPtr->height);
 	ui->actionWidget.assign (action);
 	ui->actionTarget.assign (widgetPtr);
 }
 
-void MonitorCacheUi::smallThumbnailActionClicked (void *uiPtr, Widget *widgetPtr) {
+void MonitorCacheUi::smallImageSizeActionClicked (void *uiPtr, Widget *widgetPtr) {
 	MonitorCacheUi *ui;
-	UiConfiguration *uiconfig;
-	float y0, h0;
+	int detail;
 
 	ui = (MonitorCacheUi *) uiPtr;
-	if (ui->cardLayout == StreamWindow::LowDetailLayout) {
+	detail = CardView::LowDetail;
+	if (detail == ui->cardDetail) {
 		return;
 	}
-
-	uiconfig = &(App::instance->uiConfig);
-	y0 = ui->cardView->viewOriginY;
-	h0 = ui->cardView->maxWidgetY;
-	ui->cardLayout = StreamWindow::LowDetailLayout;
-	ui->cardMaxImageWidth = ui->cardView->cardAreaWidth * uiconfig->smallThumbnailImageScale;
-	if (ui->cardMaxImageWidth < 1.0f) {
-		ui->cardMaxImageWidth = 1.0f;
-	}
-	ui->cardView->processItems (MonitorCacheUi::resetStreamWindowLayout, ui);
-	ui->cardView->setRowItemMarginSize (1, 0.0f);
-	ui->cardView->setVerticalScrollSpeed (ui->cardView->height * 0.1f);
-	if (h0 > 0.0f) {
-		ui->cardView->setViewOrigin (0.0f, (y0 * ui->cardView->maxWidgetY) / h0);
-	}
-	ui->cardView->refresh ();
+	ui->cardDetail = detail;
+	ui->cardView->setRowDetail (MonitorCacheUi::StreamRow, ui->cardDetail);
+	App::instance->prefsMap.insert (App::MonitorCacheUiImageSizeKey, ui->cardDetail);
 }
 
-void MonitorCacheUi::mediumThumbnailActionClicked (void *uiPtr, Widget *widgetPtr) {
+void MonitorCacheUi::mediumImageSizeActionClicked (void *uiPtr, Widget *widgetPtr) {
 	MonitorCacheUi *ui;
-	UiConfiguration *uiconfig;
-	float y0, h0;
+	int detail;
 
 	ui = (MonitorCacheUi *) uiPtr;
-	if (ui->cardLayout == StreamWindow::MediumDetailLayout) {
+	detail = CardView::MediumDetail;
+	if (detail == ui->cardDetail) {
 		return;
 	}
-
-	uiconfig = &(App::instance->uiConfig);
-	y0 = ui->cardView->viewOriginY;
-	h0 = ui->cardView->maxWidgetY;
-	ui->cardLayout = StreamWindow::MediumDetailLayout;
-	ui->cardMaxImageWidth = ui->cardView->cardAreaWidth * uiconfig->mediumThumbnailImageScale;
-	if (ui->cardMaxImageWidth < 1.0f) {
-		ui->cardMaxImageWidth = 1.0f;
-	}
-	ui->cardView->processItems (MonitorCacheUi::resetStreamWindowLayout, ui);
-	ui->cardView->setRowItemMarginSize (1, App::instance->uiConfig.marginSize / 2.0f);
-	ui->cardView->setVerticalScrollSpeed (ui->cardView->height * 0.2f);
-	if (h0 > 0.0f) {
-		ui->cardView->setViewOrigin (0.0f, (y0 * ui->cardView->maxWidgetY) / h0);
-	}
-	ui->cardView->refresh ();
+	ui->cardDetail = detail;
+	ui->cardView->setRowDetail (MonitorCacheUi::StreamRow, ui->cardDetail);
+	App::instance->prefsMap.insert (App::MonitorCacheUiImageSizeKey, ui->cardDetail);
 }
 
-void MonitorCacheUi::largeThumbnailActionClicked (void *uiPtr, Widget *widgetPtr) {
+void MonitorCacheUi::largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr) {
 	MonitorCacheUi *ui;
-	UiConfiguration *uiconfig;
-	float y0, h0;
+	int detail;
 
 	ui = (MonitorCacheUi *) uiPtr;
-	if (ui->cardLayout == StreamWindow::HighDetailLayout) {
+	detail = CardView::HighDetail;
+	if (detail == ui->cardDetail) {
 		return;
 	}
-
-	uiconfig = &(App::instance->uiConfig);
-	y0 = ui->cardView->viewOriginY;
-	h0 = ui->cardView->maxWidgetY;
-	ui->cardLayout = StreamWindow::HighDetailLayout;
-	ui->cardMaxImageWidth = ui->cardView->cardAreaWidth * uiconfig->largeThumbnailImageScale;
-	if (ui->cardMaxImageWidth < 1.0f) {
-		ui->cardMaxImageWidth = 1.0f;
-	}
-	ui->cardView->processItems (MonitorCacheUi::resetStreamWindowLayout, ui);
-	ui->cardView->setRowItemMarginSize (1, App::instance->uiConfig.marginSize);
-	ui->cardView->setVerticalScrollSpeed (ui->cardView->height * 0.3f);
-	if (h0 > 0.0f) {
-		ui->cardView->setViewOrigin (0.0f, (y0 * ui->cardView->maxWidgetY) / h0);
-	}
-	ui->cardView->refresh ();
-}
-
-void MonitorCacheUi::resetStreamWindowLayout (void *uiPtr, Widget *widgetPtr) {
-	MonitorCacheUi *ui;
-	StreamWindow *window;
-
-	ui = (MonitorCacheUi *) uiPtr;
-	window = StreamWindow::castWidget (widgetPtr);
-	if (! window) {
-		return;
-	}
-
-	window->setLayout (ui->cardLayout, ui->cardMaxImageWidth);
+	ui->cardDetail = detail;
+	ui->cardView->setRowDetail (MonitorCacheUi::StreamRow, ui->cardDetail);
+	App::instance->prefsMap.insert (App::MonitorCacheUiImageSizeKey, ui->cardDetail);
 }
 
 void MonitorCacheUi::reloadButtonClicked (void *uiPtr, Widget *widgetPtr) {
@@ -481,11 +412,11 @@ void MonitorCacheUi::processStreamItem (void *uiPtr, Json *record, const StdStri
 
 	++(ui->streamCount);
 	if (! ui->cardView->contains (recordId)) {
-		window = new StreamWindow (record, ui->cardLayout, ui->cardMaxImageWidth);
+		window = new StreamWindow (record);
 		window->setStreamImageClickCallback (MonitorCacheUi::streamWindowImageClicked, ui);
 		window->setViewButtonClickCallback (MonitorCacheUi::streamWindowViewButtonClicked, ui);
 		window->sortKey.assign (window->streamName);
-		ui->cardView->addItem (window, recordId, 1);
+		ui->cardView->addItem (window, recordId, MonitorCacheUi::StreamRow);
 	}
 }
 
@@ -523,11 +454,11 @@ void MonitorCacheUi::streamWindowViewButtonClicked (void *uiPtr, Widget *widgetP
 
 void MonitorCacheUi::streamItemUiThumbnailClicked (void *uiPtr, Widget *widgetPtr) {
 	MonitorCacheUi *ui;
-	ThumbnailWindow *thumbnail;
+	MediaThumbnailWindow *thumbnail;
 	StreamWindow *target;
 
 	ui = (MonitorCacheUi *) uiPtr;
-	thumbnail = ThumbnailWindow::castWidget (widgetPtr);
+	thumbnail = MediaThumbnailWindow::castWidget (widgetPtr);
 	target = StreamWindow::castWidget (ui->actionTarget.widget);
 	if ((! thumbnail) || (! target)) {
 		return;
@@ -541,7 +472,7 @@ void MonitorCacheUi::streamItemUiThumbnailClicked (void *uiPtr, Widget *widgetPt
 
 void MonitorCacheUi::setSelectedStream (StreamWindow *streamWindow) {
 	selectedStreamWindow.assign (streamWindow);
-	cardView->processRowItems (1, MonitorCacheUi::unselectStreamWindow, this);
+	cardView->processRowItems (MonitorCacheUi::StreamRow, MonitorCacheUi::unselectStreamWindow, this);
 	streamWindow->setSelected (true);
 }
 

@@ -173,6 +173,12 @@ protected:
 	// Add the specified agent ID to the set that should be maintained with a link client connection
 	void addLinkAgent (const StdString &agentId);
 
+	// Return a newly created Panel containing the provided elements, as appropriate for use as a CardView row header
+	Panel *createRowHeaderPanel (const StdString &headerText = StdString (""), Panel *sidePanel = NULL);
+
+	// Return a newly created Panel containing elements appropriate for use as a loading icon window
+	Panel *createLoadingIconWindow ();
+
 	SpriteGroup sprites;
 	WidgetHandle actionWidget;
 	WidgetHandle actionTarget;

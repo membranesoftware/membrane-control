@@ -49,6 +49,7 @@
 
 Slider::Slider (float minValue, float maxValue)
 : Widget ()
+, isDisabled (false)
 , isInverseColor (false)
 , trackWidthScale (1.0f)
 , value (minValue)
@@ -71,8 +72,6 @@ Slider::Slider (float minValue, float maxValue)
 , valueHoverCallbackData (NULL)
 {
 	UiConfiguration *uiconfig;
-
-	widgetType.assign ("Slider");
 
 	uiconfig = &(App::instance->uiConfig);
 	if (maxValue < minValue) {
@@ -101,24 +100,21 @@ Slider::~Slider () {
 	}
 }
 
-void Slider::setInverseColor (bool inverse) {
-	UiConfiguration *uiconfig;
+void Slider::setDisabled (bool disabled) {
+	if (disabled == isDisabled) {
+		return;
+	}
 
+	isDisabled = disabled;
+	refreshLayout ();
+}
+
+void Slider::setInverseColor (bool inverse) {
 	if (isInverseColor == inverse) {
 		return;
 	}
-	uiconfig = &(App::instance->uiConfig);
+
 	isInverseColor = inverse;
-	if (isInverseColor) {
-		thumbColor.assign (uiconfig->darkBackgroundColor);
-		trackColor.assign (uiconfig->darkInverseBackgroundColor);
-		hoverColor.assign (uiconfig->darkBackgroundColor);
-	}
-	else {
-		thumbColor.assign (uiconfig->lightPrimaryColor);
-		trackColor.assign (uiconfig->darkPrimaryColor);
-		hoverColor.assign (uiconfig->lightPrimaryColor);
-	}
 	refreshLayout ();
 }
 
@@ -131,8 +127,25 @@ void Slider::setTrackWidthScale (float scale) {
 }
 
 void Slider::refreshLayout () {
+	UiConfiguration *uiconfig;
+	Color color;
+
+	uiconfig = &(App::instance->uiConfig);
 	width = trackWidth;
 	height = thumbSize;
+
+	color.assign (isInverseColor ? uiconfig->darkBackgroundColor : uiconfig->lightPrimaryColor);
+	if (isDisabled) {
+		color.blend (0.0f, 0.0f, 0.0f, (1.0f - uiconfig->buttonDisabledShadeAlpha));
+	}
+	thumbColor.translate (color, uiconfig->shortColorTranslateDuration);
+	hoverColor.translate (color, uiconfig->shortColorTranslateDuration);
+
+	color.assign (isInverseColor ? uiconfig->darkInverseBackgroundColor : uiconfig->darkPrimaryColor);
+	if (isDisabled) {
+		color.blend (0.5f, 0.5f, 0.5f, (1.0f - uiconfig->buttonDisabledShadeAlpha));
+	}
+	trackColor.translate (color, uiconfig->shortColorTranslateDuration);
 }
 
 float Slider::getSnappedValue (float targetValue) {
@@ -215,6 +228,9 @@ void Slider::addSnapValue (float snapValue) {
 }
 
 void Slider::doUpdate (int msElapsed) {
+	thumbColor.update (msElapsed);
+	trackColor.update (msElapsed);
+	hoverColor.update (msElapsed);
 	if (!(isThumbSpriteLoaded || isThumbSpriteLoading)) {
 		loadThumbSprite ();
 	}
@@ -281,6 +297,10 @@ void Slider::doProcessMouseState (const Widget::MouseState &mouseState) {
 	Input *input;
 	float val, dx;
 	bool firsthover;
+
+	if (isDisabled) {
+		return;
+	}
 
 	input = &(App::instance->input);
 	firsthover = false;
@@ -352,17 +372,6 @@ void Slider::doRefresh () {
 	trackWidth = uiconfig->sliderTrackWidth * trackWidthScale;
 	trackHeight = uiconfig->sliderTrackHeight;
 	hoverSize = uiconfig->sliderThumbSize;
-
-	if (isInverseColor) {
-		thumbColor.assign (uiconfig->lightBackgroundColor);
-		trackColor.assign (uiconfig->darkBackgroundColor);
-		hoverColor.assign (uiconfig->lightBackgroundColor);
-	}
-	else {
-		thumbColor.assign (uiconfig->lightPrimaryColor);
-		trackColor.assign (uiconfig->darkPrimaryColor);
-		hoverColor.assign (uiconfig->lightPrimaryColor);
-	}
 	refreshLayout ();
 }
 

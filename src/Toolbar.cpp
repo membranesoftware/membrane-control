@@ -54,8 +54,6 @@ Toolbar::Toolbar (float toolbarWidth)
 {
 	UiConfiguration *uiconfig;
 
-	widgetType.assign ("Toolbar");
-
 	uiconfig = &(App::instance->uiConfig);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->darkPrimaryColor);

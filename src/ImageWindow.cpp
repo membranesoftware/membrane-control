@@ -51,7 +51,9 @@ ImageWindow::ImageWindow (Image *image)
 , isWindowSizeEnabled (false)
 , windowWidth (0.0f)
 , windowHeight (0.0f)
-, imageLoadingSprite (NULL)
+, isLoadResizeEnabled (false)
+, loadWidth (0.0f)
+, loadSprite (NULL)
 , isImageResourceLoaded (false)
 , isLoadingImageResource (false)
 , imageResourceData (NULL)
@@ -135,7 +137,8 @@ void ImageWindow::setWindowSize (float windowSizeWidth, float windowSizeHeight) 
 
 void ImageWindow::setImage (Image *nextImage) {
 	if (image) {
-		image->isDestroyed = true;
+		image->zLevel = -1;
+		image->setDestroyDelay (1);
 	}
 	image = nextImage;
 	if (image) {
@@ -162,21 +165,34 @@ void ImageWindow::setScale (float scale) {
 	refreshLayout ();
 }
 
-void ImageWindow::setLoadUrl (const StdString &loadUrl, Sprite *loadingSprite) {
+void ImageWindow::setLoadSprite (Sprite *sprite) {
+	loadSprite = sprite;
+	if (loadSprite && (! isImageUrlLoaded) && isLoadingImageUrl) {
+		setImage (new Image (loadSprite));
+	}
+}
+
+void ImageWindow::setLoadUrl (const StdString &loadUrl) {
 	if (imageUrl.equals (loadUrl)) {
 		return;
 	}
 	imageUrl.assign (loadUrl);
-	imageLoadingSprite = loadingSprite;
-	if (imageLoadingSprite) {
-		setImage (new Image (imageLoadingSprite));
-	}
-	else {
-		setImage (NULL);
+	if (loadSprite) {
+		setImage (new Image (loadSprite));
 	}
 	isImageUrlLoaded = false;
 	isLoadingImageUrl = false;
 	isImageUrlLoadDisabled = false;
+}
+
+void ImageWindow::setLoadResize (bool enable, float loadWidthValue) {
+	if (enable && (loadWidthValue >= 1.0f)) {
+		isLoadResizeEnabled = true;
+		loadWidth = loadWidthValue;
+	}
+	else {
+		isLoadResizeEnabled = false;
+	}
 }
 
 void ImageWindow::setLoadResourcePath (const StdString &loadPath, bool shouldLoadNow) {
@@ -224,8 +240,8 @@ bool ImageWindow::isLoadUrlEmpty () {
 
 void ImageWindow::reload () {
 	if (isImageUrlLoaded) {
-		if (imageLoadingSprite) {
-			setImage (new Image (imageLoadingSprite));
+		if (loadSprite) {
+			setImage (new Image (loadSprite));
 		}
 		isImageUrlLoaded = false;
 	}
@@ -238,10 +254,17 @@ void ImageWindow::refreshLayout () {
 		}
 	}
 	else {
-		if (image) {
-			image->position.assign (widthPadding, heightPadding);
+		if (isLoadResizeEnabled) {
+			if (image && loadSprite && image->hasSprite (loadSprite)) {
+				image->position.assign ((width / 2.0f) - (image->width / 2.0f), (height / 2.0f) - (image->height / 2.0f));
+			}
 		}
-		resetSize ();
+		else {
+			if (image) {
+				image->position.assign (widthPadding, heightPadding);
+			}
+			resetSize ();
+		}
 	}
 }
 
@@ -268,8 +291,8 @@ void ImageWindow::doUpdate (int msElapsed) {
 		}
 		else {
 			if (isImageUrlLoaded && (! isLoadingImageUrl)) {
-				if (imageLoadingSprite) {
-					setImage (new Image (imageLoadingSprite));
+				if (loadSprite) {
+					setImage (new Image (loadSprite));
 				}
 				isImageUrlLoaded = false;
 			}
@@ -392,6 +415,7 @@ void ImageWindow::createResourceDataTexture (void *windowPtr) {
 	SDL_Texture *texture;
 	Sprite *sprite;
 	StdString path;
+	float scaledw, scaledh;
 
 	window = (ImageWindow *) windowPtr;
 	if (window->isDestroyed || (! window->shouldShowUrlImage ()) || (! window->imageResourceData)) {
@@ -412,7 +436,24 @@ void ImageWindow::createResourceDataTexture (void *windowPtr) {
 		return;
 	}
 
-	scaledsurface = SDL_CreateRGBSurface (0, window->width, window->height, surface->format->BitsPerPixel, surface->format->Rmask, surface->format->Gmask, surface->format->Bmask, surface->format->Amask);
+	if (window->isLoadResizeEnabled && (surface->w > 0)) {
+		scaledw = window->loadWidth;
+		scaledh = (float) surface->h;
+		scaledh *= window->loadWidth;
+		scaledh /= (float) surface->w;
+	}
+	else {
+		scaledw = window->width;
+		scaledh = window->height;
+	}
+
+	if (scaledw < 1.0f) {
+		scaledw = 1.0f;
+	}
+	if (scaledh < 1.0f) {
+		scaledh = 1.0f;
+	}
+	scaledsurface = SDL_CreateRGBSurface (0, (int) floorf (scaledw), (int) floorf (scaledh), surface->format->BitsPerPixel, surface->format->Rmask, surface->format->Gmask, surface->format->Bmask, surface->format->Amask);
 	if (scaledsurface) {
 		SDL_BlitScaled (surface, NULL, scaledsurface, NULL);
 	}
@@ -435,7 +476,9 @@ void ImageWindow::createResourceDataTexture (void *windowPtr) {
 	sprite->addTexture (texture, path);
 	window->setImage (new Image (sprite, 0, true));
 	window->isImageUrlLoaded = true;
-
+	if (window->isLoadResizeEnabled) {
+		window->setFixedSize (true, scaledw, scaledh);
+	}
 	window->refreshLayout ();
 	window->endRequestImage ();
 }

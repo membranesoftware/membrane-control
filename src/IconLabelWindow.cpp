@@ -31,26 +31,26 @@
 #include "Config.h"
 #include <stdlib.h>
 #include "Result.h"
+#include "App.h"
 #include "Log.h"
 #include "StdString.h"
-#include "App.h"
+#include "UiConfiguration.h"
 #include "Sprite.h"
 #include "Widget.h"
 #include "Color.h"
 #include "Panel.h"
 #include "Label.h"
 #include "Image.h"
-#include "UiConfiguration.h"
+#include "ProgressBar.h"
 #include "IconLabelWindow.h"
 
-IconLabelWindow::IconLabelWindow (Sprite *iconSprite, const StdString &iconText, int iconFontType, const Color &iconTextColor, bool isTextWordWrapped)
+IconLabelWindow::IconLabelWindow (Sprite *iconSprite, const StdString &iconText, int iconFontType, const Color &iconTextColor)
 : Panel ()
 , label (NULL)
 , image (NULL)
-, isWordWrapped (false)
 , isRightAligned (false)
 , isTextChangeHighlightEnabled (false)
-, textArea (NULL)
+, progressBar (NULL)
 {
 	UiConfiguration *uiconfig;
 
@@ -60,10 +60,7 @@ IconLabelWindow::IconLabelWindow (Sprite *iconSprite, const StdString &iconText,
 	normalTextColor.assign (iconTextColor);
 	label = (Label *) addWidget (new Label (iconText, iconFontType, normalTextColor));
 	image = (Image *) addWidget (new Image (iconSprite));
-	textArea = (TextArea *) addWidget (new TextArea (iconFontType, normalTextColor));
-	textArea->isVisible = false;
 
-	setWordWrapped (isTextWordWrapped);
 	refreshLayout ();
 }
 
@@ -93,21 +90,6 @@ void IconLabelWindow::setTextChangeHighlight (bool enable, const Color &highligh
 	}
 }
 
-void IconLabelWindow::setWordWrapped (bool enable, int maxTextLineLength, int maxTextLineWidth) {
-	if (enable == isWordWrapped) {
-		return;
-	}
-	isWordWrapped = enable;
-	if (isWordWrapped) {
-		// TODO: Apply the provided maxTextLineLength and maxTextLineWidth values (currently ignored)
-		textArea->setText (label->text);
-	}
-	else {
-		// TODO: Copy textArea content to label (an operation currently not supported by TextArea)
-	}
-	refreshLayout ();
-}
-
 void IconLabelWindow::setRightAligned (bool enable) {
 	if (enable == isRightAligned) {
 		return;
@@ -126,48 +108,66 @@ void IconLabelWindow::setIconImageScale (float scale) {
 	refreshLayout ();
 }
 
+void IconLabelWindow::setProgressBar (bool enable, float progressValue, float targetProgressValue) {
+	if (! enable) {
+		if (progressBar) {
+			progressBar->isDestroyed = true;
+			progressBar = NULL;
+		}
+	}
+	else {
+		if (! progressBar) {
+			progressBar = (ProgressBar *) addWidget (new ProgressBar ());
+			progressBar->zLevel = 1;
+		}
+		if ((progressValue < 0.0f) && (targetProgressValue < 0.0f)) {
+			progressBar->setIndeterminate (true);
+		}
+		else {
+			progressBar->setIndeterminate (false);
+			if (targetProgressValue >= 0.0f) {
+				progressBar->setProgress (progressValue, targetProgressValue);
+			}
+			else {
+				progressBar->setProgress (progressValue);
+			}
+		}
+	}
+
+	refreshLayout ();
+}
+
 void IconLabelWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
-	float x, y, h;
+	float x, y, x2, y2;
 
 	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
+	x2 = 0.0f;
+	y2 = 0.0f;
 
-	if (isWordWrapped) {
-		label->isVisible = false;
-
-		if (isRightAligned) {
-			textArea->position.assign (x, y);
-			x += textArea->width + uiconfig->marginSize;
-			image->position.assign (x, y);
-		}
-		else {
-			image->position.assign (x, y);
-			x += image->width + uiconfig->marginSize;
-			textArea->position.assign (x, y);
-		}
-		textArea->isVisible = true;
+	if (isRightAligned) {
+		label->flowRight (&x, y, &x2, &y2);
+		image->flowRight (&x, y, &x2, &y2);
 	}
 	else {
-		textArea->isVisible = false;
-
-		h = label->height;
-		if (image->height > h) {
-			h = image->height;
-		}
-		if (isRightAligned) {
-			label->position.assign (x, y + (h / 2.0f) - (label->height / 2.0f) + label->descenderHeight);
-			x += label->width + uiconfig->marginSize;
-			image->position.assign (x, y + (h / 2.0f) - (image->height / 2.0f));
-		}
-		else {
-			image->position.assign (x, y + (h / 2.0f) - (image->height / 2.0f));
-			x += image->width + uiconfig->marginSize;
-			label->position.assign (x, y + (h / 2.0f) - (label->height / 2.0f) + label->descenderHeight);
-		}
-		label->isVisible = true;
+		image->flowRight (&x, y, &x2, &y2);
+		label->flowRight (&x, y, &x2, &y2);
 	}
 
-	resetSize ();
+	image->position.assignY (y + ((y2 - y) / 2.0f) - (image->height / 2.0f));
+	label->position.assignY (y + ((y2 - y) / 2.0f) - (label->height / 2.0f));
+	label->isVisible = true;
+
+	x2 += widthPadding;
+	if (progressBar) {
+		progressBar->setSize (x2, uiconfig->progressBarHeight);
+		progressBar->position.assign (0.0f, y2);
+		y2 += progressBar->height;
+	}
+	else {
+		y2 += heightPadding;
+	}
+	setFixedSize (true, x2, y2);
 }

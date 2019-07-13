@@ -39,12 +39,12 @@
 #include "Color.h"
 #include "Image.h"
 #include "Label.h"
-#include "TextArea.h"
+#include "ProgressBar.h"
 #include "Panel.h"
 
 class IconLabelWindow : public Panel {
 public:
-	IconLabelWindow (Sprite *iconSprite, const StdString &iconText = StdString (""), int iconFontType = UiConfiguration::BodyFont, const Color &iconTextColor = Color (0.0f, 0.0f, 0.0f), bool isTextWordWrapped = false);
+	IconLabelWindow (Sprite *iconSprite, const StdString &iconText = StdString (""), int iconFontType = UiConfiguration::BodyFont, const Color &iconTextColor = Color (0.0f, 0.0f, 0.0f));
 	~IconLabelWindow ();
 
 	// Set the window's text
@@ -52,9 +52,6 @@ public:
 
 	// Set the window's text change highlight option. If enabled, the window highlights text changes with a rotation from the specified color.
 	void setTextChangeHighlight (bool enable, const Color &highlightColor = Color (0.0f, 0.0f, 0.0f));
-
-	// Set the window's word wrap option. If enabled, the window applies specified maximums to word wrap its text content. maxTextLineLength specifies the maximum number of characters per text line, with a value of zero or less indicating that a default line length should be chosen from UiConfiguration. maxTextLineWidth specifies the maximum width in pixels per text line, with a value of zero or less indicating that no such maximum should apply.
-	void setWordWrapped (bool enable, int maxTextLineLength = 0, int maxTextLineWidth = 0.0f);
 
 	// Set the window's right-aligned option. If enabled, the window places the icon on the right side instead of the left side.
 	void setRightAligned (bool enable);
@@ -64,6 +61,9 @@ public:
 
 	// Set the scale value that should be applied to the window's icon image
 	void setIconImageScale (float scale);
+
+	// Set the window's progress bar option. If enabled, the window shows a progress bar with the provided progress values; negative progress values specify an indeterminate progress bar.
+	void setProgressBar (bool enable, float progressValue = -1.0f, float targetProgressValue = -1.0f);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
@@ -75,12 +75,11 @@ protected:
 private:
 	Label *label;
 	Image *image;
-	bool isWordWrapped;
 	bool isRightAligned;
 	bool isTextChangeHighlightEnabled;
 	Color normalTextColor;
 	Color highlightTextColor;
-	TextArea *textArea;
+	ProgressBar *progressBar;
 };
 
 #endif

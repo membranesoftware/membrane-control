@@ -31,6 +31,7 @@
 #include "Config.h"
 #include <stdlib.h>
 #include "Result.h"
+#include "ClassId.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
@@ -59,12 +60,14 @@ ActionWindow::ActionWindow ()
 , optionChangeCallback (NULL)
 , optionChangeCallbackData (NULL)
 , titleLabel (NULL)
+, descriptionText (NULL)
 , confirmButton (NULL)
 , cancelButton (NULL)
 {
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
+	classId = ClassId::ActionWindow;
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 
@@ -73,6 +76,9 @@ ActionWindow::ActionWindow ()
 
 	titleLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::TitleFont, uiconfig->primaryTextColor));
 	titleLabel->isVisible = false;
+
+	descriptionText = (TextArea *) addWidget (new TextArea (UiConfiguration::CaptionFont, uiconfig->primaryTextColor, 0, uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth));
+	descriptionText->isVisible = false;
 
 	confirmButton = (Button *) addWidget (new Button (uitext->getText (UiTextString::ok).uppercased ()));
 	confirmButton->setMouseClickCallback (ActionWindow::confirmButtonClicked, this);
@@ -96,12 +102,7 @@ StdString ActionWindow::toStringDetail () {
 }
 
 bool ActionWindow::isWidgetType (Widget *widget) {
-	if (! widget) {
-		return (false);
-	}
-
-	// This operation references output from the toStringDetail method, above
-	return (widget->toString ().contains (" ActionWindow"));
+	return (widget && (widget->classId == ClassId::ActionWindow));
 }
 
 ActionWindow *ActionWindow::castWidget (Widget *widget) {
@@ -121,6 +122,17 @@ void ActionWindow::setTitleText (const StdString &text) {
 	}
 	else {
 		titleLabel->isVisible = true;
+	}
+	refreshLayout ();
+}
+
+void ActionWindow::setDescriptionText (const StdString &text) {
+	descriptionText->setText (text);
+	if (text.empty ()) {
+		descriptionText->isVisible = false;
+	}
+	else {
+		descriptionText->isVisible = true;
 	}
 	refreshLayout ();
 }
@@ -145,6 +157,7 @@ void ActionWindow::setInverseColor (bool inverse) {
 		}
 
 		titleLabel->textColor.assign (uiconfig->inverseTextColor);
+		descriptionText->setTextColor (uiconfig->inverseTextColor);
 
 		confirmButton->setInverseColor (true);
 		confirmButton->setTextColor (uiconfig->raisedButtonInverseTextColor);
@@ -160,6 +173,7 @@ void ActionWindow::setInverseColor (bool inverse) {
 		}
 
 		titleLabel->textColor.assign (uiconfig->primaryTextColor);
+		descriptionText->setTextColor (uiconfig->primaryTextColor);
 
 		confirmButton->setInverseColor (false);
 		confirmButton->setTextColor (uiconfig->raisedButtonTextColor);
@@ -445,6 +459,10 @@ void ActionWindow::refreshLayout () {
 		titleLabel->flowDown (x, &y, &x2, &y2);
 		y = y2 + uiconfig->marginSize;
 	}
+	if (descriptionText->isVisible) {
+		descriptionText->flowDown (x, &y, &x2, &y2);
+		y = y2 + uiconfig->marginSize;
+	}
 
 	w = 0.0f;
 	i = itemList.begin ();
@@ -539,6 +557,39 @@ void ActionWindow::setOptionNotEmptyString (const StdString &optionName) {
 
 	item->isNotEmptyString = true;
 	verifyOptions ();
+}
+
+void ActionWindow::setOptionDisabled (const StdString &optionName, bool disable) {
+	std::list<ActionWindow::Item>::iterator item;
+
+	item = findItem (optionName);
+	if (item == itemList.end ()) {
+		return;
+	}
+
+	item->isDisabled = disable;
+	switch (item->type) {
+		case ActionWindow::ComboBoxItem: {
+			((ComboBox *) item->optionWidget)->setDisabled (item->isDisabled);
+			break;
+		}
+		case ActionWindow::TextFieldItem: {
+			((TextField *) item->optionWidget)->setDisabled (item->isDisabled);
+			break;
+		}
+		case ActionWindow::TextFieldWindowItem: {
+			((TextFieldWindow *) item->optionWidget)->setDisabled (item->isDisabled);
+			break;
+		}
+		case ActionWindow::ToggleItem: {
+			((Toggle *) item->optionWidget)->setDisabled (item->isDisabled);
+			break;
+		}
+		case ActionWindow::SliderItem: {
+			((SliderWindow *) item->optionWidget)->setDisabled (item->isDisabled);
+			break;
+		}
+	}
 }
 
 void ActionWindow::verifyOptions () {

@@ -43,6 +43,7 @@
 
 SliderWindow::SliderWindow (Slider *slider)
 : Panel ()
+, isDisabled (false)
 , isInverseColor (false)
 , value (0.0f)
 , isHovering (false)
@@ -55,12 +56,10 @@ SliderWindow::SliderWindow (Slider *slider)
 	UiConfiguration *uiconfig;
 
 	uiconfig = &(App::instance->uiConfig);
-	normalValueTextColor.assign (uiconfig->lightPrimaryTextColor);
-	hoverValueTextColor.assign (uiconfig->raisedButtonTextColor);
 
 	value = slider->value;
 	addWidget (slider);
-	valueLabel = (Label *) addWidget (new Label (StdString::createSprintf ("%.2f", slider->value), UiConfiguration::CaptionFont, normalValueTextColor));
+	valueLabel = (Label *) addWidget (new Label (StdString::createSprintf ("%.2f", slider->value), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 
 	slider->setValueChangeCallback (SliderWindow::sliderValueChanged, this);
 	slider->setValueHoverCallback (SliderWindow::sliderValueHovered, this);
@@ -76,23 +75,22 @@ StdString SliderWindow::toStringDetail () {
 	return (StdString (" SliderWindow"));
 }
 
-void SliderWindow::setInverseColor (bool inverse) {
-	UiConfiguration *uiconfig;
+void SliderWindow::setDisabled (bool disabled) {
+	if (disabled == isDisabled) {
+		return;
+	}
 
+	isDisabled = disabled;
+	slider->setDisabled (isDisabled);
+	refreshLayout ();
+}
+
+void SliderWindow::setInverseColor (bool inverse) {
 	if (isInverseColor == inverse) {
 		return;
 	}
-	uiconfig = &(App::instance->uiConfig);
 	isInverseColor = inverse;
 	slider->setInverseColor (isInverseColor);
-	if (isInverseColor) {
-		normalValueTextColor.assign (uiconfig->darkInverseTextColor);
-		hoverValueTextColor.assign (uiconfig->inverseTextColor);
-	}
-	else {
-		normalValueTextColor.assign (uiconfig->lightPrimaryTextColor);
-		hoverValueTextColor.assign (uiconfig->raisedButtonTextColor);
-	}
 	refreshLayout ();
 }
 
@@ -103,23 +101,24 @@ void SliderWindow::setPadding (float widthPadding, float heightPadding) {
 
 void SliderWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
+	Color color;
 	float x, y;
 
 	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	valueLabel->position.assign (x, y);
-	if (isHovering) {
-		valueLabel->textColor.translate (hoverValueTextColor, uiconfig->shortColorTranslateDuration);
-	}
-	else {
-		valueLabel->textColor.translate (normalValueTextColor, uiconfig->shortColorTranslateDuration);
-	}
-
 	y += valueLabel->maxLineHeight;
 	slider->position.assign (x, y);
-
 	resetSize ();
+
+	if (isDisabled) {
+		color.assign (isInverseColor ? uiconfig->darkInverseTextColor : uiconfig->lightPrimaryTextColor);
+	}
+	else {
+		color.assign (isInverseColor ? uiconfig->darkBackgroundColor : uiconfig->lightPrimaryColor);
+	}
+	valueLabel->textColor.translate (color, uiconfig->shortColorTranslateDuration);
 }
 
 void SliderWindow::setValueChangeCallback (Widget::EventCallback callback, void *callbackData) {

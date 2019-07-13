@@ -46,14 +46,7 @@
 
 class StreamWindow : public Panel {
 public:
-	// Constants to use for layout types
-	enum {
-		LowDetailLayout = 0,
-		MediumDetailLayout = 1,
-		HighDetailLayout = 2
-	};
-
-	StreamWindow (Json *streamItem, int layoutType = StreamWindow::LowDetailLayout, float maxStreamImageWidth = 64.0f);
+	StreamWindow (Json *streamItem);
 	virtual ~StreamWindow ();
 
 	// Read-only data members
@@ -73,8 +66,8 @@ public:
 	float frameRate;
 	int64_t bitrate;
 
-	// Set the card's layout type and maximum image width
-	void setLayout (int layoutType, float maxImageWidth);
+	// Set the layout type that should be used to arrange the panel's widgets, as specified by a CardView detail constant
+	void setLayout (int layoutType, float maxPanelWidth);
 
 	// Set a callback that should be invoked when the stream image is clicked
 	void setStreamImageClickCallback (Widget::EventCallback callback, void *callbackData);
@@ -102,7 +95,7 @@ public:
 
 	// Callback functions
 	static void streamImageClicked (void *windowPtr, Widget *widgetPtr);
-	static void selectButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void streamImageLoaded (void *windowPtr, Widget *widgetPtr);
 	static void viewButtonClicked (void *windowPtr, Widget *widgetPtr);
 
 protected:
@@ -122,8 +115,6 @@ private:
 	LabelWindow *mouseoverLabel;
 	LabelWindow *detailNameLabel;
 	LabelWindow *timestampLabel;
-	Panel *buttonPanel;
-	Button *selectButton;
 	Button *viewButton;
 	Widget::EventCallback streamImageClickCallback;
 	void *streamImageClickCallbackData;

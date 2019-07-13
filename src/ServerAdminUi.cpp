@@ -92,15 +92,13 @@ void ServerAdminUi::setHelpWindowContent (HelpWindow *helpWindow) {
 }
 
 int ServerAdminUi::doLoad () {
-	UiConfiguration *uiconfig;
 	UiText *uitext;
 
-	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 
 	cardView = (CardView *) addWidget (new CardView (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight));
 	cardView->isKeyboardScrollEnabled = true;
-	cardView->setRowHeader (2, uitext->getText (UiTextString::tasks).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor);
+	cardView->setRowHeader (2, createRowHeaderPanel (uitext->getText (UiTextString::tasks).capitalized ()));
 	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 
 	adminSecretWindow = new AdminSecretWindow ();

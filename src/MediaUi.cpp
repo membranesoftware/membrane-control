@@ -30,6 +30,7 @@
 */
 #include "Config.h"
 #include <stdlib.h>
+#include <map>
 #include "SDL2/SDL.h"
 #include "Result.h"
 #include "Log.h"
@@ -51,7 +52,7 @@
 #include "TextFieldWindow.h"
 #include "MediaLibraryWindow.h"
 #include "MonitorWindow.h"
-#include "ThumbnailWindow.h"
+#include "MediaThumbnailWindow.h"
 #include "StreamPlaylistWindow.h"
 #include "Ui.h"
 #include "MediaItemUi.h"
@@ -75,22 +76,33 @@ MediaUi::MediaUi ()
 , addPlaylistItemButton (NULL)
 , createPlaylistButton (NULL)
 , deletePlaylistButton (NULL)
-, cardLayout (-1)
-, cardMaxImageWidth (0.0f)
+, cardDetail (-1)
+, emptyStateType (-1)
+, isShowingMediaWithoutStreams (true)
+, mediaSortOrder (-1)
 , mediaServerCount (0)
 , mediaItemCount (0)
+, mediaStreamCount (0)
 , findMediaComplete (false)
+, isLoadingMedia (false)
 , recordReceiveCount (0)
 , nextRecordSyncTime (0)
 , mediaServerMapMutex (NULL)
+, findMediaStreamsMapMutex (NULL)
 {
 	mediaServerMapMutex = SDL_CreateMutex ();
+	findMediaStreamsMapMutex = SDL_CreateMutex ();
 }
 
 MediaUi::~MediaUi () {
 	if (mediaServerMapMutex) {
 		SDL_DestroyMutex (mediaServerMapMutex);
 		mediaServerMapMutex = NULL;
+	}
+
+	if (findMediaStreamsMapMutex) {
+		SDL_DestroyMutex (findMediaStreamsMapMutex);
+		findMediaStreamsMapMutex = NULL;
 	}
 }
 
@@ -125,68 +137,56 @@ void MediaUi::setHelpWindowContent (HelpWindow *helpWindow) {
 int MediaUi::doLoad () {
 	UiConfiguration *uiconfig;
 	UiText *uitext;
-	int layout;
 
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 	mediaServerCount = 0;
 	mediaItemCount = 0;
+	mediaStreamCount = 0;
 	findMediaComplete = false;
+	isLoadingMedia = false;
+	isShowingMediaWithoutStreams = App::instance->prefsMap.find (App::MediaUiShowMediaWithoutStreamsKey, true);
+	mediaSortOrder = App::instance->prefsMap.find (App::MediaUiSortOrderKey, (int) SystemInterface::Constant_NameSort);
+	cardDetail = App::instance->prefsMap.find (App::MediaUiImageSizeKey, (int) CardView::MediumDetail);
+	emptyStateType = -1;
 
 	cardView = (CardView *) addWidget (new CardView (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight));
 	cardView->isKeyboardScrollEnabled = true;
-	cardView->setRowHeader (MediaUi::PlaylistRow, uitext->getText (UiTextString::playlists).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor);
-	cardView->setRowHeader (MediaUi::EmptyMediaRow, uitext->getText (UiTextString::mediaFiles).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor);
-	cardView->setRowHeader (MediaUi::MediaRow, uitext->getText (UiTextString::mediaFiles).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor);
+	cardView->setRowHeader (MediaUi::PlaylistRow, createRowHeaderPanel (uitext->getText (UiTextString::playlists).capitalized ()));
+	cardView->setRowHeader (MediaUi::EmptyMediaRow, createRowHeaderPanel (uitext->getText (UiTextString::media).capitalized ()));
+	cardView->setRowHeader (MediaUi::MediaRow, createRowHeaderPanel (uitext->getText (UiTextString::media).capitalized ()));
 	cardView->setRowItemMarginSize (MediaUi::MediaRow, 0.0f);
 	cardView->setRowSelectionAnimated (MediaUi::MediaRow, true);
+	cardView->setRowDetail (MediaUi::MediaRow, cardDetail);
+	cardView->setRowItemMarginSize (MediaUi::MediaLoadingRow, uiconfig->marginSize);
 	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
-
-	layout = App::instance->prefsMap.find (App::MediaImageSizeKey, (int) MediaWindow::LowDetailLayout);
-	switch (layout) {
-		case MediaWindow::LowDetailLayout: {
-			MediaUi::smallThumbnailActionClicked (this, NULL);
-			break;
-		}
-		case MediaWindow::MediumDetailLayout: {
-			MediaUi::mediumThumbnailActionClicked (this, NULL);
-			break;
-		}
-		case MediaWindow::HighDetailLayout: {
-			MediaUi::largeThumbnailActionClicked (this, NULL);
-			break;
-		}
-		default: {
-			MediaUi::smallThumbnailActionClicked (this, NULL);
-			break;
-		}
-	}
 
 	return (Result::Success);
 }
 
 void MediaUi::doUnload () {
 	searchField.clear ();
-	visibilityToggle.clear ();
 	emptyStateWindow.clear ();
 	lastSelectedMediaWindow.clear ();
 	selectedPlaylistWindow.clear ();
 	selectedMonitorMap.clear ();
 	selectedMediaMap.clear ();
 
+	SDL_LockMutex (findMediaStreamsMapMutex);
+	findMediaStreamsMap.clear ();
+	SDL_UnlockMutex (findMediaStreamsMapMutex);
+
 	SDL_LockMutex (mediaServerMapMutex);
-	mediaServerResultOffsetMap.clear ();
-	mediaServerSetSizeMap.clear ();
-	mediaServerRecordCountMap.clear ();
+	mediaServerMap.clear ();
 	SDL_UnlockMutex (mediaServerMapMutex);
 }
 
 void MediaUi::doAddMainToolbarItems (Toolbar *toolbar) {
 	Button *button;
 
-	button = new Button (StdString (""), sprites.getSprite (MediaUi::ThumbnailSizeButtonSprite));
+	button = new Button (StdString (""), App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::SelectImageSizeButtonSprite));
 	button->setInverseColor (true);
-	button->setMouseClickCallback (MediaUi::thumbnailSizeButtonClicked, this);
+	button->setMouseClickCallback (MediaUi::imageSizeButtonClicked, this);
 	button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::thumbnailImageSizeTooltip));
 	toolbar->addRightItem (button);
 
@@ -202,7 +202,6 @@ void MediaUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
 	UiText *uitext;
 	TextFieldWindow *textfield;
 	Button *button;
-	Toggle *toggle;
 
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
@@ -220,15 +219,11 @@ void MediaUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
 	button->setMouseHoverTooltip (uitext->getText (UiTextString::mediaUiSearchTooltip));
 	toolbar->addLeftItem (button);
 
-	toggle = new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::VisibilityOffButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::VisibilityOnButtonSprite));
-	toggle->setInverseColor (true);
-	toggle->setStateChangeCallback (MediaUi::visibilityToggleStateChanged, this);
-	toggle->setMouseHoverTooltip (uitext->getText (UiTextString::mediaUiVisibilityTooltip));
-	toolbar->addLeftItem (toggle);
-	visibilityToggle.assign (toggle);
-	if (App::instance->prefsMap.find (App::MediaUiVisibilityKey, false)) {
-		toggle->setChecked (true, true);
-	}
+	button = new Button (StdString (""), sprites.getSprite (MediaUi::SortButtonSprite));
+	button->setInverseColor (true);
+	button->setMouseClickCallback (MediaUi::sortButtonClicked, this);
+	button->setMouseHoverTooltip (uitext->getText (UiTextString::mediaUiSortTooltip));
+	toolbar->addLeftItem (button);
 
 	toolbarMode = App::instance->prefsMap.find (App::MediaUiToolbarModeKey, (int) -1);
 	if (toolbarMode < 0) {
@@ -279,9 +274,7 @@ void MediaUi::doResume () {
 
 void MediaUi::doPause () {
 	StringList items;
-	Toggle *toggle;
 
-	App::instance->prefsMap.insert (App::MediaImageSizeKey, cardLayout);
 	App::instance->prefsMap.insert (App::MediaUiToolbarModeKey, toolbarMode);
 
 	items.clear ();
@@ -311,10 +304,8 @@ void MediaUi::doPause () {
 		App::instance->prefsMap.insert (App::MediaUiExpandedAgentsKey, &items);
 	}
 
-	toggle = (Toggle *) visibilityToggle.widget;
-	if (toggle) {
-		App::instance->prefsMap.insert (App::MediaUiVisibilityKey, toggle->isChecked);
-	}
+	App::instance->prefsMap.insert (App::MediaUiShowMediaWithoutStreamsKey, isShowingMediaWithoutStreams);
+	App::instance->prefsMap.insert (App::MediaUiSortOrderKey, mediaSortOrder);
 }
 
 void MediaUi::appendSelectedAgentId (void *stringListPtr, Widget *widgetPtr) {
@@ -374,12 +365,14 @@ void MediaUi::doRefresh () {
 }
 
 void MediaUi::doUpdate (int msElapsed) {
-	StringList idlist;
-	StringList::iterator i, end;
+	UiText *uitext;
+	std::map<StdString, MediaUi::MediaServerInfo>::iterator i, end;
 	Json *params;
-	int offset, setsize, recordcount;
 	int64_t now;
+	int count;
+	bool found;
 
+	uitext = &(App::instance->uiText);
 	emptyStateWindow.compact ();
 	commandPopup.compact ();
 	lastSelectedMediaWindow.compact ();
@@ -395,27 +388,52 @@ void MediaUi::doUpdate (int msElapsed) {
 	else {
 		if (cardView->isScrolledToBottom ()) {
 			SDL_LockMutex (mediaServerMapMutex);
-			mediaServerResultOffsetMap.getKeys (&idlist, true);
-			i = idlist.begin ();
-			end = idlist.end ();
+			i = mediaServerMap.begin ();
+			end = mediaServerMap.end ();
 			while (i != end) {
-				offset = mediaServerResultOffsetMap.find (*i, 0);
-				setsize = mediaServerSetSizeMap.find (*i, 0);
-				recordcount = mediaServerRecordCountMap.find (*i, 0);
-				if ((recordcount >= offset) && (recordcount < setsize)) {
+				if ((i->second.recordCount >= i->second.resultOffset) && (i->second.recordCount < i->second.setSize)) {
 					params = new Json ();
 					params->set ("searchKey", searchKey);
-					params->set ("resultOffset", offset);
+					params->set ("resultOffset", i->second.resultOffset);
 					params->set ("maxResults", MediaUi::pageSize);
-					App::instance->agentControl.writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindItems, SystemInterface::Constant_Media, params), *i);
-					offset += MediaUi::pageSize;
-					mediaServerResultOffsetMap.insert (*i, offset);
+					params->set ("sortOrder", mediaSortOrder);
+					App::instance->agentControl.writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindItems, SystemInterface::Constant_Media, params), i->first);
+					i->second.resultOffset += MediaUi::pageSize;
 				}
 				++i;
 			}
 			SDL_UnlockMutex (mediaServerMapMutex);
 		}
 	}
+
+	found = false;
+	SDL_LockMutex (mediaServerMapMutex);
+	i = mediaServerMap.begin ();
+	end = mediaServerMap.end ();
+	while (i != end) {
+		if (i->second.setSize < i->second.resultOffset) {
+			count = i->second.setSize;
+		}
+		else {
+			count = i->second.resultOffset;
+		}
+		if (i->second.recordCount < count) {
+			found = true;
+			break;
+		}
+		++i;
+	}
+	SDL_UnlockMutex (mediaServerMapMutex);
+
+	if ((! isLoadingMedia) && found) {
+		cardView->setRowHeader (MediaUi::MediaRow, createRowHeaderPanel (uitext->getText (UiTextString::media).capitalized (), createLoadingIconWindow ()));
+		cardView->addItem (createLoadingIconWindow (), StdString (""), MediaUi::MediaLoadingRow);
+	}
+	else if (isLoadingMedia && (! found)) {
+		cardView->setRowHeader (MediaUi::MediaRow, createRowHeaderPanel (uitext->getText (UiTextString::media).capitalized ()));
+		cardView->removeRowItems (MediaUi::MediaLoadingRow);
+	}
+	isLoadingMedia = found;
 }
 
 void MediaUi::doResize () {
@@ -443,47 +461,71 @@ bool MediaUi::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isC
 
 void MediaUi::doSyncRecordStore () {
 	RecordStore *store;
-	IconCardWindow *window;
 	UiConfiguration *uiconfig;
 	UiText *uitext;
+	IconCardWindow *window;
+	int type;
 
 	store = &(App::instance->agentControl.recordStore);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
+
 	mediaServerCount = 0;
 	store->processAgentRecords ("mediaServerStatus", MediaUi::processMediaServerAgent, this);
 	store->processAgentRecords ("monitorServerStatus", MediaUi::processMonitorAgent, this);
 
 	mediaItemCount = 0;
+	mediaStreamCount = 0;
 	store->processCommandRecords (SystemInterface::CommandId_MediaItem, MediaUi::processMediaItem, this);
 
-	window = (IconCardWindow *) emptyStateWindow.widget;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-	if (mediaServerCount <= 0) {
-		if (! window) {
-			window = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::ServerIconSprite), uitext->getText (UiTextString::mediaUiEmptyAgentStatusTitle), StdString (""), uitext->getText (UiTextString::mediaUiEmptyAgentStatusText));
-			window->setLink (uitext->getText (UiTextString::learnMore).capitalized (), App::getHelpUrl ("servers"));
-			emptyStateWindow.assign (window);
-
-			window->itemId.assign (cardView->getAvailableItemId ());
-			cardView->addItem (window, window->itemId, MediaUi::AgentRow);
+	type = -1;
+	if (cardView->getRowItemCount (MediaUi::MediaRow) <= 0) {
+		if (mediaServerCount <= 0) {
+			type = MediaUi::EmptyAgentState;
+		}
+		else if ((mediaItemCount <= 0) && findMediaComplete) {
+			type = MediaUi::EmptyMediaState;
+		}
+		else if ((mediaItemCount > 0) && (mediaStreamCount <= 0) && (! isShowingMediaWithoutStreams)) {
+			type = MediaUi::EmptyMediaStreamState;
 		}
 	}
-	else if ((mediaItemCount <= 0) && findMediaComplete) {
-		if (! window) {
-			window = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::ErrorIconSprite), uitext->getText (UiTextString::mediaUiEmptyMediaStatusTitle), StdString (""), uitext->getText (UiTextString::mediaUiEmptyMediaStatusText));
-			window->setLink (uitext->getText (UiTextString::learnMore).capitalized (), App::getHelpUrl ("servers"));
-			emptyStateWindow.assign (window);
 
-			window->itemId.assign (cardView->getAvailableItemId ());
-			cardView->addItem (window, window->itemId, MediaUi::EmptyMediaRow);
-		}
-	}
-	else {
+	if (type != emptyStateType) {
+		window = (IconCardWindow *) emptyStateWindow.widget;
 		if (window) {
 			cardView->removeItem (window->itemId);
 			emptyStateWindow.clear ();
 		}
+
+		window = NULL;
+		switch (type) {
+			case MediaUi::EmptyAgentState: {
+				window = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::ServerIconSprite), uitext->getText (UiTextString::mediaUiEmptyAgentStatusTitle), StdString (""), uitext->getText (UiTextString::mediaUiEmptyAgentStatusText));
+				window->setLink (uitext->getText (UiTextString::learnMore).capitalized (), App::getHelpUrl ("servers"));
+				window->itemId.assign (cardView->getAvailableItemId ());
+				cardView->addItem (window, window->itemId, MediaUi::AgentRow);
+				emptyStateWindow.assign (window);
+				break;
+			}
+			case MediaUi::EmptyMediaState: {
+				window = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::LargeMediaIconSprite), uitext->getText (UiTextString::mediaUiEmptyMediaStatusTitle), StdString (""), uitext->getText (UiTextString::mediaUiEmptyMediaStatusText));
+				window->setLink (uitext->getText (UiTextString::learnMore).capitalized (), App::getHelpUrl ("servers"));
+				window->itemId.assign (cardView->getAvailableItemId ());
+				cardView->addItem (window, window->itemId, MediaUi::EmptyMediaRow);
+				emptyStateWindow.assign (window);
+				break;
+			}
+			case MediaUi::EmptyMediaStreamState: {
+				window = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::LargeStreamIconSprite), uitext->getText (UiTextString::mediaUiEmptyMediaStreamStatusTitle), StdString (""), uitext->getText (UiTextString::mediaUiEmptyMediaStreamStatusText));
+				window->itemId.assign (cardView->getAvailableItemId ());
+				cardView->addItem (window, window->itemId, MediaUi::EmptyMediaRow);
+				emptyStateWindow.assign (window);
+				break;
+			}
+		}
 	}
+	emptyStateType = type;
 
 	cardView->syncRecordStore ();
 	cardView->refresh ();
@@ -547,44 +589,71 @@ void MediaUi::processMonitorAgent (void *uiPtr, Json *record, const StdString &r
 
 void MediaUi::processMediaItem (void *uiPtr, Json *record, const StdString &recordId) {
 	MediaUi *ui;
-	Toggle *toggle;
 	MediaWindow *window;
 	SystemInterface *interface;
 	StdString mediaid, agentid;
+	Json *params, *streamrecord;
+	StringList sourceids;
+	int findstate;
 	bool show;
 
 	ui = (MediaUi *) uiPtr;
 	++(ui->mediaItemCount);
-	if (! ui->cardView->contains (recordId)) {
-		interface = &(App::instance->systemInterface);
-		agentid = interface->getCommandAgentId (record);
-		show = true;
-		SDL_LockMutex (ui->mediaServerMapMutex);
-		if (! ui->mediaServerResultOffsetMap.exists (agentid)) {
-			show = false;
+
+	interface = &(App::instance->systemInterface);
+	agentid = interface->getCommandAgentId (record);
+	mediaid.assign (recordId);
+	streamrecord = App::instance->agentControl.recordStore.findRecord (MediaWindow::matchStreamSourceId, &mediaid);
+	if (streamrecord) {
+		++(ui->mediaStreamCount);
+	}
+
+	SDL_LockMutex (ui->findMediaStreamsMapMutex);
+	findstate = ui->findMediaStreamsMap.find (recordId, (int) -1);
+	SDL_UnlockMutex (ui->findMediaStreamsMapMutex);
+
+	if (findstate < 0) {
+		if (App::instance->agentControl.isLinkClientConnected (agentid)) {
+			sourceids.push_back (recordId);
+			params = new Json ();
+			params->set ("sourceIds", &sourceids);
+			App::instance->agentControl.writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindMediaStreams, SystemInterface::Constant_Stream, params), agentid);
+
+			SDL_LockMutex (ui->findMediaStreamsMapMutex);
+			ui->findMediaStreamsMap.insert (recordId, MediaUi::StreamsRequestedState);
+			SDL_UnlockMutex (ui->findMediaStreamsMapMutex);
 		}
-		else {
-			toggle = (Toggle *) ui->visibilityToggle.widget;
-			if (toggle && toggle->isChecked) {
-				mediaid.assign (recordId);
-				if (! App::instance->agentControl.recordStore.findRecord (MediaWindow::matchStreamSourceId, &mediaid)) {
+	}
+	else if (findstate == MediaUi::StreamsReceivedState) {
+		if (! ui->cardView->contains (recordId)) {
+			show = true;
+			if ((!(ui->isShowingMediaWithoutStreams)) && (! streamrecord)) {
+				show = false;
+			}
+			else {
+				SDL_LockMutex (ui->mediaServerMapMutex);
+				if (ui->mediaServerMap.count (agentid) <= 0) {
 					show = false;
 				}
+				SDL_UnlockMutex (ui->mediaServerMapMutex);
 			}
-		}
-		SDL_UnlockMutex (ui->mediaServerMapMutex);
 
-		if (show) {
-			window = new MediaWindow (record, ui->cardLayout, ui->cardMaxImageWidth);
-			window->setMediaImageClickCallback (MediaUi::mediaWindowImageClicked, ui);
-			window->setViewButtonClickCallback (MediaUi::mediaWindowViewButtonClicked, ui);
-			window->setSelectStateChangeCallback (MediaUi::mediaWindowSelectStateChanged, ui);
-			window->sortKey.assign (window->mediaName);
-
-			if (ui->selectedMediaMap.exists (recordId)) {
-				window->setSelected (true, true);
+			if (show) {
+				window = new MediaWindow (record);
+				window->setMediaImageClickCallback (MediaUi::mediaWindowImageClicked, ui);
+				window->setViewButtonClickCallback (MediaUi::mediaWindowViewButtonClicked, ui);
+				window->setSelectStateChangeCallback (MediaUi::mediaWindowSelectStateChanged, ui);
+				if (ui->mediaSortOrder == SystemInterface::Constant_NewestSort) {
+					window->sortKey.sprintf ("%016llx", (long long int) (0x7FFFFFFFFFFFFFFFLL - interface->getCommandNumberParam (record, "mtime", (int64_t) 0)));
+				}
+				else {
+					window->sortKey.assign (window->mediaName);
+				}
+				if (ui->selectedMediaMap.exists (recordId)) {
+					window->setSelected (true, true);
+				}
+				ui->cardView->addItem (window, recordId, MediaUi::MediaRow);
 			}
-			ui->cardView->addItem (window, recordId, MediaUi::MediaRow);
 		}
 	}
 }
@@ -604,18 +673,17 @@ bool MediaUi::matchMediaItem (void *idPtr, Widget *widget) {
 
 void MediaUi::handleLinkClientConnect (const StdString &agentId) {
 	Json *params;
+	std::map<StdString, MediaUi::MediaServerInfo>::iterator info;
 
 	SDL_LockMutex (mediaServerMapMutex);
-	if (! mediaServerResultOffsetMap.exists (agentId)) {
-		mediaServerResultOffsetMap.insert (agentId, MediaUi::pageSize);
-		mediaServerSetSizeMap.insert (agentId, (int) 0);
-		mediaServerRecordCountMap.insert (agentId, (int) 0);
+	if (mediaServerMap.count (agentId) <= 0) {
+		info = getMediaServerInfo (agentId);
+		info->second.resultOffset = MediaUi::pageSize;
 		params = new Json ();
 		params->set ("searchKey", searchKey);
 		params->set ("maxResults", MediaUi::pageSize);
+		params->set ("sortOrder", mediaSortOrder);
 		App::instance->agentControl.writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindItems, SystemInterface::Constant_Media, params), agentId);
-
-		App::instance->agentControl.writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindItems, SystemInterface::Constant_Stream), agentId);
 	}
 	SDL_UnlockMutex (mediaServerMapMutex);
 }
@@ -623,6 +691,10 @@ void MediaUi::handleLinkClientConnect (const StdString &agentId) {
 void MediaUi::handleLinkClientCommand (const StdString &agentId, int commandId, Json *command) {
 	SystemInterface *interface;
 	UiConfiguration *uiconfig;
+	std::map<StdString, MediaUi::MediaServerInfo>::iterator info;
+	Json item;
+	StdString id;
+	int i, len;
 
 	interface = &(App::instance->systemInterface);
 	uiconfig = &(App::instance->uiConfig);
@@ -630,22 +702,56 @@ void MediaUi::handleLinkClientCommand (const StdString &agentId, int commandId, 
 	switch (commandId) {
 		case SystemInterface::CommandId_FindMediaResult: {
 			SDL_LockMutex (mediaServerMapMutex);
-			mediaServerSetSizeMap.insert (agentId, interface->getCommandNumberParam (command, "setSize", (int) 0));
+			info = getMediaServerInfo (agentId);
+			info->second.setSize = interface->getCommandNumberParam (command, "setSize", (int) 0);
+			if (info->second.setSize <= 0) {
+				findMediaComplete = true;
+			}
 			SDL_UnlockMutex (mediaServerMapMutex);
-			findMediaComplete = true;
 			App::instance->shouldSyncRecordStore = true;
 			break;
 		}
 		case SystemInterface::CommandId_MediaItem: {
 			App::instance->agentControl.recordStore.addRecord (command);
 			SDL_LockMutex (mediaServerMapMutex);
-			mediaServerRecordCountMap.insert (agentId, mediaServerRecordCountMap.find (agentId, 0) + 1);
+			info = getMediaServerInfo (agentId);
+			++(info->second.recordCount);
+			if ((info->second.recordCount >= info->second.setSize) || (info->second.recordCount >= info->second.resultOffset)) {
+				App::instance->shouldSyncRecordStore = true;
+			}
 			SDL_UnlockMutex (mediaServerMapMutex);
+			findMediaComplete = true;
 			++recordReceiveCount;
 			nextRecordSyncTime = OsUtil::getTime () + uiconfig->recordSyncDelayDuration;
 			break;
 		}
 		case SystemInterface::CommandId_FindStreamsResult: {
+			break;
+		}
+		case SystemInterface::CommandId_FindMediaStreamsResult: {
+			nextRecordSyncTime = OsUtil::getTime () + uiconfig->recordSyncDelayDuration;
+			id = interface->getCommandStringParam (command, "mediaId", "");
+			if (! id.empty ()) {
+				SDL_LockMutex (findMediaStreamsMapMutex);
+				if (findMediaStreamsMap.exists (id)) {
+					findMediaStreamsMap.insert (id, MediaUi::StreamsReceivedState);
+				}
+				SDL_UnlockMutex (findMediaStreamsMapMutex);
+			}
+
+			len = interface->getCommandArrayLength (command, "streams");
+			if (len <= 0) {
+				break;
+			}
+
+			for (i = 0; i < len; ++i) {
+				if (interface->getCommandObjectArrayItem (command, "streams", i, &item)) {
+					if (interface->getCommandId (&item) == SystemInterface::CommandId_StreamItem) {
+						App::instance->agentControl.recordStore.addRecord (&item);
+						App::instance->shouldSyncRecordStore = true;
+					}
+				}
+			}
 			break;
 		}
 		case SystemInterface::CommandId_StreamItem: {
@@ -678,76 +784,15 @@ void MediaUi::searchButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	ui->loadSearchResults ();
 }
 
-void MediaUi::visibilityToggleStateChanged (void *uiPtr, Widget *widgetPtr) {
+void MediaUi::sortButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
-	Toggle *toggle;
-	StringList idlist;
-	StringList::iterator i, end;
-
-	ui = (MediaUi *) uiPtr;
-	toggle = (Toggle *) ui->visibilityToggle.widget;
-	if (! toggle) {
-		return;
-	}
-
-	if (toggle->isChecked) {
-		ui->cardView->processRowItems (MediaUi::MediaRow, MediaUi::appendMediaIdWithoutStream, &idlist);
-		i = idlist.begin ();
-		end = idlist.end ();
-		while (i != end) {
-			ui->cardView->removeItem (*i, true);
-			++i;
-		}
-		ui->cardView->refresh ();
-	}
-	else {
-		App::instance->shouldSyncRecordStore = true;
-	}
-}
-
-void MediaUi::appendMediaIdWithoutStream (void *stringListPtr, Widget *widgetPtr) {
-	StringList *idlist;
-	MediaWindow *media;
-
-	idlist = (StringList *) stringListPtr;
-	media = MediaWindow::castWidget (widgetPtr);
-	if (media && media->streamId.empty ()) {
-		idlist->push_back (media->mediaId);
-	}
-}
-
-void MediaUi::loadSearchResults () {
-	StringList idlist;
-	StringList::iterator i, end;
-	Json *params;
-
-	SDL_LockMutex (mediaServerMapMutex);
-	mediaServerResultOffsetMap.getKeys (&idlist, true);
-	i = idlist.begin ();
-	end = idlist.end ();
-	while (i != end) {
-		mediaServerResultOffsetMap.insert (*i, MediaUi::pageSize);
-		mediaServerSetSizeMap.insert (*i, (int) 0);
-		mediaServerRecordCountMap.insert (*i, (int) 0);
-		++i;
-	}
-	SDL_UnlockMutex (mediaServerMapMutex);
-	App::instance->agentControl.recordStore.removeRecords (SystemInterface::CommandId_MediaItem);
-	cardView->removeRowItems (MediaUi::MediaRow);
-
-	params = new Json ();
-	params->set ("searchKey", searchKey);
-	params->set ("maxResults", MediaUi::pageSize);
-	App::instance->agentControl.writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindItems, SystemInterface::Constant_Media, params));
-}
-
-void MediaUi::thumbnailSizeButtonClicked (void *uiPtr, Widget *widgetPtr) {
-	MediaUi *ui;
+	UiConfiguration *uiconfig;
 	UiText *uitext;
 	Menu *menu;
 	bool show;
 
 	ui = (MediaUi *) uiPtr;
+	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 
 	App::instance->uiStack.suspendMouseHover ();
@@ -765,130 +810,184 @@ void MediaUi::thumbnailSizeButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	menu = (Menu *) App::instance->rootPanel->addWidget (new Menu ());
 	menu->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
 	menu->isClickDestroyEnabled = true;
-	menu->addItem (uitext->getText (UiTextString::small).capitalized (), ui->sprites.getSprite (MediaUi::SmallThumbnailButtonSprite), MediaUi::smallThumbnailActionClicked, ui, 0, ui->cardLayout == MediaWindow::LowDetailLayout);
-	menu->addItem (uitext->getText (UiTextString::medium).capitalized (), ui->sprites.getSprite (MediaUi::MediumThumbnailButtonSprite), MediaUi::mediumThumbnailActionClicked, ui, 0, ui->cardLayout == MediaWindow::MediumDetailLayout);
-	menu->addItem (uitext->getText (UiTextString::large).capitalized (), ui->sprites.getSprite (MediaUi::LargeThumbnailButtonSprite), MediaUi::largeThumbnailActionClicked, ui, 0, ui->cardLayout == MediaWindow::HighDetailLayout);
+	menu->addItem (uitext->getText (UiTextString::mediaUiShowMediaWithoutStreamsAction), uiconfig->coreSprites.getSprite (UiConfiguration::VisibilityOnButtonSprite), MediaUi::showMediaWithoutStreamsActionClicked, ui, 0, (! ui->isShowingMediaWithoutStreams));
+	menu->addItem (uitext->getText (UiTextString::sortByName).capitalized (), ui->sprites.getSprite (MediaUi::SortButtonSprite), MediaUi::sortByNameActionClicked, ui, 2, ui->mediaSortOrder == SystemInterface::Constant_NameSort);
+	menu->addItem (uitext->getText (UiTextString::sortByNewest).capitalized (), ui->sprites.getSprite (MediaUi::SortButtonSprite), MediaUi::sortByNewestActionClicked, ui, 2, ui->mediaSortOrder == SystemInterface::Constant_NewestSort);
+	menu->position.assign (widgetPtr->screenX + widgetPtr->width - menu->width, widgetPtr->screenY - menu->height);
+	ui->actionWidget.assign (menu);
+	ui->actionTarget.assign (widgetPtr);
+}
+
+void MediaUi::showMediaWithoutStreamsActionClicked (void *uiPtr, Widget *widgetPtr) {
+	MediaUi *ui;
+	StringList idlist;
+	StringList::iterator i, end;
+
+	ui = (MediaUi *) uiPtr;
+	ui->isShowingMediaWithoutStreams = (! ui->isShowingMediaWithoutStreams);
+
+	if (! ui->isShowingMediaWithoutStreams) {
+		ui->cardView->processRowItems (MediaUi::MediaRow, MediaUi::appendMediaIdWithoutStream, &idlist);
+		i = idlist.begin ();
+		end = idlist.end ();
+		while (i != end) {
+			ui->cardView->removeItem (*i, true);
+			++i;
+		}
+		ui->cardView->refresh ();
+	}
+	App::instance->shouldSyncRecordStore = true;
+}
+
+void MediaUi::appendMediaIdWithoutStream (void *stringListPtr, Widget *widgetPtr) {
+	StringList *idlist;
+	MediaWindow *media;
+
+	idlist = (StringList *) stringListPtr;
+	media = MediaWindow::castWidget (widgetPtr);
+	if (media && media->streamId.empty ()) {
+		idlist->push_back (media->mediaId);
+	}
+}
+
+void MediaUi::sortByNameActionClicked (void *uiPtr, Widget *widgetPtr) {
+	MediaUi *ui;
+
+	ui = (MediaUi *) uiPtr;
+	if (ui->mediaSortOrder == SystemInterface::Constant_NameSort) {
+		return;
+	}
+	ui->mediaSortOrder = SystemInterface::Constant_NameSort;
+	ui->loadSearchResults ();
+}
+
+void MediaUi::sortByNewestActionClicked (void *uiPtr, Widget *widgetPtr) {
+	MediaUi *ui;
+
+	ui = (MediaUi *) uiPtr;
+	if (ui->mediaSortOrder == SystemInterface::Constant_NewestSort) {
+		return;
+	}
+	ui->mediaSortOrder = SystemInterface::Constant_NewestSort;
+	ui->loadSearchResults ();
+}
+
+void MediaUi::loadSearchResults () {
+	std::map<StdString, MediaUi::MediaServerInfo>::iterator i, end;
+	Json *params;
+
+	SDL_LockMutex (mediaServerMapMutex);
+	i = mediaServerMap.begin ();
+	end = mediaServerMap.end ();
+	while (i != end) {
+		i->second.resultOffset = MediaUi::pageSize;
+		i->second.setSize = 0;
+		i->second.recordCount = 0;
+		++i;
+	}
+	SDL_UnlockMutex (mediaServerMapMutex);
+
+	SDL_LockMutex (findMediaStreamsMapMutex);
+	findMediaStreamsMap.clear ();
+	SDL_UnlockMutex (findMediaStreamsMapMutex);
+
+	App::instance->agentControl.recordStore.removeRecords (SystemInterface::CommandId_MediaItem);
+	cardView->removeRowItems (MediaUi::MediaRow);
+
+	findMediaComplete = false;
+	params = new Json ();
+	params->set ("searchKey", searchKey);
+	params->set ("maxResults", MediaUi::pageSize);
+	params->set ("sortOrder", mediaSortOrder);
+	App::instance->agentControl.writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindItems, SystemInterface::Constant_Media, params));
+}
+
+void MediaUi::imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr) {
+	MediaUi *ui;
+	UiConfiguration *uiconfig;
+	UiText *uitext;
+	Menu *menu;
+	bool show;
+
+	ui = (MediaUi *) uiPtr;
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
+
+	App::instance->uiStack.suspendMouseHover ();
+
+	show = true;
+	if (Menu::isWidgetType (ui->actionWidget.widget) && (ui->actionTarget.widget == widgetPtr)) {
+		show = false;
+	}
+
+	ui->clearPopupWidgets ();
+	if (! show) {
+		return;
+	}
+
+	menu = (Menu *) App::instance->rootPanel->addWidget (new Menu ());
+	menu->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
+	menu->isClickDestroyEnabled = true;
+	menu->addItem (uitext->getText (UiTextString::small).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::SmallSizeButtonSprite), MediaUi::smallImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::LowDetail);
+	menu->addItem (uitext->getText (UiTextString::medium).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::MediumSizeButtonSprite), MediaUi::mediumImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::MediumDetail);
+	menu->addItem (uitext->getText (UiTextString::large).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::LargeSizeButtonSprite), MediaUi::largeImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::HighDetail);
 	menu->position.assign (widgetPtr->screenX + widgetPtr->width - menu->width, widgetPtr->screenY + widgetPtr->height);
 	ui->actionWidget.assign (menu);
 	ui->actionTarget.assign (widgetPtr);
 }
 
-void MediaUi::smallThumbnailActionClicked (void *uiPtr, Widget *widgetPtr) {
+void MediaUi::smallImageSizeActionClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
-	UiConfiguration *uiconfig;
-	float y0, h0, scale;
+	int detail;
 
 	ui = (MediaUi *) uiPtr;
-	if (ui->cardLayout == MediaWindow::LowDetailLayout) {
+	detail = CardView::LowDetail;
+	if (detail == ui->cardDetail) {
 		return;
 	}
-
-	uiconfig = &(App::instance->uiConfig);
-	y0 = ui->cardView->viewOriginY;
-	h0 = ui->cardView->maxWidgetY;
-	ui->cardLayout = MediaWindow::LowDetailLayout;
-	scale = uiconfig->smallThumbnailImageScale;
-	if (ui->cardView->isRowSelectionAnimated (MediaUi::MediaRow)) {
-		scale /= CardView::smallItemScale;
-	}
-	ui->cardMaxImageWidth = ui->cardView->cardAreaWidth * scale;
-	if (ui->cardMaxImageWidth < 1.0f) {
-		ui->cardMaxImageWidth = 1.0f;
-	}
-	ui->cardView->processRowItems (MediaUi::MediaRow, MediaUi::resetMediaCardLayout, ui);
-	ui->cardView->resetRowSelection (MediaUi::MediaRow);
-	ui->cardView->setRowItemMarginSize (MediaUi::MediaRow, 0.0f);
-	ui->cardView->setVerticalScrollSpeed (ui->cardView->height * 0.1f);
-	if (h0 > 0.0f) {
-		ui->cardView->setViewOrigin (0.0f, (y0 * ui->cardView->maxWidgetY) / h0);
-	}
-	ui->cardView->refresh ();
+	ui->cardDetail = detail;
+	ui->cardView->setRowDetail (MediaUi::MediaRow, ui->cardDetail);
+	App::instance->prefsMap.insert (App::MediaUiImageSizeKey, ui->cardDetail);
 }
 
-void MediaUi::mediumThumbnailActionClicked (void *uiPtr, Widget *widgetPtr) {
+void MediaUi::mediumImageSizeActionClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
-	UiConfiguration *uiconfig;
-	float y0, h0, scale;
+	int detail;
 
 	ui = (MediaUi *) uiPtr;
-	if (ui->cardLayout == MediaWindow::MediumDetailLayout) {
+	detail = CardView::MediumDetail;
+	if (detail == ui->cardDetail) {
 		return;
 	}
-
-	uiconfig = &(App::instance->uiConfig);
-	y0 = ui->cardView->viewOriginY;
-	h0 = ui->cardView->maxWidgetY;
-	ui->cardLayout = MediaWindow::MediumDetailLayout;
-	scale = uiconfig->mediumThumbnailImageScale;
-	if (ui->cardView->isRowSelectionAnimated (MediaUi::MediaRow)) {
-		scale /= CardView::smallItemScale;
-	}
-	ui->cardMaxImageWidth = ui->cardView->cardAreaWidth * scale;
-	if (ui->cardMaxImageWidth < 1.0f) {
-		ui->cardMaxImageWidth = 1.0f;
-	}
-	ui->cardView->processRowItems (MediaUi::MediaRow, MediaUi::resetMediaCardLayout, ui);
-	ui->cardView->resetRowSelection (MediaUi::MediaRow);
-	ui->cardView->setRowItemMarginSize (MediaUi::MediaRow, App::instance->uiConfig.marginSize / 2.0f);
-	ui->cardView->setVerticalScrollSpeed (ui->cardView->height * 0.2f);
-	if (h0 > 0.0f) {
-		ui->cardView->setViewOrigin (0.0f, (y0 * ui->cardView->maxWidgetY) / h0);
-	}
-	ui->cardView->refresh ();
+	ui->cardDetail = detail;
+	ui->cardView->setRowDetail (MediaUi::MediaRow, ui->cardDetail);
+	App::instance->prefsMap.insert (App::MediaUiImageSizeKey, ui->cardDetail);
 }
 
-void MediaUi::largeThumbnailActionClicked (void *uiPtr, Widget *widgetPtr) {
+void MediaUi::largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
-	UiConfiguration *uiconfig;
-	float y0, h0, scale;
+	int detail;
 
 	ui = (MediaUi *) uiPtr;
-	if (ui->cardLayout == MediaWindow::HighDetailLayout) {
+	detail = CardView::HighDetail;
+	if (detail == ui->cardDetail) {
 		return;
 	}
-
-	uiconfig = &(App::instance->uiConfig);
-	y0 = ui->cardView->viewOriginY;
-	h0 = ui->cardView->maxWidgetY;
-	ui->cardLayout = MediaWindow::HighDetailLayout;
-	scale = uiconfig->largeThumbnailImageScale;
-	if (ui->cardView->isRowSelectionAnimated (MediaUi::MediaRow)) {
-		scale /= CardView::smallItemScale;
-	}
-	ui->cardMaxImageWidth = ui->cardView->cardAreaWidth * scale;
-	if (ui->cardMaxImageWidth < 1.0f) {
-		ui->cardMaxImageWidth = 1.0f;
-	}
-	ui->cardView->processRowItems (MediaUi::MediaRow, MediaUi::resetMediaCardLayout, ui);
-	ui->cardView->resetRowSelection (MediaUi::MediaRow);
-	ui->cardView->setRowItemMarginSize (MediaUi::MediaRow, App::instance->uiConfig.marginSize);
-	ui->cardView->setVerticalScrollSpeed (ui->cardView->height * 0.3f);
-	if (h0 > 0.0f) {
-		ui->cardView->setViewOrigin (0.0f, (y0 * ui->cardView->maxWidgetY) / h0);
-	}
-	ui->cardView->refresh ();
-}
-
-void MediaUi::resetMediaCardLayout (void *uiPtr, Widget *widgetPtr) {
-	MediaUi *ui;
-	MediaWindow *window;
-
-	ui = (MediaUi *) uiPtr;
-	window = MediaWindow::castWidget (widgetPtr);
-	if (! window) {
-		return;
-	}
-
-	window->setLayout (ui->cardLayout, ui->cardMaxImageWidth);
+	ui->cardDetail = detail;
+	ui->cardView->setRowDetail (MediaUi::MediaRow, ui->cardDetail);
+	App::instance->prefsMap.insert (App::MediaUiImageSizeKey, ui->cardDetail);
 }
 
 void MediaUi::reloadButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
 
 	ui = (MediaUi *) uiPtr;
+	SDL_LockMutex (ui->findMediaStreamsMapMutex);
+	ui->findMediaStreamsMap.clear ();
+	SDL_UnlockMutex (ui->findMediaStreamsMapMutex);
+
 	ui->cardView->processRowItems (MediaUi::AgentRow, MediaUi::reloadAgent, ui);
 	ui->loadSearchResults ();
-	App::instance->agentControl.writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindItems, SystemInterface::Constant_Stream));
 }
 
 void MediaUi::reloadAgent (void *uiPtr, Widget *widgetPtr) {
@@ -990,6 +1089,7 @@ void MediaUi::mediaWindowViewButtonClicked (void *uiPtr, Widget *widgetPtr) {
 		if (target->hasThumbnails ()) {
 			ui->actionTarget.assign (target);
 			mediaitemui = new MediaItemUi (target->mediaId, target->mediaName);
+			mediaitemui->setRemoveMediaCallback (MediaUi::mediaItemUiMediaRemoved, ui);
 			App::instance->uiStack.pushUi (mediaitemui);
 		}
 	}
@@ -997,11 +1097,11 @@ void MediaUi::mediaWindowViewButtonClicked (void *uiPtr, Widget *widgetPtr) {
 
 void MediaUi::itemUiThumbnailClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
-	ThumbnailWindow *thumbnail;
+	MediaThumbnailWindow *thumbnail;
 	MediaWindow *target;
 
 	ui = (MediaUi *) uiPtr;
-	thumbnail = ThumbnailWindow::castWidget (widgetPtr);
+	thumbnail = MediaThumbnailWindow::castWidget (widgetPtr);
 	target = MediaWindow::castWidget (ui->actionTarget.widget);
 	if ((! thumbnail) || (! target)) {
 		return;
@@ -1012,6 +1112,20 @@ void MediaUi::itemUiThumbnailClicked (void *uiPtr, Widget *widgetPtr) {
 	target->setSelected (true);
 
 	App::instance->uiStack.popUi ();
+}
+
+void MediaUi::mediaItemUiMediaRemoved (void *uiPtr, Widget *widgetPtr) {
+	MediaUi *ui;
+	MediaWindow *target;
+
+	ui = (MediaUi *) uiPtr;
+	target = MediaWindow::castWidget (ui->actionTarget.widget);
+	if (! target) {
+		return;
+	}
+
+	ui->cardView->removeItem (target->mediaId);
+	ui->actionTarget.clear ();
 }
 
 void MediaUi::mediaWindowSelectStateChanged (void *uiPtr, Widget *widgetPtr) {
@@ -1132,17 +1246,15 @@ void MediaUi::monitorSelectStateChanged (void *uiPtr, Widget *widgetPtr) {
 }
 
 void MediaUi::monitorCacheButtonClicked (void *uiPtr, Widget *widgetPtr) {
-	MediaUi *ui;
 	MonitorCacheUi *cacheui;
 	MonitorWindow *target;
 
-	ui = (MediaUi *) uiPtr;
 	target = MonitorWindow::castWidget (widgetPtr);
 	if (! target) {
 		return;
 	}
 
-	cacheui = new MonitorCacheUi (target->agentId, target->agentName, ui->cardLayout);
+	cacheui = new MonitorCacheUi (target->agentId, target->agentName);
 	App::instance->uiStack.pushUi (cacheui);
 }
 
@@ -2128,6 +2240,18 @@ void MediaUi::deletePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr) {
 		ui->commandPopup.destroyAndClear ();
 		ui->commandPopupSource.clear ();
 	}
+}
+
+std::map<StdString, MediaUi::MediaServerInfo>::iterator MediaUi::getMediaServerInfo (const StdString &agentId) {
+	std::map<StdString, MediaUi::MediaServerInfo>::iterator i;
+
+	i = mediaServerMap.find (agentId);
+	if (i == mediaServerMap.end ()) {
+		mediaServerMap.insert (std::pair<StdString, MediaUi::MediaServerInfo> (agentId, MediaUi::MediaServerInfo ()));
+		i = mediaServerMap.find (agentId);
+	}
+
+	return (i);
 }
 
 StdString MediaUi::getSelectedMonitorNames (float maxWidth) {

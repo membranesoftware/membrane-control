@@ -87,25 +87,32 @@ public:
 	static const char *ShowClockKey;
 	static const char *IsFirstLaunchCompleteKey;
 	static const char *AgentStatusKey;
-	static const char *MediaImageSizeKey;
 	static const char *MonitorImageSizeKey;
-	static const char *MediaItemImageSizeKey;
-	static const char *StreamItemImageSizeKey;
 	static const char *ServerAdminSecretsKey;
 	static const char *ServerTimeoutKey;
 	static const char *WebKioskUiSelectedAgentsKey;
 	static const char *WebKioskUiExpandedAgentsKey;
 	static const char *WebKioskUiPlaylistsKey;
 	static const char *WebKioskUiToolbarModeKey;
+	static const char *MainUiShowAllEnabledKey;
+	static const char *MainUiApplicationNewsItemsKey;
+	static const char *MediaUiImageSizeKey;
+	static const char *MediaUiSortOrderKey;
 	static const char *MediaUiSelectedAgentsKey;
 	static const char *MediaUiExpandedAgentsKey;
 	static const char *MediaUiPlaylistsKey;
 	static const char *MediaUiToolbarModeKey;
-	static const char *MainUiShowAllEnabledKey;
-	static const char *MainUiApplicationNewsItemsKey;
 	static const char *MediaItemUiVideoQualityKey;
 	static const char *MediaUiVideoQualityKey;
-	static const char *MediaUiVisibilityKey;
+	static const char *MediaUiShowMediaWithoutStreamsKey;
+	static const char *MediaItemUiImageSizeKey;
+	static const char *StreamItemUiImageSizeKey;
+	static const char *MonitorCacheUiImageSizeKey;
+	static const char *CameraUiSelectedAgentsKey;
+	static const char *CameraUiExpandedAgentsKey;
+	static const char *CameraUiImageSizeKey;
+	static const char *CameraUiAutoReloadKey;
+	static const char *CameraTimelineUiImageSizeKey;
 
 	// Read-write data members
 	Log log;

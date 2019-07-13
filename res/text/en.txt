@@ -85,9 +85,11 @@ learnMore learn more
 searchForHelp search for help
 startedCreatingStream started creating stream
 removedStream removed stream
+removedMediaRecord removed media record
 create create
 open open
 openHelp open help
+loading loading
 adminConsole admin console
 mainMenu main menu
 bitrate bitrate
@@ -180,12 +182,15 @@ streamDataPathPromptWindows (example: C:\stream_data)
 agentEnabledDescription The server does not respond to commands unless enabled.
 agentDisplayNameDescription The name to show for this server in control interfaces.
 agentDisplayNamePrompt (Enter a name)
-mediaUiSearchTooltip Show only media items matching this search filter
-mediaUiVisibilityTooltip If enabled: Show only media items with a playback stream
+mediaUiShowMediaWithoutStreamsAction Show playable media only
+mediaUiSearchTooltip Show only media items matching this search key
+mediaUiSortTooltip Select sort and filter options
 mediaUiEmptyAgentStatusTitle No media library available
 mediaUiEmptyAgentStatusText Return to the main menu and open "Servers" to contact a computer running Membrane Media Library.
 mediaUiEmptyMediaStatusTitle No media files available
 mediaUiEmptyMediaStatusText Media files from Membrane Media Library appear in this list.
+mediaUiEmptyMediaStreamStatusTitle No playable media available
+mediaUiEmptyMediaStreamStatusText Media files are available, but none have playback streams and the "Show playable media only" option is enabled.
 mediaUiHelpTitle Media
 mediaUiHelpText This interface shows video files available from Membrane Media Library applications running on connected servers. Controls are provided for stream management, video playback, and playlist creation.
 mediaUiHelpAction1Text No Membrane Media Library applications have been contacted. Return to the main menu and open "Servers" to find a media library.
@@ -295,6 +300,7 @@ cachedStream cached stream
 cachedStreams cached streams
 taskInProgress task in progress
 tasksInProgress tasks in progress
+removeMedia remove media
 removeStream remove stream
 deleteStream delete stream
 cacheStream cache stream
@@ -321,4 +327,48 @@ donateBannerMessage Membrane Control is supported by donations from users like y
 mediaAttributesTooltip Video attributes
 toolbarModeButtonTooltip Select control mode
 streamIconTooltip Playback stream available
+createStreamUnavailableTooltip Stream creation not available
+removeMediaActionText This video is no longer available from the media library and can't be processed to create playback streams. Remove record?
 viewMonitorCacheTooltip View the monitor's cache of stored videos
+cameras cameras
+cameraUiDescription Command cameras and view captured images
+cameraUiNoCameraSelectedPrompt (Select a camera)
+cameraUiConfigureTimelapseTooltip Configure timelapse capture for all selected cameras
+cameraUiAutoReloadTooltip If enabled: Periodically refresh camera images
+cameraUiClearTimelapseTooltip Stop timelapse capture and clear all stored images for all selected cameras
+cameraUiHelpTitle Cameras
+cameraUiHelpText This interface shows connected camera servers, with controls to configure timelapse capture and clear stored timelapse images.
+cameraUiHelpAction1Text No Membrane Camera applications have been contacted. Return to the main menu and open "Servers" to find a camera.
+cameraUiEmptyAgentStatusTitle No camera available
+cameraUiEmptyAgentStatusText Return to the main menu and open "Servers" to contact a computer running Membrane Camera.
+setTimelapse set timelapse
+clearTimelapse clear timelapse
+timelapseImages timelapse images
+cameraConnected camera connected
+camerasConnected cameras connected
+enableCapture enable capture
+enableCaptureDescription The camera does not capture timelapse images unless enabled.
+imageQuality image quality
+imageQualityDescription Higher quality images show more detail but consume more storage space and load more slowly.
+normalImageQualityDescription Normal
+highImageQualityDescription High
+lowImageQualityDescription Low
+lowestImageQualityDescription Lowest
+capturePeriod capture period
+capturePeriodDescription The camera waits for this amount of time between image captures.
+disableCameraTimelapseMessage Command sent: <Stop timelapse>
+configureCameraTimelapseMessage Command sent: <Set timelapse>
+clearCameraTimelapseMessage Command sent: <Clear timelapse>
+cameraActivityIconTooltip Camera status
+images images
+before before
+after after
+captureTimespanTooltip Time range of available images
+selectedCaptureTimespanTooltip Time range of displayed images
+sortCaptureImagesTooltip Select increasing or decreasing time range
+sortByName sort by name
+sortByNewest sort by newest
+continuous continuous
+cameraTimelineUiHelpTitle Timelapse images
+cameraTimelineUiHelpText This interface shows timelapse images stored on a camera. Click the bottom bar to select a time position for images to display.
+playCaptureTooltip Play timelapse images in sequence

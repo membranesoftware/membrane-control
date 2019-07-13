@@ -52,6 +52,7 @@ public:
   static const char *Command_CancelTask;
   static const char *Command_ClearCache;
   static const char *Command_ClearDisplay;
+  static const char *Command_ClearTimelapse;
   static const char *Command_CommandResult;
   static const char *Command_ConfigureMediaStream;
   static const char *Command_CreateCacheStream;
@@ -61,8 +62,12 @@ public:
   static const char *Command_CreateWebDisplayIntent;
   static const char *Command_EndSet;
   static const char *Command_EventRecord;
+  static const char *Command_FindCaptureImages;
+  static const char *Command_FindCaptureImagesResult;
   static const char *Command_FindItems;
   static const char *Command_FindMediaResult;
+  static const char *Command_FindMediaStreams;
+  static const char *Command_FindMediaStreamsResult;
   static const char *Command_FindStreamsResult;
   static const char *Command_GetAgentConfiguration;
   static const char *Command_GetCaptureImage;
@@ -86,6 +91,7 @@ public:
   static const char *Command_ReadEvents;
   static const char *Command_ReadTasks;
   static const char *Command_RemoveIntent;
+  static const char *Command_RemoveMedia;
   static const char *Command_RemoveStream;
   static const char *Command_ReportContact;
   static const char *Command_ReportStatus;
@@ -118,6 +124,7 @@ public:
   static const int CommandId_CancelTask = 28;
   static const int CommandId_ClearCache = 59;
   static const int CommandId_ClearDisplay = 31;
+  static const int CommandId_ClearTimelapse = 76;
   static const int CommandId_CommandResult = 0;
   static const int CommandId_ConfigureMediaStream = 65;
   static const int CommandId_CreateCacheStream = 60;
@@ -127,8 +134,12 @@ public:
   static const int CommandId_CreateWebDisplayIntent = 35;
   static const int CommandId_EndSet = 21;
   static const int CommandId_EventRecord = 40;
+  static const int CommandId_FindCaptureImages = 74;
+  static const int CommandId_FindCaptureImagesResult = 75;
   static const int CommandId_FindItems = 3;
   static const int CommandId_FindMediaResult = 48;
+  static const int CommandId_FindMediaStreams = 78;
+  static const int CommandId_FindMediaStreamsResult = 79;
   static const int CommandId_FindStreamsResult = 4;
   static const int CommandId_GetAgentConfiguration = 44;
   static const int CommandId_GetCaptureImage = 73;
@@ -152,6 +163,7 @@ public:
   static const int CommandId_ReadEvents = 18;
   static const int CommandId_ReadTasks = 6;
   static const int CommandId_RemoveIntent = 37;
+  static const int CommandId_RemoveMedia = 77;
   static const int CommandId_RemoveStream = 29;
   static const int CommandId_ReportContact = 32;
   static const int CommandId_ReportStatus = 2;
@@ -210,12 +222,17 @@ public:
   static const int Constant_Admin;
   static const int Constant_Camera;
   static const int Constant_CommandTypeCount;
+  static const int Constant_DefaultSortOrder;
+  static const int Constant_NameSort;
+  static const int Constant_NewestSort;
   static const int Constant_DefaultStreamProfile;
   static const int Constant_CompressedStreamProfile;
   static const int Constant_LowQualityStreamProfile;
   static const int Constant_LowestQualityStreamProfile;
   static const int Constant_DefaultImageProfile;
-  static const int Constant_HighQualityStreamProfile;
+  static const int Constant_HighQualityImageProfile;
+  static const int Constant_LowQualityImageProfile;
+  static const int Constant_LowestQualityImageProfile;
   void populate ();
 	SystemInterface ();
 	~SystemInterface ();
@@ -309,6 +326,9 @@ public:
 	// Return a boolean value indicating if the provided string matches a Windows platform identifier
 	bool isWindowsPlatform (const StdString &platform);
 
+	// Return a SystemInterface::Prefix structure containing prefix fields from the provided command
+	SystemInterface::Prefix getCommandPrefix (Json *command);
+
 	// Return a string value from params in the provided command, or the default value if the named field wasn't found
 	StdString getCommandStringParam (Json *command, const StdString &paramName, const StdString &defaultValue);
 	StdString getCommandStringParam (Json *command, const char *paramName, const char *defaultValue);
@@ -334,8 +354,12 @@ public:
 	// Fill the provided vector with items from the specified number array, optionally clearing the list before doing so. Returns a boolean value indicating if the array was found.
 	bool getCommandNumberArrayParam (Json *command, const StdString &paramName, std::vector<int> *destList, bool shouldClear = false);
 	bool getCommandNumberArrayParam (Json *command, const char *paramName, std::vector<int> *destList, bool shouldClear = false);
+	bool getCommandNumberArrayParam (Json *command, const StdString &paramName, std::vector<int64_t> *destList, bool shouldClear = false);
+	bool getCommandNumberArrayParam (Json *command, const char *paramName, std::vector<int64_t> *destList, bool shouldClear = false);
 	bool getCommandNumberArrayParam (Json *command, const StdString &paramName, std::vector<double> *destList, bool shouldClear = false);
 	bool getCommandNumberArrayParam (Json *command, const char *paramName, std::vector<double> *destList, bool shouldClear = false);
+	bool getCommandNumberArrayParam (Json *command, const StdString &paramName, std::vector<float> *destList, bool shouldClear = false);
+	bool getCommandNumberArrayParam (Json *command, const char *paramName, std::vector<float> *destList, bool shouldClear = false);
 
 	// Return the length of the specified array, or 0 if the array was empty or non-existent
 	int getCommandArrayLength (Json *command, const StdString &paramName);
@@ -374,8 +398,12 @@ public:
   static void getParams_CreateWebDisplayIntent (std::list<SystemInterface::Param> *destList);
   static void getParams_EmptyObject (std::list<SystemInterface::Param> *destList);
   static void getParams_EventRecord (std::list<SystemInterface::Param> *destList);
+  static void getParams_FindCaptureImages (std::list<SystemInterface::Param> *destList);
+  static void getParams_FindCaptureImagesResult (std::list<SystemInterface::Param> *destList);
   static void getParams_FindItems (std::list<SystemInterface::Param> *destList);
   static void getParams_FindMediaResult (std::list<SystemInterface::Param> *destList);
+  static void getParams_FindMediaStreams (std::list<SystemInterface::Param> *destList);
+  static void getParams_FindMediaStreamsResult (std::list<SystemInterface::Param> *destList);
   static void getParams_FindStreamsResult (std::list<SystemInterface::Param> *destList);
   static void getParams_GetCaptureImage (std::list<SystemInterface::Param> *destList);
   static void getParams_GetDashHtml5Interface (std::list<SystemInterface::Param> *destList);
@@ -399,6 +427,7 @@ public:
   static void getParams_PlayMedia (std::list<SystemInterface::Param> *destList);
   static void getParams_ReadEvents (std::list<SystemInterface::Param> *destList);
   static void getParams_RemoveIntent (std::list<SystemInterface::Param> *destList);
+  static void getParams_RemoveMedia (std::list<SystemInterface::Param> *destList);
   static void getParams_RemoveStream (std::list<SystemInterface::Param> *destList);
   static void getParams_ReportContact (std::list<SystemInterface::Param> *destList);
   static void getParams_ReportStatus (std::list<SystemInterface::Param> *destList);
@@ -435,8 +464,12 @@ public:
   static void populateDefaultFields_CreateWebDisplayIntent (Json *destObject);
   static void populateDefaultFields_EmptyObject (Json *destObject);
   static void populateDefaultFields_EventRecord (Json *destObject);
+  static void populateDefaultFields_FindCaptureImages (Json *destObject);
+  static void populateDefaultFields_FindCaptureImagesResult (Json *destObject);
   static void populateDefaultFields_FindItems (Json *destObject);
   static void populateDefaultFields_FindMediaResult (Json *destObject);
+  static void populateDefaultFields_FindMediaStreams (Json *destObject);
+  static void populateDefaultFields_FindMediaStreamsResult (Json *destObject);
   static void populateDefaultFields_FindStreamsResult (Json *destObject);
   static void populateDefaultFields_GetCaptureImage (Json *destObject);
   static void populateDefaultFields_GetDashHtml5Interface (Json *destObject);
@@ -460,6 +493,7 @@ public:
   static void populateDefaultFields_PlayMedia (Json *destObject);
   static void populateDefaultFields_ReadEvents (Json *destObject);
   static void populateDefaultFields_RemoveIntent (Json *destObject);
+  static void populateDefaultFields_RemoveMedia (Json *destObject);
   static void populateDefaultFields_RemoveStream (Json *destObject);
   static void populateDefaultFields_ReportContact (Json *destObject);
   static void populateDefaultFields_ReportStatus (Json *destObject);
@@ -496,8 +530,12 @@ public:
   static void hashFields_CreateWebDisplayIntent (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_EmptyObject (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_EventRecord (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_FindCaptureImages (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_FindCaptureImagesResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_FindItems (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_FindMediaResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_FindMediaStreams (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_FindMediaStreamsResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_FindStreamsResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_GetCaptureImage (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_GetDashHtml5Interface (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
@@ -521,6 +559,7 @@ public:
   static void hashFields_PlayMedia (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_ReadEvents (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_RemoveIntent (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_RemoveMedia (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_RemoveStream (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_ReportContact (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_ReportStatus (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);

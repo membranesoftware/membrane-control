@@ -44,25 +44,27 @@
 
 class MonitorCacheUi : public Ui {
 public:
-	MonitorCacheUi (const StdString &agentId, const StdString &agentName, int streamWindowLayout);
-	~MonitorCacheUi ();
-
 	// Constants to use for sprite indexes
 	enum {
 		BreadcrumbIconSprite = 0,
-		ThumbnailSizeButtonSprite = 1,
-		LargeThumbnailButtonSprite = 2,
-		MediumThumbnailButtonSprite = 3,
-		SmallThumbnailButtonSprite = 4,
-		PlayButtonSprite = 5,
-		StopButtonSprite = 6,
-		WritePlaylistButtonSprite = 7
+		PlayButtonSprite = 1,
+		StopButtonSprite = 2,
+		WritePlaylistButtonSprite = 3
 	};
+
+	// Constants to use for card view row numbers
+	enum {
+		AgentRow = 0,
+		StreamRow = 1,
+		EmptyStreamRow = 2
+	};
+
+	MonitorCacheUi (const StdString &agentId, const StdString &agentName);
+	~MonitorCacheUi ();
 
 	// Read-only data members
 	StdString agentId;
 	StdString agentName;
-	int streamWindowLayout;
 
 	// Set fields in the provided HelpWindow widget as appropriate for the UI's help content
 	void setHelpWindowContent (HelpWindow *helpWindow);
@@ -74,11 +76,10 @@ public:
 	void handleLinkClientCommand (const StdString &agentId, int commandId, Json *command);
 
 	// Callback functions
-	static void thumbnailSizeButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void smallThumbnailActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void mediumThumbnailActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void largeThumbnailActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void resetStreamWindowLayout (void *uiPtr, Widget *widgetPtr);
+	static void imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void smallImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void mediumImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void reloadButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void processStreamItem (void *uiPtr, Json *record, const StdString &recordId);
 	static void streamWindowImageClicked (void *uiPtr, Widget *widgetPtr);
@@ -150,8 +151,7 @@ private:
 	WidgetHandle selectedStreamWindow;
 	WidgetHandle commandPopup;
 	WidgetHandle commandButton;
-	int cardLayout;
-	float cardMaxImageWidth;
+	int cardDetail;
 	int streamCount;
 	int streamSetSize;
 	int recordReceiveCount;

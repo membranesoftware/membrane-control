@@ -99,7 +99,7 @@ public:
 	void setDropShadow (bool enable, const Color &color = Color (), float dropShadowWidthValue = 1.0f);
 
 	// Set the layout type that should be used to arrange the panel's widgets
-	void setLayout (int layoutType);
+	virtual void setLayout (int layoutType, float maxPanelWidth = 0.0f);
 
 	// Remove all widgets from the panel and mark them as destroyed
 	void clear ();

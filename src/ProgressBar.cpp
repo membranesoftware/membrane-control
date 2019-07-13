@@ -59,8 +59,6 @@ ProgressBar::ProgressBar (float barWidth, float barHeight)
 {
 	UiConfiguration *uiconfig;
 
-	widgetType.assign ("ProgressBar");
-
 	uiconfig = &(App::instance->uiConfig);
 	width = barWidth;
 	height = barHeight;

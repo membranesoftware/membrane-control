@@ -34,6 +34,13 @@ O=ActionWindow.o \
 	BannerWindow.o \
 	Buffer.o \
 	Button.o \
+	CameraCaptureWindow.o \
+	CameraDetailWindow.o \
+	CameraThumbnailWindow.o \
+	CameraTimelineUi.o \
+	CameraTimelineWindow.o \
+	CameraUi.o \
+	CameraWindow.o \
 	CardView.o \
 	Chip.o \
 	Color.o \
@@ -65,6 +72,8 @@ O=ActionWindow.o \
 	MediaDetailWindow.o \
 	MediaItemUi.o \
 	MediaLibraryWindow.o \
+	MediaThumbnailWindow.o \
+	MediaTimelineWindow.o \
 	MediaUi.o \
 	MediaUtil.o \
 	MediaWindow.o \
@@ -105,8 +114,6 @@ O=ActionWindow.o \
 	TextArea.o \
 	TextField.o \
 	TextFieldWindow.o \
-	ThumbnailWindow.o \
-	TimelineWindow.o \
 	Toggle.o \
 	ToggleWindow.o \
 	Toolbar.o \

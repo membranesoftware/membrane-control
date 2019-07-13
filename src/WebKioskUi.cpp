@@ -117,16 +117,14 @@ WebPlaylistWindow *WebKioskUi::createWebPlaylistWindow () {
 }
 
 int WebKioskUi::doLoad () {
-	UiConfiguration *uiconfig;
 	UiText *uitext;
 
-	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 
 	cardView = (CardView *) addWidget (new CardView (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight));
 	cardView->isKeyboardScrollEnabled = true;
-	cardView->setRowHeader (WebKioskUi::AgentRow, uitext->getText (UiTextString::webKiosks).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor);
-	cardView->setRowHeader (WebKioskUi::PlaylistRow, uitext->getText (UiTextString::programs).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor);
+	cardView->setRowHeader (WebKioskUi::AgentRow, createRowHeaderPanel (uitext->getText (UiTextString::webKiosks).capitalized ()));
+	cardView->setRowHeader (WebKioskUi::PlaylistRow, createRowHeaderPanel (uitext->getText (UiTextString::programs).capitalized ()));
 	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 
 	return (Result::Success);

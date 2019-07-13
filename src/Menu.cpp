@@ -32,6 +32,7 @@
 #include <stdlib.h>
 #include <list>
 #include "Result.h"
+#include "ClassId.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
@@ -56,7 +57,7 @@ Menu::Menu ()
 {
 	UiConfiguration *uiconfig;
 
-	widgetType.assign ("Menu");
+	classId = ClassId::Menu;
 
 	uiconfig = &(App::instance->uiConfig);
 	setFillBg (true, uiconfig->lightBackgroundColor);
@@ -73,11 +74,7 @@ Menu::~Menu () {
 }
 
 bool Menu::isWidgetType (Widget *widget) {
-	if (! widget) {
-		return (false);
-	}
-
-	return (widget->widgetType.equals ("Menu"));
+	return (widget && (widget->classId == ClassId::Menu));
 }
 
 Menu *Menu::castWidget (Widget *widget) {
@@ -212,14 +209,28 @@ void Menu::refreshLayout () {
 	Label *label;
 	Image *image;
 	Panel *panel;
-	float x0, x, y, w, h, maxw, maxh, padw, padh;
+	float x0, x, y, w, h, maxw, maxh, maximagew, padw, padh;
 
 	uiconfig = &(App::instance->uiConfig);
 	x0 = uiconfig->paddingSize + selectionMarginSize;
 	maxw = 0.0f;
 	maxh = 0.0f;
+	maximagew = 0.0f;
 	padw = uiconfig->paddingSize;
 	padh = uiconfig->paddingSize;
+
+	i = itemList.begin ();
+	end = itemList.end ();
+	while (i != end) {
+		if (i->isChoice) {
+			image = i->image;
+			if (image && (image->width > maximagew)) {
+				maximagew = image->width;
+			}
+		}
+		++i;
+	}
+
 	i = itemList.begin ();
 	end = itemList.end ();
 	while (i != end) {
@@ -229,7 +240,7 @@ void Menu::refreshLayout () {
 
 			w = label->width;
 			if (image) {
-				w += uiconfig->marginSize + image->width;
+				w += uiconfig->marginSize + maximagew;
 			}
 			h = label->height;
 			if (image && (image->height > h)) {
@@ -261,7 +272,7 @@ void Menu::refreshLayout () {
 			x = x0;
 			if (image) {
 				image->position.assign (x, (maxh / 2.0f) - (image->height / 2.0f));
-				x += image->width + uiconfig->marginSize;
+				x += maximagew + uiconfig->marginSize;
 			}
 			label->position.assign (x, (maxh / 2.0f) - (label->height / 2.0f));
 			panel->setFixedSize (true, maxw, maxh);

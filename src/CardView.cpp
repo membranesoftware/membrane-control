@@ -61,8 +61,6 @@ CardView::CardView (float viewWidth, float viewHeight)
 {
 	UiConfiguration *uiconfig;
 
-	widgetType.assign ("CardView");
-
 	uiconfig = &(App::instance->uiConfig);
 	itemMarginSize = uiconfig->marginSize;
 	itemMutex = SDL_CreateMutex ();
@@ -118,22 +116,20 @@ void CardView::setItemMarginSize (float marginSize) {
 	refreshLayout ();
 }
 
-void CardView::setRowHeader (int row, const StdString &headerText, int headerFontType, const Color &color) {
-	UiConfiguration *uiconfig;
+void CardView::setRowHeader (int row, Panel *headerPanel) {
 	std::map<int, CardView::Row>::iterator pos;
-	LabelWindow *label;
+	bool visible;
 
-	uiconfig = &(App::instance->uiConfig);
-	label = (LabelWindow *) addWidget (new LabelWindow (new Label (headerText, headerFontType, color)));
-	label->isVisible = false;
-	label->zLevel = 1;
-	label->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
-
+	visible = true;
 	pos = getRow (row);
-	if (pos->second.headerLabel) {
-		pos->second.headerLabel->isDestroyed = true;
+	if (pos->second.headerPanel) {
+		visible = pos->second.headerPanel->isVisible;
+		pos->second.headerPanel->isDestroyed = true;
 	}
-	pos->second.headerLabel = label;
+	addWidget (headerPanel);
+	pos->second.headerPanel = headerPanel;
+	pos->second.headerPanel->zLevel = 1;
+	pos->second.headerPanel->isVisible = visible;
 
 	refreshLayout ();
 }
@@ -172,6 +168,62 @@ bool CardView::isRowSelectionAnimated (int row) {
 	}
 	rowpos = getRow (row);
 	return (rowpos->second.isSelectionAnimated);
+}
+
+void CardView::setRowDetail (int row, int detailType) {
+	UiConfiguration *uiconfig;
+	std::map<int, CardView::Row>::iterator pos;
+	std::list<CardView::Item>::iterator i, end;
+	float scale;
+
+	if ((detailType < 0) || (detailType > CardView::HighDetail)) {
+		return;
+	}
+
+	uiconfig = &(App::instance->uiConfig);
+	pos = getRow (row);
+	if (detailType == pos->second.layout) {
+		return;
+	}
+	pos->second.layout = detailType;
+	switch (pos->second.layout) {
+		case CardView::LowDetail: {
+			scale = uiconfig->smallThumbnailImageScale;
+			break;
+		}
+		case CardView::HighDetail: {
+			scale = uiconfig->largeThumbnailImageScale;
+			break;
+		}
+		default: {
+			scale = uiconfig->mediumThumbnailImageScale;
+			break;
+		}
+	}
+	if (pos->second.isSelectionAnimated) {
+		scale /= CardView::smallItemScale;
+	}
+	pos->second.maxItemWidth = cardAreaWidth * scale;
+	if (pos->second.maxItemWidth < 1.0f) {
+		pos->second.maxItemWidth = 1.0f;
+	}
+
+	SDL_LockMutex (itemMutex);
+	i = itemList.begin ();
+	end = itemList.end ();
+	while (i != end) {
+		if (i->row == row) {
+			i->panel->setLayout (pos->second.layout, pos->second.maxItemWidth);
+		}
+		++i;
+	}
+	SDL_UnlockMutex (itemMutex);
+
+	if (isRowSelectionAnimated (row)) {
+		resetRowSelection (row);
+	}
+
+	refreshLayout ();
 }
 
 void CardView::doUpdate (int msElapsed) {
@@ -368,7 +420,7 @@ StdString CardView::getAvailableItemId () {
 	StdString id;
 
 	while (true) {
-		id.sprintf ("CardView_item_%lli", (long long int) App::instance->getUniqueId ());
+		id.sprintf ("CardView_item_%016llx", (long long int) App::instance->getUniqueId ());
 		if (! contains (id)) {
 			break;
 		}
@@ -406,6 +458,9 @@ Widget *CardView::addItem (Panel *itemPanel, const StdString &itemId, int row, b
 	if (rowpos->second.isSelectionAnimated) {
 		item.panel->isVisible = false;
 	}
+	if (rowpos->second.layout >= 0) {
+		item.panel->setLayout (rowpos->second.layout, rowpos->second.maxItemWidth);
+	}
 
 	SDL_LockMutex (itemMutex);
 	itemList.push_back (item);
@@ -429,6 +484,7 @@ void CardView::removeItem (const StdString &itemId, bool shouldSkipRefreshLayout
 		found = true;
 		pos->panel->isDestroyed = true;
 		pos->panel->release ();
+		isSorted = false;
 		itemList.erase (pos);
 		resetItemIdMap ();
 	}
@@ -547,8 +603,7 @@ void CardView::refreshLayout () {
 	UiConfiguration *uiconfig;
 	std::list<CardView::Item>::iterator i, end;
 	std::map<int, CardView::Row>::iterator rowpos;
-	Panel *itempanel;
-	LabelWindow *label;
+	Panel *itempanel, *headerpanel;
 	float x, y, dx, dy, x0, itemw, itemh, rowh, rowmargin;
 	int row;
 
@@ -583,10 +638,10 @@ void CardView::refreshLayout () {
 
 			if (row >= 0) {
 				rowpos = getRow (row);
-				label = rowpos->second.headerLabel;
-				if (label && label->isVisible) {
-					label->position.assign (x0, y);
-					y += label->height + itemMarginSize;
+				headerpanel = rowpos->second.headerPanel;
+				if (headerpanel && headerpanel->isVisible) {
+					headerpanel->position.assign (x0, y);
+					y += headerpanel->height + itemMarginSize;
 				}
 				rowmargin = rowpos->second.itemMarginSize;
 				if (rowmargin < 0.0f) {
@@ -707,12 +762,12 @@ void CardView::doSort () {
 	ri = rowMap.begin ();
 	rend = rowMap.end ();
 	while (ri != rend) {
-		if (ri->second.headerLabel) {
+		if (ri->second.headerPanel) {
 			if (ri->second.itemCount <= 0) {
-				ri->second.headerLabel->isVisible = false;
+				ri->second.headerPanel->isVisible = false;
 			}
 			else {
-				ri->second.headerLabel->isVisible = true;
+				ri->second.headerPanel->isVisible = true;
 			}
 		}
 		++ri;
@@ -797,6 +852,16 @@ int CardView::getItemCount () {
 	SDL_UnlockMutex (itemMutex);
 
 	return (result);
+}
+
+int CardView::getRowItemCount (int row) {
+	std::map<int, CardView::Row>::iterator rowpos;
+
+	if (rowMap.count (row) <= 0) {
+		return (0);
+	}
+	rowpos = getRow (row);
+	return (rowpos->second.itemCount);
 }
 
 Widget *CardView::findItem (CardView::MatchFunction fn, void *fnData) {

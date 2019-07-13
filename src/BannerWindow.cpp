@@ -31,6 +31,7 @@
 #include "Config.h"
 #include <stdlib.h>
 #include "App.h"
+#include "ClassId.h"
 #include "StdString.h"
 #include "Label.h"
 #include "Panel.h"
@@ -45,6 +46,7 @@ BannerWindow::BannerWindow (float windowWidth)
 {
 	UiConfiguration *uiconfig;
 
+	classId = ClassId::BannerWindow;
 	uiconfig = &(App::instance->uiConfig);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize / 2.0f);
 	setFillBg (true, uiconfig->darkPrimaryColor);
@@ -70,12 +72,7 @@ StdString BannerWindow::toStringDetail () {
 }
 
 bool BannerWindow::isWidgetType (Widget *widget) {
-	if (! widget) {
-		return (false);
-	}
-
-	// This operation references output from the toStringDetail method, above
-	return (widget->toString ().contains (" BannerWindow"));
+	return (widget && (widget->classId == ClassId::BannerWindow));
 }
 
 BannerWindow *BannerWindow::castWidget (Widget *widget) {

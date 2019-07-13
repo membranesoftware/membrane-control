@@ -31,6 +31,7 @@
 #include "Config.h"
 #include <stdlib.h>
 #include "Result.h"
+#include "ClassId.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
@@ -46,6 +47,7 @@
 
 TextFieldWindow::TextFieldWindow (float windowWidth, const StdString &promptText, Sprite *iconSprite)
 : Panel ()
+, isDisabled (false)
 , isInverseColor (false)
 , isObscured (false)
 , isFixedHeight (false)
@@ -67,12 +69,12 @@ TextFieldWindow::TextFieldWindow (float windowWidth, const StdString &promptText
 	UiText *uitext;
 	Image *image;
 
+	classId = ClassId::TextFieldWindow;
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize / 2.0f);
 
 	textField = (TextField *) addWidget (new TextField (windowWidth - uiconfig->marginSize - uiconfig->paddingSize, promptText));
-	textField->setBorder (false);
 	textField->setValueChangeCallback (TextFieldWindow::textFieldValueChanged, this);
 	if (iconSprite) {
 		image = new Image (iconSprite);
@@ -128,16 +130,29 @@ StdString TextFieldWindow::toStringDetail () {
 }
 
 bool TextFieldWindow::isWidgetType (Widget *widget) {
-	if (! widget) {
-		return (false);
-	}
-
-	// This operation references output from the toStringDetail method, above
-	return (widget->toString ().contains (" TextFieldWindow"));
+	return (widget && (widget->classId == ClassId::TextFieldWindow));
 }
 
 TextFieldWindow *TextFieldWindow::castWidget (Widget *widget) {
 	return (TextFieldWindow::isWidgetType (widget) ? (TextFieldWindow *) widget : NULL);
+}
+
+void TextFieldWindow::setDisabled (bool disabled) {
+	if (isDisabled == disabled) {
+		return;
+	}
+
+	isDisabled = disabled;
+	textField->setDisabled (isDisabled);
+	enterButton->setDisabled (isDisabled);
+	cancelButton->setDisabled (isDisabled);
+	pasteButton->setDisabled (isDisabled);
+	clearButton->setDisabled (isDisabled);
+	randomizeButton->setDisabled (isDisabled);
+	if (visibilityToggle) {
+		visibilityToggle->setDisabled (isDisabled);
+	}
+	refreshLayout ();
 }
 
 void TextFieldWindow::setInverseColor (bool inverse) {

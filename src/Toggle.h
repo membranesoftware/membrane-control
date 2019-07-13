@@ -52,10 +52,14 @@ public:
 
 	// Read-only data members
 	bool isChecked;
+	bool isDisabled;
 	bool isFocused;
 
 	// Set the toggle's checked state and invoke any configured change callback unless shouldSkipChangeCallback is true
 	void setChecked (bool checked, bool shouldSkipChangeCallback = false);
+
+	// Set the toggle's disabled state, appropriate for use when the toggle becomes unavailable for interaction
+	void setDisabled (bool disabled);
 
 	// Set the toggle's inverse color state. If enabled, the toggle uses an inverse color scheme.
 	void setInverseColor (bool inverse);

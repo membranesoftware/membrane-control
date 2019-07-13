@@ -125,6 +125,9 @@ public:
 	// Remove a previously created connection context
 	void disconnect (const StdString &agentId);
 
+	// Return a boolean value indicating if the specified agent has an established link connection
+	bool isConnected (const StdString &agentId);
+
 	// Reset the link URL for an active agent context
 	void setLinkUrl (const StdString &agentId, const StdString &linkUrl);
 

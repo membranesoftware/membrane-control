@@ -32,6 +32,7 @@
 #include <stdlib.h>
 #include "SDL2/SDL.h"
 #include "Result.h"
+#include "ClassId.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
@@ -65,7 +66,7 @@ Button::Button (const StdString &labelText, Sprite *sprite, bool shouldDestroySp
 {
 	UiConfiguration *uiconfig;
 
-	widgetType.assign ("Button");
+	classId = ClassId::Button;
 
 	uiconfig = &(App::instance->uiConfig);
 	if (! labelText.empty ()) {
@@ -95,11 +96,7 @@ Button::~Button () {
 }
 
 bool Button::isWidgetType (Widget *widget) {
-	if (! widget) {
-		return (false);
-	}
-
-	return (widget->widgetType.equals ("Button"));
+	return (widget && (widget->classId == ClassId::Button));
 }
 
 Button *Button::castWidget (Widget *widget) {
@@ -327,7 +324,7 @@ void Button::refreshLayout () {
 	if (isDisabled) {
 		if (image) {
 			image->setFrame (iswhiteframe ? UiConfiguration::WhiteButtonFrame : UiConfiguration::BlackButtonFrame);
-			image->drawAlpha = uiconfig->activeUnfocusedIconAlpha;
+			image->drawAlpha = uiconfig->inactiveIconAlpha;
 		}
 
 		if (isRaised) {
@@ -390,10 +387,10 @@ void Button::refreshLayout () {
 	if (label) {
 		if (isDisabled) {
 			if (isInverseColor) {
-				label->textColor.assign (uiconfig->darkInverseBackgroundColor);
+				label->textColor.assign (normalTextColor.copy (uiconfig->buttonDisabledShadeAlpha));
 			}
 			else {
-				label->textColor.assign (uiconfig->lightInverseBackgroundColor);
+				label->textColor.assign (uiconfig->lightPrimaryTextColor);
 			}
 		}
 		else {

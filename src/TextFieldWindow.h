@@ -46,6 +46,7 @@ public:
 	virtual ~TextFieldWindow ();
 
 	// Read-only data members
+	bool isDisabled;
 	bool isInverseColor;
 	bool isObscured;
 
@@ -54,6 +55,9 @@ public:
 
 	// Set the text field's prompt error color state. If enabled, the text field shows its prompt text in the UiConfiguration error color.
 	void setPromptErrorColor (bool enable);
+
+	// Set the text field's disabled state, appropriate for use when the field becomes unavailable for interaction
+	void setDisabled (bool disabled);
 
 	// Set the window's text field obscure option
 	void setObscured (bool enable);

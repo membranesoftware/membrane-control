@@ -39,12 +39,20 @@
 #include "StdString.h"
 #include "HashMap.h"
 #include "Label.h"
+#include "Panel.h"
 #include "LabelWindow.h"
 #include "ScrollBar.h"
 #include "ScrollView.h"
 
 class CardView : public ScrollView {
 public:
+	// Constants to use for row item detail types
+	enum {
+		LowDetail = 0,
+		MediumDetail = 1,
+		HighDetail = 2
+	};
+
 	CardView (float viewWidth, float viewHeight);
 	~CardView ();
 
@@ -61,8 +69,8 @@ public:
 	// Set the size of margin space that should be inserted between items in the view
 	void setItemMarginSize (float marginSize);
 
-	// Set a text string that should be shown as a header label immediately preceding items in the specified row number
-	void setRowHeader (int row, const StdString &headerText, int headerFontType = UiConfiguration::BodyFont, const Color &color = Color (0.0f, 0.0f, 0.0f));
+	// Set a panel that should be shown as a header widget, immediately preceding items in the specified row number
+	void setRowHeader (int row, Panel *headerPanel);
 
 	// Set the margin size that should be used for items in the specified row, overriding any default item margin size that might have been set
 	void setRowItemMarginSize (int row, float marginSize);
@@ -75,6 +83,9 @@ public:
 
 	// Reset selection animation states for all items in the specified row
 	void resetRowSelection (int row);
+
+	// Set the detail option for the specified row, indicating a level of detail that should apply to contained items
+	void setRowDetail (int row, int detailType);
 
 	// Return a boolean value indicating if the card view contains no items
 	bool empty ();
@@ -94,8 +105,11 @@ public:
 	Widget *getItem (const StdString &itemId);
 	Widget *getItem (const char *itemId);
 
-	// Return the number of items in the view's list
+	// Return the number of items in the view
 	int getItemCount ();
+
+	// Return the number of items in the specified row
+	int getRowItemCount (int row);
 
 	// Return a pointer to the first item widget reported matching by the provided function, or NULL if the item wasn't found
 	Widget *findItem (CardView::MatchFunction fn, void *fnData);
@@ -145,11 +159,13 @@ private:
 	};
 
 	struct Row {
-		LabelWindow *headerLabel;
+		Panel *headerPanel;
 		float itemMarginSize;
 		bool isSelectionAnimated;
 		int itemCount;
-		Row (): headerLabel (NULL), itemMarginSize (-1.0f), isSelectionAnimated (false), itemCount (0) { }
+		int layout;
+		float maxItemWidth;
+		Row (): headerPanel (NULL), itemMarginSize (-1.0f), isSelectionAnimated (false), itemCount (0), layout (-1), maxItemWidth (0.0f) { }
 	};
 
 	// Sort the item list and populate secondary data structures. This method must be invoked only while holding a lock on itemMutex.

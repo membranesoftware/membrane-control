@@ -76,6 +76,9 @@ void RecordStore::addRecord (Json *record, const StdString &recordId) {
 	StdString id;
 	Json *item;
 
+	if (! record) {
+		return;
+	}
 	interface = &(App::instance->systemInterface);
 	if (! recordId.empty ()) {
 		id.assign (recordId);
@@ -115,7 +118,6 @@ void RecordStore::removeRecord (const StdString &recordId) {
 		recordMap.erase (pos);
 	}
 	unlock ();
-
 }
 
 void RecordStore::removeRecords (int commandId) {

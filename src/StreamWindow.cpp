@@ -32,10 +32,13 @@
 #include <stdlib.h>
 #include <math.h>
 #include "Result.h"
+#include "ClassId.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
+#include "UiConfiguration.h"
 #include "UiText.h"
+#include "SystemInterface.h"
 #include "OsUtil.h"
 #include "MediaUtil.h"
 #include "Widget.h"
@@ -47,11 +50,10 @@
 #include "TextArea.h"
 #include "Image.h"
 #include "ImageWindow.h"
-#include "SystemInterface.h"
-#include "UiConfiguration.h"
+#include "CardView.h"
 #include "StreamWindow.h"
 
-StreamWindow::StreamWindow (Json *streamItem, int layoutType, float maxStreamImageWidth)
+StreamWindow::StreamWindow (Json *streamItem)
 : Panel ()
 , isSelected (false)
 , displayTimestamp (-1.0f)
@@ -68,8 +70,6 @@ StreamWindow::StreamWindow (Json *streamItem, int layoutType, float maxStreamIma
 , mouseoverLabel (NULL)
 , detailNameLabel (NULL)
 , timestampLabel (NULL)
-, buttonPanel (NULL)
-, selectButton (NULL)
 , viewButton (NULL)
 , streamImageClickCallback (NULL)
 , streamImageClickCallbackData (NULL)
@@ -80,6 +80,7 @@ StreamWindow::StreamWindow (Json *streamItem, int layoutType, float maxStreamIma
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
+	classId = ClassId::StreamWindow;
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
@@ -93,8 +94,10 @@ StreamWindow::StreamWindow (Json *streamItem, int layoutType, float maxStreamIma
 	frameRate = interface->getCommandNumberParam (streamItem, "frameRate", (float) 0.0f);
 	bitrate = interface->getCommandNumberParam (streamItem, "bitrate", (int64_t) 0);
 
-	streamImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LoadingImageIconSprite))));
+	streamImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
+	streamImage->setLoadSprite (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
 	streamImage->setMouseClickCallback (StreamWindow::streamImageClicked, this);
+	streamImage->setLoadCallback (StreamWindow::streamImageLoaded, this);
 
 	nameLabel = (Label *) addWidget (new Label (streamName, UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
 	nameLabel->isInputSuspended = true;
@@ -124,25 +127,15 @@ StreamWindow::StreamWindow (Json *streamItem, int layoutType, float maxStreamIma
 	timestampLabel->setFillBg (true, uiconfig->darkBackgroundColor);
 	timestampLabel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize / 2.0f);
 	timestampLabel->isInputSuspended = true;
+	timestampLabel->isVisible = false;
 
-	buttonPanel = (Panel *) addWidget (new Panel ());
-	buttonPanel->zLevel = 2;
-	buttonPanel->setFillBg (true, uiconfig->darkBackgroundColor);
-	buttonPanel->setLayout (Panel::HorizontalLayout);
-	buttonPanel->isVisible = false;
-
-	viewButton = (Button *) buttonPanel->addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::ImageButtonSprite)));
+	viewButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::ImageButtonSprite)));
+	viewButton->zLevel = 3;
+	viewButton->isTextureTargetDrawEnabled = false;
 	viewButton->setImageColor (uiconfig->flatButtonTextColor);
+	viewButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
 	viewButton->setMouseHoverTooltip (uitext->getText (UiTextString::viewTimelineImagesTooltip));
 	viewButton->setMouseClickCallback (StreamWindow::viewButtonClicked, this);
-
-	selectButton = (Button *) buttonPanel->addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::StarButtonSprite)));
-	selectButton->setImageColor (uiconfig->flatButtonTextColor);
-	selectButton->setMouseHoverTooltip (uitext->getText (UiTextString::unselectButtonTooltip));
-	selectButton->setMouseClickCallback (StreamWindow::selectButtonClicked, this);
-
-	buttonPanel->refresh ();
-	setLayout (layoutType, maxStreamImageWidth);
 }
 
 StreamWindow::~StreamWindow () {
@@ -154,28 +147,23 @@ StdString StreamWindow::toStringDetail () {
 }
 
 bool StreamWindow::isWidgetType (Widget *widget) {
-	if (! widget) {
-		return (false);
-	}
-
-	// This operation references output from the toStringDetail method, above
-	return (widget->toString ().contains (" StreamWindow streamName="));
+	return (widget && (widget->classId == ClassId::StreamWindow));
 }
 
 StreamWindow *StreamWindow::castWidget (Widget *widget) {
 	return (StreamWindow::isWidgetType (widget) ? (StreamWindow *) widget : NULL);
 }
 
-void StreamWindow::setLayout (int layoutType, float maxImageWidth) {
+void StreamWindow::setLayout (int layoutType, float maxPanelWidth) {
 	float w, h;
 
 	if (layoutType == layout) {
 		return;
 	}
 	layout = layoutType;
-	w = maxImageWidth;
+	w = maxPanelWidth;
 	h = frameHeight;
-	h *= maxImageWidth;
+	h *= maxPanelWidth;
 	h /= frameWidth;
 	w = floorf (w);
 	h = floorf (h);
@@ -183,7 +171,7 @@ void StreamWindow::setLayout (int layoutType, float maxImageWidth) {
 	streamImage->reload ();
 
 	switch (layout) {
-		case StreamWindow::LowDetailLayout: {
+		case CardView::LowDetail: {
 			mouseoverLabel->setText (streamName);
 			nameLabel->isVisible = false;
 			detailNameLabel->isVisible = false;
@@ -191,23 +179,22 @@ void StreamWindow::setLayout (int layoutType, float maxImageWidth) {
 			timestampLabel->isVisible = false;
 			break;
 		}
-		case StreamWindow::MediumDetailLayout: {
+		case CardView::MediumDetail: {
 			detailNameLabel->isVisible = false;
 			detailText->isVisible = false;
 			nameLabel->isVisible = true;
-			timestampLabel->isVisible = true;
+			timestampLabel->isVisible = (displayTimestamp > 0.0f);
 			break;
 		}
-		case StreamWindow::HighDetailLayout: {
+		case CardView::HighDetail: {
 			nameLabel->isVisible = false;
 			detailNameLabel->isVisible = true;
 			detailText->isVisible = true;
-			timestampLabel->isVisible = true;
+			timestampLabel->isVisible = (displayTimestamp > 0.0f);
 			break;
 		}
 	}
 
-	buttonPanel->refresh ();
 	refreshLayout ();
 }
 
@@ -222,32 +209,37 @@ void StreamWindow::setViewButtonClickCallback (Widget::EventCallback callback, v
 }
 
 void StreamWindow::setThumbnailIndex (int index) {
-	UiConfiguration *uiconfig;
 	Json *params;
 
 	if ((index == thumbnailIndex) || (segmentCount <= 0) || (index < 0) || (index >= segmentCount)) {
 		return;
 	}
 
-	uiconfig = &(App::instance->uiConfig);
 	thumbnailIndex = index;
 	if (! thumbnailPath.empty ()) {
 		params = new Json ();
 		params->set ("id", streamId);
 		params->set ("thumbnailIndex", thumbnailIndex);
-		streamImage->setLoadUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetThumbnailImage, SystemInterface::Constant_Stream, params), thumbnailPath), uiconfig->coreSprites.getSprite (UiConfiguration::LoadingImageIconSprite));
+		streamImage->setLoadUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetThumbnailImage, SystemInterface::Constant_Stream, params), thumbnailPath));
 	}
 }
 
 void StreamWindow::setSelected (bool selected) {
+	UiConfiguration *uiconfig;
+
+	if (selected == isSelected) {
+		return;
+	}
+	uiconfig = &(App::instance->uiConfig);
 	isSelected = selected;
-	if (! isSelected) {
-		buttonPanel->isVisible = false;
+	if (isSelected) {
+		setBorder (true, uiconfig->mediumSecondaryColor.copy (uiconfig->selectionBorderAlpha), uiconfig->selectionBorderWidth);
 	}
 	else {
-		buttonPanel->isVisible = true;
+		setBorder (false);
 	}
 	refreshLayout ();
+	shouldRefreshTexture = true;
 }
 
 void StreamWindow::setDisplayTimestamp (float timestamp) {
@@ -268,7 +260,7 @@ void StreamWindow::setDisplayTimestamp (float timestamp) {
 
 void StreamWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 	Panel::doProcessMouseState (mouseState);
-	if (layout == StreamWindow::LowDetailLayout) {
+	if (layout == CardView::LowDetail) {
 		if (mouseState.isEntered) {
 			mouseoverLabel->isVisible = true;
 		}
@@ -326,23 +318,28 @@ void StreamWindow::refreshLayout () {
 	streamImage->position.assign (x, y);
 
 	switch (layout) {
-		case StreamWindow::LowDetailLayout: {
+		case CardView::LowDetail: {
 			mouseoverLabel->position.assign (0.0f, streamImage->height - mouseoverLabel->height);
 			setFixedSize (true, streamImage->width, streamImage->height);
+			viewButton->position.assign (streamImage->position.x + streamImage->width - viewButton->width - uiconfig->dropShadowWidth, streamImage->position.y, streamImage->height - viewButton->height);
 			break;
 		}
-		case StreamWindow::MediumDetailLayout: {
+		case CardView::MediumDetail: {
 			x += uiconfig->paddingSize;
 			y += streamImage->height + uiconfig->marginSize;
 			nameLabel->position.assign (x, y);
+
+			viewButton->position.assign (streamImage->position.x + streamImage->width - viewButton->width - uiconfig->dropShadowWidth, streamImage->position.y, streamImage->height - viewButton->height);
 
 			resetSize ();
 			setFixedSize (true, streamImage->width, maxWidgetY + uiconfig->paddingSize);
 			break;
 		}
-		case StreamWindow::HighDetailLayout: {
+		case CardView::HighDetail: {
 			detailNameLabel->position.assign (x, y);
 			detailText->position.assign (streamImage->position.x, streamImage->position.y + streamImage->height - detailText->height);
+
+			viewButton->position.assign (streamImage->position.x + streamImage->width - viewButton->width - uiconfig->dropShadowWidth, streamImage->position.y, streamImage->height - viewButton->height);
 
 			resetSize ();
 			setFixedSize (true, streamImage->width, maxWidgetY);
@@ -350,14 +347,9 @@ void StreamWindow::refreshLayout () {
 		}
 	}
 
-	timestampLabel->position.assign (streamImage->position.x + streamImage->width - timestampLabel->width, streamImage->position.y + streamImage->height - timestampLabel->height);
-
-	x = width;
-	if (buttonPanel->isVisible) {
-		buttonPanel->position.assignY (0.0f);
-		buttonPanel->flowLeft (&x);
+	if (timestampLabel->isVisible) {
+		timestampLabel->position.assign (streamImage->position.x + streamImage->width - timestampLabel->width, streamImage->position.y);
 	}
-	resetSize ();
 }
 
 void StreamWindow::streamImageClicked (void *windowPtr, Widget *widgetPtr) {
@@ -369,11 +361,11 @@ void StreamWindow::streamImageClicked (void *windowPtr, Widget *widgetPtr) {
 	}
 }
 
-void StreamWindow::selectButtonClicked (void *windowPtr, Widget *widgetPtr) {
+void StreamWindow::streamImageLoaded (void *windowPtr, Widget *widgetPtr) {
 	StreamWindow *window;
 
 	window = (StreamWindow *) windowPtr;
-	window->setSelected (false);
+	window->shouldRefreshTexture = true;
 }
 
 void StreamWindow::viewButtonClicked (void *windowPtr, Widget *widgetPtr) {

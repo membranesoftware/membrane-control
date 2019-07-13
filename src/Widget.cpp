@@ -43,14 +43,14 @@
 const int Widget::minZLevel = -10;
 
 Widget::Widget ()
-: widgetType ("")
-, id (0)
+: id (0)
 , isDestroyed (false)
 , isVisible (true)
 , isTextureTargetDrawEnabled (true)
 , isInputSuspended (false)
 , zLevel (0)
 , isMouseHoverEnabled (false)
+, classId (-1)
 , hasScreenPosition (false)
 , screenX (0.0f)
 , screenY (0.0f)
@@ -209,7 +209,7 @@ void Widget::doRefresh () {
 }
 
 StdString Widget::toString () {
-	return (StdString::createSprintf ("<%s #%llu%s>", widgetType.c_str (), (unsigned long long) id, toStringDetail ().c_str ()));
+	return (StdString::createSprintf ("<#%llu / %i%s>", (unsigned long long) id, classId, toStringDetail ().c_str ()));
 }
 
 StdString Widget::toStringDetail () {

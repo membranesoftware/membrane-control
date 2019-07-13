@@ -46,6 +46,7 @@
 TextField::TextField (float fieldWidth, const StdString &promptText)
 : Panel ()
 , fieldWidth (fieldWidth)
+, isDisabled (false)
 , isInverseColor (false)
 , isPromptErrorColor (false)
 , isObscured (false)
@@ -59,18 +60,19 @@ TextField::TextField (float fieldWidth, const StdString &promptText)
 {
 	UiConfiguration *uiconfig;
 
-	widgetType.assign ("TextField");
-
 	uiconfig = &(App::instance->uiConfig);
 
 	normalBgColor.assign (uiconfig->lightBackgroundColor);
-	normalBorderColor.assign (uiconfig->mediumBackgroundColor);
+	normalBorderColor.assign (uiconfig->darkBackgroundColor);
 	focusBgColor.assign (uiconfig->darkBackgroundColor);
-	focusBorderColor.assign (uiconfig->lightBackgroundColor);
+	focusBorderColor.assign (uiconfig->lightPrimaryColor);
+	disabledBgColor.assign (uiconfig->darkBackgroundColor);
+	disabledBorderColor.assign (uiconfig->mediumBackgroundColor);
 	editBgColor.assign (uiconfig->lightBackgroundColor);
-	editBorderColor.assign (uiconfig->darkBackgroundColor);
+	editBorderColor.assign (uiconfig->darkPrimaryColor);
 	normalValueTextColor.assign (uiconfig->lightPrimaryColor);
 	editValueTextColor.assign (uiconfig->primaryTextColor);
+	disabledValueTextColor.assign (uiconfig->lightPrimaryTextColor);
 	promptTextColor.assign (uiconfig->lightPrimaryColor);
 
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize / 2.0f);
@@ -98,6 +100,18 @@ TextField::~TextField () {
 
 }
 
+void TextField::setDisabled (bool disabled) {
+	if (disabled == isDisabled) {
+		return;
+	}
+	isDisabled = disabled;
+	if (isDisabled) {
+		setFocused (false);
+		setKeyFocus (false);
+	}
+	refreshLayout ();
+}
+
 void TextField::setInverseColor (bool inverse) {
 	UiConfiguration *uiconfig;
 
@@ -112,10 +126,13 @@ void TextField::setInverseColor (bool inverse) {
 		normalBorderColor.assign (uiconfig->mediumInverseBackgroundColor);
 		focusBgColor.assign (uiconfig->lightInverseBackgroundColor);
 		focusBorderColor.assign (uiconfig->darkInverseBackgroundColor);
+		disabledBgColor.assign (uiconfig->lightInverseBackgroundColor);
+		disabledBorderColor.assign (uiconfig->darkInverseBackgroundColor);
 		editBgColor.assign (uiconfig->lightInverseBackgroundColor);
 		editBorderColor.assign (uiconfig->darkInverseBackgroundColor);
 		normalValueTextColor.assign (uiconfig->darkInverseTextColor);
 		editValueTextColor.assign (uiconfig->inverseTextColor);
+		disabledValueTextColor.assign (uiconfig->darkInverseTextColor);
 		if (isPromptErrorColor) {
 			promptTextColor.assign (uiconfig->errorTextColor);
 		}
@@ -125,13 +142,16 @@ void TextField::setInverseColor (bool inverse) {
 	}
 	else {
 		normalBgColor.assign (uiconfig->lightBackgroundColor);
-		normalBorderColor.assign (uiconfig->mediumBackgroundColor);
+		normalBorderColor.assign (uiconfig->darkBackgroundColor);
 		focusBgColor.assign (uiconfig->darkBackgroundColor);
-		focusBorderColor.assign (uiconfig->lightBackgroundColor);
+		focusBorderColor.assign (uiconfig->lightPrimaryColor);
+		disabledBgColor.assign (uiconfig->darkBackgroundColor);
+		disabledBorderColor.assign (uiconfig->mediumBackgroundColor);
 		editBgColor.assign (uiconfig->lightBackgroundColor);
-		editBorderColor.assign (uiconfig->darkBackgroundColor);
+		editBorderColor.assign (uiconfig->darkPrimaryColor);
 		normalValueTextColor.assign (uiconfig->lightPrimaryColor);
 		editValueTextColor.assign (uiconfig->primaryTextColor);
+		disabledValueTextColor.assign (uiconfig->lightPrimaryTextColor);
 		if (isPromptErrorColor) {
 			promptTextColor.assign (uiconfig->errorTextColor);
 		}
@@ -170,7 +190,7 @@ void TextField::setPromptErrorColor (bool enable) {
 		}
 	}
 	if (promptLabel) {
-		promptLabel->textColor.assign (promptTextColor);
+		promptLabel->textColor.translate (promptTextColor, uiconfig->shortColorTranslateDuration);
 	}
 }
 
@@ -284,7 +304,11 @@ void TextField::refreshLayout () {
 		}
 	}
 	else {
-		if (isFocused) {
+		if (isDisabled) {
+			bgColor.translate (disabledBgColor, uiconfig->shortColorTranslateDuration);
+			borderColor.translate (disabledBorderColor, uiconfig->shortColorTranslateDuration);
+		}
+		else if (isFocused) {
 			bgColor.translate (focusBgColor, uiconfig->shortColorTranslateDuration);
 			borderColor.translate (focusBorderColor, uiconfig->shortColorTranslateDuration);
 		}
@@ -295,16 +319,26 @@ void TextField::refreshLayout () {
 
 		if (valueLabel->text.empty ()) {
 			valueLabel->isVisible = false;
+
 			if (promptLabel) {
-				promptLabel->isVisible = true;
+				if (isDisabled) {
+					promptLabel->isVisible = false;
+				}
+				else {
+					promptLabel->isVisible = true;
+				}
 			}
 		}
 		else {
 			if (promptLabel) {
 				promptLabel->isVisible = false;
 			}
-
-			valueLabel->textColor.translate (normalValueTextColor, uiconfig->shortColorTranslateDuration);
+			if (isDisabled) {
+				valueLabel->textColor.translate (disabledValueTextColor, uiconfig->shortColorTranslateDuration);
+			}
+			else {
+				valueLabel->textColor.translate (normalValueTextColor, uiconfig->shortColorTranslateDuration);
+			}
 			valueLabel->isVisible = true;
 		}
 	}
@@ -315,7 +349,7 @@ bool TextField::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool i
 	char c;
 	int len;
 
-	if (! isKeyFocused) {
+	if (isDisabled || (! isKeyFocused)) {
 		return (false);
 	}
 
@@ -363,7 +397,7 @@ void TextField::doUpdate (int msElapsed) {
 
 	Panel::doUpdate (msElapsed);
 	uiconfig = &(App::instance->uiConfig);
-	if (isKeyFocused && (uiconfig->blinkDuration > 0)) {
+	if (isKeyFocused && (! isDisabled) && (uiconfig->blinkDuration > 0)) {
 		cursorClock -= msElapsed;
 		if (cursorClock <= 0) {
 			cursorPanel->isVisible = (! cursorPanel->isVisible);
@@ -377,6 +411,10 @@ void TextField::doUpdate (int msElapsed) {
 }
 
 void TextField::doProcessMouseState (const Widget::MouseState &mouseState) {
+	if (isDisabled) {
+		return;
+	}
+
 	if (mouseState.isEntered) {
 		setFocused (true);
 		if (mouseState.isLeftClickReleased && mouseState.isLeftClickEntered) {

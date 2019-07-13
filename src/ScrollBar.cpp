@@ -64,8 +64,6 @@ ScrollBar::ScrollBar (float maxScrollTrackLength)
 	UiConfiguration *uiconfig;
 	float w, h;
 
-	widgetType.assign ("ScrollBar");
-
 	uiconfig = &(App::instance->uiConfig);
 
 	setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->overlayWindowAlpha));

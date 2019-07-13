@@ -55,7 +55,6 @@ Image::Image (Sprite *sprite, int spriteFrame, bool shouldDestroySprite)
 , isMouseHighlightScaled (false)
 , mouseHighlightScale (1.0f)
 {
-	widgetType.assign ("Image");
 	spriteHandle.frame = spriteFrame;
 	maxSpriteWidth = (float) sprite->maxWidth;
 	maxSpriteHeight = (float) sprite->maxHeight;

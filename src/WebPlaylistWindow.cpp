@@ -32,6 +32,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include "Result.h"
+#include "ClassId.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
@@ -88,6 +89,7 @@ WebPlaylistWindow::WebPlaylistWindow ()
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
+	classId = ClassId::WebPlaylistWindow;
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 	setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
@@ -155,12 +157,7 @@ StdString WebPlaylistWindow::toStringDetail () {
 }
 
 bool WebPlaylistWindow::isWidgetType (Widget *widget) {
-	if (! widget) {
-		return (false);
-	}
-
-	// This operation references output from the toStringDetail method, above
-	return (widget->toString ().contains (" WebPlaylistWindow"));
+	return (widget && (widget->classId == ClassId::WebPlaylistWindow));
 }
 
 WebPlaylistWindow *WebPlaylistWindow::castWidget (Widget *widget) {

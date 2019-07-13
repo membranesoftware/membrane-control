@@ -51,8 +51,6 @@ ScrollView::ScrollView (float viewWidth, float viewHeight)
 {
 	UiConfiguration *uiconfig;
 
-	widgetType.assign ("ScrollView");
-
 	uiconfig = &(App::instance->uiConfig);
 	setFixedSize (true, viewWidth, viewHeight);
 	setVerticalScrollSpeed (height * uiconfig->mouseWheelScrollSpeed);

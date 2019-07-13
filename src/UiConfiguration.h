@@ -77,7 +77,7 @@ public:
 		ClearButtonSprite = 30,
 		ReloadButtonSprite = 31,
 		RenameButtonSprite = 32,
-		ErrorIconSprite = 33,
+		LargeErrorIconSprite = 33,
 		AboutButtonSprite = 34,
 		AgentAdminButtonSprite = 35,
 		ServerIconSprite = 36,
@@ -88,7 +88,7 @@ public:
 		ExpandLessButtonSprite = 41,
 		ExpandMoreButtonSprite = 42,
 		ConfigurationIconSprite = 43,
-		LoadingImageIconSprite = 44,
+		LargeLoadingIconSprite = 44,
 		ImageButtonSprite = 45,
 		ActivityStateIconSprite = 46,
 		StorageIconSprite = 47,
@@ -102,7 +102,17 @@ public:
 		RandomizeButtonSprite = 55,
 		ToolsButtonSprite = 56,
 		SmallDisplayIconSprite = 57,
-		SmallProgramIconSprite = 58
+		SmallProgramIconSprite = 58,
+		LargeCameraIconSprite = 59,
+		SmallCameraIconSprite = 60,
+		LargeSizeButtonSprite = 61,
+		MediumSizeButtonSprite = 62,
+		SmallSizeButtonSprite = 63,
+		SelectImageSizeButtonSprite = 64,
+		OrderAscendingButtonSprite = 65,
+		OrderDescendingButtonSprite = 66,
+		SmallLoadingIconSprite = 67,
+		SmallErrorIconSprite = 68
 	};
 
 	// Constants to use for font types

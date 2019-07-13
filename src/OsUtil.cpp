@@ -139,11 +139,18 @@ StdString OsUtil::getDurationString (int64_t duration, int minUnitType) {
 
 StdString OsUtil::getDurationDisplayString (int64_t duration) {
 	int64_t t;
-	int unit, h, m;
+	int unit, d, h, m;
 
 	unit = OsUtil::getDurationMinUnitType (duration);
 	t = duration;
 	t /= 1000;
+	if (unit >= OsUtil::DaysUnit) {
+		t /= 3600;
+		h = (int) t;
+		d = h / 24;
+		h %= 24;
+		return (StdString::createSprintf ("%id%ih", d, h));
+	}
 	if (unit >= OsUtil::HoursUnit) {
 		t /= 60;
 		h = (int) (t / 60);
@@ -160,6 +167,9 @@ StdString OsUtil::getDurationDisplayString (int64_t duration) {
 }
 
 int OsUtil::getDurationMinUnitType (int64_t duration) {
+	if (duration >= (72 * 3600 * 1000)) {
+		return (OsUtil::DaysUnit);
+	}
 	if (duration >= (3600 * 1000)) {
 		return (OsUtil::HoursUnit);
 	}

@@ -87,8 +87,6 @@ Panel::Panel ()
 , widgetListMutex (NULL)
 , widgetAddListMutex (NULL)
 {
-	widgetType.assign ("Panel");
-
 	widgetListMutex = SDL_CreateMutex ();
 	widgetAddListMutex = SDL_CreateMutex ();
 	animationScale.assign (1.0f, 1.0f);
@@ -1033,10 +1031,11 @@ void Panel::sortWidgetList () {
 	widgetList.sort (Widget::compareZLevel);
 }
 
-void Panel::setLayout (int layoutType) {
+void Panel::setLayout (int layoutType, float maxPanelWidth) {
 	if (layout == layoutType) {
 		return;
 	}
+	// Default implementation ignores the maxPanelWidth parameter
 	layout = layoutType;
 	refresh ();
 }

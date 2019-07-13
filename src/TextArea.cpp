@@ -56,7 +56,6 @@ TextArea::TextArea (int fontType, const Color &textColor, int maxTextLineLength,
 {
 	UiConfiguration *uiconfig;
 
-	widgetType.assign ("TextArea");
 	uiconfig = &(App::instance->uiConfig);
 	if (maxLineLength <= 0) {
 		maxLineLength = uiconfig->textAreaMediumLineLength;

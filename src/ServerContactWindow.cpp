@@ -31,6 +31,7 @@
 #include "Config.h"
 #include <stdlib.h>
 #include "Result.h"
+#include "ClassId.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
@@ -65,6 +66,7 @@ ServerContactWindow::ServerContactWindow (const StdString &displayName, const St
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
+	classId = ClassId::ServerContactWindow;
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
@@ -100,12 +102,7 @@ StdString ServerContactWindow::toStringDetail () {
 }
 
 bool ServerContactWindow::isWidgetType (Widget *widget) {
-	if (! widget) {
-		return (false);
-	}
-
-	// This operation references output from the toStringDetail method, above
-	return (widget->toString ().contains (" ServerContactWindow"));
+	return (widget && (widget->classId == ClassId::ServerContactWindow));
 }
 
 ServerContactWindow *ServerContactWindow::castWidget (Widget *widget) {
