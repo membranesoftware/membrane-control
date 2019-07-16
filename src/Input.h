@@ -57,7 +57,7 @@ public:
 	// Initialize input functionality and acquire resources as needed. Returns a Result value.
 	int start ();
 
-	// Poll events to update input state. This method must only be invoked on the application's main thread.
+	// Poll events to update input state. This method must be invoked only from the application's main thread.
 	void pollEvents ();
 
 	// Return a boolean value indicating if the specified key is down

@@ -31,6 +31,8 @@
 #include "Config.h"
 #include <stdlib.h>
 #include <math.h>
+#include <vector>
+#include <stack>
 #include "SDL2/SDL.h"
 #include "SDL2/SDL_image.h"
 #include "Result.h"
@@ -164,8 +166,6 @@ App::App ()
 }
 
 App::~App () {
-	clearRenderTaskQueue ();
-
 	if (rootPanel) {
 		rootPanel->release ();
 		rootPanel = NULL;
@@ -195,14 +195,6 @@ App::~App () {
 		SDL_DestroyMutex (backgroundMutex);
 		backgroundMutex = NULL;
 	}
-}
-
-void App::clearRenderTaskQueue () {
-	SDL_LockMutex (renderTaskMutex);
-	while (! renderTaskQueue.empty ()) {
-		renderTaskQueue.pop ();
-	}
-	SDL_UnlockMutex (renderTaskMutex);
 }
 
 int App::getImageScale (int w, int h) {
@@ -409,6 +401,7 @@ int App::run () {
 		if ((windowWidth != nextWindowWidth) || (windowHeight != nextWindowHeight)) {
 			resizeWindow ();
 		}
+		uiStack.executeStackCommands ();
 		resource.compact ();
 
 		t2 = OsUtil::getTime ();
@@ -490,15 +483,20 @@ void App::datagramReceived (void *callbackData, const char *messageData, int mes
 }
 
 void App::executeRenderTasks () {
-	App::RenderTaskContext ctx;
+	std::vector<App::RenderTaskContext>::iterator i, end;
 
+	renderTaskList.clear ();
 	SDL_LockMutex (renderTaskMutex);
-	while (! renderTaskQueue.empty ()) {
-		ctx = renderTaskQueue.front ();
-		ctx.callback (ctx.callbackData);
-		renderTaskQueue.pop ();
-	}
+	renderTaskList.swap (renderTaskAddList);
 	SDL_UnlockMutex (renderTaskMutex);
+
+	i = renderTaskList.begin ();
+	end = renderTaskList.end ();
+	while (i != end) {
+		i->callback (i->callbackData);
+		++i;
+	}
+	renderTaskList.clear ();
 }
 
 void App::draw () {
@@ -683,6 +681,20 @@ int64_t App::getUniqueId () {
 	return (id);
 }
 
+void App::suspendUpdate () {
+	SDL_LockMutex (updateMutex);
+	isSuspendingUpdate = true;
+	SDL_CondWait (updateCond, updateMutex);
+	SDL_UnlockMutex (updateMutex);
+}
+
+void App::unsuspendUpdate () {
+	SDL_LockMutex (updateMutex);
+	isSuspendingUpdate = false;
+	SDL_CondBroadcast (updateCond);
+	SDL_UnlockMutex (updateMutex);
+}
+
 void App::pushClipRect (const SDL_Rect *rect) {
 	int x, y, w, h, diff;
 
@@ -767,7 +779,7 @@ void App::addRenderTask (RenderTaskFunction fn, void *fnData) {
 	ctx.callback = fn;
 	ctx.callbackData = fnData;
 	SDL_LockMutex (renderTaskMutex);
-	renderTaskQueue.push (ctx);
+	renderTaskAddList.push_back (ctx);
 	SDL_UnlockMutex (renderTaskMutex);
 }
 
@@ -798,10 +810,7 @@ void App::resizeWindow () {
 		return;
 	}
 
-	SDL_LockMutex (updateMutex);
-	isSuspendingUpdate = true;
-	SDL_CondWait (updateCond, updateMutex);
-
+	suspendUpdate ();
 	SDL_SetWindowSize (window, nextWindowWidth, nextWindowHeight);
 	windowWidth = nextWindowWidth;
 	windowHeight = nextWindowHeight;
@@ -826,10 +835,7 @@ void App::resizeWindow () {
 	uiStack.resize ();
 	rootPanel->resetInputState ();
 	shouldRefreshUi = true;
-
-	isSuspendingUpdate = false;
-	SDL_CondBroadcast (updateCond);
-	SDL_UnlockMutex (updateMutex);
+	unsuspendUpdate ();
 
 	prefsMap.insert (App::WindowWidthKey, windowWidth);
 	prefsMap.insert (App::WindowHeightKey, windowHeight);

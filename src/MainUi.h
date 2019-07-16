@@ -131,7 +131,7 @@ private:
 	// Update the banner window with content from the next available item
 	void showNextBanner ();
 
-	// Reset the contents of bannerVector to contain all appropriate items (static items and items loaded from preferences)
+	// Reset the contents of bannerList to contain all appropriate items (static items and items loaded from preferences)
 	void resetBanners ();
 
 	HashMap bannerIconTypeMap;

@@ -35,7 +35,6 @@
 
 #include <vector>
 #include <stack>
-#include <queue>
 #include "SDL2/SDL.h"
 #include "StdString.h"
 #include "Log.h"
@@ -169,6 +168,12 @@ public:
 	// Return an int64_t value for use as a unique ID
 	int64_t getUniqueId ();
 
+	// Suspend the application's update thread and block until the current update cycle completes
+	void suspendUpdate ();
+
+	// Unsuspend the application's update thread after a previous call to suspendUpdate
+	void unsuspendUpdate ();
+
 	// Apply the provided clip rectangle to the application's renderer and push it onto the clip stack
 	void pushClipRect (const SDL_Rect *rect);
 
@@ -244,7 +249,7 @@ private:
 	// Execute draw operations to update the application window
 	void draw ();
 
-	// Execute all operations in renderTaskQueue
+	// Execute all operations in renderTaskList
 	void executeRenderTasks ();
 
 	// Execute operations to update application state as appropriate for an elapsed millisecond time period
@@ -265,9 +270,6 @@ private:
 	// Write the prefs map file if any of its keys have changed since the last write
 	void writePrefsMap ();
 
-	// Remove all items from renderTaskQueue
-	void clearRenderTaskQueue ();
-
 	SDL_Thread *updateThread;
 	SDL_mutex *uniqueIdMutex;
 	int64_t nextUniqueId;
@@ -275,7 +277,8 @@ private:
 	std::stack<SDL_Rect> clipRectStack;
 	SDL_Rect clipRect;
 	SDL_mutex *renderTaskMutex;
-	std::queue<App::RenderTaskContext> renderTaskQueue;
+	std::vector<App::RenderTaskContext> renderTaskList;
+	std::vector<App::RenderTaskContext> renderTaskAddList;
 	bool isSuspendingUpdate;
 	SDL_mutex *updateMutex;
 	SDL_cond *updateCond;

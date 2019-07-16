@@ -76,6 +76,9 @@ public:
 	// Execute operations to update state as appropriate for an elapsed millisecond time period
 	void update (int msElapsed);
 
+	// Execute operations to change the top item of the Ui stack, as specified by previously received commands. This method must be invoked only from the application's main thread.
+	void executeStackCommands ();
+
 	// Refresh all Ui items in the stack
 	void refresh ();
 
@@ -111,6 +114,13 @@ public:
 	static void exitActionClicked (void *uiStackPtr, Widget *widgetPtr);
 
 private:
+	// Constants to use for stack command types
+	enum {
+		SetUiCommand = 0,
+		PushUiCommand = 1,
+		PopUiCommand = 2
+	};
+
 	// Execute operations appropriate when mouseHoverTarget has held its current value beyond the hover threshold
 	void activateMouseHover ();
 
@@ -121,9 +131,11 @@ private:
 	void resetToolbars ();
 
 	std::list<Ui *> uiList;
-	std::list<Ui *> uiAddList;
 	Ui *activeUi;
 	SDL_mutex *uiMutex;
+	int nextCommandType;
+	Ui *nextCommandUi;
+	SDL_mutex *nextCommandMutex;
 	WidgetHandle tooltip;
 	WidgetHandle keyFocusTarget;
 	WidgetHandle mouseHoverTarget;

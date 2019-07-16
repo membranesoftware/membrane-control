@@ -52,11 +52,15 @@ UiStack::UiStack ()
 , rightBarWidth (0.0f)
 , activeUi (NULL)
 , uiMutex (NULL)
+, nextCommandType (-1)
+, nextCommandUi (NULL)
+, nextCommandMutex (NULL)
 , mouseHoverClock (0)
 , isMouseHoverActive (false)
 , isMouseHoverSuspended (false)
 {
 	uiMutex = SDL_CreateMutex ();
+	nextCommandMutex = SDL_CreateMutex ();
 }
 
 UiStack::~UiStack () {
@@ -68,6 +72,10 @@ UiStack::~UiStack () {
 	if (uiMutex) {
 		SDL_DestroyMutex (uiMutex);
 		uiMutex = NULL;
+	}
+	if (nextCommandMutex) {
+		SDL_DestroyMutex (nextCommandMutex);
+		nextCommandMutex = NULL;
 	}
 }
 
@@ -108,11 +116,6 @@ void UiStack::clear () {
 		ui->release ();
 		uiList.pop_back ();
 	}
-	while (! uiAddList.empty ()) {
-		ui = uiAddList.back ();
-		ui->release ();
-		uiAddList.pop_back ();
-	}
 	SDL_UnlockMutex (uiMutex);
 }
 
@@ -131,99 +134,43 @@ Ui *UiStack::getActiveUi () {
 }
 
 void UiStack::setUi (Ui *ui) {
-	ui->retain ();
-	SDL_LockMutex (uiMutex);
-	uiAddList.push_back (ui);
-	SDL_UnlockMutex (uiMutex);
-	App::instance->addRenderTask (UiStack::doSetUi, this);
-}
-
-void UiStack::doSetUi (void *uiStackPtr) {
-	UiStack *uistack;
-	Ui *ui;
-	int result;
-
-	uistack = (UiStack *) uiStackPtr;
-	SDL_LockMutex (uistack->uiMutex);
-	if (! uistack->uiAddList.empty ()) {
-		ui = uistack->uiAddList.front ();
-		uistack->uiAddList.pop_front ();
-		result = ui->load ();
-		if (result != Result::Success) {
-			Log::err ("Failed to load UI resources; err=%i", result);
-			ui->release ();
-		}
-		else {
-			while (! uistack->uiList.empty ()) {
-				ui = uistack->uiList.back ();
-				ui->pause ();
-				ui->unload ();
-				ui->release ();
-				uistack->uiList.pop_back ();
-			}
-			uistack->uiList.push_back (ui);
-		}
+	if (! ui) {
+		return;
 	}
-	SDL_UnlockMutex (uistack->uiMutex);
+
+	SDL_LockMutex (nextCommandMutex);
+	nextCommandType = UiStack::SetUiCommand;
+	if (nextCommandUi) {
+		nextCommandUi->release ();
+	}
+	nextCommandUi = ui;
+	nextCommandUi->retain ();
+	SDL_UnlockMutex (nextCommandMutex);
 }
 
 void UiStack::pushUi (Ui *ui) {
-	ui->retain ();
-	SDL_LockMutex (uiMutex);
-	uiAddList.push_back (ui);
-	SDL_UnlockMutex (uiMutex);
-	App::instance->addRenderTask (UiStack::doPushUi, this);
-}
-
-void UiStack::doPushUi (void *uiStackPtr) {
-	UiStack *uistack;
-	Ui *ui;
-	int result;
-
-	uistack = (UiStack *) uiStackPtr;
-	SDL_LockMutex (uistack->uiMutex);
-	if (! uistack->uiAddList.empty ()) {
-		ui = uistack->uiAddList.front ();
-		uistack->uiAddList.pop_front ();
-		result = ui->load ();
-		if (result != Result::Success) {
-			Log::err ("Failed to load UI resources; err=%i", result);
-			ui->release ();
-		}
-		else {
-			uistack->uiList.push_back (ui);
-		}
+	if (! ui) {
+		return;
 	}
-	SDL_UnlockMutex (uistack->uiMutex);
+
+	SDL_LockMutex (nextCommandMutex);
+	nextCommandType = UiStack::PushUiCommand;
+	if (nextCommandUi) {
+		nextCommandUi->release ();
+	}
+	nextCommandUi = ui;
+	nextCommandUi->retain ();
+	SDL_UnlockMutex (nextCommandMutex);
 }
 
 void UiStack::popUi () {
-	App::instance->addRenderTask (UiStack::doPopUi, this);
-}
-
-void UiStack::doPopUi (void *uiStackPtr) {
-	UiStack *uistack;
-	Ui *ui;
-
-	ui = NULL;
-	uistack = (UiStack *) uiStackPtr;
-	SDL_LockMutex (uistack->uiMutex);
-	if (! uistack->uiList.empty ()) {
-		ui = uistack->uiList.back ();
-		uistack->uiList.pop_back ();
-
-		if (uistack->activeUi == ui) {
-			uistack->activeUi->release ();
-			uistack->activeUi = NULL;
-		}
+	SDL_LockMutex (nextCommandMutex);
+	nextCommandType = UiStack::PopUiCommand;
+	if (nextCommandUi) {
+		nextCommandUi->release ();
 	}
-	SDL_UnlockMutex (uistack->uiMutex);
-
-	if (ui) {
-		ui->pause ();
-		ui->unload ();
-		ui->release ();
-	}
+	nextCommandUi = NULL;
+	SDL_UnlockMutex (nextCommandMutex);
 }
 
 void UiStack::update (int msElapsed) {
@@ -334,6 +281,104 @@ void UiStack::resetToolbars () {
 	topBarHeight = mainToolbar->position.y + mainToolbar->height;
 	bottomBarHeight = secondaryToolbar->isVisible ? secondaryToolbar->height : 0.0f;
 	secondaryToolbar->position.assign (0.0f, App::instance->windowHeight - secondaryToolbar->height);
+}
+
+void UiStack::executeStackCommands () {
+	Ui *ui, *item;
+	int cmd, result;
+
+	SDL_LockMutex (nextCommandMutex);
+	cmd = nextCommandType;
+	ui = nextCommandUi;
+	nextCommandType = -1;
+	nextCommandUi = NULL;
+	SDL_UnlockMutex (nextCommandMutex);
+
+	if (cmd < 0) {
+		if (ui) {
+			ui->release ();
+		}
+		return;
+	}
+
+	switch (cmd) {
+		case UiStack::SetUiCommand: {
+			if (! ui) {
+				break;
+			}
+			result = ui->load ();
+			if (result != Result::Success) {
+				Log::err ("Failed to load UI resources; err=%i", result);
+				ui->release ();
+				break;
+			}
+
+			App::instance->suspendUpdate ();
+			SDL_LockMutex (uiMutex);
+			while (! uiList.empty ()) {
+				item = uiList.back ();
+				item->pause ();
+				item->unload ();
+				item->release ();
+				uiList.pop_back ();
+			}
+			uiList.push_back (ui);
+			SDL_UnlockMutex (uiMutex);
+			App::instance->unsuspendUpdate ();
+			break;
+		}
+		case UiStack::PushUiCommand: {
+			if (! ui) {
+				break;
+			}
+			result = ui->load ();
+			if (result != Result::Success) {
+				Log::err ("Failed to load UI resources; err=%i", result);
+				ui->release ();
+				break;
+			}
+
+			App::instance->suspendUpdate ();
+			SDL_LockMutex (uiMutex);
+			uiList.push_back (ui);
+			SDL_UnlockMutex (uiMutex);
+			App::instance->unsuspendUpdate ();
+			break;
+		}
+		case UiStack::PopUiCommand: {
+			if (ui) {
+				ui->release ();
+			}
+			ui = NULL;
+
+			App::instance->suspendUpdate ();
+			SDL_LockMutex (uiMutex);
+			if (! uiList.empty ()) {
+				ui = uiList.back ();
+				uiList.pop_back ();
+
+				if (activeUi == ui) {
+					activeUi->release ();
+					activeUi = NULL;
+				}
+			}
+			SDL_UnlockMutex (uiMutex);
+
+			if (ui) {
+				ui->pause ();
+				ui->unload ();
+				ui->release ();
+			}
+			App::instance->unsuspendUpdate ();
+			break;
+		}
+		default: {
+			if (ui) {
+				ui->release ();
+			}
+			break;
+		}
+	}
 }
 
 void UiStack::refresh () {
