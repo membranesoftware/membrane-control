@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -43,14 +42,17 @@ public:
 
 	// Read-write data members
 	StdString id;
+	bool isAttached;
 	int64_t lastStatusTime;
 	StdString invokeHostname;
 	int invokeTcpPort1;
 	int invokeTcpPort2;
 
 	// Read-only data members
+	int serverType;
 	StdString linkPath;
 	StdString displayName;
+	StdString applicationName;
 	StdString urlHostname;
 	int tcpPort1;
 	int tcpPort2;
@@ -87,6 +89,9 @@ private:
 	static const char *UrlHostnameKey;
 	static const char *TcpPort1Key;
 	static const char *TcpPort2Key;
+	static const char *IsAttachedKey;
+	static const char *ApplicationNameKey;
+	static const char *ServerTypeKey;
 };
 
 #endif

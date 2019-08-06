@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -36,11 +35,12 @@
 #include "StdString.h"
 #include "Image.h"
 #include "Json.h"
-#include "HashMap.h"
+#include "Image.h"
 #include "Label.h"
 #include "Button.h"
+#include "Toggle.h"
 #include "StatsWindow.h"
-#include "ActionWindow.h"
+#include "IconLabelWindow.h"
 #include "Panel.h"
 
 class ServerWindow : public Panel {
@@ -48,20 +48,36 @@ public:
 	ServerWindow (const StdString &agentId);
 	virtual ~ServerWindow ();
 
-	// Read-write data members
-	StdString itemId;
-	Json agentConfiguration;
-
 	// Read-only data members
+	bool isExpanded;
 	StdString agentId;
 	StdString agentDisplayName;
 	StdString applicationId;
+	int serverType;
 	bool isRecordLoaded;
-	bool isRecordDeleted;
-	float menuPositionY;
+	bool isAgentDisabled;
+	int agentTaskCount;
 
-	// Set a callback function that should be invoked when the window's menu button is pressed
-	void setMenuClickCallback (Widget::EventCallback callback, void *callbackData);
+	// Set a callback that should be invoked when the expand toggle's checked state changes
+	void setExpandStateChangeCallback (Widget::EventCallback callback, void *callbackData);
+
+	// Set a callback that should be invoked when the window's displayed server status changes
+	void setStatusChangeCallback (Widget::EventCallback callback, void *callbackData);
+
+	// Set a callback that should be invoked when the window's check for updates button is pressed
+	void setCheckForUpdatesClickCallback (Widget::EventCallback callback, void *callbackData);
+
+	// Set a callback that should be invoked when the window's admin button is pressed
+	void setAdminClickCallback (Widget::EventCallback callback, void *callbackData);
+
+	// Set a callback that should be invoked when the window's detach button is pressed
+	void setDetachClickCallback (Widget::EventCallback callback, void *callbackData);
+
+	// Set a callback that should be invoked when the window's remove button is pressed
+	void setRemoveClickCallback (Widget::EventCallback callback, void *callbackData);
+
+	// Set the window's expand state, then execute any expand state change callback that might be configured unless shouldSkipStateChangeCallback is true
+	void setExpanded (bool expanded, bool shouldSkipStateChangeCallback = false);
 
 	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
 	void syncRecordStore ();
@@ -73,25 +89,59 @@ public:
 	static ServerWindow *castWidget (Widget *widget);
 
 	// Callback functions
-	static void menuButtonClicked (void *windowPtr, Widget *widgetPtr);
-	static void connectButtonClicked (void *windowPtr, Widget *widgetPtr);
-	static void disconnectButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
+	static void checkForUpdatesButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void adminButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void detachButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void removeButtonClicked (void *windowPtr, Widget *widgetPtr);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
 
+	// Execute operations to update object state as appropriate for an elapsed millisecond time period
+	void doUpdate (int msElapsed);
+
 	// Reset the panel's widget layout as appropriate for its content and configuration
 	void refreshLayout ();
 
 private:
+	// Reset the visibility of window controls as appropriate for server state
+	void resetVisibility ();
+
+	// Reset status icons to show the specified sprite and color
+	void setStatusIcons (int spriteType, int textString, const Color &color);
+
 	Image *iconImage;
 	Label *nameLabel;
 	Label *descriptionLabel;
+	IconLabelWindow *statusIcon;
+	Image *unexpandedStatusIcon;
+	IconLabelWindow *storageIcon;
+	IconLabelWindow *mediaCountIcon;
+	IconLabelWindow *streamCountIcon;
+	IconLabelWindow *taskCountIcon;
 	StatsWindow *statsWindow;
-	Button *menuButton;
-	Widget::EventCallback menuClickCallback;
-	void *menuClickCallbackData;
+	Toggle *expandToggle;
+	Button *checkForUpdatesButton;
+	Button *adminButton;
+	Button *detachButton;
+	Button *removeButton;
+	Widget::EventCallback expandStateChangeCallback;
+	void *expandStateChangeCallbackData;
+	Widget::EventCallback statusChangeCallback;
+	void *statusChangeCallbackData;
+	Widget::EventCallback checkForUpdatesClickCallback;
+	void *checkForUpdatesClickCallbackData;
+	Widget::EventCallback adminClickCallback;
+	void *adminClickCallbackData;
+	Widget::EventCallback detachClickCallback;
+	void *detachClickCallbackData;
+	Widget::EventCallback removeClickCallback;
+	void *removeClickCallbackData;
+	int statusSpriteType;
+	int statusTextString;
+	Color statusColor;
 };
 
 #endif

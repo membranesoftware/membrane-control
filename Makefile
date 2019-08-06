@@ -91,6 +91,7 @@ O=ActionWindow.o \
 	ScrollBar.o \
 	ScrollView.o \
 	ServerAdminUi.o \
+	ServerAttachWindow.o \
 	ServerContactWindow.o \
 	ServerUi.o \
 	ServerWindow.o \

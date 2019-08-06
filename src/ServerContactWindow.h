@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -49,10 +48,10 @@ public:
 
 	// Constants to use for layout types
 	enum {
-		IDLE = 0,
-		CONTACTING = 1,
-		UNAUTHORIZED = 2,
-		FAILED = 3
+		IdleLayout = 0,
+		ContactingLayout = 1,
+		UnauthorizedLayout = 2,
+		FailedLayout = 3
 	};
 
 	// Read-write data members

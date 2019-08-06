@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -62,6 +61,10 @@ Panel::Panel ()
 , widthPadding (0.0f)
 , heightPadding (0.0f)
 , isFilledBg (false)
+, topLeftCornerRadius (0)
+, topRightCornerRadius (0)
+, bottomLeftCornerRadius (0)
+, bottomRightCornerRadius (0)
 , isBordered (false)
 , borderWidth (0.0f)
 , isDropShadowed (false)
@@ -84,6 +87,27 @@ Panel::Panel ()
 , lastMouseWheelDownCount (0)
 , lastMouseDownX (-1)
 , lastMouseDownY (-1)
+, cornerCenterDx (0)
+, cornerCenterDy (0)
+, cornerCenterDw (0)
+, cornerCenterDh (0)
+, cornerTopDx (0)
+, cornerTopDy (0)
+, cornerTopDw (0)
+, cornerTopDh (0)
+, cornerLeftDx (0)
+, cornerLeftDy (0)
+, cornerLeftDw (0)
+, cornerLeftDh (0)
+, cornerRightDx (0)
+, cornerRightDy (0)
+, cornerRightDw (0)
+, cornerRightDh (0)
+, cornerBottomDx (0)
+, cornerBottomDy (0)
+, cornerBottomDw (0)
+, cornerBottomDh (0)
+, cornerSize (0)
 , widgetListMutex (NULL)
 , widgetAddListMutex (NULL)
 {
@@ -625,10 +649,11 @@ void Panel::doResetInputState () {
 
 void Panel::doDraw (SDL_Texture *targetTexture, float originX, float originY) {
 	SDL_Renderer *render;
+	SDL_Texture *cornertexture;
 	SDL_Rect rect;
 	std::list<Widget *>::iterator i, end;
 	Widget *widget;
-	int x0, y0;
+	int x0, y0, texturew, textureh;
 	float w, h;
 
 	render = App::instance->render;
@@ -667,17 +692,109 @@ void Panel::doDraw (SDL_Texture *targetTexture, float originX, float originY) {
 	App::instance->pushClipRect (&rect);
 
 	if (isFilledBg && (bgColor.aByte > 0)) {
-		rect.x = x0;
-		rect.y = y0;
-		rect.w = (int) width;
-		rect.h = (int) height;
-
 		SDL_SetRenderTarget (render, targetTexture);
 		if (bgColor.aByte < 255) {
 			SDL_SetRenderDrawBlendMode (render, SDL_BLENDMODE_BLEND);
 		}
 		SDL_SetRenderDrawColor (render, bgColor.rByte, bgColor.gByte, bgColor.bByte, bgColor.aByte);
-		SDL_RenderFillRect (render, &rect);
+
+		if ((cornerSize > 0) && ((int) width >= cornerSize) && ((int) height >= cornerSize)) {
+			if (topLeftCornerRadius > 0) {
+				cornertexture = App::instance->getRoundedCornerTexture (topLeftCornerRadius, &texturew, &textureh);
+				if (cornertexture) {
+					rect.x = x0;
+					rect.y = y0;
+					rect.w = texturew;
+					rect.h = textureh;
+					SDL_SetTextureColorMod (cornertexture, bgColor.rByte, bgColor.gByte, bgColor.bByte);
+					SDL_SetTextureBlendMode (cornertexture, SDL_BLENDMODE_BLEND);
+					SDL_RenderCopy (render, cornertexture, NULL, &rect);
+				}
+			}
+			if (topRightCornerRadius > 0) {
+				cornertexture = App::instance->getRoundedCornerTexture (topRightCornerRadius, &texturew, &textureh);
+				if (cornertexture) {
+					rect.x = x0 + (int) width - texturew;
+					rect.y = y0;
+					rect.w = texturew;
+					rect.h = textureh;
+					SDL_SetTextureColorMod (cornertexture, bgColor.rByte, bgColor.gByte, bgColor.bByte);
+					SDL_SetTextureBlendMode (cornertexture, SDL_BLENDMODE_BLEND);
+					SDL_RenderCopy (render, cornertexture, NULL, &rect);
+				}
+			}
+			if (bottomLeftCornerRadius > 0) {
+				cornertexture = App::instance->getRoundedCornerTexture (bottomLeftCornerRadius, &texturew, &textureh);
+				if (cornertexture) {
+					rect.x = x0;
+					rect.y = y0 + (int) height - textureh;
+					rect.w = texturew;
+					rect.h = textureh;
+					SDL_SetTextureColorMod (cornertexture, bgColor.rByte, bgColor.gByte, bgColor.bByte);
+					SDL_SetTextureBlendMode (cornertexture, SDL_BLENDMODE_BLEND);
+					SDL_RenderCopy (render, cornertexture, NULL, &rect);
+				}
+			}
+			if (bottomRightCornerRadius > 0) {
+				cornertexture = App::instance->getRoundedCornerTexture (bottomRightCornerRadius, &texturew, &textureh);
+				if (cornertexture) {
+					rect.x = x0 + (int) width - texturew;
+					rect.y = y0 + (int) height - textureh;
+					rect.w = texturew;
+					rect.h = textureh;
+					SDL_SetTextureColorMod (cornertexture, bgColor.rByte, bgColor.gByte, bgColor.bByte);
+					SDL_SetTextureBlendMode (cornertexture, SDL_BLENDMODE_BLEND);
+					SDL_RenderCopy (render, cornertexture, NULL, &rect);
+				}
+			}
+
+			rect.x = x0;
+			rect.y = y0;
+			rect.w = (int) width;
+			rect.h = (int) height;
+			rect.x += cornerCenterDx;
+			rect.y += cornerCenterDy;
+			rect.w += cornerCenterDw;
+			rect.h += cornerCenterDh;
+			SDL_RenderFillRect (render, &rect);
+
+			if (cornerTopDh > 0) {
+				rect.x = x0 + cornerTopDx;
+				rect.y = y0 + cornerTopDy;
+				rect.w = ((int) width) + cornerTopDw;
+				rect.h = cornerTopDh;
+				SDL_RenderFillRect (render, &rect);
+			}
+			if (cornerLeftDw > 0) {
+				rect.x = x0 + cornerLeftDx;
+				rect.y = y0 + cornerLeftDy;
+				rect.w = cornerLeftDw;
+				rect.h = ((int) height) + cornerLeftDh;
+				SDL_RenderFillRect (render, &rect);
+			}
+			if (cornerRightDw > 0) {
+				rect.x = x0 + width + cornerRightDx;
+				rect.y = y0 + cornerRightDy;
+				rect.w = cornerRightDw;
+				rect.h = ((int) height) + cornerRightDh;
+				SDL_RenderFillRect (render, &rect);
+			}
+			if (cornerBottomDh > 0) {
+				rect.x = x0 + cornerBottomDx;
+				rect.y = y0 + height + cornerBottomDy;
+				rect.w = ((int) width) + cornerBottomDw;
+				rect.h = cornerBottomDh;
+				SDL_RenderFillRect (render, &rect);
+			}
+		}
+		else {
+			rect.x = x0;
+			rect.y = y0;
+			rect.w = (int) width;
+			rect.h = (int) height;
+			SDL_RenderFillRect (render, &rect);
+		}
+
 		if (bgColor.aByte < 255) {
 			SDL_SetRenderDrawBlendMode (render, SDL_BLENDMODE_NONE);
 		}
@@ -1048,6 +1165,192 @@ void Panel::setFillBg (bool enable, const Color &color) {
 	else {
 		isFilledBg = false;
 	}
+}
+
+void Panel::setCornerRadius (int radius) {
+	setCornerRadius (radius, radius, radius, radius);
+}
+
+void Panel::setCornerRadius (int topLeftRadius, int topRightRadius, int bottomLeftRadius, int bottomRightRadius) {
+	int centerx, centery, centerw, centerh, topx, topy, topw, toph, leftx, lefty, leftw, lefth, rightx, righty, rightw, righth, bottomx, bottomy, bottomw, bottomh, amt;
+
+	if (topLeftRadius < 0) {
+		topLeftRadius = 0;
+	}
+	if (topLeftRadius > App::maxCornerRadius) {
+		topLeftRadius = App::maxCornerRadius;
+	}
+	if (topRightRadius < 0) {
+		topRightRadius = 0;
+	}
+	if (topRightRadius > App::maxCornerRadius) {
+		topRightRadius = App::maxCornerRadius;
+	}
+	if (bottomLeftRadius < 0) {
+		bottomLeftRadius = 0;
+	}
+	if (bottomLeftRadius > App::maxCornerRadius) {
+		bottomLeftRadius = App::maxCornerRadius;
+	}
+	if (bottomRightRadius < 0) {
+		bottomRightRadius = 0;
+	}
+	if (bottomRightRadius > App::maxCornerRadius) {
+		bottomRightRadius = App::maxCornerRadius;
+	}
+	if ((topLeftRadius <= 0) && (topRightRadius <= 0) && (bottomLeftRadius <= 0) && (bottomRightRadius <= 0)) {
+		cornerSize = 0;
+		return;
+	}
+
+	centerx = 0;
+	centery = 0;
+	centerw = 0;
+	centerh = 0;
+	topx = 0;
+	topy = 0;
+	topw = 0;
+	toph = 0;
+	leftx = 0;
+	lefty = 0;
+	leftw = 0;
+	lefth = 0;
+	rightx = 0;
+	righty = 0;
+	rightw = 0;
+	righth = 0;
+	bottomx = 0;
+	bottomy = 0;
+	bottomw = 0;
+	bottomh = 0;
+
+	if ((topLeftRadius > 0) || (topRightRadius > 0)) {
+		amt = (topLeftRadius > topRightRadius) ? topLeftRadius : topRightRadius;
+		centery += amt;
+		centerh -= amt;
+		toph = amt;
+		if (topLeftRadius > 0) {
+			topx = topLeftRadius;
+			topw -= topLeftRadius;
+		}
+		if (topRightRadius > 0) {
+			topw -= topRightRadius;
+		}
+	}
+	if ((topLeftRadius > 0) || (bottomLeftRadius > 0)) {
+		amt = (topLeftRadius > bottomLeftRadius) ? topLeftRadius : bottomLeftRadius;
+		centerx += amt;
+		centerw -= amt;
+		leftw = amt;
+		if (topLeftRadius > 0) {
+			lefty = topLeftRadius;
+			lefth -= topLeftRadius;
+		}
+		if (bottomLeftRadius > 0) {
+			lefth -= bottomLeftRadius;
+		}
+	}
+	if ((topRightRadius > 0) || (bottomRightRadius > 0)) {
+		amt = (topRightRadius > bottomRightRadius) ? topRightRadius : bottomRightRadius;
+		centerw -= amt;
+		rightx -= amt;
+		rightw = amt;
+		if (topRightRadius > 0) {
+			righty = topRightRadius;
+			righth -= topRightRadius;
+		}
+		if (bottomRightRadius > 0) {
+			righth -= bottomRightRadius;
+		}
+	}
+	if ((bottomLeftRadius > 0) || (bottomRightRadius > 0)) {
+		amt = (bottomLeftRadius > bottomRightRadius) ? bottomLeftRadius : bottomRightRadius;
+		centerh -= amt;
+		bottomy -= amt;
+		bottomh = amt;
+		if (bottomLeftRadius > 0) {
+			bottomx = bottomLeftRadius;
+			bottomw -= bottomLeftRadius;
+		}
+		if (bottomRightRadius > 0) {
+			bottomw -= bottomRightRadius;
+		}
+	}
+
+	if ((topLeftRadius <= 0) && (leftw > 0) && (toph > 0)) {
+		if (topRightRadius > 0) {
+			lefty += topRightRadius;
+			lefth -= topRightRadius;
+		}
+		else if (bottomLeftRadius > 0) {
+			topx += bottomLeftRadius;
+			topw -= bottomLeftRadius;
+		}
+	}
+	if ((topRightRadius <= 0) && (rightw > 0) && (toph > 0)) {
+		if (topLeftRadius > 0) {
+			righty += topLeftRadius;
+			righth -= topLeftRadius;
+		}
+		else if (bottomRightRadius > 0) {
+			topw -= bottomRightRadius;
+		}
+	}
+	if ((bottomLeftRadius <= 0) && (leftw > 0) && (bottomh > 0)) {
+		if (topLeftRadius > 0) {
+			bottomx += topLeftRadius;
+			bottomw -= topLeftRadius;
+		}
+		else if (bottomRightRadius > 0) {
+			lefth -= bottomRightRadius;
+		}
+	}
+	if ((bottomRightRadius <= 0) && (rightw > 0) && (bottomh > 0)) {
+		if (topRightRadius > 0) {
+			bottomw -= topRightRadius;
+		}
+		else if (bottomLeftRadius > 0) {
+			righty += bottomLeftRadius;
+			righth -= bottomLeftRadius;
+		}
+	}
+
+	cornerCenterDx = centerx;
+	cornerCenterDy = centery;
+	cornerCenterDw = centerw;
+	cornerCenterDh = centerh;
+	cornerTopDx = topx;
+	cornerTopDy = topy;
+	cornerTopDw = topw;
+	cornerTopDh = toph;
+	cornerLeftDx = leftx;
+	cornerLeftDy = lefty;
+	cornerLeftDw = leftw;
+	cornerLeftDh = lefth;
+	cornerRightDx = rightx;
+	cornerRightDy = righty;
+	cornerRightDw = rightw;
+	cornerRightDh = righth;
+	cornerBottomDx = bottomx;
+	cornerBottomDy = bottomy;
+	cornerBottomDw = bottomw;
+	cornerBottomDh = bottomh;
+	topLeftCornerRadius = topLeftRadius;
+	topRightCornerRadius = topRightRadius;
+	bottomLeftCornerRadius = bottomLeftRadius;
+	bottomRightCornerRadius = bottomRightRadius;
+
+	amt = topLeftRadius;
+	if (topRightRadius > amt) {
+		amt = topRightRadius;
+	}
+	if (bottomLeftRadius > amt) {
+		amt = bottomLeftRadius;
+	}
+	if (bottomRightRadius > amt) {
+		amt = bottomRightRadius;
+	}
+	cornerSize = amt * 2;
 }
 
 void Panel::setBorder (bool enable, const Color &color, float borderWidthValue) {

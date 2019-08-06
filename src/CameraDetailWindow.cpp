@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -66,6 +65,7 @@ CameraDetailWindow::CameraDetailWindow (const StdString &agentId, SpriteGroup *c
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
+	setCornerRadius (uiconfig->cornerRadius);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
 	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeCameraIconSprite)));

@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -35,7 +34,6 @@
 #include "StdString.h"
 #include "App.h"
 #include "Resource.h"
-#include "Json.h"
 #include "UiText.h"
 
 const StdString UiText::defaultLanguage = StdString ("en");
@@ -109,27 +107,4 @@ StdString UiText::getCountText (int64_t amount, int singularStringIndex, int plu
 
 StdString UiText::getCountText (int amount, int singularStringIndex, int pluralStringIndex) {
 	return (getCountText ((int64_t) amount, singularStringIndex, pluralStringIndex));
-}
-
-StdString UiText::getMonitorStatusText (Json *monitorStatus) {
-	StdString name, text;
-	int truncateLength = 24;
-
-	if (monitorStatus->getBoolean ("isPlaying", false)) {
-		name = monitorStatus->getString ("mediaName", "");
-		if (! name.empty ()) {
-			text.sprintf ("%s %s", getText (UiTextString::playing).capitalized ().c_str (), name.truncated (truncateLength).c_str ());
-		}
-	}
-	else if (monitorStatus->getBoolean ("isShowingUrl", false)) {
-		name = monitorStatus->getString ("showUrl", "");
-		if (! name.empty ()) {
-			text.sprintf ("%s %s", getText (UiTextString::showing).capitalized ().c_str (), name.truncated (truncateLength).c_str ());
-		}
-	}
-
-	if (text.empty ()) {
-		text.assign (getText (UiTextString::inactive).capitalized ());
-	}
-	return (text);
 }

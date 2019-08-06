@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -53,6 +52,7 @@
 #include "CardView.h"
 #include "ServerWindow.h"
 #include "ServerContactWindow.h"
+#include "ServerAttachWindow.h"
 #include "AdminSecretWindow.h"
 #include "ServerAdminUi.h"
 #include "ServerUi.h"
@@ -61,7 +61,8 @@ ServerUi::ServerUi ()
 : Ui ()
 , cardView (NULL)
 , adminSecretWindow (NULL)
-, agentCount (0)
+, attachedServerCount (0)
+, unattachedServerCount (0)
 {
 
 }
@@ -84,7 +85,7 @@ void ServerUi::setHelpWindowContent (HelpWindow *helpWindow) {
 	uitext = &(App::instance->uiText);
 
 	helpWindow->setHelpText (uitext->getText (UiTextString::serverUiHelpTitle), uitext->getText (UiTextString::serverUiHelpText));
-	if (agentCount <= 0) {
+	if ((attachedServerCount <= 0) && (unattachedServerCount <= 0)) {
 		helpWindow->addAction (uitext->getText (UiTextString::serverUiHelpAction1Text), uitext->getText (UiTextString::learnMore).capitalized (), App::getHelpUrl ("servers"));
 	}
 	else {
@@ -103,7 +104,8 @@ int ServerUi::doLoad () {
 
 	cardView = (CardView *) addWidget (new CardView (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight));
 	cardView->isKeyboardScrollEnabled = true;
-	cardView->setRowHeader (ServerUi::AgentRow, createRowHeaderPanel (uitext->getText (UiTextString::serverUiNetworkAgentsTitle)));
+	cardView->setRowHeader (ServerUi::AttachedServerRow, createRowHeaderPanel (uitext->getText (UiTextString::serverUiAttachedAgentsTitle)));
+	cardView->setRowHeader (ServerUi::UnattachedServerRow, createRowHeaderPanel (uitext->getText (UiTextString::serverUiUnattachedAgentsTitle)));
 	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 
 	adminSecretWindow = new AdminSecretWindow ();
@@ -166,6 +168,7 @@ void ServerUi::doResume () {
 	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 
 	adminSecretWindow->readItems ();
+	App::instance->shouldSyncRecordStore = true;
 }
 
 void ServerUi::doRefresh () {
@@ -174,12 +177,44 @@ void ServerUi::doRefresh () {
 }
 
 void ServerUi::doPause () {
+	StringList items;
 
+	items.clear ();
+	cardView->processItems (ServerUi::appendUnexpandedAgentId, &items);
+	if (items.empty ()) {
+		App::instance->prefsMap.remove (App::ServerUiUnexpandedAgentsKey);
+	}
+	else {
+		App::instance->prefsMap.insert (App::ServerUiUnexpandedAgentsKey, &items);
+	}
+}
+
+void ServerUi::appendUnexpandedAgentId (void *stringListPtr, Widget *widgetPtr) {
+	ServerWindow *server;
+
+	server = ServerWindow::castWidget (widgetPtr);
+	if (server && (! server->isExpanded)) {
+		((StringList *) stringListPtr)->push_back (server->agentId);
+	}
 }
 
 void ServerUi::doUpdate (int msElapsed) {
+	AgentControl *agentcontrol;
+	RecordStore *store;
+	UiConfiguration *uiconfig;
+	UiText *uitext;
+	StringList items;
 	StringList::iterator i, end;
+	StdString id;
+	ServerWindow *server;
+	ServerAttachWindow *attach;
+	IconCardWindow *emptycard;
+	int attachcount, unattachcount;
 
+	agentcontrol = &(App::instance->agentControl);
+	store = &(App::instance->agentControl.recordStore);
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 	addressToggle.compact ();
 	if (addressToggle.widget) {
 		if (addressTextFieldWindow.widget && addressTextFieldWindow.widget->isDestroyed) {
@@ -201,26 +236,91 @@ void ServerUi::doUpdate (int msElapsed) {
 		cardView->refresh ();
 		cardIdList.clear ();
 	}
+
+	attachcount = 0;
+	unattachcount = 0;
+	agentcontrol->getAgentIds (&agentIdList);
+	i = agentIdList.begin ();
+	end = agentIdList.end ();
+	while (i != end) {
+		if (agentcontrol->isAgentAttached (*i)) {
+			++attachcount;
+			id.assign (*i);
+			if (! cardView->contains (id)) {
+				server = new ServerWindow (id);
+				server->setExpandStateChangeCallback (ServerUi::serverExpandStateChanged, this);
+				server->setStatusChangeCallback (ServerUi::serverStatusChanged, this);
+				server->setCheckForUpdatesClickCallback (ServerUi::serverCheckForUpdatesActionClicked, this);
+				server->setAdminClickCallback (ServerUi::serverAdminActionClicked, this);
+				server->setDetachClickCallback (ServerUi::serverDetachActionClicked, this);
+				server->setRemoveClickCallback (ServerUi::serverRemoveActionClicked, this);
+
+				store->lock ();
+				server->syncRecordStore ();
+				store->unlock ();
+
+				App::instance->prefsMap.find (App::ServerUiUnexpandedAgentsKey, &items);
+				if (! items.contains (id)) {
+					server->setExpanded (true, true);
+				}
+				server->animateNewCard ();
+
+				server->sortKey.assign (server->agentDisplayName.lowercased ());
+				cardView->addItem (server, id, ServerUi::AttachedServerRow);
+			}
+		}
+		else {
+			++unattachcount;
+			id.sprintf ("%s_%i", (*i).c_str (), ServerUi::UnattachedServerRow);
+			if (! cardView->contains (id)) {
+				attach = new ServerAttachWindow (*i);
+				attach->setAttachClickCallback (ServerUi::serverAttachActionClicked, this);
+				attach->setRemoveClickCallback (ServerUi::serverRemoveActionClicked, this);
+				attach->refreshAgentData ();
+				attach->sortKey.assign (attach->agentDisplayName.lowercased ());
+				cardView->addItem (attach, id, ServerUi::UnattachedServerRow);
+			}
+		}
+		++i;
+	}
+	attachedServerCount = attachcount;
+	unattachedServerCount = unattachcount;
+
+	emptycard = (IconCardWindow *) emptyServerWindow.widget;
+	if ((attachedServerCount <= 0) && (unattachedServerCount <= 0)) {
+		if (! emptycard) {
+			emptycard = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::LargeErrorIconSprite), uitext->getText (UiTextString::serverUiEmptyAgentStatusTitle), StdString (""), uitext->getText (UiTextString::serverUiEmptyAgentStatusText1));
+			emptycard->setLink (uitext->getText (UiTextString::learnMore).capitalized (), App::getHelpUrl ("servers"));
+			emptycard->itemId.assign (cardView->getAvailableItemId ());
+			cardView->addItem (emptycard, emptycard->itemId, ServerUi::AttachedServerRow);
+			emptyServerWindow.assign (emptycard);
+		}
+	}
+	else if (attachedServerCount <= 0) {
+		if (! emptycard) {
+			emptycard = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::LargeErrorIconSprite), uitext->getText (UiTextString::serverUiEmptyAgentStatusTitle), StdString (""), uitext->getText (UiTextString::serverUiEmptyAgentStatusText2));
+			emptycard->itemId.assign (cardView->getAvailableItemId ());
+			cardView->addItem (emptycard, emptycard->itemId, ServerUi::AttachedServerRow);
+			emptyServerWindow.assign (emptycard);
+		}
+	}
+	else {
+		if (emptycard) {
+			cardView->removeItem (emptycard->itemId);
+			emptyServerWindow.clear ();
+		}
+	}
 }
 
 void ServerUi::findDeletedWindows (void *uiPtr, Widget *widgetPtr) {
 	ServerUi *ui;
-	ServerWindow *serverwindow;
 	ServerContactWindow *servercontactwindow;
 
 	ui = (ServerUi *) uiPtr;
-	serverwindow = ServerWindow::castWidget (widgetPtr);
-	if (serverwindow) {
-		if (serverwindow->isRecordDeleted) {
-			ui->cardIdList.push_back (serverwindow->itemId);
-		}
-	}
-	else {
-		servercontactwindow = ServerContactWindow::castWidget (widgetPtr);
-		if (servercontactwindow) {
-			if (servercontactwindow->isDeleted) {
-				ui->cardIdList.push_back (servercontactwindow->itemId);
-			}
+	servercontactwindow = ServerContactWindow::castWidget (widgetPtr);
+	if (servercontactwindow) {
+		if (servercontactwindow->isDeleted) {
+			ui->cardIdList.push_back (servercontactwindow->itemId);
 		}
 	}
 }
@@ -235,67 +335,8 @@ void ServerUi::doResize () {
 }
 
 void ServerUi::doSyncRecordStore () {
-	RecordStore *store;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
-	IconCardWindow *window;
-
-	store = &(App::instance->agentControl.recordStore);
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-
-	agentCount = 0;
-	store->processCommandRecords (SystemInterface::CommandId_AgentStatus, ServerUi::processAgentStatus, this);
-	cardView->processItems (ServerUi::countServerContactWindows, this);
-
-	window = (IconCardWindow *) emptyServerWindow.widget;
-	if (agentCount > 0) {
-		if (window) {
-			cardView->removeItem (window->itemId);
-			emptyServerWindow.clear ();
-		}
-	}
-	else {
-		if (! window) {
-			window = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::LargeErrorIconSprite), uitext->getText (UiTextString::serverUiEmptyAgentStatusTitle), StdString (""), uitext->getText (UiTextString::serverUiEmptyAgentStatusText));
-			window->setLink (uitext->getText (UiTextString::learnMore).capitalized (), App::getHelpUrl ("servers"));
-			emptyServerWindow.assign (window);
-
-			window->itemId.assign (cardView->getAvailableItemId ());
-			cardView->addItem (window, window->itemId, ServerUi::AgentRow);
-		}
-	}
-
 	cardView->syncRecordStore ();
 	cardView->refresh ();
-}
-
-void ServerUi::countServerContactWindows (void *uiPtr, Widget *widgetPtr) {
-	ServerUi *ui;
-
-	ui = (ServerUi *) uiPtr;
-	if (ServerContactWindow::isWidgetType (widgetPtr)) {
-		++(ui->agentCount);
-	}
-}
-
-void ServerUi::processAgentStatus (void *uiPtr, Json *record, const StdString &recordId) {
-	ServerUi *ui;
-	SystemInterface *interface;
-	ServerWindow *window;
-
-	ui = (ServerUi *) uiPtr;
-	interface = &(App::instance->systemInterface);
-	++(ui->agentCount);
-
-	if (! ui->cardView->contains (recordId)) {
-		window = new ServerWindow (recordId);
-		window->sortKey.assign (interface->getCommandAgentName (record).lowercased ());
-		window->setMenuClickCallback (ServerUi::agentMenuClicked, ui);
-		window->itemId.assign (recordId);
-		ui->cardView->addItem (window, recordId, ServerUi::AgentRow);
-		window->animateNewCard ();
-	}
 }
 
 void ServerUi::reloadButtonClicked (void *uiPtr, Widget *widgetPtr) {
@@ -303,7 +344,6 @@ void ServerUi::reloadButtonClicked (void *uiPtr, Widget *widgetPtr) {
 
 	ui = (ServerUi *) uiPtr;
 	ui->cardView->processItems (ServerUi::reloadAgent, ui);
-	App::instance->agentControl.retryAgents ();
 }
 
 void ServerUi::reloadAgent (void *uiPtr, Widget *widgetPtr) {
@@ -377,7 +417,7 @@ void ServerUi::addressTextFieldEdited (void *uiPtr, Widget *widgetPtr) {
 		return;
 	}
 
-	if (App::instance->agentControl.isContacted (hostname, port)) {
+	if (App::instance->agentControl.isHostContacted (hostname, port)) {
 		App::instance->agentControl.refreshAgentStatus (hostname, port);
 		return;
 	}
@@ -391,7 +431,7 @@ void ServerUi::addressTextFieldEdited (void *uiPtr, Widget *widgetPtr) {
 		window->setStateChangeCallback (ServerUi::serverContactWindowStateChanged, ui);
 		window->sortKey.assign (address.lowercased ());
 		window->itemId.assign (key);
-		ui->cardView->addItem (window, window->itemId, ServerUi::AgentRow);
+		ui->cardView->addItem (window, window->itemId, ServerUi::AttachedServerRow);
 	}
 	App::instance->shouldSyncRecordStore = true;
 }
@@ -410,72 +450,46 @@ void ServerUi::addressSnackbarHelpClicked (void *uiPtr, Widget *widgetPtr) {
 	}
 }
 
-void ServerUi::agentMenuClicked (void *uiPtr, Widget *widgetPtr) {
+void ServerUi::serverStatusChanged (void *uiPtr, Widget *widgetPtr) {
 	ServerUi *ui;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
-	ServerWindow *target;
-	Menu *action;
-	bool show;
 
 	ui = (ServerUi *) uiPtr;
-	target = (ServerWindow *) widgetPtr;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-
-	show = true;
-	if (Menu::isWidgetType (ui->actionWidget.widget) && (ui->actionTarget.widget == target)) {
-		show = false;
-	}
-
-	ui->clearPopupWidgets ();
-	if (! show) {
-		return;
-	}
-
-	action = (Menu *) App::instance->rootPanel->addWidget (new Menu ());
-	ui->actionWidget.assign (action);
-	ui->actionTarget.assign (target);
-
-	action->addItem (uitext->getText (UiTextString::adminConsole).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::AgentAdminButtonSprite), ServerUi::agentAdminActionClicked, ui);
-	if (! target->applicationId.empty ()) {
-		action->addItem (uitext->getText (UiTextString::checkForUpdates).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::UpdateButtonSprite), ServerUi::agentUpdateActionClicked, ui);
-	}
-
-	action->addItem (uitext->getText (UiTextString::remove).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite), ServerUi::agentRemoveActionClicked, ui);
-
-	action->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
-	action->isClickDestroyEnabled = true;
-	action->position.assign (target->screenX + target->width - action->width - uiconfig->marginSize, target->screenY + target->menuPositionY);
+	ui->cardView->refresh ();
 }
 
-void ServerUi::agentAdminActionClicked (void *uiPtr, Widget *widgetPtr) {
+void ServerUi::serverExpandStateChanged (void *uiPtr, Widget *widgetPtr) {
 	ServerUi *ui;
-	ServerWindow *target;
 
 	ui = (ServerUi *) uiPtr;
-	target = ServerWindow::castWidget (ui->actionTarget.widget);
-	if (! target) {
-		return;
-	}
-
-	App::instance->uiStack.pushUi (new ServerAdminUi (target->agentId, target->agentDisplayName));
+	ui->cardView->refresh ();
 }
 
-void ServerUi::agentUpdateActionClicked (void *uiPtr, Widget *widgetPtr) {
+void ServerUi::serverAttachActionClicked (void *uiPtr, Widget *widgetPtr) {
 	ServerUi *ui;
-	ServerWindow *target;
+	ServerAttachWindow *server;
+	StdString agentid;
+
+	ui = (ServerUi *) uiPtr;
+	server = (ServerAttachWindow *) widgetPtr;
+	agentid = server->agentId;
+
+	App::instance->agentControl.setAgentAttached (agentid, true);
+	ui->cardView->removeItem (agentid);
+	ui->cardView->removeItem (StdString::createSprintf ("%s_%i", agentid.c_str (), ServerUi::UnattachedServerRow));
+	App::instance->shouldSyncRecordStore = true;
+}
+
+void ServerUi::serverCheckForUpdatesActionClicked (void *uiPtr, Widget *widgetPtr) {
+	ServerUi *ui;
+	ServerWindow *server;
 	StdString url;
 	int result;
 
 	ui = (ServerUi *) uiPtr;
-	target = ServerWindow::castWidget (ui->actionTarget.widget);
-	if (! target) {
-		return;
-	}
+	server = (ServerWindow *) widgetPtr;
 
 	ui->clearPopupWidgets ();
-	url.assign (App::getUpdateUrl (target->applicationId));
+	url.assign (App::getUpdateUrl (server->applicationId));
 	result = OsUtil::openUrl (url);
 	if (result != Result::Success) {
 		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::openUpdateUrlError));
@@ -485,16 +499,102 @@ void ServerUi::agentUpdateActionClicked (void *uiPtr, Widget *widgetPtr) {
 	}
 }
 
-void ServerUi::agentRemoveActionClicked (void *uiPtr, Widget *widgetPtr) {
+void ServerUi::serverAdminActionClicked (void *uiPtr, Widget *widgetPtr) {
+	ServerWindow *server;
+
+	server = (ServerWindow *) widgetPtr;
+	App::instance->uiStack.pushUi (new ServerAdminUi (server->agentId, server->agentDisplayName));
+}
+
+void ServerUi::serverDetachActionClicked (void *uiPtr, Widget *widgetPtr) {
 	ServerUi *ui;
-	ServerWindow *target;
+	ServerWindow *server;
+	StdString agentid;
 
 	ui = (ServerUi *) uiPtr;
-	target = ServerWindow::castWidget (ui->actionTarget.widget);
-	if (target) {
-		App::instance->agentControl.removeAgent (target->agentId);
-		ui->cardView->removeItem (target->agentId);
+	server = (ServerWindow *) widgetPtr;
+	agentid = server->agentId;
+
+	App::instance->agentControl.setAgentAttached (agentid, false);
+	ui->cardView->removeItem (agentid);
+	ui->cardView->removeItem (StdString::createSprintf ("%s_%i", agentid.c_str (), ServerUi::UnattachedServerRow));
+	App::instance->shouldSyncRecordStore = true;
+}
+
+void ServerUi::serverRemoveActionClicked (void *uiPtr, Widget *widgetPtr) {
+	ServerUi *ui;
+	UiConfiguration *uiconfig;
+	UiText *uitext;
+	ActionWindow *action;
+	bool show;
+	float x, y;
+
+	ui = (ServerUi *) uiPtr;
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
+
+	show = true;
+	if (ActionWindow::isWidgetType (ui->actionWidget.widget) && (ui->actionTarget.widget == widgetPtr)) {
+		show = false;
 	}
+
+	ui->clearPopupWidgets ();
+	if (! show) {
+		return;
+	}
+
+	action = (ActionWindow *) App::instance->rootPanel->addWidget (new ActionWindow ());
+	action->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
+	action->setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
+	action->setInverseColor (true);
+	if (ServerWindow::isWidgetType (widgetPtr)) {
+		action->setTitleText (((ServerWindow *) widgetPtr)->agentDisplayName);
+		action->setDescriptionText (uitext->getText (UiTextString::removeAttachedServerDescription));
+	}
+	else if (ServerAttachWindow::isWidgetType (widgetPtr)) {
+		action->setTitleText (((ServerAttachWindow *) widgetPtr)->agentDisplayName);
+		action->setDescriptionText (uitext->getText (UiTextString::removeUnattachedServerDescription));
+	}
+	action->setConfirmButtonText (uitext->getText (UiTextString::removeServer).uppercased ());
+	action->setCloseCallback (ServerUi::serverRemoveActionClosed, ui);
+
+	x = widgetPtr->screenX + widgetPtr->width;
+	if ((x + action->width) >= (float) App::instance->windowWidth) {
+		x = widgetPtr->screenX + widgetPtr->width - action->width;
+		y = widgetPtr->screenY + widgetPtr->height;
+	}
+	else {
+		y = widgetPtr->screenY + widgetPtr->height - action->height;
+	}
+	action->position.assign (x, y);
+
+	ui->actionWidget.assign (action);
+	ui->actionTarget.assign (widgetPtr);
+}
+
+void ServerUi::serverRemoveActionClosed (void *uiPtr, Widget *widgetPtr) {
+	ServerUi *ui;
+	ActionWindow *action;
+	Widget *target;
+	StdString agentid;
+
+	ui = (ServerUi *) uiPtr;
+	action = (ActionWindow *) widgetPtr;
+	target = ui->actionTarget.widget;
+	if (ServerWindow::isWidgetType (target)) {
+		agentid = ((ServerWindow *) target)->agentId;
+	}
+	else if (ServerAttachWindow::isWidgetType (target)) {
+		agentid = ((ServerAttachWindow *) target)->agentId;
+	}
+	if ((! action->isConfirmed) || agentid.empty ()) {
+		ui->clearPopupWidgets ();
+		return;
+	}
+
+	App::instance->agentControl.removeAgent (agentid);
+	ui->cardView->removeItem (agentid);
+	ui->cardView->removeItem (StdString::createSprintf ("%s_%i", agentid.c_str (), ServerUi::UnattachedServerRow));
 	ui->clearPopupWidgets ();
 	App::instance->shouldSyncRecordStore = true;
 }

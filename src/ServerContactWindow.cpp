@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -82,14 +81,14 @@ ServerContactWindow::ServerContactWindow (const StdString &displayName, const St
 	progressBar = (ProgressBar *) addWidget (new ProgressBar (1.0f, uiconfig->progressBarHeight));
 	progressBar->zLevel = 1;
 	progressBar->setIndeterminate (true);
-	progressBar->isVisible = false;
 
 	deleteButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
 	deleteButton->setMouseClickCallback (ServerContactWindow::deleteButtonClicked, this);
+	deleteButton->setMouseHoverTooltip (uitext->getText (UiTextString::remove).capitalized ());
 	deleteButton->setImageColor (uiconfig->flatButtonTextColor);
 	deleteButton->isVisible = false;
 
-	layout = ServerContactWindow::CONTACTING;
+	layout = ServerContactWindow::ContactingLayout;
 	refreshLayout ();
 }
 
@@ -121,20 +120,20 @@ void ServerContactWindow::doUpdate (int msElapsed) {
 	Panel::doUpdate (msElapsed);
 	uitext = &(App::instance->uiText);
 	curlayout = layout;
-	if (App::instance->agentControl.isContacted (agentHostname, agentPort)) {
-		curlayout = ServerContactWindow::IDLE;
+	if (App::instance->agentControl.isHostContacted (agentHostname, agentPort)) {
+		curlayout = ServerContactWindow::IdleLayout;
 		isDeleted = true;
 	}
-	else if (App::instance->agentControl.isContacting (agentHostname, agentPort)) {
-		curlayout = ServerContactWindow::CONTACTING;
+	else if (App::instance->agentControl.isHostContacting (agentHostname, agentPort)) {
+		curlayout = ServerContactWindow::ContactingLayout;
 	}
 	else {
-		if (curlayout == ServerContactWindow::CONTACTING) {
-			if (App::instance->agentControl.isUnauthorized (agentHostname, agentPort)) {
-				curlayout = ServerContactWindow::UNAUTHORIZED;
+		if (curlayout == ServerContactWindow::ContactingLayout) {
+			if (App::instance->agentControl.isHostUnauthorized (agentHostname, agentPort)) {
+				curlayout = ServerContactWindow::UnauthorizedLayout;
 			}
 			else {
-				curlayout = ServerContactWindow::FAILED;
+				curlayout = ServerContactWindow::FailedLayout;
 			}
 		}
 	}
@@ -142,14 +141,14 @@ void ServerContactWindow::doUpdate (int msElapsed) {
 	if (curlayout != layout) {
 		layout = curlayout;
 		switch (layout) {
-			case ServerContactWindow::IDLE: {
+			case ServerContactWindow::IdleLayout: {
 				progressBar->isVisible = false;
 				statusLabel->isVisible = false;
 				detailText->isVisible = false;
 				deleteButton->isVisible = false;
 				break;
 			}
-			case ServerContactWindow::CONTACTING: {
+			case ServerContactWindow::ContactingLayout: {
 				progressBar->isVisible = true;
 				statusLabel->setText (uitext->getText (UiTextString::serverUiContactingAgentDescription));
 				statusLabel->isVisible = true;
@@ -157,7 +156,7 @@ void ServerContactWindow::doUpdate (int msElapsed) {
 				deleteButton->isVisible = false;
 				break;
 			}
-			case ServerContactWindow::UNAUTHORIZED: {
+			case ServerContactWindow::UnauthorizedLayout: {
 				progressBar->isVisible = false;
 				statusLabel->setText (uitext->getText (UiTextString::serverUiUnauthorizedErrorTitle));
 				statusLabel->isVisible = true;
@@ -166,7 +165,7 @@ void ServerContactWindow::doUpdate (int msElapsed) {
 				deleteButton->isVisible = true;
 				break;
 			}
-			case ServerContactWindow::FAILED: {
+			case ServerContactWindow::FailedLayout: {
 				progressBar->isVisible = false;
 				statusLabel->setText (uitext->getText (UiTextString::serverUiFailedContactErrorTitle));
 				statusLabel->isVisible = true;
@@ -211,9 +210,8 @@ void ServerContactWindow::refreshLayout () {
 	}
 
 	resetSize ();
-	x = width;
 	if (deleteButton->isVisible) {
-		deleteButton->flowLeft (&x);
+		deleteButton->position.assignX (width - widthPadding - deleteButton->width);
 	}
 	if (progressBar->isVisible) {
 		progressBar->position.assign (0.0f, height - progressBar->height);

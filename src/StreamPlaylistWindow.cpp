@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -97,6 +96,7 @@ StreamPlaylistWindow::StreamPlaylistWindow ()
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 	setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
+	setCornerRadius (uiconfig->cornerRadius);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 	windowWidth = App::instance->windowWidth * StreamPlaylistWindow::windowWidthMultiplier;
 
@@ -246,27 +246,22 @@ void StreamPlaylistWindow::setPlaylistName (const StdString &name) {
 }
 
 void StreamPlaylistWindow::setSelected (bool selected, bool shouldSkipStateChangeCallback) {
-	Widget::EventCallback callback;
-	void *callbackdata;
+	UiConfiguration *uiconfig;
 
 	if (selected == isSelected) {
 		return;
 	}
-	callback = NULL;
-	callbackdata = NULL;
-	if (shouldSkipStateChangeCallback) {
-		callback = selectStateChangeCallback;
-		callbackdata = selectStateChangeCallbackData;
-		selectStateChangeCallback = NULL;
-		selectStateChangeCallbackData = NULL;
-	}
+
+	uiconfig = &(App::instance->uiConfig);
 	isSelected = selected;
-	selectToggle->setChecked (isSelected);
-	refreshLayout ();
-	if (shouldSkipStateChangeCallback) {
-		selectStateChangeCallback = callback;
-		selectStateChangeCallbackData = callbackdata;
+	selectToggle->setChecked (isSelected, shouldSkipStateChangeCallback);
+	if (isSelected) {
+		setCornerRadius (0, uiconfig->cornerRadius, 0, uiconfig->cornerRadius);
 	}
+	else {
+		setCornerRadius (uiconfig->cornerRadius);
+	}
+	refreshLayout ();
 }
 
 void StreamPlaylistWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallback) {
@@ -446,10 +441,19 @@ void StreamPlaylistWindow::nameLabelClicked (void *windowPtr, Widget *widgetPtr)
 void StreamPlaylistWindow::selectToggleStateChanged (void *windowPtr, Widget *widgetPtr) {
 	StreamPlaylistWindow *window;
 	Toggle *toggle;
+	UiConfiguration *uiconfig;
 
 	window = (StreamPlaylistWindow *) windowPtr;
 	toggle = (Toggle *) widgetPtr;
+	uiconfig = &(App::instance->uiConfig);
+
 	window->isSelected = toggle->isChecked;
+	if (window->isSelected) {
+		window->setCornerRadius (0, uiconfig->cornerRadius, 0, uiconfig->cornerRadius);
+	}
+	else {
+		window->setCornerRadius (uiconfig->cornerRadius);
+	}
 	if (window->selectStateChangeCallback) {
 		window->selectStateChangeCallback (window->selectStateChangeCallbackData, window);
 	}

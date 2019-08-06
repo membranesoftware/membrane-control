@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -122,7 +121,9 @@ int AgentControl::start () {
 	i = agentMap.begin ();
 	end = agentMap.end ();
 	while (i != end) {
-		idlist.push_back (i->first);
+		if (i->second.isAttached) {
+			idlist.push_back (i->first);
+		}
 		++i;
 	}
 	SDL_UnlockMutex (agentMapMutex);
@@ -197,6 +198,118 @@ void AgentControl::connectLinkClient (const StdString &agentId) {
 	linkClient.connect (agentId, url);
 }
 
+void AgentControl::getAgentIds (StringList *destList) {
+	std::map<StdString, Agent>::iterator i, end;
+
+	destList->clear ();
+	SDL_LockMutex (agentMapMutex);
+	i = agentMap.begin ();
+	end = agentMap.end ();
+	while (i != end) {
+		destList->push_back (i->first);
+		++i;
+	}
+	SDL_UnlockMutex (agentMapMutex);
+}
+
+void AgentControl::setAgentAttached (const StdString &agentId, bool attached) {
+	std::map<StdString, Agent>::iterator pos;
+	bool found;
+
+	found = false;
+	SDL_LockMutex (agentMapMutex);
+	pos = agentMap.find (agentId);
+	if (pos != agentMap.end ()) {
+		if (attached != pos->second.isAttached) {
+			found = true;
+			pos->second.isAttached = attached;
+		}
+	}
+	SDL_UnlockMutex (agentMapMutex);
+
+	if (found) {
+		if (attached) {
+			refreshAgentStatus (agentId);
+		}
+		else {
+			recordStore.removeRecord (agentId);
+		}
+		writePrefs ();
+	}
+}
+
+bool AgentControl::isAgentAttached (const StdString &agentId) {
+	std::map<StdString, Agent>::iterator pos;
+	bool result;
+
+	result = false;
+	SDL_LockMutex (agentMapMutex);
+	pos = agentMap.find (agentId);
+	if (pos != agentMap.end ()) {
+		result = pos->second.isAttached;
+	}
+	SDL_UnlockMutex (agentMapMutex);
+
+	return (result);
+}
+
+bool AgentControl::isAgentContacting (const StdString &agentId) {
+	std::map<StdString, Agent>::iterator pos;
+	StdString hostname;
+	int port;
+
+	port = 0;
+	SDL_LockMutex (agentMapMutex);
+	pos = findAgent (agentId);
+	if (pos != agentMap.end ()) {
+		hostname.assign (pos->second.invokeHostname);
+		port = pos->second.invokeTcpPort1;
+	}
+	SDL_UnlockMutex (agentMapMutex);
+	if (hostname.empty () || (port <= 0)) {
+		return (false);
+	}
+
+	return (isHostContacting (hostname, port));
+}
+
+bool AgentControl::isAgentContacted (const StdString &agentId) {
+	std::map<StdString, Agent>::iterator pos;
+	bool result;
+
+	result = false;
+	SDL_LockMutex (agentMapMutex);
+	pos = agentMap.find (agentId);
+	if (pos != agentMap.end ()) {
+		if (pos->second.lastStatusTime > 0) {
+			result = true;
+		}
+	}
+	SDL_UnlockMutex (agentMapMutex);
+
+	return (result);
+}
+
+bool AgentControl::isAgentUnauthorized (const StdString &agentId) {
+	std::map<StdString, Agent>::iterator pos;
+	StdString hostname;
+	int port;
+
+	port = 0;
+	SDL_LockMutex (agentMapMutex);
+	pos = findAgent (agentId);
+	if (pos != agentMap.end ()) {
+		hostname.assign (pos->second.invokeHostname);
+		port = pos->second.invokeTcpPort1;
+	}
+	SDL_UnlockMutex (agentMapMutex);
+	if (hostname.empty () || (port <= 0)) {
+		return (false);
+	}
+
+	return (isHostUnauthorized (hostname, port));
+}
+
 void AgentControl::disconnectLinkClient (const StdString &agentId) {
 	linkClient.disconnect (agentId);
 }
@@ -221,7 +334,7 @@ void AgentControl::writeLinkCommand (Json *command, const StdString &agentId) {
 	linkClient.writeCommand (command, agentId);
 }
 
-bool AgentControl::isContacted (const StdString &invokeHostname, int invokePort) {
+bool AgentControl::isHostContacted (const StdString &invokeHostname, int invokePort) {
 	std::map<StdString, Agent>::iterator pos;
 	bool result;
 
@@ -238,7 +351,7 @@ bool AgentControl::isContacted (const StdString &invokeHostname, int invokePort)
 	return (result);
 }
 
-bool AgentControl::isContacting (const StdString &invokeHostname, int invokePort) {
+bool AgentControl::isHostContacting (const StdString &invokeHostname, int invokePort) {
 	CommandList *cmdlist;
 	bool result;
 
@@ -253,7 +366,7 @@ bool AgentControl::isContacting (const StdString &invokeHostname, int invokePort
 	return (result);
 }
 
-bool AgentControl::isUnauthorized (const StdString &invokeHostname, int invokePort) {
+bool AgentControl::isHostUnauthorized (const StdString &invokeHostname, int invokePort) {
 	CommandList *cmdlist;
 	bool result;
 
@@ -266,6 +379,23 @@ bool AgentControl::isUnauthorized (const StdString &invokeHostname, int invokePo
 	SDL_UnlockMutex (commandMapMutex);
 
 	return (result);
+}
+
+StdString AgentControl::getAgentHostAddress (const StdString &agentId) {
+	StdString s;
+	std::map<StdString, Agent>::iterator pos;
+
+	SDL_LockMutex (agentMapMutex);
+	pos = agentMap.find (agentId);
+	if (pos != agentMap.end ()) {
+		s.assign (pos->second.invokeHostname);
+		if (pos->second.invokeTcpPort1 != SystemInterface::Constant_DefaultTcpPort1) {
+			s.appendSprintf (":%i", pos->second.invokeTcpPort1);
+		}
+	}
+	SDL_UnlockMutex (agentMapMutex);
+
+	return (s);
 }
 
 StdString AgentControl::getAgentDisplayName (const StdString &agentId) {
@@ -285,6 +415,35 @@ StdString AgentControl::getAgentDisplayName (const StdString &agentId) {
 	SDL_UnlockMutex (agentMapMutex);
 
 	return (s);
+}
+
+StdString AgentControl::getAgentApplicationName (const StdString &agentId) {
+	StdString s;
+	std::map<StdString, Agent>::iterator pos;
+
+	SDL_LockMutex (agentMapMutex);
+	pos = agentMap.find (agentId);
+	if (pos != agentMap.end ()) {
+		s.assign (pos->second.applicationName);
+	}
+	SDL_UnlockMutex (agentMapMutex);
+
+	return (s);
+}
+
+int AgentControl::getAgentServerType (const StdString &agentId) {
+	int type;
+	std::map<StdString, Agent>::iterator pos;
+
+	type = -1;
+	SDL_LockMutex (agentMapMutex);
+	pos = agentMap.find (agentId);
+	if (pos != agentMap.end ()) {
+		type = pos->second.serverType;
+	}
+	SDL_UnlockMutex (agentMapMutex);
+
+	return (type);
 }
 
 StdString AgentControl::getAgentInvokeUrl (const StdString &agentId, Json *command, const StdString &path) {
@@ -400,30 +559,6 @@ StdString AgentControl::getStringHash (const StdString &sourceString) {
 
 void AgentControl::contactAgent (const StdString &hostname, int tcpPort) {
 	invokeCommand (hostname, tcpPort, App::instance->createCommand (SystemInterface::Command_GetStatus, SystemInterface::Constant_DefaultCommandType), AgentControl::invokeGetStatusComplete, this);
-}
-
-void AgentControl::retryAgents () {
-	std::map<StdString, Agent>::iterator i, end;
-	StringList idlist;
-	StringList::iterator j, jend;
-
-	SDL_LockMutex (agentMapMutex);
-	i = agentMap.begin ();
-	end = agentMap.end ();
-	while (i != end) {
-		if (i->second.lastStatusTime <= 0) {
-			idlist.push_back (i->first);
-		}
-		++i;
-	}
-	SDL_UnlockMutex (agentMapMutex);
-
-	j = idlist.begin ();
-	jend = idlist.end ();
-	while (j != jend) {
-		refreshAgentStatus (*j);
-		++j;
-	}
 }
 
 bool AgentControl::isAgentInvoking (const StdString &agentId) {
@@ -616,13 +751,24 @@ void AgentControl::receiveMessage (const char *messageData, int messageLength) {
 
 void AgentControl::invokeGetStatusComplete (void *agentControlPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand) {
 	AgentControl *agentcontrol;
+	SystemInterface *interface;
+	std::map<StdString, Agent>::iterator pos;
 
 	agentcontrol = (AgentControl *) agentControlPtr;
+	interface = &(App::instance->systemInterface);
 
-	if (responseCommand) {
+	if (responseCommand && (interface->getCommandId (responseCommand) == SystemInterface::CommandId_AgentStatus)) {
 		agentcontrol->storeAgentStatus (responseCommand, invokeHostname, invokeTcpPort);
-		App::instance->shouldSyncRecordStore = true;
 	}
+	else {
+		SDL_LockMutex (agentcontrol->agentMapMutex);
+		pos = agentcontrol->findAgent (invokeHostname, invokeTcpPort);
+		if (pos != agentcontrol->agentMap.end ()) {
+			pos->second.lastStatusTime = 0;
+		}
+		SDL_UnlockMutex (agentcontrol->agentMapMutex);
+	}
+	App::instance->shouldSyncRecordStore = true;
 }
 
 void AgentControl::storeAgentStatus (Json *agentStatusCommand, const StdString &invokeHostname, int invokeTcpPort) {
@@ -665,6 +811,7 @@ void AgentControl::storeAgentStatus (Json *agentStatusCommand, const StdString &
 	linkurl1.assign (pos->second.getLinkUrl ());
 	pos->second.id.assign (recordid);
 	pos->second.lastStatusTime = OsUtil::getTime ();
+	pos->second.isAttached = true;
 	pos->second.readCommand (agentStatusCommand);
 	linkurl2.assign (pos->second.getLinkUrl ());
 	SDL_UnlockMutex (agentMapMutex);

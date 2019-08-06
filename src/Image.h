@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -47,9 +46,14 @@ public:
 	~Image ();
 
 	// Read-write data members
+	float drawAlpha;
+
+	// Read-only data members
 	float maxSpriteWidth;
 	float maxSpriteHeight;
-	float drawAlpha;
+	float drawScale;
+	bool isDrawColorEnabled;
+	Color drawColor;
 
 	// Set the sprite frame for use in drawing the image
 	void setFrame (int frame);
@@ -88,12 +92,9 @@ protected:
 	// Reset the widget's width and height values
 	void resetSize ();
 
-	bool isDrawColorEnabled;
-	Color drawColor;
 	Position translateAlphaValue;
 	SpriteHandle spriteHandle;
 	bool shouldDestroySprite;
-	float drawScale;
 	bool isMouseHighlightScaled;
 	float mouseHighlightScale;
 };

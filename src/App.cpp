@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -39,6 +38,7 @@
 #include "StdString.h"
 #include "Log.h"
 #include "OsUtil.h"
+#include "MathUtil.h"
 #include "Input.h"
 #include "Network.h"
 #include "Panel.h"
@@ -54,6 +54,7 @@ const int App::windowHeights[] = { 432, 576, 720, 900, 1080 };
 const int App::windowSizeCount = 5;
 const float App::fontScales[] = { 0.66f, 0.8f, 1.0f, 1.25f, 1.5f };
 const int App::fontScaleCount = 5;
+const int App::maxCornerRadius = 16;
 const StdString App::serverUrl = StdString ("https://membranesoftware.com/");
 const int64_t App::defaultServerTimeout = 180;
 
@@ -69,6 +70,7 @@ const char *App::AgentStatusKey = "AgentStatus";
 const char *App::MonitorImageSizeKey = "Monitor_ImageSize";
 const char *App::ServerAdminSecretsKey = "ServerAdminSecrets";
 const char *App::ServerTimeoutKey = "ServerTimeout";
+const char *App::ServerUiUnexpandedAgentsKey = "Server_UnexpandedAgents";
 const char *App::WebKioskUiSelectedAgentsKey = "WebKiosk_SelectedAgents";
 const char *App::WebKioskUiExpandedAgentsKey = "WebKiosk_ExpandedAgents";
 const char *App::WebKioskUiPlaylistsKey = "WebKiosk_Playlists";
@@ -145,6 +147,7 @@ App::App ()
 , updateThread (NULL)
 , uniqueIdMutex (NULL)
 , nextUniqueId (1)
+, roundedCornerSprite (NULL)
 , renderTaskMutex (NULL)
 , isSuspendingUpdate (false)
 , updateMutex (NULL)
@@ -169,6 +172,11 @@ App::~App () {
 	if (rootPanel) {
 		rootPanel->release ();
 		rootPanel = NULL;
+	}
+
+	if (roundedCornerSprite) {
+		delete (roundedCornerSprite);
+		roundedCornerSprite = NULL;
 	}
 
 	if (uniqueIdMutex) {
@@ -347,6 +355,8 @@ int App::run () {
 		Log::err ("Failed to load application resources; err=%i", result);
 		return (result);
 	}
+
+	populateRoundedCornerSprite ();
 	populateWidgets ();
 
 	ui = new MainUi ();
@@ -431,9 +441,13 @@ int App::run () {
 	}
 	uiConfig.unload ();
 	agentControl.stop ();
-	writePrefsMap ();
+	if (roundedCornerSprite) {
+		roundedCornerSprite->unload ();
+	}
 	resource.compact ();
 	resource.close ();
+
+	writePrefsMap ();
 
 	SDL_DestroyRenderer (render);
 	render = NULL;
@@ -459,6 +473,107 @@ void App::populateWidgets () {
 		rootPanel->setFixedSize (true, windowWidth, windowHeight);
 	}
 	uiStack.populateWidgets ();
+}
+
+void App::populateRoundedCornerSprite () {
+	Uint32 *pixels, *dest, color, rmask, gmask, bmask, amask;
+	SDL_Surface *surface;
+	SDL_Texture *texture;
+	StdString path;
+	float dist, targetalpha, minalpha, opacity;
+	int radius, x, y, w, h;
+	uint8_t alpha;
+
+	if (roundedCornerSprite) {
+		delete (roundedCornerSprite);
+	}
+	roundedCornerSprite = new Sprite ();
+
+#if SDL_BYTEORDER == SDL_BIG_ENDIAN
+	rmask = 0xFF000000;
+	gmask = 0x00FF0000;
+	bmask = 0x0000FF00;
+	amask = 0x000000FF;
+#else
+	rmask = 0x000000FF;
+	gmask = 0x0000FF00;
+	bmask = 0x00FF0000;
+	amask = 0xFF000000;
+#endif
+	minalpha = 0.1f;
+	opacity = 8.0f;
+	radius = 1;
+	while (radius <= App::maxCornerRadius) {
+		w = (radius * 2) + 1;
+		h = (radius * 2) + 1;
+		pixels = (Uint32 *) malloc (w * h * sizeof (Uint32));
+		if (! pixels) {
+			Log::warning ("Failed to create texture; err=\"Out of memory, dimensions %ix%i\"", radius, radius);
+			delete (roundedCornerSprite);
+			roundedCornerSprite = NULL;
+			return;
+		}
+
+		dest = pixels;
+		y = 0;
+		while (y < h) {
+			x = 0;
+			while (x < w) {
+				dist = MathUtil::getDistance (((float) x) + 0.5f, ((float) y) + 0.5f, (float) radius + 0.5f, (float) radius + 0.5f);
+				targetalpha = 1.0f - ((1.0f - minalpha) * (dist / (float) radius));
+				if (targetalpha <= 0.0f) {
+					targetalpha = 0.0f;
+				}
+				else {
+					targetalpha *= opacity;
+					if (targetalpha > 1.0f) {
+						targetalpha = 1.0f;
+					}
+				}
+				alpha = (uint8_t) (targetalpha * 255.0f);
+#if SDL_BYTEORDER == SDL_BIG_ENDIAN
+				color = 0xFFFFFF00 | (alpha & 0xFF);
+#else
+				color = 0x00FFFFFF | (((Uint32) (alpha & 0xFF)) << 24);
+#endif
+				*dest = color;
+				++dest;
+				++x;
+			}
+
+			++y;
+		}
+
+		surface = SDL_CreateRGBSurfaceFrom (pixels, w, h, 32, w * sizeof (Uint32), rmask, gmask, bmask, amask);
+		if (! surface) {
+			free (pixels);
+			Log::warning ("Failed to create texture; err=\"SDL_CreateRGBSurfaceFrom, %s\"", SDL_GetError ());
+			delete (roundedCornerSprite);
+			roundedCornerSprite = NULL;
+			return;
+		}
+
+		path.sprintf ("*_App::roundedCornerSprite_%llx", (long long int) App::instance->getUniqueId ());
+		texture = App::instance->resource.createTexture (path, surface);
+		SDL_FreeSurface (surface);
+		free (pixels);
+		if (! texture) {
+			delete (roundedCornerSprite);
+			roundedCornerSprite = NULL;
+			return;
+		}
+
+		roundedCornerSprite->addTexture (texture, path);
+		++radius;
+	}
+}
+
+SDL_Texture *App::getRoundedCornerTexture (int radius, int *textureWidth, int *textureHeight) {
+	if ((radius <= 0) || (radius > App::maxCornerRadius)) {
+		return (NULL);
+	}
+
+	return (roundedCornerSprite->getTexture ((radius - 1), textureWidth, textureHeight));
 }
 
 void App::shutdown () {

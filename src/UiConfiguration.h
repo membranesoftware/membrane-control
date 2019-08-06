@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -112,7 +111,13 @@ public:
 		OrderAscendingButtonSprite = 65,
 		OrderDescendingButtonSprite = 66,
 		SmallLoadingIconSprite = 67,
-		SmallErrorIconSprite = 68
+		SmallErrorIconSprite = 68,
+		ConnectedStateIconSprite = 69,
+		DetachServerButtonSprite = 70,
+		AttachServerButtonSprite = 71,
+		ConnectionFailedStateIconSprite = 72,
+		ConnectionWaitingStateIconSprite = 73,
+		ServerDisabledStateIconSprite = 74
 	};
 
 	// Constants to use for font types
@@ -182,11 +187,13 @@ public:
 	Color flatButtonTextColor;
 	Color linkTextColor;
 	Color errorTextColor;
+	Color statusOkTextColor;
 	Color raisedButtonTextColor;
 	Color raisedButtonInverseTextColor;
 	Color raisedButtonBackgroundColor;
 	Color dropShadowColor;
 	float dropShadowWidth;
+	int cornerRadius;
 	float buttonFocusedShadeAlpha;
 	float buttonPressedShadeAlpha;
 	float buttonDisabledShadeAlpha;

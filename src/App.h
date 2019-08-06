@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -46,6 +45,7 @@
 #include "UiStack.h"
 #include "UiText.h"
 #include "UiConfiguration.h"
+#include "Sprite.h"
 #include "Widget.h"
 #include "Panel.h"
 #include "SystemInterface.h"
@@ -75,6 +75,7 @@ public:
 	static const int fontScaleCount;
 	static const StdString serverUrl;
 	static const int64_t defaultServerTimeout;
+	static const int maxCornerRadius;
 
 	// Constants to use as key values in the prefs map
 	static const char *NetworkThreadsKey;
@@ -89,6 +90,7 @@ public:
 	static const char *MonitorImageSizeKey;
 	static const char *ServerAdminSecretsKey;
 	static const char *ServerTimeoutKey;
+	static const char *ServerUiUnexpandedAgentsKey;
 	static const char *WebKioskUiSelectedAgentsKey;
 	static const char *WebKioskUiExpandedAgentsKey;
 	static const char *WebKioskUiPlaylistsKey;
@@ -190,6 +192,9 @@ public:
 	void setNextBackgroundTexturePath (const StdString &path);
 	void setNextBackgroundTexturePath (const char *path);
 
+	// Return a texture containing a rounded corner of the specified radius, or NULL if no such texture is available. If a texture is found and width and height pointers are provided, those values are filled in with texture attributes.
+	SDL_Texture *getRoundedCornerTexture (int radius, int *textureWidth = NULL, int *textureHeight = NULL);
+
 	typedef void (*RenderTaskFunction) (void *fnData);
 	struct RenderTaskContext {
 		RenderTaskFunction callback;
@@ -246,6 +251,9 @@ private:
 	// Create the root panel and other top-level widgets
 	void populateWidgets ();
 
+	// Create roundedCornerSprite and load it with textures
+	void populateRoundedCornerSprite ();
+
 	// Execute draw operations to update the application window
 	void draw ();
 
@@ -276,6 +284,7 @@ private:
 	std::vector<SDL_Keycode> keyPressList;
 	std::stack<SDL_Rect> clipRectStack;
 	SDL_Rect clipRect;
+	Sprite *roundedCornerSprite;
 	SDL_mutex *renderTaskMutex;
 	std::vector<App::RenderTaskContext> renderTaskList;
 	std::vector<App::RenderTaskContext> renderTaskAddList;

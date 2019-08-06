@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -46,11 +45,16 @@ const char *Agent::DisplayNameKey = "f";
 const char *Agent::UrlHostnameKey = "g";
 const char *Agent::TcpPort1Key = "h";
 const char *Agent::TcpPort2Key = "i";
+const char *Agent::IsAttachedKey = "j";
+const char *Agent::ApplicationNameKey = "k";
+const char *Agent::ServerTypeKey = "l";
 
 Agent::Agent ()
-: lastStatusTime (0)
+: isAttached (false)
+, lastStatusTime (0)
 , invokeTcpPort1 (0)
 , invokeTcpPort2 (0)
+, serverType (-1)
 , tcpPort1 (0)
 , tcpPort2 (0)
 {
@@ -80,6 +84,12 @@ StdString Agent::toString () {
 	if (! displayName.empty ()) {
 		s.appendSprintf (" displayName=\"%s\"", displayName.c_str ());
 	}
+	if (! applicationName.empty ()) {
+		s.appendSprintf (" applicationName=\"%s\"", applicationName.c_str ());
+	}
+	if (serverType >= 0) {
+		s.appendSprintf (" serverType=%i", serverType);
+	}
 	if (! urlHostname.empty ()) {
 		s.appendSprintf (" urlHostname=\"%s\"", urlHostname.c_str ());
 	}
@@ -92,6 +102,7 @@ StdString Agent::toString () {
 	if (lastStatusTime > 0) {
 		s.appendSprintf (" lastStatusTime=%lli", (long long int) lastStatusTime);
 	}
+	s.appendSprintf (" isAttached=%s", BOOL_STRING (isAttached));
 
 	s.append (">");
 	return (s);
@@ -99,6 +110,7 @@ StdString Agent::toString () {
 
 void Agent::readCommand (Json *command) {
 	SystemInterface *interface;
+	Json serverstatus;
 	StdString val;
 	int commandid, i;
 
@@ -116,6 +128,11 @@ void Agent::readCommand (Json *command) {
 	val = interface->getCommandStringParam (command, "displayName", "");
 	if (! val.empty ()) {
 		displayName.assign (val);
+	}
+
+	val = interface->getCommandStringParam (command, "applicationName", "");
+	if (! val.empty ()) {
+		applicationName.assign (val);
 	}
 
 	val = interface->getCommandStringParam (command, "urlHostname", "");
@@ -137,6 +154,19 @@ void Agent::readCommand (Json *command) {
 	i = interface->getCommandNumberParam (command, "tcpPort2", 0);
 	if (i > 0) {
 		tcpPort2 = i;
+	}
+
+	if (interface->getCommandObjectParam (command, "monitorServerStatus", &serverstatus)) {
+		serverType = SystemInterface::Constant_Monitor;
+	}
+	else if (interface->getCommandObjectParam (command, "mediaServerStatus", &serverstatus)) {
+		serverType = SystemInterface::Constant_Media;
+	}
+	else if (interface->getCommandObjectParam (command, "cameraServerStatus", &serverstatus)) {
+		serverType = SystemInterface::Constant_Camera;
+	}
+	else {
+		serverType = -1;
 	}
 }
 
@@ -227,6 +257,12 @@ StdString Agent::toPrefsJsonString () {
 	if (! displayName.empty ()) {
 		obj->set (Agent::DisplayNameKey, displayName);
 	}
+	if (! applicationName.empty ()) {
+		obj->set (Agent::ApplicationNameKey, applicationName);
+	}
+	if (serverType >= 0) {
+		obj->set (Agent::ServerTypeKey, serverType);
+	}
 	if (! urlHostname.empty ()) {
 		obj->set (Agent::UrlHostnameKey, urlHostname);
 	}
@@ -236,6 +272,7 @@ StdString Agent::toPrefsJsonString () {
 	if (tcpPort2 > 0) {
 		obj->set (Agent::TcpPort2Key, tcpPort2);
 	}
+	obj->set (Agent::IsAttachedKey, isAttached);
 
 	s = obj->toString ();
 	delete (obj);
@@ -260,11 +297,14 @@ int Agent::readPrefsJson (const StdString &prefsJson) {
 	}
 
 	if (result == Result::Success) {
+		isAttached = obj->getBoolean (Agent::IsAttachedKey, false);
 		invokeHostname = obj->getString (Agent::InvokeHostnameKey, "");
 		invokeTcpPort1 = obj->getNumber (Agent::InvokeTcpPort1Key, (int) 0);
 		invokeTcpPort2 = obj->getNumber (Agent::InvokeTcpPort2Key, (int) 0);
 		linkPath = obj->getString (Agent::LinkPathKey, "");
 		displayName = obj->getString (Agent::DisplayNameKey, "");
+		applicationName = obj->getString (Agent::ApplicationNameKey, "");
+		serverType = obj->getNumber (Agent::ServerTypeKey, (int) -1);
 		urlHostname = obj->getString (Agent::UrlHostnameKey, "");
 		tcpPort1 = obj->getNumber (Agent::TcpPort1Key, (int) 0);
 		tcpPort2 = obj->getNumber (Agent::TcpPort2Key, (int) 0);

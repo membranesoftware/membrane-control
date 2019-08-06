@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -69,6 +68,10 @@ public:
 	float maxViewOriginX, maxViewOriginY;
 	float widthPadding, heightPadding;
 	bool isFilledBg;
+	int topLeftCornerRadius;
+	int topRightCornerRadius;
+	int bottomLeftCornerRadius;
+	int bottomRightCornerRadius;
 	bool isBordered;
 	float borderWidth;
 	bool isDropShadowed;
@@ -91,6 +94,11 @@ public:
 
 	// Set the panel's fill bg option. If enabled, the panel is drawn with a background fill using the specified color.
 	void setFillBg (bool enable, const Color &color = Color ());
+
+	// Set the panel's corner radius values. If the panel's fill bg option is enabled, each fill rectangle corner with a nonzero radius value is drawn with a rounded shape.
+	// TODO: Fix incorrect rendering results when corner radius is enabled while a bgColor alpha blend or a border is present
+	void setCornerRadius (int radius);
+	void setCornerRadius (int topLeftRadius, int topRightRadius, int bottomLeftRadius, int bottomRightRadius);
 
 	// Set the panel's border option. If enabled, the panel is drawn with a border using the specified color and width.
 	void setBorder (bool enable, const Color &color = Color (), float borderWidthValue = 1.0f);
@@ -177,6 +185,12 @@ protected:
 	int lastMouseRightUpCount, lastMouseRightDownCount;
 	int lastMouseWheelUpCount, lastMouseWheelDownCount;
 	int lastMouseDownX, lastMouseDownY;
+	int cornerCenterDx, cornerCenterDy, cornerCenterDw, cornerCenterDh;
+	int cornerTopDx, cornerTopDy, cornerTopDw, cornerTopDh;
+	int cornerLeftDx, cornerLeftDy, cornerLeftDw, cornerLeftDh;
+	int cornerRightDx, cornerRightDy, cornerRightDw, cornerRightDh;
+	int cornerBottomDx, cornerBottomDy, cornerBottomDw, cornerBottomDh;
+	int cornerSize;
 	SDL_mutex *widgetListMutex;
 	std::list<Widget *> widgetList;
 	SDL_mutex *widgetAddListMutex;

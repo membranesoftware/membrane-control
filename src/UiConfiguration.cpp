@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -67,11 +66,13 @@ UiConfiguration::UiConfiguration ()
 , flatButtonTextColor (Color::getByteValue (0x18), Color::getByteValue (0x22), Color::getByteValue (0x7C))
 , linkTextColor (Color::getByteValue (0x18), Color::getByteValue (0x22), Color::getByteValue (0x7C))
 , errorTextColor (Color::getByteValue (0xB0), Color::getByteValue (0x00), Color::getByteValue (0x20))
+, statusOkTextColor (Color::getByteValue (0x10), Color::getByteValue (0x8D), Color::getByteValue (0x10))
 , raisedButtonTextColor (Color::getByteValue (0x18), Color::getByteValue (0x22), Color::getByteValue (0x7C))
 , raisedButtonInverseTextColor (Color::getByteValue (0x51), Color::getByteValue (0x4A), Color::getByteValue (0xAC))
 , raisedButtonBackgroundColor (Color::getByteValue (0xD0), Color::getByteValue (0xD0), Color::getByteValue (0xD0))
 , dropShadowColor (0.0f, 0.0f, 0.0f, 0.78f)
 , dropShadowWidth (2.0f)
+, cornerRadius (6)
 , buttonFocusedShadeAlpha (0.12f)
 , buttonPressedShadeAlpha (0.28f)
 , buttonDisabledShadeAlpha (0.58f)
@@ -226,6 +227,7 @@ void UiConfiguration::resetScale () {
 		case 0: {
 			paddingSize = 6.0f;
 			marginSize = 6.0f;
+			cornerRadius = 3;
 			sliderTrackWidth = 100.0f;
 			timelineMarkerWidth = 12.0f;
 			fontBaseSizes[UiConfiguration::CaptionFont] = 8;
@@ -238,6 +240,7 @@ void UiConfiguration::resetScale () {
 		case 1: {
 			paddingSize = 12.0f;
 			marginSize = 12.0f;
+			cornerRadius = 6;
 			sliderTrackWidth = 130.0f;
 			timelineMarkerWidth = 16.0f;
 			fontBaseSizes[UiConfiguration::CaptionFont] = 8;
@@ -250,6 +253,7 @@ void UiConfiguration::resetScale () {
 		case 2: {
 			paddingSize = 16.0f;
 			marginSize = 16.0f;
+			cornerRadius = 8;
 			sliderTrackWidth = 180.0f;
 			timelineMarkerWidth = 16.0f;
 			fontBaseSizes[UiConfiguration::CaptionFont] = 10;
@@ -262,6 +266,7 @@ void UiConfiguration::resetScale () {
 		case 3: {
 			paddingSize = 16.0f;
 			marginSize = 16.0f;
+			cornerRadius = 8;
 			sliderTrackWidth = 240.0f;
 			timelineMarkerWidth = 20.0f;
 			fontBaseSizes[UiConfiguration::CaptionFont] = 10;
@@ -274,6 +279,7 @@ void UiConfiguration::resetScale () {
 		case 4: {
 			paddingSize = 20.0f;
 			marginSize = 20.0f;
+			cornerRadius = 10;
 			sliderTrackWidth = 300.0f;
 			timelineMarkerWidth = 20.0f;
 			fontBaseSizes[UiConfiguration::CaptionFont] = 10;
@@ -286,6 +292,7 @@ void UiConfiguration::resetScale () {
 		default: {
 			paddingSize = 16.0f;
 			marginSize = 16.0f;
+			cornerRadius = 8;
 			sliderTrackWidth = 200.0f;
 			timelineMarkerWidth = 16.0f;
 			fontBaseSizes[UiConfiguration::CaptionFont] = 10;

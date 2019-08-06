@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -71,6 +70,24 @@ public:
 	// Broadcast a message requesting that remote agents report contact information to the control
 	void broadcastContactMessage ();
 
+	// Clear the provided list and populate it with all stored agent ID values
+	void getAgentIds (StringList *destList);
+
+	// Set an agent's attached state, indicating whether the agent should be automatically contacted
+	void setAgentAttached (const StdString &agentId, bool attached);
+
+	// Return the specified agent's attach state, indicating whether it should be automatically contacted
+	bool isAgentAttached (const StdString &agentId);
+
+	// Return a boolean value indicating if the specified agent is currently being contacted
+	bool isAgentContacting (const StdString &agentId);
+
+	// Return a boolean value indicating if the specified agent was successfully contacted by the last connection attempt
+	bool isAgentContacted (const StdString &agentId);
+
+	// Return a boolean value indicating if the specified agent has failed contact due to missing authorization credentials
+	bool isAgentUnauthorized (const StdString &agentId);
+
 	// Request that the agent control maintain a link client connection to the specified agent
 	void connectLinkClient (const StdString &agentId);
 
@@ -84,16 +101,25 @@ public:
 	void writeLinkCommand (Json *command, const StdString &agentId = StdString (""));
 
 	// Return a boolean value indicating if an agent has been contacted at the specified hostname and port
-	bool isContacted (const StdString &invokeHostname, int invokePort);
+	bool isHostContacted (const StdString &invokeHostname, int invokePort);
 
 	// Return a boolean value indicating if the specified hostname and port is currently being contacted
-	bool isContacting (const StdString &invokeHostname, int invokePort);
+	bool isHostContacting (const StdString &invokeHostname, int invokePort);
 
 	// Return a boolean value indicating if the specified hostname and port has failed contact due to missing authorization credentials
-	bool isUnauthorized (const StdString &invokeHostname, int invokePort);
+	bool isHostUnauthorized (const StdString &invokeHostname, int invokePort);
+
+	// Return a string containing the specified agent's host address, or an empty string if no such agent was found
+	StdString getAgentHostAddress (const StdString &agentId);
 
 	// Return a string containing the specified agent's display name, or an empty string if no such agent was found
 	StdString getAgentDisplayName (const StdString &agentId);
+
+	// Return a string containing the specified agent's application name, or an empty string if no such name was found
+	StdString getAgentApplicationName (const StdString &agentId);
+
+	// Return the specified agent's server type value, or -1 if no such value was found
+	int getAgentServerType (const StdString &agentId);
 
 	// Return a string containing the specified agent's invoke URL with an optional command parameter, or an empty string if no such agent was found. If command is not NULL, this method becomes responsible for freeing the object when it's no longer needed.
 	StdString getAgentInvokeUrl (const StdString &agentId, Json *command = NULL, const StdString &path = StdString ("/"));
@@ -109,9 +135,6 @@ public:
 
 	// Send a network message to attempt contact with an agent at the specified address
 	void contactAgent (const StdString &hostname, int tcpPort);
-
-	// Attempt to gather status from all previously known agents that have not yet been successfully contacted
-	void retryAgents ();
 
 	// Return a boolean value indicating whether the specified agent ID is currently being contacted to invoke one or more commands
 	bool isAgentInvoking (const StdString &agentId);

@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -35,7 +34,6 @@
 
 #include <vector>
 #include "StdString.h"
-#include "Json.h"
 #include "UiTextString.h"
 
 class UiText {
@@ -54,9 +52,6 @@ public:
 	// Return a string containing text suitable for displaying the specified count. If pluralStringIndex is not provided, default to use of singularStringIndex.
 	StdString getCountText (int64_t amount, int singularStringIndex, int pluralStringIndex = -1);
 	StdString getCountText (int amount, int singularStringIndex, int pluralStringIndex = -1);
-
-	// Return a string containing status text reflecting fields in the provided MonitorServerStatus object
-	StdString getMonitorStatusText (Json *monitorStatus);
 
 private:
 	std::vector<StdString> textStrings;

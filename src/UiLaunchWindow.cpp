@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -77,6 +76,7 @@ UiLaunchWindow::UiLaunchWindow (int uiType, SpriteGroup *mainUiSpriteGroup)
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
+	setCornerRadius (uiconfig->cornerRadius);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
 	switch (uiType) {
@@ -282,14 +282,14 @@ void UiLaunchWindow::refreshLayout () {
 	float x, y;
 
 	uiconfig = &(App::instance->uiConfig);
-	x = uiconfig->paddingSize;
-	y = uiconfig->paddingSize;
+	x = widthPadding;
+	y = heightPadding;
 	iconImage->position.assign (x, y);
 
 	x += iconImage->width + uiconfig->marginSize;
 	nameLabel->position.assign (x, y + (iconImage->height / 2.0f) - (nameLabel->height / 2.0f));
 
-	x = uiconfig->paddingSize;
+	x = widthPadding;
 	y += iconImage->height + uiconfig->marginSize;
 
 	descriptionText->position.assign (x, y);
@@ -308,7 +308,7 @@ void UiLaunchWindow::refreshLayout () {
 
 	resetSize ();
 
-	x = width - uiconfig->paddingSize;
+	x = width - widthPadding;
 	x -= openButton->width;
 	openButton->position.assign (x, y);
 }

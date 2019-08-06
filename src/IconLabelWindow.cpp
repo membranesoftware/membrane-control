@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -83,6 +82,10 @@ void IconLabelWindow::setText (const StdString &text) {
 	refreshLayout ();
 }
 
+void IconLabelWindow::setTextColor (const Color &textColor) {
+	label->textColor.assign (textColor);
+}
+
 void IconLabelWindow::setTextChangeHighlight (bool enable, const Color &highlightColor) {
 	isTextChangeHighlightEnabled = enable;
 	if (isTextChangeHighlightEnabled) {
@@ -96,6 +99,18 @@ void IconLabelWindow::setRightAligned (bool enable) {
 	}
 	isRightAligned = enable;
 	refreshLayout ();
+}
+
+void IconLabelWindow::setIconSprite (Sprite *iconSprite) {
+	if (image) {
+		image->isDestroyed = true;
+	}
+	image = (Image *) addWidget (new Image (iconSprite));
+	refreshLayout ();
+}
+
+void IconLabelWindow::setIconImageColor (const Color &imageColor) {
+	image->setDrawColor (true, imageColor);
 }
 
 void IconLabelWindow::setIconImageFrame (int frame) {

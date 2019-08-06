@@ -11,6 +11,7 @@ remove remove
 rename rename
 name name
 password password
+passwordLocked password locked
 address address
 version version
 platform platform
@@ -55,10 +56,17 @@ startPosition start position
 playDuration play duration
 display display
 displayName display name
-displayStatus display status
+online online
+offline offline
+contacting contacting
 monitors monitors
 server server
 servers servers
+removeServer remove server
+removeAttachedServerDescription Membrane Control will no longer contact this server or show it on the interface.
+removeUnattachedServerDescription Membrane Control will no longer show this server on the interface.
+attachServerTooltip Stay connected to this server
+detachServerTooltip Do not connect to this server
 tasks tasks
 program program
 programs programs
@@ -77,20 +85,17 @@ fastest fastest
 never never
 play play
 stop stop
-unknown unknown
 enabled enabled
 disabled disabled
-ready ready
 learnMore learn more
 searchForHelp search for help
 startedCreatingStream started creating stream
 removedStream removed stream
-removedMediaRecord removed media record
 create create
 open open
 openHelp open help
 loading loading
-adminConsole admin console
+openAdminConsole open admin console
 mainMenu main menu
 bitrate bitrate
 frameSize frame size
@@ -149,11 +154,13 @@ streamPlaylistItems clips in this playlist
 uiLaunchOpenButtonTooltip Open this interface
 serverUiHelpTitle Servers
 serverUiHelpText This interface finds and displays Membrane Server applications running on this computer or other computers. Connecting to a server here makes it available for use in other interfaces, as launched from the main menu.
-serverUiHelpAction1Text No Membrane Servers are in contact.\n\n- Check if Membrane Server is installed and running, and that its computer is connected to the network.\n\n- Click the broadcast button in the bottom right corner to discover any servers available on the local network.\n\n- Click the address button to directly contact a server by name.
-serverUiHelpAction2Text - Click the broadcast button in the bottom right corner to discover any servers available on the local network.\n\n- Click the address button to directly contact a server by name.
-serverUiNetworkAgentsTitle Servers on the network
+serverUiHelpAction1Text No Membrane Servers are in contact.\n\n- Check if Membrane Server is installed and running, and that its computer is connected to the network.\n\n- Click the broadcast button in the bottom right corner to discover any servers available on the local network.\n- Click the address button to directly contact a server by name.
+serverUiHelpAction2Text - The bottom toolbar shows controls for finding a server by broadcast or direct address.\n\n- Membrane Control maintains connections to attached servers. Unattach a server to disable control connections while keeping it visible here.
+serverUiAttachedAgentsTitle Attached servers
+serverUiUnattachedAgentsTitle Unattached servers
 serverUiEmptyAgentStatusTitle No servers contacted
-serverUiEmptyAgentStatusText To find Membrane Servers on the network:\n\n- Click the broadcast button in the bottom right corner to discover any servers available on the local network.\n- Click the address button to directly contact a server by name.
+serverUiEmptyAgentStatusText1 To find Membrane Servers on the network:\n\n- Click the broadcast button in the bottom right corner to discover any servers available on the local network.\n- Click the address button to directly contact a server by name.
+serverUiEmptyAgentStatusText2 To find Membrane Servers on the network:\n\n- Click the broadcast button in the bottom right corner to discover any servers available on the local network.\n- Click the address button to directly contact a server by name.\n- Activate one of the items in the unattached servers list.
 serverUiAddressTooltip <F1> Enter an address to contact a Membrane Server on the network
 serverUiBroadcastTooltip <F2> Scan for Membrane Servers on the local network
 serverUiContactingAgentMessage Attempting server contact
@@ -293,7 +300,6 @@ monitorCacheUiStopTooltip <F1> Clear the monitor
 monitorCacheUiDeleteTooltip Remove the selected stream
 monitorCacheUiWritePlaylistMessage Command sent: <Loop cache videos>
 viewTimelineImagesTooltip View timeline images
-unselectButtonTooltip Unselect this item
 monitorActivityIconTooltip Status of the monitor's screen
 storageTooltip Available data storage
 cachedStream cached stream
@@ -331,7 +337,7 @@ createStreamUnavailableTooltip Stream creation not available
 removeMediaActionText This video is no longer available from the media library and can't be processed to create playback streams. Remove record?
 viewMonitorCacheTooltip View the monitor's cache of stored videos
 cameras cameras
-cameraUiDescription Command cameras and view captured images
+cameraUiDescription Command cameras and view captured images.
 cameraUiNoCameraSelectedPrompt (Select a camera)
 cameraUiConfigureTimelapseTooltip Configure timelapse capture for all selected cameras
 cameraUiAutoReloadTooltip If enabled: Periodically refresh camera images
@@ -360,7 +366,6 @@ disableCameraTimelapseMessage Command sent: <Stop timelapse>
 configureCameraTimelapseMessage Command sent: <Set timelapse>
 clearCameraTimelapseMessage Command sent: <Clear timelapse>
 cameraActivityIconTooltip Camera status
-images images
 before before
 after after
 captureTimespanTooltip Time range of available images

@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -100,43 +99,44 @@ public:
 	static const int ScrollBar = 62;
 	static const int ScrollView = 63;
 	static const int ServerAdminUi = 64;
-	static const int ServerContactWindow = 65;
-	static const int ServerUi = 66;
-	static const int ServerWindow = 67;
-	static const int SettingsWindow = 68;
-	static const int SharedBuffer = 69;
-	static const int Slider = 70;
-	static const int SliderWindow = 71;
-	static const int SnackbarWindow = 72;
-	static const int Sprite = 73;
-	static const int SpriteGroup = 74;
-	static const int SpriteHandle = 75;
-	static const int StatsWindow = 76;
-	static const int StdString = 77;
-	static const int StreamDetailWindow = 78;
-	static const int StreamItemUi = 79;
-	static const int StreamPlaylistWindow = 80;
-	static const int StreamWindow = 81;
-	static const int StringList = 82;
-	static const int SystemInterface = 83;
-	static const int TaskWindow = 84;
-	static const int TextArea = 85;
-	static const int TextField = 86;
-	static const int TextFieldWindow = 87;
-	static const int Toggle = 88;
-	static const int ToggleWindow = 89;
-	static const int Toolbar = 90;
-	static const int TooltipWindow = 91;
-	static const int Ui = 92;
-	static const int UiConfiguration = 93;
-	static const int UiLaunchWindow = 94;
-	static const int UiStack = 95;
-	static const int UiText = 96;
-	static const int UiTextString = 97;
-	static const int WebKioskUi = 98;
-	static const int WebPlaylistWindow = 99;
-	static const int Widget = 100;
-	static const int WidgetHandle = 101;
+	static const int ServerAttachWindow = 65;
+	static const int ServerContactWindow = 66;
+	static const int ServerUi = 67;
+	static const int ServerWindow = 68;
+	static const int SettingsWindow = 69;
+	static const int SharedBuffer = 70;
+	static const int Slider = 71;
+	static const int SliderWindow = 72;
+	static const int SnackbarWindow = 73;
+	static const int Sprite = 74;
+	static const int SpriteGroup = 75;
+	static const int SpriteHandle = 76;
+	static const int StatsWindow = 77;
+	static const int StdString = 78;
+	static const int StreamDetailWindow = 79;
+	static const int StreamItemUi = 80;
+	static const int StreamPlaylistWindow = 81;
+	static const int StreamWindow = 82;
+	static const int StringList = 83;
+	static const int SystemInterface = 84;
+	static const int TaskWindow = 85;
+	static const int TextArea = 86;
+	static const int TextField = 87;
+	static const int TextFieldWindow = 88;
+	static const int Toggle = 89;
+	static const int ToggleWindow = 90;
+	static const int Toolbar = 91;
+	static const int TooltipWindow = 92;
+	static const int Ui = 93;
+	static const int UiConfiguration = 94;
+	static const int UiLaunchWindow = 95;
+	static const int UiStack = 96;
+	static const int UiText = 97;
+	static const int UiTextString = 98;
+	static const int WebKioskUi = 99;
+	static const int WebPlaylistWindow = 100;
+	static const int Widget = 101;
+	static const int WidgetHandle = 102;
 };
 
 #endif

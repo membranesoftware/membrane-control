@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -56,8 +55,9 @@ public:
 
 	// Constants to use for card view row numbers
 	enum {
-		AgentRow = 0,
-		ActionRow = 1
+		AttachedServerRow = 0,
+		UnattachedServerRow = 1,
+		ActionRow = 2
 	};
 
 	ServerUi ();
@@ -67,20 +67,23 @@ public:
 	void setHelpWindowContent (HelpWindow *helpWindow);
 
 	// Callback functions
-	static void processAgentStatus (void *uiPtr, Json *record, const StdString &recordId);
+	static void appendUnexpandedAgentId (void *stringListPtr, Widget *widgetPtr);
 	static void reloadButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void reloadAgent (void *uiPtr, Widget *widgetPtr);
-	static void countServerContactWindows (void *uiPtr, Widget *widgetPtr);
 	static void findDeletedWindows (void *uiPtr, Widget *widgetPtr);
 	static void serverContactWindowStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void broadcastButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void addressToggleStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void addressTextFieldEdited (void *uiPtr, Widget *widgetPtr);
 	static void addressSnackbarHelpClicked (void *uiPtr, Widget *widgetPtr);
-	static void agentMenuClicked (void *uiPtr, Widget *widgetPtr);
-	static void agentAdminActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void agentUpdateActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void agentRemoveActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void serverExpandStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void serverStatusChanged (void *uiPtr, Widget *widgetPtr);
+	static void serverAttachActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void serverCheckForUpdatesActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void serverAdminActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void serverDetachActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void serverRemoveActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void serverRemoveActionClosed (void *uiPtr, Widget *widgetPtr);
 	static void adminSecretAddButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void adminSecretAddActionClosed (void *uiPtr, Widget *widgetPtr);
 	static void adminSecretExpandStateChanged (void *uiPtr, Widget *widgetPtr);
@@ -131,8 +134,10 @@ private:
 	WidgetHandle addressToggle;
 	WidgetHandle addressTextFieldWindow;
 	WidgetHandle emptyServerWindow;
+	StringList agentIdList;
 	StringList cardIdList;
-	int agentCount;
+	int attachedServerCount;
+	int unattachedServerCount;
 };
 
 #endif

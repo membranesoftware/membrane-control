@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -32,7 +31,7 @@
 #include "Config.h"
 #include "SystemInterface.h"
 
-const char *SystemInterface::version = "14-stable-a6491faa";
+const char *SystemInterface::version = "15-stable-26da021b";
 const char *SystemInterface::Command_AgentConfiguration = "AgentConfiguration";
 const char *SystemInterface::Command_AgentContact = "AgentContact";
 const char *SystemInterface::Command_AgentStatus = "AgentStatus";
@@ -105,7 +104,6 @@ const char *SystemInterface::Command_UpdateIntentState = "UpdateIntentState";
 const char *SystemInterface::Command_WatchEvents = "WatchEvents";
 const char *SystemInterface::Command_WatchTasks = "WatchTasks";
 const char *SystemInterface::Command_WebDisplayIntentState = "WebDisplayIntentState";
-const int SystemInterface::Constant_MaxCommandPriority = 100;
 const char *SystemInterface::Constant_CreateTimePrefixField = "a";
 const char *SystemInterface::Constant_AgentIdPrefixField = "b";
 const char *SystemInterface::Constant_UserIdPrefixField = "c";
@@ -117,32 +115,9 @@ const char *SystemInterface::Constant_AuthorizationTokenPrefixField = "h";
 const char *SystemInterface::Constant_AuthorizationHashAlgorithm = "sha256";
 const char *SystemInterface::Constant_WebSocketEvent = "SystemInterface";
 const char *SystemInterface::Constant_UrlQueryParameter = "c";
-const int SystemInterface::Constant_DefaultTcpPort1 = 63738;
-const int SystemInterface::Constant_DefaultTcpPort2 = 63739;
-const int SystemInterface::Constant_DefaultUdpPort = 63738;
 const char *SystemInterface::Constant_DefaultInvokePath = "/";
 const char *SystemInterface::Constant_DefaultAuthorizePath = "C18HZb3wsXQoMQN6Laz8S5Lq";
 const char *SystemInterface::Constant_DefaultLinkPath = "mNODP0RPYCLhTiPGiCifPJA9";
-const int SystemInterface::Constant_DefaultCommandType = 0;
-const int SystemInterface::Constant_Stream = 1;
-const int SystemInterface::Constant_Media = 2;
-const int SystemInterface::Constant_Monitor = 3;
-const int SystemInterface::Constant_Event = 4;
-const int SystemInterface::Constant_Master = 5;
-const int SystemInterface::Constant_Admin = 6;
-const int SystemInterface::Constant_Camera = 7;
-const int SystemInterface::Constant_CommandTypeCount = 8;
-const int SystemInterface::Constant_DefaultSortOrder = 0;
-const int SystemInterface::Constant_NameSort = 0;
-const int SystemInterface::Constant_NewestSort = 1;
-const int SystemInterface::Constant_DefaultStreamProfile = 0;
-const int SystemInterface::Constant_CompressedStreamProfile = 1;
-const int SystemInterface::Constant_LowQualityStreamProfile = 2;
-const int SystemInterface::Constant_LowestQualityStreamProfile = 3;
-const int SystemInterface::Constant_DefaultImageProfile = 0;
-const int SystemInterface::Constant_HighQualityImageProfile = 1;
-const int SystemInterface::Constant_LowQualityImageProfile = 2;
-const int SystemInterface::Constant_LowestQualityImageProfile = 3;
 void SystemInterface::populate () {
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("AgentConfiguration"), SystemInterface::Command (45, StdString ("AgentConfiguration"), StdString ("AgentConfiguration"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("AgentContact"), SystemInterface::Command (33, StdString ("AgentContact"), StdString ("AgentContact"))));

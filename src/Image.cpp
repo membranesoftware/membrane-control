@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -45,13 +44,13 @@
 
 Image::Image (Sprite *sprite, int spriteFrame, bool shouldDestroySprite)
 : Widget ()
+, drawAlpha (1.0f)
 , maxSpriteWidth (0.0f)
 , maxSpriteHeight (0.0f)
-, drawAlpha (1.0f)
+, drawScale (1.0f)
 , isDrawColorEnabled (false)
 , spriteHandle (sprite)
 , shouldDestroySprite (shouldDestroySprite)
-, drawScale (1.0f)
 , isMouseHighlightScaled (false)
 , mouseHighlightScale (1.0f)
 {

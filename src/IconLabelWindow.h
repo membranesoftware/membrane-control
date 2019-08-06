@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -50,11 +49,20 @@ public:
 	// Set the window's text
 	void setText (const StdString &labelText);
 
+	// Set the window's text color
+	void setTextColor (const Color &textColor);
+
 	// Set the window's text change highlight option. If enabled, the window highlights text changes with a rotation from the specified color.
 	void setTextChangeHighlight (bool enable, const Color &highlightColor = Color (0.0f, 0.0f, 0.0f));
 
 	// Set the window's right-aligned option. If enabled, the window places the icon on the right side instead of the left side.
 	void setRightAligned (bool enable);
+
+	// Set the sprite that should be shown as the window's icon image
+	void setIconSprite (Sprite *iconSprite);
+
+	// Set the color that should be used to draw the window's icon image
+	void setIconImageColor (const Color &imageColor);
 
 	// Set the sprite frame that should be drawn by the window's icon image
 	void setIconImageFrame (int frame);

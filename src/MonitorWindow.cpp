@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -50,7 +49,6 @@
 #include "TextArea.h"
 #include "Button.h"
 #include "Toggle.h"
-#include "StatsWindow.h"
 #include "IconLabelWindow.h"
 #include "MonitorWindow.h"
 
@@ -70,7 +68,6 @@ MonitorWindow::MonitorWindow (const StdString &agentId)
 , taskCountIcon (NULL)
 , storageIcon (NULL)
 , streamCountIcon (NULL)
-, statsWindow (NULL)
 , menuButton (NULL)
 , selectToggle (NULL)
 , expandToggle (NULL)
@@ -93,6 +90,7 @@ MonitorWindow::MonitorWindow (const StdString &agentId)
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 	setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
+	setCornerRadius (uiconfig->cornerRadius);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
 	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeDisplayIconSprite)));
@@ -122,10 +120,6 @@ MonitorWindow::MonitorWindow (const StdString &agentId)
 	streamCountIcon->setPadding (0.0f, 0.0f);
 	streamCountIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
 	streamCountIcon->isVisible = false;
-
-	statsWindow = (StatsWindow *) addWidget (new StatsWindow ());
-	statsWindow->setPadding (uiconfig->paddingSize, 0.0f);
-	statsWindow->isVisible = false;
 
 	menuButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::MainMenuButtonSprite)));
 	menuButton->setMouseClickCallback (MonitorWindow::menuButtonClicked, this);
@@ -246,9 +240,6 @@ void MonitorWindow::syncRecordStore () {
 	streamCountIcon->setText (StdString::createSprintf ("%i", count));
 	streamCountIcon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::cachedStream, UiTextString::cachedStreams));
 
-	statsWindow->setItem (uitext->getText (UiTextString::uptime).capitalized (), interface->getCommandStringParam (record, "uptime", ""));
-	statsWindow->setItem (uitext->getText (UiTextString::address).capitalized (), OsUtil::getAddressDisplayString (interface->getCommandAgentAddress (record), SystemInterface::Constant_DefaultTcpPort1));
-	statsWindow->setItem (uitext->getText (UiTextString::version).capitalized (), interface->getCommandStringParam (record, "version", ""));
 	if (menuClickCallback) {
 		menuButton->isVisible = true;
 	}
@@ -296,11 +287,21 @@ void MonitorWindow::setStorageDisplayEnabled (bool enable) {
 }
 
 void MonitorWindow::setSelected (bool selected, bool shouldSkipStateChangeCallback) {
+	UiConfiguration *uiconfig;
+
 	if (selected == isSelected) {
 		return;
 	}
+
+	uiconfig = &(App::instance->uiConfig);
 	isSelected = selected;
 	selectToggle->setChecked (isSelected, shouldSkipStateChangeCallback);
+	if (isSelected) {
+		setCornerRadius (0, uiconfig->cornerRadius, 0, uiconfig->cornerRadius);
+	}
+	else {
+		setCornerRadius (uiconfig->cornerRadius);
+	}
 	refreshLayout ();
 }
 
@@ -319,7 +320,6 @@ void MonitorWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallba
 		nameLabel->setFont (UiConfiguration::HeadlineFont);
 		descriptionLabel->isVisible = true;
 		statusIcon->isVisible = true;
-		statsWindow->isVisible = true;
 
 		if (agentTaskCount > 0) {
 			taskCountIcon->isVisible = true;
@@ -347,7 +347,6 @@ void MonitorWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallba
 		nameLabel->setFont (UiConfiguration::BodyFont);
 		descriptionLabel->isVisible = false;
 		statusIcon->isVisible = false;
-		statsWindow->isVisible = false;
 		taskCountIcon->isVisible = false;
 		storageIcon->isVisible = false;
 		streamCountIcon->isVisible = false;
@@ -396,14 +395,7 @@ void MonitorWindow::refreshLayout () {
 	x2 = 0.0f;
 	if (storageIcon->isVisible && streamCountIcon->isVisible) {
 		storageIcon->flowRight (&x, y, &x2, &y2);
-		streamCountIcon->flowDown (x, &y, &x2, &y2);
-	}
-
-	x = x0;
-	y = y2 + uiconfig->marginSize;
-	x2 = 0.0f;
-	if (statsWindow->isVisible) {
-		statsWindow->flowRight (&x, y, &x2, &y2);
+		streamCountIcon->flowRight (&x, y, &x2, &y2);
 	}
 	if (taskCountIcon->isVisible) {
 		taskCountIcon->flowRight (&x, y, &x2, &y2);
@@ -447,10 +439,19 @@ void MonitorWindow::menuButtonClicked (void *windowPtr, Widget *widgetPtr) {
 void MonitorWindow::selectToggleStateChanged (void *windowPtr, Widget *widgetPtr) {
 	MonitorWindow *window;
 	Toggle *toggle;
+	UiConfiguration *uiconfig;
 
 	window = (MonitorWindow *) windowPtr;
 	toggle = (Toggle *) widgetPtr;
+	uiconfig = &(App::instance->uiConfig);
+
 	window->isSelected = toggle->isChecked;
+	if (window->isSelected) {
+		window->setCornerRadius (0, uiconfig->cornerRadius, 0, uiconfig->cornerRadius);
+	}
+	else {
+		window->setCornerRadius (uiconfig->cornerRadius);
+	}
 	if (window->selectStateChangeCallback) {
 		window->selectStateChangeCallback (window->selectStateChangeCallbackData, window);
 	}

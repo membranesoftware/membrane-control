@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -64,7 +63,6 @@ CameraWindow::CameraWindow (const StdString &agentId, SpriteGroup *cameraUiSprit
 , storageIcon (NULL)
 , imageQualityIcon (NULL)
 , capturePeriodIcon (NULL)
-, statsWindow (NULL)
 , selectToggle (NULL)
 , expandToggle (NULL)
 , selectStateChangeCallback (NULL)
@@ -78,8 +76,8 @@ CameraWindow::CameraWindow (const StdString &agentId, SpriteGroup *cameraUiSprit
 	classId = ClassId::CameraWindow;
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
-
 	setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
+	setCornerRadius (uiconfig->cornerRadius);
   setFillBg (true, uiconfig->mediumBackgroundColor);
 
 	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeCameraIconSprite)));
@@ -111,10 +109,6 @@ CameraWindow::CameraWindow (const StdString &agentId, SpriteGroup *cameraUiSprit
 	capturePeriodIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
 	capturePeriodIcon->setMouseHoverTooltip (uitext->getText (UiTextString::capturePeriod).capitalized ());
 	capturePeriodIcon->isVisible = false;
-
-	statsWindow = (StatsWindow *) addWidget (new StatsWindow ());
-	statsWindow->setPadding (uiconfig->paddingSize, 0.0f);
-	statsWindow->isVisible = false;
 
 	selectToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::StarOutlineButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::StarButtonSprite)));
 	selectToggle->setImageColor (uiconfig->flatButtonTextColor);
@@ -200,13 +194,6 @@ void CameraWindow::refreshLayout () {
 		storageIcon->flowRight (&x, y, &x2, &y2);
 	}
 
-	x = x0;
-	y = y2 + uiconfig->marginSize;
-	x2 = 0.0f;
-	if (statsWindow->isVisible) {
-		statsWindow->flowRight (&x, y, &x2, &y2);
-	}
-
 	resetSize ();
 
 	x = width - widthPadding;
@@ -262,20 +249,26 @@ void CameraWindow::syncRecordStore () {
 		capturePeriodIcon->isVisible = isExpanded;
 	}
 
-	statsWindow->setItem (uitext->getText (UiTextString::uptime).capitalized (), interface->getCommandStringParam (record, "uptime", ""));
-	statsWindow->setItem (uitext->getText (UiTextString::address).capitalized (), OsUtil::getAddressDisplayString (interface->getCommandAgentAddress (record), SystemInterface::Constant_DefaultTcpPort1));
-	statsWindow->setItem (uitext->getText (UiTextString::version).capitalized (), interface->getCommandStringParam (record, "version", ""));
-
 	refreshLayout ();
 	Panel::syncRecordStore ();
 }
 
 void CameraWindow::setSelected (bool selected, bool shouldSkipStateChangeCallback) {
+	UiConfiguration *uiconfig;
+
 	if (selected == isSelected) {
 		return;
 	}
+
+	uiconfig = &(App::instance->uiConfig);
 	isSelected = selected;
 	selectToggle->setChecked (isSelected, shouldSkipStateChangeCallback);
+	if (isSelected) {
+		setCornerRadius (0, uiconfig->cornerRadius, 0, uiconfig->cornerRadius);
+	}
+	else {
+		setCornerRadius (uiconfig->cornerRadius);
+	}
 	refreshLayout ();
 }
 
@@ -297,7 +290,6 @@ void CameraWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallbac
 		storageIcon->isVisible = true;
 		imageQualityIcon->isVisible = isCapturing;
 		capturePeriodIcon->isVisible = isCapturing;
-		statsWindow->isVisible = true;
 	}
 	else {
 		setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
@@ -308,7 +300,6 @@ void CameraWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallbac
 		storageIcon->isVisible = false;
 		imageQualityIcon->isVisible = false;
 		capturePeriodIcon->isVisible = false;
-		statsWindow->isVisible = false;
 	}
 
 	refreshLayout ();
@@ -317,10 +308,19 @@ void CameraWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallbac
 void CameraWindow::selectToggleStateChanged (void *windowPtr, Widget *widgetPtr) {
 	CameraWindow *window;
 	Toggle *toggle;
+	UiConfiguration *uiconfig;
 
 	window = (CameraWindow *) windowPtr;
 	toggle = (Toggle *) widgetPtr;
+	uiconfig = &(App::instance->uiConfig);
+
 	window->isSelected = toggle->isChecked;
+	if (window->isSelected) {
+		window->setCornerRadius (0, uiconfig->cornerRadius, 0, uiconfig->cornerRadius);
+	}
+	else {
+		window->setCornerRadius (uiconfig->cornerRadius);
+	}
 	if (window->selectStateChangeCallback) {
 		window->selectStateChangeCallback (window->selectStateChangeCallbackData, window);
 	}

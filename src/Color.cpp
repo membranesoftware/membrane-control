@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -89,7 +88,7 @@ void Color::normalize () {
 	aByte = (uint8_t) (a * 255.0f);
 }
 
-StdString Color::toString () {
+StdString Color::toString () const {
 	return (StdString::createSprintf ("{color: r=%.2f g=%.2f b=%.2f a=%.2f rByte=%i gByte=%i bByte=%i aByte=%i isTranslating=%s deltaR=%.2f deltaG=%.2f deltaB=%.2f}", r, g, b, a, rByte, gByte, bByte, aByte, BOOL_STRING (isTranslating), deltaR, deltaG, deltaB));
 }
 

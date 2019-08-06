@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -49,7 +48,6 @@
 #include "TextArea.h"
 #include "Button.h"
 #include "Toggle.h"
-#include "StatsWindow.h"
 #include "IconLabelWindow.h"
 #include "MediaLibraryWindow.h"
 
@@ -68,7 +66,6 @@ MediaLibraryWindow::MediaLibraryWindow (const StdString &agentId)
 , storageIcon (NULL)
 , mediaCountIcon (NULL)
 , streamCountIcon (NULL)
-, statsWindow (NULL)
 , menuButton (NULL)
 , selectToggle (NULL)
 , expandToggle (NULL)
@@ -86,6 +83,7 @@ MediaLibraryWindow::MediaLibraryWindow (const StdString &agentId)
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 	setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
+	setCornerRadius (uiconfig->cornerRadius);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
 	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeMediaIconSprite)));
@@ -114,10 +112,6 @@ MediaLibraryWindow::MediaLibraryWindow (const StdString &agentId)
 	streamCountIcon->setPadding (0.0f, 0.0f);
 	streamCountIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
 	streamCountIcon->isVisible = false;
-
-	statsWindow = (StatsWindow *) addWidget (new StatsWindow ());
-	statsWindow->setPadding (uiconfig->paddingSize, 0.0f);
-	statsWindow->isVisible = false;
 
 	menuButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::MainMenuButtonSprite)));
 	menuButton->setMouseClickCallback (MediaLibraryWindow::menuButtonClicked, this);
@@ -201,9 +195,6 @@ void MediaLibraryWindow::syncRecordStore () {
 	streamCountIcon->setText (StdString::createSprintf ("%i", count));
 	streamCountIcon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::videoStream, UiTextString::videoStreams));
 
-	statsWindow->setItem (uitext->getText (UiTextString::uptime).capitalized (), interface->getCommandStringParam (record, "uptime", ""));
-	statsWindow->setItem (uitext->getText (UiTextString::address).capitalized (), OsUtil::getAddressDisplayString (interface->getCommandAgentAddress (record), SystemInterface::Constant_DefaultTcpPort1));
-	statsWindow->setItem (uitext->getText (UiTextString::version).capitalized (), interface->getCommandStringParam (record, "version", ""));
 	if (menuClickCallback) {
 		menuButton->isVisible = true;
 	}
@@ -242,7 +233,6 @@ void MediaLibraryWindow::setExpanded (bool expanded, bool shouldSkipStateChangeC
 		expandToggle->setChecked (true, shouldSkipStateChangeCallback);
 		nameLabel->setFont (UiConfiguration::HeadlineFont);
 		descriptionLabel->isVisible = true;
-		statsWindow->isVisible = true;
 		if (agentTaskCount > 0) {
 			taskCountIcon->isVisible = true;
 		}
@@ -258,7 +248,6 @@ void MediaLibraryWindow::setExpanded (bool expanded, bool shouldSkipStateChangeC
 		expandToggle->setChecked (false, shouldSkipStateChangeCallback);
 		nameLabel->setFont (UiConfiguration::BodyFont);
 		descriptionLabel->isVisible = false;
-		statsWindow->isVisible = false;
 		taskCountIcon->isVisible = false;
 		storageIcon->isVisible = false;
 		mediaCountIcon->isVisible = false;
@@ -305,13 +294,6 @@ void MediaLibraryWindow::refreshLayout () {
 	}
 	if (streamCountIcon->isVisible) {
 		streamCountIcon->flowRight (&x, y, &x2, &y2);
-	}
-
-	x = x0;
-	y = y2 + uiconfig->marginSize;
-	x2 = 0.0f;
-	if (statsWindow->isVisible) {
-		statsWindow->flowRight (&x, y, &x2, &y2);
 	}
 	if (taskCountIcon->isVisible) {
 		taskCountIcon->flowRight (&x, y, &x2, &y2);

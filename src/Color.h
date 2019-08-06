@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -46,7 +45,7 @@ public:
 	bool isTranslating;
 
 	// Return a string description of the color
-	StdString toString ();
+	StdString toString () const;
 
 	// Return a Color object that has been assigned to the specified byte values
 	static Color fromByteValues (uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255);

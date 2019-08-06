@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -195,7 +194,7 @@ public:
   static const int ParamFlag_RangedNumber = 128;
   static const int ParamFlag_Command = 256;
   static const int ParamFlag_EnumValue = 512;
-  static const int Constant_MaxCommandPriority;
+  static const int Constant_MaxCommandPriority = 100;
   static const char *Constant_CreateTimePrefixField;
   static const char *Constant_AgentIdPrefixField;
   static const char *Constant_UserIdPrefixField;
@@ -207,32 +206,32 @@ public:
   static const char *Constant_AuthorizationHashAlgorithm;
   static const char *Constant_WebSocketEvent;
   static const char *Constant_UrlQueryParameter;
-  static const int Constant_DefaultTcpPort1;
-  static const int Constant_DefaultTcpPort2;
-  static const int Constant_DefaultUdpPort;
+  static const int Constant_DefaultTcpPort1 = 63738;
+  static const int Constant_DefaultTcpPort2 = 63739;
+  static const int Constant_DefaultUdpPort = 63738;
   static const char *Constant_DefaultInvokePath;
   static const char *Constant_DefaultAuthorizePath;
   static const char *Constant_DefaultLinkPath;
-  static const int Constant_DefaultCommandType;
-  static const int Constant_Stream;
-  static const int Constant_Media;
-  static const int Constant_Monitor;
-  static const int Constant_Event;
-  static const int Constant_Master;
-  static const int Constant_Admin;
-  static const int Constant_Camera;
-  static const int Constant_CommandTypeCount;
-  static const int Constant_DefaultSortOrder;
-  static const int Constant_NameSort;
-  static const int Constant_NewestSort;
-  static const int Constant_DefaultStreamProfile;
-  static const int Constant_CompressedStreamProfile;
-  static const int Constant_LowQualityStreamProfile;
-  static const int Constant_LowestQualityStreamProfile;
-  static const int Constant_DefaultImageProfile;
-  static const int Constant_HighQualityImageProfile;
-  static const int Constant_LowQualityImageProfile;
-  static const int Constant_LowestQualityImageProfile;
+  static const int Constant_DefaultCommandType = 0;
+  static const int Constant_Stream = 1;
+  static const int Constant_Media = 2;
+  static const int Constant_Monitor = 3;
+  static const int Constant_Event = 4;
+  static const int Constant_Master = 5;
+  static const int Constant_Admin = 6;
+  static const int Constant_Camera = 7;
+  static const int Constant_CommandTypeCount = 8;
+  static const int Constant_DefaultSortOrder = 0;
+  static const int Constant_NameSort = 0;
+  static const int Constant_NewestSort = 1;
+  static const int Constant_DefaultStreamProfile = 0;
+  static const int Constant_CompressedStreamProfile = 1;
+  static const int Constant_LowQualityStreamProfile = 2;
+  static const int Constant_LowestQualityStreamProfile = 3;
+  static const int Constant_DefaultImageProfile = 0;
+  static const int Constant_HighQualityImageProfile = 1;
+  static const int Constant_LowQualityImageProfile = 2;
+  static const int Constant_LowestQualityImageProfile = 3;
   void populate ();
 	SystemInterface ();
 	~SystemInterface ();

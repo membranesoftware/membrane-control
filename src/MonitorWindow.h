@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -40,7 +39,6 @@
 #include "Label.h"
 #include "Button.h"
 #include "Toggle.h"
-#include "StatsWindow.h"
 #include "IconLabelWindow.h"
 #include "Panel.h"
 
@@ -112,7 +110,6 @@ private:
 	IconLabelWindow *taskCountIcon;
 	IconLabelWindow *storageIcon;
 	IconLabelWindow *streamCountIcon;
-	StatsWindow *statsWindow;
 	Button *menuButton;
 	Toggle *selectToggle;
 	Toggle *expandToggle;

@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -63,10 +62,10 @@ public:
 	void handleLinkClientConnect (const StdString &agentId);
 
 	// Callback functions
-	static void configurationExpandStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void cardExpandStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void serverStatusChanged (void *uiPtr, Widget *widgetPtr);
 	static void adminSecretAddButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void adminSecretAddActionClosed (void *uiPtr, Widget *widgetPtr);
-	static void adminSecretExpandStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void lockButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void setAdminPasswordActionClosed (void *uiPtr, Widget *widgetPtr);
 	static void processTaskItem (void *uiPtr, Json *record, const StdString &recordId);

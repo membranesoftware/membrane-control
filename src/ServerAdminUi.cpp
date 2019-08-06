@@ -1,6 +1,5 @@
 /*
-* Copyright 2019 Membrane Software <author@membranesoftware.com>
-*                 https://membranesoftware.com
+* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -103,7 +102,7 @@ int ServerAdminUi::doLoad () {
 
 	adminSecretWindow = new AdminSecretWindow ();
 	adminSecretWindow->setAddButtonClickCallback (ServerAdminUi::adminSecretAddButtonClicked, this);
-	adminSecretWindow->setExpandStateChangeCallback (ServerAdminUi::adminSecretExpandStateChanged, this);
+	adminSecretWindow->setExpandStateChangeCallback (ServerAdminUi::cardExpandStateChanged, this);
 	adminSecretWindow->setExpanded (false);
 	cardView->addItem (adminSecretWindow, StdString (""), 1);
 
@@ -174,10 +173,13 @@ void ServerAdminUi::doSyncRecordStore () {
 		record = store->findRecord (agentId, SystemInterface::CommandId_AgentStatus);
 		if (record) {
 			serverwindow = new ServerWindow (agentId);
+			serverwindow->setExpandStateChangeCallback (ServerAdminUi::cardExpandStateChanged, this);
+			serverwindow->setStatusChangeCallback (ServerAdminUi::serverStatusChanged, this);
+			serverwindow->setExpanded (true, true);
 			cardView->addItem (serverwindow, agentId, 0);
 
 			configwindow = new AgentConfigurationWindow (agentId);
-			configwindow->setExpandStateChangeCallback (ServerAdminUi::configurationExpandStateChanged, this);
+			configwindow->setExpandStateChangeCallback (ServerAdminUi::cardExpandStateChanged, this);
 			cardView->addItem (configwindow, StdString (""), 0);
 			configwindow->loadConfiguration ();
 		}
@@ -228,7 +230,14 @@ void ServerAdminUi::processTaskItem (void *uiPtr, Json *record, const StdString 
 	}
 }
 
-void ServerAdminUi::configurationExpandStateChanged (void *uiPtr, Widget *widgetPtr) {
+void ServerAdminUi::cardExpandStateChanged (void *uiPtr, Widget *widgetPtr) {
+	ServerAdminUi *ui;
+
+	ui = (ServerAdminUi *) uiPtr;
+	ui->cardView->refresh ();
+}
+
+void ServerAdminUi::serverStatusChanged (void *uiPtr, Widget *widgetPtr) {
 	ServerAdminUi *ui;
 
 	ui = (ServerAdminUi *) uiPtr;
@@ -280,13 +289,6 @@ void ServerAdminUi::adminSecretAddActionClosed (void *uiPtr, Widget *widgetPtr) 
 	}
 
 	target->addItem (action);
-	ui->cardView->refresh ();
-}
-
-void ServerAdminUi::adminSecretExpandStateChanged (void *uiPtr, Widget *widgetPtr) {
-	ServerAdminUi *ui;
-
-	ui = (ServerAdminUi *) uiPtr;
 	ui->cardView->refresh ();
 }
 
