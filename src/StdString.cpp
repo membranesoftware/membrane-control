@@ -470,7 +470,7 @@ StdString StdString::createHex (const unsigned char *hexData, int hexDataLength)
 	return (s);
 }
 
-bool StdString::parseInt (int *value) {
+bool StdString::parseInt (int *value) const {
 	char *s, c;
 
 	if (length () <= 0) {
@@ -495,7 +495,7 @@ bool StdString::parseInt (int *value) {
 	return (true);
 }
 
-bool StdString::parseHex (int *value) {
+bool StdString::parseHex (int *value) const {
 	int i;
 	char *s, c;
 
@@ -535,7 +535,7 @@ bool StdString::parseHex (int *value) {
 	return (true);
 }
 
-bool StdString::parseFloat (float *value) {
+bool StdString::parseFloat (float *value) const {
 	char *s, c;
 
 	if (length () <= 0) {
@@ -560,7 +560,7 @@ bool StdString::parseFloat (float *value) {
 	return (true);
 }
 
-bool StdString::parseFloat (double *value) {
+bool StdString::parseFloat (double *value) const {
 	char *s, c;
 
 	if (length () <= 0) {
@@ -585,7 +585,7 @@ bool StdString::parseFloat (double *value) {
 	return (true);
 }
 
-bool StdString::parseAddress (StdString *hostnameValue, int *portValue, int defaultPortValue) {
+bool StdString::parseAddress (StdString *hostnameValue, int *portValue, int defaultPortValue) const {
 	StdString hostname;
 	int port;
 	size_t pos;

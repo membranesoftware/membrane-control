@@ -49,13 +49,15 @@
 #include "WebKioskUi.h"
 #include "CameraUi.h"
 #include "MediaUi.h"
+#include "CommandUi.h"
 #include "MainUi.h"
 
 const int MainUi::uiLaunchWindowTypes[] = {
 	UiLaunchWindow::ServerUi,
 	UiLaunchWindow::MediaUi,
 	UiLaunchWindow::WebKioskUi,
-	UiLaunchWindow::CameraUi
+	UiLaunchWindow::CameraUi,
+	UiLaunchWindow::CommandUi
 };
 const StdString MainUi::announcementIconType = StdString ("a");
 const StdString MainUi::updateIconType = StdString ("b");
@@ -299,6 +301,10 @@ void MainUi::uiOpenClicked (void *uiPtr, Widget *widgetPtr) {
 		}
 		case UiLaunchWindow::CameraUi: {
 			ui = (Ui *) new CameraUi ();
+			break;
+		}
+		case UiLaunchWindow::CommandUi: {
+			ui = (Ui *) new CommandUi ();
 			break;
 		}
 	}

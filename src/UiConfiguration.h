@@ -83,7 +83,7 @@ public:
 		LargeDisplayIconSprite = 37,
 		LargeMediaIconSprite = 38,
 		LargeStreamIconSprite = 39,
-		ProgramIconSprite = 40,
+		PlaylistIconSprite = 40,
 		ExpandLessButtonSprite = 41,
 		ExpandMoreButtonSprite = 42,
 		ConfigurationIconSprite = 43,
@@ -101,7 +101,7 @@ public:
 		RandomizeButtonSprite = 55,
 		ToolsButtonSprite = 56,
 		SmallDisplayIconSprite = 57,
-		SmallProgramIconSprite = 58,
+		SmallPlaylistIconSprite = 58,
 		LargeCameraIconSprite = 59,
 		SmallCameraIconSprite = 60,
 		LargeSizeButtonSprite = 61,
@@ -117,7 +117,9 @@ public:
 		AttachServerButtonSprite = 71,
 		ConnectionFailedStateIconSprite = 72,
 		ConnectionWaitingStateIconSprite = 73,
-		ServerDisabledStateIconSprite = 74
+		ServerDisabledStateIconSprite = 74,
+		LargeCommandIconSprite = 75,
+		SmallCommandIconSprite = 76
 	};
 
 	// Constants to use for font types

@@ -202,7 +202,7 @@ void MonitorWindow::syncRecordStore () {
 		displayname = serverstatus.getString ("showUrl", "");
 		if (! displayname.empty ()) {
 			if (intentname.empty ()) {
-				text.assign (uitext->getText (UiTextString::playing).capitalized ());
+				text.assign (uitext->getText (UiTextString::showing).capitalized ());
 				displaylen += 8;
 			}
 			else {

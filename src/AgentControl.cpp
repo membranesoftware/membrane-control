@@ -50,7 +50,6 @@
 const char *AgentControl::NameKey = "a";
 const char *AgentControl::SecretKey = "b";
 
-const StdString AgentControl::localHostname = StdString ("127.0.0.1");
 const int AgentControl::commandListIdleTimeout = 60000; // ms
 
 AgentControl::AgentControl ()
@@ -113,6 +112,7 @@ int AgentControl::start () {
 	}
 
 	readPrefs ();
+	commandStore.readPrefs ();
 	linkClient.start ();
 
 	isStarted = true;
@@ -612,6 +612,17 @@ void AgentControl::refreshAgentStatus (const StdString &invokeHostname, int invo
 	invokeCommand (agentid, App::instance->createCommand (SystemInterface::Command_GetStatus, SystemInterface::Constant_DefaultCommandType), AgentControl::invokeGetStatusComplete, this, queueId);
 }
 
+void AgentControl::refreshAgentStatus (StringList *agentIdList, const StdString &queueId) {
+	StringList::iterator i, end;
+
+	i = agentIdList->begin ();
+	end = agentIdList->end ();
+	while (i != end) {
+		refreshAgentStatus ((*i), queueId);
+		++i;
+	}
+}
+
 void AgentControl::removeAgent (const StdString &agentId) {
 	std::map<StdString, Agent>::iterator pos;
 	bool found;
@@ -673,6 +684,7 @@ int AgentControl::invokeCommand (const StdString &agentId, Json *command, Comman
 	SDL_UnlockMutex (agentMapMutex);
 
 	if (hostname.empty () || (port <= 0)) {
+		delete (command);
 		return (Result::KeyNotFoundError);
 	}
 
@@ -690,6 +702,38 @@ int AgentControl::invokeCommand (const StdString &agentId, Json *command, Comman
 	return (Result::Success);
 }
 
+int AgentControl::invokeCommand (StringList *agentIdList, Json *command, CommandList::InvokeCallback callback, void *callbackData, const StdString &queueId) {
+	StringList::iterator i, end, last;
+	int count, result;
+
+	if (! command) {
+		return (0);
+	}
+	if (agentIdList->empty ()) {
+		delete (command);
+		return (0);
+	}
+
+	commandStore.readRecentCommand (agentIdList, command);
+	count = 0;
+	i = agentIdList->begin ();
+	end = agentIdList->end ();
+	last = end;
+	--last;
+	while (i != end) {
+		result = invokeCommand (*i, (i != last) ? command->copy () : command, callback, callbackData, queueId);
+		if (result != Result::Success) {
+			Log::debug ("Failed to invoke command; err=%i agentId=\"%s\"", result, (*i).c_str ());
+		}
+		else {
+			++count;
+		}
+		++i;
+	}
+
+	return (count);
+}
+
 void AgentControl::broadcastContactMessage () {
 	Json *params, *cmd;
 	StdString msg;
@@ -705,7 +749,7 @@ void AgentControl::broadcastContactMessage () {
 	App::instance->network.sendBroadcastDatagram (agentDatagramPort, msg.createBuffer ());
 }
 
-void AgentControl::receiveMessage (const char *messageData, int messageLength) {
+void AgentControl::receiveMessage (const char *messageData, int messageLength, const char *sourceAddress, int sourcePort) {
 	Json *command;
 	int commandid;
 
@@ -737,7 +781,11 @@ void AgentControl::receiveMessage (const char *messageData, int messageLength) {
 			SDL_UnlockMutex (agentcontrol->agentMapMutex);
 
 			if (! found) {
-				hostname = interface->getCommandStringParam (command, "urlHostname", "");
+				hostname.assign (sourceAddress);
+				if (hostname.empty ()) {
+					hostname = interface->getCommandStringParam (command, "urlHostname", "");
+				}
+
 				port = interface->getCommandNumberParam (command, "tcpPort1", 0);
 				if ((! hostname.empty ()) && (port > 0)) {
 					agentcontrol->contactAgent (hostname, port);

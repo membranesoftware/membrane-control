@@ -67,6 +67,7 @@ const char *App::ShowInterfaceAnimationsKey = "ShowInterfaceAnimations";
 const char *App::ShowClockKey = "ShowClock";
 const char *App::IsFirstLaunchCompleteKey = "IsFirstLaunchComplete";
 const char *App::AgentStatusKey = "AgentStatus";
+const char *App::StoredCommandsKey = "StoredCommands";
 const char *App::MonitorImageSizeKey = "Monitor_ImageSize";
 const char *App::ServerAdminSecretsKey = "ServerAdminSecrets";
 const char *App::ServerTimeoutKey = "ServerTimeout";
@@ -593,8 +594,8 @@ void App::shutdown () {
 	network.stop ();
 }
 
-void App::datagramReceived (void *callbackData, const char *messageData, int messageLength) {
-	App::instance->agentControl.receiveMessage (messageData, messageLength);
+void App::datagramReceived (void *callbackData, const char *messageData, int messageLength, const char *sourceAddress, int sourcePort) {
+	App::instance->agentControl.receiveMessage (messageData, messageLength, sourceAddress, sourcePort);
 }
 
 void App::executeRenderTasks () {

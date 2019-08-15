@@ -90,6 +90,9 @@ public:
 	// Set the window's expanded state, then execute any expand state change callback that might be configured unless shouldSkipStateChangeCallback is true
 	void setExpanded (bool expanded, bool shouldSkipStateChangeCallback = false);
 
+	// Return the number of items in the window's URL list
+	int getItemCount ();
+
 	// Add an item to the window's URL list
 	void addUrl (const StdString &url);
 

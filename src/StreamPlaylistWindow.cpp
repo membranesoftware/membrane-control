@@ -100,7 +100,7 @@ StreamPlaylistWindow::StreamPlaylistWindow ()
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 	windowWidth = App::instance->windowWidth * StreamPlaylistWindow::windowWidthMultiplier;
 
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::ProgramIconSprite)));
+	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::PlaylistIconSprite)));
 	nameLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::BodyFont, uiconfig->primaryTextColor)));
 	nameLabel->setMouseClickCallback (StreamPlaylistWindow::nameLabelClicked, this);
 	nameLabel->setMouseHoverTooltip (uitext->getText (UiTextString::clickRenameTooltip));
@@ -494,6 +494,10 @@ void StreamPlaylistWindow::menuButtonClicked (void *windowPtr, Widget *widgetPtr
 	if (window->menuClickCallback) {
 		window->menuClickCallback (window->menuClickCallbackData, window);
 	}
+}
+
+int StreamPlaylistWindow::getItemCount () {
+	return (itemListView->getItemCount ());
 }
 
 void StreamPlaylistWindow::addItem (const StdString &streamUrl, const StdString &streamId, const StdString &mediaName, float startPosition) {

@@ -34,7 +34,6 @@
 
 #include "StdString.h"
 #include "Image.h"
-#include "Json.h"
 #include "Label.h"
 #include "Button.h"
 #include "StatsWindow.h"

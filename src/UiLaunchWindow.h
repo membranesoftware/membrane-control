@@ -50,7 +50,8 @@ public:
 		ServerUi = 0,
 		MediaUi = 1,
 		WebKioskUi = 2,
-		CameraUi = 3
+		CameraUi = 3,
+		CommandUi = 4
 	};
 
 	UiLaunchWindow (int uiType, SpriteGroup *mainUiSpriteGroup);

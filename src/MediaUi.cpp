@@ -1649,12 +1649,16 @@ void MediaUi::commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr) {
 			text.assign (uitext->getText (UiTextString::mediaUiNoPlaylistSelectedPrompt));
 			color.assign (uiconfig->errorTextColor);
 		}
+		else if (playlist->getItemCount () <= 0) {
+			text.assign (uitext->getText (UiTextString::mediaUiEmptyPlaylistSelectedPrompt));
+			color.assign (uiconfig->errorTextColor);
+		}
 		else {
 			text.assign (playlist->playlistName);
 			Label::truncateText (&text, UiConfiguration::CaptionFont, App::instance->rootPanel->width * 0.20f, StdString ("..."));
 			color.assign (uiconfig->primaryTextColor);
 		}
-		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallProgramIconSprite), text, UiConfiguration::CaptionFont, color));
+		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallPlaylistIconSprite), text, UiConfiguration::CaptionFont, color));
 		icon->setFillBg (true, uiconfig->lightBackgroundColor);
 		icon->setRightAligned (true);
 	}
@@ -1705,7 +1709,7 @@ void MediaUi::commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr) {
 			Label::truncateText (&text, UiConfiguration::CaptionFont, App::instance->rootPanel->width * 0.20f, StdString ("..."));
 			color.assign (uiconfig->primaryTextColor);
 		}
-		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallProgramIconSprite), text, UiConfiguration::CaptionFont, color));
+		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallPlaylistIconSprite), text, UiConfiguration::CaptionFont, color));
 		icon->setFillBg (true, uiconfig->lightBackgroundColor);
 		icon->setRightAligned (true);
 
@@ -1732,7 +1736,7 @@ void MediaUi::commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr) {
 			Label::truncateText (&text, UiConfiguration::CaptionFont, App::instance->rootPanel->width * 0.20f, StdString ("..."));
 			color.assign (uiconfig->primaryTextColor);
 		}
-		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallProgramIconSprite), text, UiConfiguration::CaptionFont, color));
+		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallPlaylistIconSprite), text, UiConfiguration::CaptionFont, color));
 		icon->setFillBg (true, uiconfig->lightBackgroundColor);
 		icon->setRightAligned (true);
 	}
@@ -1761,16 +1765,17 @@ void MediaUi::commandButtonMouseExited (void *uiPtr, Widget *widgetPtr) {
 
 void MediaUi::playButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
-	HashMap::Iterator i;
-	StdString id, streamurl;
 	MediaWindow *media;
+	StringList idlist;
+	StdString streamurl;
 	Json *params;
 	float startpos;
-	int result, count;
+	int count;
 
 	ui = (MediaUi *) uiPtr;
 	media = MediaWindow::castWidget (ui->lastSelectedMediaWindow.widget);
-	if ((! media) || media->hlsStreamPath.empty () || ui->selectedMonitorMap.empty ()) {
+	ui->selectedMonitorMap.getKeys (&idlist, true);
+	if ((! media) || media->hlsStreamPath.empty () || idlist.empty ()) {
 		return;
 	}
 
@@ -1780,30 +1785,17 @@ void MediaUi::playButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	params->set ("startPosition", startpos);
 	streamurl = App::instance->agentControl.getAgentSecondaryUrl (media->streamAgentId, App::instance->createCommand (SystemInterface::Command_GetHlsManifest, SystemInterface::Constant_Stream, params), media->hlsStreamPath);
 
-	count = 0;
-	i = ui->selectedMonitorMap.begin ();
-	while (ui->selectedMonitorMap.hasNext (&i)) {
-		id = ui->selectedMonitorMap.next (&i);
-
-		params = new Json ();
-		params->set ("mediaName", media->mediaName);
-		params->set ("streamUrl", streamurl);
-		params->set ("streamId", media->streamId);
-		params->set ("startPosition", startpos);
-		result = App::instance->agentControl.invokeCommand (id, App::instance->createCommand (SystemInterface::Command_PlayMedia, SystemInterface::Constant_Monitor, params));
-		if (result != Result::Success) {
-			Log::debug ("Failed to invoke PlayMedia command; err=%i agentId=\"%s\"", result, id.c_str ());
-		}
-		else {
-			++count;
-			App::instance->agentControl.refreshAgentStatus (id);
-		}
-	}
-
+	params = new Json ();
+	params->set ("mediaName", media->mediaName);
+	params->set ("streamUrl", streamurl);
+	params->set ("streamId", media->streamId);
+	params->set ("startPosition", startpos);
+	count = App::instance->agentControl.invokeCommand (&idlist, App::instance->createCommand (SystemInterface::Command_PlayMedia, SystemInterface::Constant_Monitor, params));
 	if (count <= 0) {
 		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
 	}
 	else {
+		App::instance->agentControl.refreshAgentStatus (&idlist);
 		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::invokePlayMediaMessage));
 	}
 }
@@ -1811,67 +1803,43 @@ void MediaUi::playButtonClicked (void *uiPtr, Widget *widgetPtr) {
 void MediaUi::writePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
 	StreamPlaylistWindow *playlist;
-	HashMap::Iterator i;
-	StdString id;
-	int result, count;
+	StringList idlist;
+	int count;
 
 	ui = (MediaUi *) uiPtr;
 	playlist = StreamPlaylistWindow::castWidget (ui->selectedPlaylistWindow.widget);
-	if (! playlist) {
+	ui->selectedMonitorMap.getKeys (&idlist, true);
+	if ((! playlist) || (playlist->getItemCount () <= 0) || idlist.empty ()) {
 		return;
 	}
 
-	count = 0;
-	i = ui->selectedMonitorMap.begin ();
-	while (ui->selectedMonitorMap.hasNext (&i)) {
-		id = ui->selectedMonitorMap.next (&i);
-		result = App::instance->agentControl.invokeCommand (id, playlist->getCreateCommand ());
-		if (result != Result::Success) {
-			Log::debug ("Failed to invoke StreamPlaylistWindow create command; err=%i agentId=\"%s\"", result, id.c_str ());
-		}
-		else {
-			++count;
-			App::instance->agentControl.refreshAgentStatus (id);
-		}
-	}
-
+	count = App::instance->agentControl.invokeCommand (&idlist, playlist->getCreateCommand ());
 	if (count <= 0) {
 		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
 	}
 	else {
+		App::instance->agentControl.refreshAgentStatus (&idlist);
 		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::invokeCreateStreamPlaylistMessage));
 	}
 }
 
 void MediaUi::stopButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
-	HashMap::Iterator i;
-	StdString id;
-	int result, count;
+	StringList idlist;
+	int count;
 
 	ui = (MediaUi *) uiPtr;
-	if (ui->selectedMonitorMap.empty ()) {
+	ui->selectedMonitorMap.getKeys (&idlist, true);
+	if (idlist.empty ()) {
 		return;
 	}
 
-	count = 0;
-	i = ui->selectedMonitorMap.begin ();
-	while (ui->selectedMonitorMap.hasNext (&i)) {
-		id = ui->selectedMonitorMap.next (&i);
-		result = App::instance->agentControl.invokeCommand (id, App::instance->createCommand (SystemInterface::Command_ClearDisplay, SystemInterface::Constant_Monitor));
-		if (result != Result::Success) {
-			Log::debug ("Failed to invoke ClearDisplay command; err=%i agentId=\"%s\"", result, id.c_str ());
-		}
-		else {
-			++count;
-			App::instance->agentControl.refreshAgentStatus (id);
-		}
-	}
-
+	count = App::instance->agentControl.invokeCommand (&idlist, App::instance->createCommand (SystemInterface::Command_ClearDisplay, SystemInterface::Constant_Monitor));
 	if (count <= 0) {
 		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
 	}
 	else {
+		App::instance->agentControl.refreshAgentStatus (&idlist);
 		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::invokeClearDisplayMessage));
 	}
 }

@@ -87,6 +87,7 @@ public:
 	static const char *ShowClockKey;
 	static const char *IsFirstLaunchCompleteKey;
 	static const char *AgentStatusKey;
+	static const char *StoredCommandsKey;
 	static const char *MonitorImageSizeKey;
 	static const char *ServerAdminSecretsKey;
 	static const char *ServerTimeoutKey;
@@ -273,7 +274,7 @@ private:
 	static int runUpdateThread (void *appPtr);
 
 	// Callback function for use with Network::addDatagramCallback
-	static void datagramReceived (void *callbackData, const char *messageData, int messageLength);
+	static void datagramReceived (void *callbackData, const char *messageData, int messageLength, const char *sourceAddress, int sourcePort);
 
 	// Write the prefs map file if any of its keys have changed since the last write
 	void writePrefsMap ();

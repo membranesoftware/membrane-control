@@ -31,7 +31,7 @@
 #include "Config.h"
 #include "SystemInterface.h"
 
-const char *SystemInterface::version = "15-stable-26da021b";
+const char *SystemInterface::version = "17-stable-2c2083f3";
 const char *SystemInterface::Command_AgentConfiguration = "AgentConfiguration";
 const char *SystemInterface::Command_AgentContact = "AgentContact";
 const char *SystemInterface::Command_AgentStatus = "AgentStatus";
@@ -2810,6 +2810,10 @@ int SystemInterface::getCommandId (Json *command) {
 	return (command->getNumber ("command", -1));
 }
 
+StdString SystemInterface::getCommandName (Json *command) {
+	return (command->getString ("commandName", ""));
+}
+
 StdString SystemInterface::getCommandAgentId (Json *command) {
 	Json prefix;
 
@@ -2900,6 +2904,10 @@ SystemInterface::Prefix SystemInterface::getCommandPrefix (Json *command) {
 	result.duration = prefix.getNumber (SystemInterface::Constant_DurationPrefixField, (int64_t) 0);
 
 	return (result);
+}
+
+bool SystemInterface::getCommandParams (Json *command, Json *params) {
+	return (command->getObject ("params", params));
 }
 
 StdString SystemInterface::getCommandStringParam (Json *command, const StdString &paramName, const StdString &defaultValue) {

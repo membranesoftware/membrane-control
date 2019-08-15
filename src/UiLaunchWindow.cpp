@@ -116,6 +116,16 @@ UiLaunchWindow::UiLaunchWindow (int uiType, SpriteGroup *mainUiSpriteGroup)
 			noteIcons.push_back (icon);
 			break;
 		}
+		case UiLaunchWindow::CommandUi: {
+			name.assign (uitext->getText (UiTextString::commands).capitalized ());
+			text.assign (uitext->getText (UiTextString::commandUiDescription));
+
+			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallCommandIconSprite), uitext->getCountText (0, UiTextString::recentCommand, UiTextString::recentCommands), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
+			noteIcons.push_back (icon);
+			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallCommandIconSprite), uitext->getCountText (0, UiTextString::storedCommand, UiTextString::storedCommands), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
+			noteIcons.push_back (icon);
+			break;
+		}
 	}
 
 	sprite = sprites->getSprite (MainUi::UiIconSprite);
@@ -202,6 +212,16 @@ void UiLaunchWindow::syncRecordStore () {
 			icon->setText (uitext->getCountText (count, UiTextString::cameraConnected, UiTextString::camerasConnected));
 			break;
 		}
+		case UiLaunchWindow::CommandUi: {
+			icon = noteIcons.at (0);
+			count = App::instance->agentControl.commandStore.getRecentCommandCount ();
+			icon->setText (uitext->getCountText (count, UiTextString::recentCommand, UiTextString::recentCommands));
+
+			icon = noteIcons.at (1);
+			count = App::instance->agentControl.commandStore.getStoredCommandCount ();
+			icon->setText (uitext->getCountText (count, UiTextString::storedCommand, UiTextString::storedCommands));
+			break;
+		}
 	}
 
 	Panel::syncRecordStore ();
@@ -266,6 +286,12 @@ bool UiLaunchWindow::isReadyState (int uiType, RecordStore *store) {
 		}
 		case UiLaunchWindow::CameraUi: {
 			if (store->countAgentRecords ("cameraServerStatus", maxage) > 0) {
+				return (true);
+			}
+			break;
+		}
+		case UiLaunchWindow::CommandUi: {
+			if ((App::instance->agentControl.commandStore.getStoredCommandCount () > 0) || (App::instance->agentControl.commandStore.getRecentCommandCount () > 0)) {
 				return (true);
 			}
 			break;

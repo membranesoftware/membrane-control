@@ -86,6 +86,15 @@ StdString StringList::toJsonString () {
 	return (s);
 }
 
+StringList *StringList::copy () {
+	StringList *stringlist;
+
+	stringlist = new StringList ();
+	stringlist->insertStringList (this);
+
+	return (stringlist);
+}
+
 bool StringList::parseJsonString (const StdString &jsonString) {
 	int i, len, stage;
 	char c;
@@ -232,6 +241,31 @@ bool StringList::contains (const StdString &item) {
 	}
 
 	return (found);
+}
+
+bool StringList::equals (StringList *stringList) {
+	StringList::iterator i, iend, j, jend;
+
+	if (size () != stringList->size ()) {
+		return (false);
+	}
+
+	i = begin ();
+	iend = end ();
+	j = stringList->begin ();
+	jend = stringList->end ();
+	while (i != iend) {
+		if (j == jend) {
+			return (false);
+		}
+		if (! (*i).equals (*j)) {
+			return (false);
+		}
+		++i;
+		++j;
+	}
+
+	return (true);
 }
 
 void StringList::sort (StringList::SortFunction sortFunction) {

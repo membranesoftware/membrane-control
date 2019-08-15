@@ -307,6 +307,9 @@ public:
 	// Return the command ID value appearing in the provided command object, or -1 if no such ID was found
 	int getCommandId (Json *command);
 
+	// Return the command name value appearing in the provided command object, or an empty string if no such name was found
+	StdString getCommandName (Json *command);
+
 	// Return the prefix.agentId value appearing in the provided command object, or an empty string if no such value was found
 	StdString getCommandAgentId (Json *command);
 
@@ -327,6 +330,9 @@ public:
 
 	// Return a SystemInterface::Prefix structure containing prefix fields from the provided command
 	SystemInterface::Prefix getCommandPrefix (Json *command);
+
+	// Get the provided command's params object and store it using the provided Json pointer. Returns a boolean value indicating if the params object was found.
+	bool getCommandParams (Json *command, Json *params);
 
 	// Return a string value from params in the provided command, or the default value if the named field wasn't found
 	StdString getCommandStringParam (Json *command, const StdString &paramName, const StdString &defaultValue);

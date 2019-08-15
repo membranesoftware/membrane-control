@@ -35,20 +35,16 @@ showInterfaceAnimations show interface animations
 media media
 mediaFile media file
 mediaFiles media files
-mediaItems media items
 videoStream video stream
 videoStreams video streams
 videoQuality video quality
 storage storage
 webKiosk web kiosk
 webKiosks web kiosks
-runProgram run program
 createPlaylist create playlist
-createProgram create program
 runPlaylist run playlist
 addPlaylistItem add playlist item
 deletePlaylist delete playlist
-deleteProgram delete program
 playAll play all
 cache cache
 shuffle shuffle
@@ -68,8 +64,6 @@ removeUnattachedServerDescription Membrane Control will no longer show this serv
 attachServerTooltip Stay connected to this server
 detachServerTooltip Do not connect to this server
 tasks tasks
-program program
-programs programs
 playlist playlist
 playlists playlists
 speed speed
@@ -117,16 +111,16 @@ addWebsite add website
 showWebsite show website
 browseWebsite browse website
 viewWebsites view websites
-managePrograms manage programs
 serverUiDescription Connect to Membrane Server applications running on this computer or on the network.
 mediaUiDescription Browse videos from a media server. Watch video streams in a browser or on Raspberry Pi monitors.
 webKioskUiDescription Track your favorite websites by launching browser applications on Raspberry Pi monitors.
 selectPlayPosition select play position
 enterAddressPrompt (Enter server address)
 enterUrlPrompt (Enter website address)
-enterWebPlaylistNamePrompt (Enter program name)
+enterWebPlaylistNamePrompt (Enter playlist name)
 enterPlaylistNamePrompt (Enter playlist name)
 enterSearchKeyPrompt (Enter search filter)
+enterStoredCommandNamePrompt (Enter a name for this command)
 emptyWebPlaylistAddressList (Addresses in this list are shown on the kiosk display)
 selectToggleTooltip Select or unselect this item
 expandToggleTooltip Expand or unexpand this item
@@ -147,8 +141,8 @@ monitorConnected monitor connected
 monitorsConnected monitors connected
 videoStreamPlayable video stream playable
 videoStreamsPlayable video streams playable
-webPlaylistItem site in this program
-webPlaylistItems sites in this program
+webPlaylistItem site in this playlist
+webPlaylistItems sites in this playlist
 streamPlaylistItem clip in this playlist
 streamPlaylistItems clips in this playlist
 uiLaunchOpenButtonTooltip Open this interface
@@ -208,6 +202,7 @@ mediaUiNoMediaSelectedPrompt (Select a media file)
 mediaUiNoStreamableMediaSelectedPrompt (Select a media file with an available stream)
 mediaUiNoMonitorSelectedPrompt (Select a monitor)
 mediaUiNoPlaylistSelectedPrompt (Select a playlist)
+mediaUiEmptyPlaylistSelectedPrompt (Select a playlist containing at least one item)
 mediaUiAddPlaylistItemTooltip <F3> Add all selected videos to the selected playlist
 mediaUiCreatePlaylistTooltip <F2> Create a new playlist
 mediaUiWritePlaylistTooltip <F3> Play the selected playlist on all selected monitors
@@ -244,24 +239,25 @@ invokeGetStatusAddressParseError The provided server address doesn't use the cor
 internalError An unexpected internal error prevented this operation from succeeding. Our apologies.
 serverContactError Unable to contact the remote server. Check if network connections are available and try again.
 invokeClearDisplayMessage Command sent: <Clear>
-invokeCreateWebPlaylistMessage Command sent: <Run program>
+invokeCreateWebPlaylistMessage Command sent: <Run website playlist>
 invokeShowWebUrlMessage Command sent: <Show website>
 webKioskUiHelpTitle Web kiosk
-webKioskUiHelpText This interface commands Membrane Monitor applications to behave as web kiosks. Select servers or programs using the star icons in their upper right corners, then use the bottom toolbar to execute commands.
+webKioskUiHelpText This interface commands Membrane Monitor applications to behave as web kiosks. Select servers or playlists using the star icons in their upper right corners, then use the bottom toolbar to execute commands.
 webKioskUiHelpAction1Text No Membrane Monitor applications are connected. To find one, return to the main menu and open the "Servers" interface.
-webKioskUiHelpAction2Text - Create and edit programs capable of running on web kiosks to show a set of sites.\n\n- Enter a website address and add it to a program, launch a web browser to view it, or command a web kiosk to display it.\n\n- Write a program to one or more web kiosks, causing them to cycle through the listed sites with an optional shuffle.
-webKioskUiAddUrlTooltip <F3> Add this website to the selected program
+webKioskUiHelpAction2Text - Create and edit playlists capable of running on monitors to show a set of sites.\n\n- Enter a website address and add it to a playlist, launch a web browser to view it, or command a web kiosk to display it.\n\n- Write a playlist to one or more monitors, causing them to cycle through the listed sites with an optional shuffle.
+webKioskUiAddUrlTooltip <F3> Add this website to the selected playlist
 webKioskUiBrowseUrlTooltip Launch a browser viewing this website
-webKioskUiShowUrlTooltip <F3> Show this website on all selected web kiosks
-webKioskUiAddPlaylistTooltip <F2> Create a new website list that can run on web kiosks as a program
-webKioskUiClearDisplayTooltip <F1> Clear all selected web kiosks
-webKioskUiWritePlaylistTooltip <F2> Run the selected program on all selected web kiosks
-webKioskUiDeletePlaylistTooltip Delete the selected program
-webKioskNoAgentsSelectedPrompt (Select a web kiosk)
-webKioskNoPlaylistsSelectedPrompt (Select a program)
-webKioskNoAddressEnteredPrompt (Enter a website address)
-websiteAddedMessage Website added to program
-webPlaylistCreatedMessage Created program
+webKioskUiShowUrlTooltip <F3> Show this website on all selected monitors
+webKioskUiAddPlaylistTooltip <F2> Create a new website playlist
+webKioskUiClearDisplayTooltip <F1> Clear all selected monitors
+webKioskUiWritePlaylistTooltip <F2> Run the selected playlist on all selected monitors
+webKioskUiDeletePlaylistTooltip Delete the selected playlist
+webKioskUiNoAgentSelectedPrompt (Select a web kiosk)
+webKioskUiNoPlaylistSelectedPrompt (Select a playlist)
+webKioskUiEmptyPlaylistSelectedPrompt (Select a playlist containing at least one item)
+webKioskUiNoAddressEnteredPrompt (Enter a website address)
+websiteAddedMessage Website added to playlist
+webPlaylistCreatedMessage Created playlist
 shuffleTooltip If enabled: Show items from the list in randomized order
 clickRenameTooltip (Click to rename)
 hyperlinkTooltip Open this site using the system's web browser
@@ -377,3 +373,26 @@ continuous continuous
 cameraTimelineUiHelpTitle Timelapse images
 cameraTimelineUiHelpText This interface shows timelapse images stored on a camera. Click the bottom bar to select a time position for images to display.
 playCaptureTooltip Play timelapse images in sequence
+commands commands
+commandUiDescription Store commonly used commands for easy execution.
+clearMonitors clear monitors
+playMedia play media
+runMediaPlaylist run media playlist
+runWebsitePlaylist run website playlist
+storedCommand stored command
+storedCommands stored commands
+recentCommand recent command
+recentCommands recent commands
+unknownServer unknown server
+unknownServers unknown servers
+commandUiEmptyStatusTitle No recent commands
+commandUiEmptyStatusText Commands executed on other interfaces appear here and can be stored as shortcuts.
+storedCommandFailedExecutionError Server connections to execute this command could not be established.
+storedCommandExecutedMessage Command executed
+commandDetails command details
+executeCommand execute command
+deleteCommand delete command
+saveCommandTooltip Save as a stored command
+commandUiHelpTitle Commands
+commandUiHelpText This interface shows recently executed commands and allows them to be stored as shortcuts.
+commandUiHelpActionText - Actions executed on other interfaces, such as Media or Web Kiosk, show up here as recent commands and can be saved for reuse.\n\n- Not every action is eligible to be stored, but many commonly used ones are. These include: Clear monitors, Show website, Play media, Run playlist

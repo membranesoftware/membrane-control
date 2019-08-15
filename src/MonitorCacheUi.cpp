@@ -583,11 +583,14 @@ void MonitorCacheUi::commandButtonMouseExited (void *uiPtr, Widget *widgetPtr) {
 
 void MonitorCacheUi::stopButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	MonitorCacheUi *ui;
+	Json *command;
 	int result;
 
 	ui = (MonitorCacheUi *) uiPtr;
 
-	result = App::instance->agentControl.invokeCommand (ui->agentId, App::instance->createCommand (SystemInterface::Command_ClearDisplay, SystemInterface::Constant_Monitor));
+	command = App::instance->createCommand (SystemInterface::Command_ClearDisplay, SystemInterface::Constant_Monitor);
+	App::instance->agentControl.commandStore.readRecentCommand (ui->agentId, command);
+	result = App::instance->agentControl.invokeCommand (ui->agentId, command);
 	if (result != Result::Success) {
 		Log::debug ("Failed to invoke ClearDisplay command; err=%i agentId=\"%s\"", result, ui->agentId.c_str ());
 		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
@@ -629,7 +632,7 @@ void MonitorCacheUi::playButtonClicked (void *uiPtr, Widget *widgetPtr) {
 void MonitorCacheUi::writePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	MonitorCacheUi *ui;
 	std::list<Json *> items;
-	Json *params;
+	Json *params, *command;
 	int result;
 
 	ui = (MonitorCacheUi *) uiPtr;
@@ -651,8 +654,9 @@ void MonitorCacheUi::writePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr)
 	params->set ("maxStartPositionDelta", 85);
 	params->set ("minItemDisplayDuration", 30);
 	params->set ("maxItemDisplayDuration", 360);
-
-	result = App::instance->agentControl.invokeCommand (ui->agentId, App::instance->createCommand (SystemInterface::Command_CreateMediaDisplayIntent, SystemInterface::Constant_Monitor, params));
+	command = App::instance->createCommand (SystemInterface::Command_CreateMediaDisplayIntent, SystemInterface::Constant_Monitor, params);
+	App::instance->agentControl.commandStore.readRecentCommand (ui->agentId, command);
+	result = App::instance->agentControl.invokeCommand (ui->agentId, command);
 	if (result != Result::Success) {
 		Log::debug ("Failed to invoke CreateMediaDisplayIntent command; err=%i agentId=\"%s\"", result, ui->agentId.c_str ());
 		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));

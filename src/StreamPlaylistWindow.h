@@ -86,6 +86,9 @@ public:
 	// Set the window's expand state, then execute any expand state change callback that might be configured unless shouldSkipStateChangeCallback is true
 	void setExpanded (bool expanded, bool shouldSkipStateChangeCallback = false);
 
+	// Return the number of items in the window's playlist
+	int getItemCount ();
+
 	// Add an item to the window's playlist
 	void addItem (const StdString &streamUrl, const StdString &streamId, const StdString &mediaName, float startPosition);
 

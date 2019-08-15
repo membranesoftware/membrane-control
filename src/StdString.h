@@ -55,16 +55,16 @@ public:
 
 	static const int maxSprintfLength;
 
-	// Set the string's content using a format string. If the final length is greater than MAX_SPRINTF_LENGTH, the content is truncated to fit.
+	// Set the string's content using a format string. If the final length is greater than maxSprintfLength, the content is truncated to fit.
 	void sprintf (const char *str, ...) __attribute__((format(printf, 2, 3)));
 
-	// Set the string's content using a format string and an arg list. If the final length is greater than MAX_SPRINTF_LENGTH, the content is truncated to fit.
+	// Set the string's content using a format string and an arg list. If the final length is greater than maxSprintfLength, the content is truncated to fit.
 	void vsprintf (const char *str, va_list ap);
 
-	// Append to the string's content using a format string. If the final length of the string to append is greater than MAX_SPRINTF_LENGTH, the content is truncated to fit.
+	// Append to the string's content using a format string. If the final length of the string to append is greater than maxSprintfLength, the content is truncated to fit.
 	void appendSprintf (const char *str, ...) __attribute__((format(printf, 2, 3)));
 
-	// Append to the string's content using a format string and an arg list. If the final length is greater than MAX_SPRINTF_LENGTH, the content is truncated to fit.
+	// Append to the string's content using a format string and an arg list. If the final length is greater than maxSprintfLength, the content is truncated to fit.
 	void appendVsprintf (const char *str, va_list ap);
 
 	// Return a boolean value indicating if the string is equal to the provided value
@@ -157,17 +157,17 @@ public:
 	void wipe ();
 
 	// Parse the string's content as an integer and store its value in the provided pointer. Returns a boolean value indicating if the parse was successful.
-	bool parseInt (int *value);
+	bool parseInt (int *value) const;
 
 	// Parse the string's content as a hex integer and store its value in the provided pointer. Returns a boolean value indicating if the parse was successful.
-	bool parseHex (int *value);
+	bool parseHex (int *value) const;
 
 	// Parse the string's content as a float and store its value in the provided pointer. Returns a boolean value indicating if the parse was successful.
-	bool parseFloat (float *value);
-	bool parseFloat (double *value);
+	bool parseFloat (float *value) const;
+	bool parseFloat (double *value) const;
 
 	// Parse the string's content as a network address and store its component values in the provided pointers. Returns a boolean value indicating if the parse was successful. If no port value is found in the address, assign the specified default port value to portValue.
-	bool parseAddress (StdString *hostnameValue = NULL, int *portValue = NULL, int defaultPortValue = 0);
+	bool parseAddress (StdString *hostnameValue = NULL, int *portValue = NULL, int defaultPortValue = 0) const;
 
 	// Return a newly created string with content generated from a format string
 	static StdString createSprintf (const char *str, ...) __attribute__((format(printf, 1, 2)));

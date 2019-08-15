@@ -48,6 +48,9 @@ public:
 	// Return a JSON array string containing the items in the list
 	StdString toJsonString ();
 
+	// Return a newly created StringList object containing copies of all items in the list
+	StringList *copy ();
+
 	// Parse the provided JSON array string and replace the list content with the resulting items. Returns a boolean value indicating if the parse was successful.
 	bool parseJsonString (const StdString &jsonString);
 
@@ -59,6 +62,9 @@ public:
 
 	// Return a boolean value indicating if the list contains an item matching the specified value
 	bool contains (const StdString &item);
+
+	// Return a boolean value indicating if the list contains all items from another list, in the same order
+	bool equals (StringList *stringList);
 
 	// Sort the items in the list
 	void sort (StringList::SortFunction sortFunction = StringList::compareAscending);

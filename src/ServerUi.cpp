@@ -382,7 +382,7 @@ void ServerUi::addressToggleStateChanged (void *uiPtr, Widget *widgetPtr) {
 	if (toggle->isChecked) {
 		textfield = new TextFieldWindow (toolbar->getLeftWidth (), App::instance->uiText.getText (UiTextString::enterAddressPrompt), ui->sprites.getSprite (ServerUi::AddressIconSprite));
 		textfield->setWindowHeight (toolbar->height);
-		textfield->setButtonsEnabled (true, false, false, false);
+		textfield->setButtonsEnabled (true, false, true, true);
 		textfield->setFillBg (true, uiconfig->lightPrimaryColor);
 		textfield->setEditCallback (ServerUi::addressTextFieldEdited, ui);
 		textfield->assignKeyFocus ();

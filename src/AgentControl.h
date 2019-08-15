@@ -42,6 +42,7 @@
 #include "Agent.h"
 #include "LinkClient.h"
 #include "CommandList.h"
+#include "CommandStore.h"
 #include "Ui.h"
 
 class AgentControl {
@@ -49,7 +50,6 @@ public:
 	AgentControl ();
 	~AgentControl ();
 
-	static const StdString localHostname;
 	static const int commandListIdleTimeout;
 
 	// Read-write data members
@@ -57,6 +57,7 @@ public:
 	StdString agentId;
 	StdString urlHostname;
 	RecordStore recordStore;
+	CommandStore commandStore;
 
 	// Start the agent control's operation. Returns a Result value.
 	int start ();
@@ -143,6 +144,9 @@ public:
 	void refreshAgentStatus (const StdString &agentId, const StdString &queueId = StdString (""));
 	void refreshAgentStatus (const StdString &invokeHostname, int invokeTcpPort, const StdString &queueId = StdString (""));
 
+	// Invoke the GetStatus command from agents with IDs in the provided list, and update their records if successful
+	void refreshAgentStatus (StringList *agentIdList, const StdString &queueId = StdString (""));
+
 	// Remove any previously stored records associated with the specified agent
 	void removeAgent (const StdString &agentId);
 
@@ -150,8 +154,11 @@ public:
 	int invokeCommand (const StdString &hostname, int tcpPort, Json *command, CommandList::InvokeCallback callback = NULL, void *callbackData = NULL, const StdString &queueId = StdString (""));
 	int invokeCommand (const StdString &agentId, Json *command, CommandList::InvokeCallback callback = NULL, void *callbackData = NULL, const StdString &queueId = StdString (""));
 
+	// Invoke a command on all agents with IDs in the provided list, and execute the provided callback as each invocation completes. A non-empty queueId value indicates that the commands should be executed serially with others of the same queueId. This class becomes responsible for freeing the submitted command object when it's no longer needed. Returns the number of agent invocations that were successfully queued.
+	int invokeCommand (StringList *agentIdList, Json *command, CommandList::InvokeCallback callback = NULL, void *callbackData = NULL, const StdString &queueId = StdString (""));
+
 	// Parse the provided message data as a command payload received from a remote agent
-	void receiveMessage (const char *messageData, int messageLength);
+	void receiveMessage (const char *messageData, int messageLength, const char *sourceAddress, int sourcePort);
 
 	// Add an entry to the list of secrets
 	void addAdminSecret (const StdString &entryName, const StdString &entrySecret);

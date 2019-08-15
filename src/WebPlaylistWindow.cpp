@@ -96,7 +96,7 @@ WebPlaylistWindow::WebPlaylistWindow ()
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 	windowWidth = App::instance->windowWidth * WebPlaylistWindow::windowWidthMultiplier;
 
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::ProgramIconSprite)));
+	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::PlaylistIconSprite)));
 	nameLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::BodyFont, uiconfig->primaryTextColor)));
 	nameLabel->setMouseClickCallback (WebPlaylistWindow::nameLabelClicked, this);
 	nameLabel->setMouseHoverTooltip (uitext->getText (UiTextString::clickRenameTooltip));
@@ -405,6 +405,10 @@ void WebPlaylistWindow::urlListChanged (void *windowPtr, Widget *widgetPtr) {
 	if (window->urlListChangeCallback) {
 		window->urlListChangeCallback (window->urlListChangeCallbackData, window);
 	}
+}
+
+int WebPlaylistWindow::getItemCount () {
+	return (urlListView->getItemCount ());
 }
 
 void WebPlaylistWindow::addUrl (const StdString &url) {

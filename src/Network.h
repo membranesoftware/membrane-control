@@ -54,7 +54,7 @@ public:
 		HttpUnauthorizedCode = 401
 	};
 
-	typedef void (*DatagramCallback) (void *callbackData, const char *messageData, int messageLength);
+	typedef void (*DatagramCallback) (void *callbackData, const char *messageData, int messageLength, const char *sourceAddress, int sourcePort);
 	typedef void (*HttpRequestCallback) (void *callbackData, const StdString &targetUrl, int statusCode, SharedBuffer *responseData);
 
 	// Read-write data members

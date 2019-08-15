@@ -576,7 +576,7 @@ int Network::runDatagramReceiveThread (void *networkPtr) {
 	struct sockaddr_in srcaddr;
 	socklen_t addrlen;
 	int msglen;
-	char buf[Network::maxDatagramSize];
+	char buf[Network::maxDatagramSize], host[NI_MAXHOST];
 	std::list<Network::DatagramCallbackContext>::iterator i, end;
 
 	network = (Network *) networkPtr;
@@ -594,10 +594,13 @@ int Network::runDatagramReceiveThread (void *networkPtr) {
 			break;
 		}
 
+		if (getnameinfo ((struct sockaddr *) &srcaddr, addrlen, host, sizeof (host), NULL, 0, NI_NUMERICHOST | NI_NUMERICSERV) != 0) {
+			memset (host, 0, sizeof (host));
+		}
 		i = network->datagramCallbackList.begin ();
 		end = network->datagramCallbackList.end ();
 		while (i != end) {
-			i->callback (i->callbackData, buf, msglen);
+			i->callback (i->callbackData, buf, msglen, host, (int) srcaddr.sin_port);
 			++i;
 		}
 	}
