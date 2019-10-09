@@ -48,6 +48,7 @@
 #include "TextArea.h"
 #include "Button.h"
 #include "Toggle.h"
+#include "ProgressBar.h"
 #include "IconLabelWindow.h"
 #include "MediaLibraryWindow.h"
 
@@ -66,6 +67,10 @@ MediaLibraryWindow::MediaLibraryWindow (const StdString &agentId)
 , storageIcon (NULL)
 , mediaCountIcon (NULL)
 , streamCountIcon (NULL)
+, taskImage (NULL)
+, taskNameLabel (NULL)
+, taskSubtitleLabel (NULL)
+, taskProgressBar (NULL)
 , menuButton (NULL)
 , selectToggle (NULL)
 , expandToggle (NULL)
@@ -113,6 +118,16 @@ MediaLibraryWindow::MediaLibraryWindow (const StdString &agentId)
 	streamCountIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
 	streamCountIcon->isVisible = false;
 
+	taskImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::TaskInProgressIconSprite)));
+	taskImage->setMouseHoverTooltip (uitext->getText (UiTextString::taskInProgress).capitalized ());
+	taskImage->isVisible = false;
+	taskNameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::BodyFont, uiconfig->primaryTextColor));
+	taskNameLabel->isVisible = false;
+	taskSubtitleLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	taskSubtitleLabel->isVisible = false;
+	taskProgressBar = (ProgressBar *) addWidget (new ProgressBar (((float) App::instance->windowWidth) * 0.16f, uiconfig->progressBarHeight));
+	taskProgressBar->isVisible = false;
+
 	menuButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::MainMenuButtonSprite)));
 	menuButton->setMouseClickCallback (MediaLibraryWindow::menuButtonClicked, this);
 	menuButton->setImageColor (uiconfig->flatButtonTextColor);
@@ -122,13 +137,13 @@ MediaLibraryWindow::MediaLibraryWindow (const StdString &agentId)
 	selectToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::StarOutlineButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::StarButtonSprite)));
 	selectToggle->setImageColor (uiconfig->flatButtonTextColor);
 	selectToggle->setStateChangeCallback (MediaLibraryWindow::selectToggleStateChanged, this);
-	selectToggle->setMouseHoverTooltip (uitext->getText (UiTextString::selectToggleTooltip));
+	selectToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::unselectedToggleTooltip), uitext->getText (UiTextString::selectedToggleTooltip));
 	selectToggle->isVisible = false;
 
 	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
 	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
 	expandToggle->setStateChangeCallback (MediaLibraryWindow::expandToggleStateChanged, this);
-	expandToggle->setMouseHoverTooltip (uitext->getText (UiTextString::expandToggleTooltip));
+	expandToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::expand).capitalized (), uitext->getText (UiTextString::minimize).capitalized ());
 
 	refreshLayout ();
 }
@@ -176,15 +191,6 @@ void MediaLibraryWindow::syncRecordStore () {
 
 	descriptionLabel->setText (interface->getCommandStringParam (record, "applicationName", ""));
 
-	taskCountIcon->setText (StdString::createSprintf ("%i", agentTaskCount));
-	taskCountIcon->setMouseHoverTooltip (uitext->getCountText (agentTaskCount, UiTextString::taskInProgress, UiTextString::tasksInProgress));
-	if ((agentTaskCount > 0) && isExpanded) {
-		taskCountIcon->isVisible = true;
-	}
-	else {
-		taskCountIcon->isVisible = false;
-	}
-
 	storageIcon->setText (OsUtil::getStorageAmountDisplayString (streamserverstatus.getNumber ("freeStorage", (int64_t) 0), streamserverstatus.getNumber ("totalStorage", (int64_t) 0)));
 
 	count = mediaserverstatus.getNumber ("mediaCount", (int) 0);
@@ -195,10 +201,39 @@ void MediaLibraryWindow::syncRecordStore () {
 	streamCountIcon->setText (StdString::createSprintf ("%i", count));
 	streamCountIcon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::videoStream, UiTextString::videoStreams));
 
+	taskCountIcon->setText (StdString::createSprintf ("%i", agentTaskCount));
+	taskCountIcon->setMouseHoverTooltip (uitext->getCountText (agentTaskCount, UiTextString::taskInProgress, UiTextString::tasksInProgress));
+
+	taskNameLabel->setText (interface->getCommandStringParam (record, "runTaskName", ""));
+	taskSubtitleLabel->setText (Label::getTruncatedText (interface->getCommandStringParam (record, "runTaskSubtitle", ""), UiConfiguration::CaptionFont, ((float) App::instance->windowWidth) * 0.21f, StdString ("...")));
+	taskProgressBar->setProgress (interface->getCommandNumberParam (record, "runTaskPercentComplete", (float) 0.0f), 100.0f);
+
+	if ((agentTaskCount > 0) && isExpanded) {
+		taskCountIcon->isVisible = true;
+		if (taskNameLabel->text.empty ()) {
+			taskImage->isVisible = false;
+			taskNameLabel->isVisible = false;
+			taskSubtitleLabel->isVisible = false;
+			taskProgressBar->isVisible = false;
+		}
+		else {
+			taskImage->isVisible = true;
+			taskNameLabel->isVisible = true;
+			taskSubtitleLabel->isVisible = true;
+			taskProgressBar->isVisible = true;
+		}
+	}
+	else {
+		taskCountIcon->isVisible = false;
+		taskImage->isVisible = false;
+		taskNameLabel->isVisible = false;
+		taskSubtitleLabel->isVisible = false;
+		taskProgressBar->isVisible = false;
+	}
+
 	if (menuClickCallback) {
 		menuButton->isVisible = true;
 	}
-
 	refreshLayout ();
 	Panel::syncRecordStore ();
 }
@@ -235,9 +270,25 @@ void MediaLibraryWindow::setExpanded (bool expanded, bool shouldSkipStateChangeC
 		descriptionLabel->isVisible = true;
 		if (agentTaskCount > 0) {
 			taskCountIcon->isVisible = true;
+			if (taskNameLabel->text.empty ()) {
+				taskImage->isVisible = false;
+				taskNameLabel->isVisible = false;
+				taskSubtitleLabel->isVisible = false;
+				taskProgressBar->isVisible = false;
+			}
+			else {
+				taskImage->isVisible = true;
+				taskNameLabel->isVisible = true;
+				taskSubtitleLabel->isVisible = true;
+				taskProgressBar->isVisible = true;
+			}
 		}
 		else {
 			taskCountIcon->isVisible = false;
+			taskImage->isVisible = false;
+			taskNameLabel->isVisible = false;
+			taskSubtitleLabel->isVisible = false;
+			taskProgressBar->isVisible = false;
 		}
 		storageIcon->isVisible = true;
 		mediaCountIcon->isVisible = true;
@@ -252,6 +303,10 @@ void MediaLibraryWindow::setExpanded (bool expanded, bool shouldSkipStateChangeC
 		storageIcon->isVisible = false;
 		mediaCountIcon->isVisible = false;
 		streamCountIcon->isVisible = false;
+		taskImage->isVisible = false;
+		taskNameLabel->isVisible = false;
+		taskSubtitleLabel->isVisible = false;
+		taskProgressBar->isVisible = false;
 	}
 
 	refreshLayout ();
@@ -271,7 +326,9 @@ void MediaLibraryWindow::refreshLayout () {
 
 	iconImage->flowRight (&x, y, &x2, &y2);
 	nameLabel->flowDown (x, &y, &x2, &y2);
-	descriptionLabel->flowRight (&x, y, &x2, &y2);
+	if (descriptionLabel->isVisible) {
+		descriptionLabel->flowRight (&x, y, &x2, &y2);
+	}
 
 	x = x2 + uiconfig->marginSize;
 	y = y0;
@@ -297,6 +354,29 @@ void MediaLibraryWindow::refreshLayout () {
 	}
 	if (taskCountIcon->isVisible) {
 		taskCountIcon->flowRight (&x, y, &x2, &y2);
+	}
+
+	x = x0;
+	y = y2 + uiconfig->marginSize;
+	y0 = y;
+	x2 = 0.0f;
+	if (taskImage->isVisible) {
+		taskImage->flowRight (&x, y, &x2, &y2);
+	}
+	if (taskNameLabel->isVisible) {
+		taskNameLabel->flowRight (&x, y, &x2, &y2);
+	}
+	if (taskSubtitleLabel->isVisible) {
+		taskSubtitleLabel->flowDown (x, &y, &x2, &y2);
+	}
+	if (taskProgressBar->isVisible) {
+		taskProgressBar->flowDown (x, &y, &x2, &y2);
+	}
+	if (taskImage->isVisible) {
+		taskImage->position.assignY (y0 + ((y2 - y0) / 2.0f) - (taskImage->height / 2.0f));
+	}
+	if (taskNameLabel->isVisible) {
+		taskNameLabel->position.assignY (y0 + ((y2 - y0) / 2.0f) - (taskNameLabel->height / 2.0f));
 	}
 
 	resetSize ();

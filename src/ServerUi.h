@@ -55,9 +55,11 @@ public:
 
 	// Constants to use for card view row numbers
 	enum {
-		AttachedServerRow = 0,
-		UnattachedServerRow = 1,
-		ActionRow = 2
+		AttachedServerToggleRow = 0,
+		UnexpandedAttachedServerRow = 1,
+		ExpandedAttachedServerRow = 2,
+		UnattachedServerRow = 3,
+		ActionRow = 4
 	};
 
 	ServerUi ();
@@ -77,6 +79,9 @@ public:
 	static void addressTextFieldEdited (void *uiPtr, Widget *widgetPtr);
 	static void addressSnackbarHelpClicked (void *uiPtr, Widget *widgetPtr);
 	static void serverExpandStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void expandServersToggleStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void appendAgentId (void *stringListPtr, Widget *widgetPtr);
+	static void countExpandedServers (void *intPtr, Widget *widgetPtr);
 	static void serverStatusChanged (void *uiPtr, Widget *widgetPtr);
 	static void serverAttachActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void serverCheckForUpdatesActionClicked (void *uiPtr, Widget *widgetPtr);
@@ -129,11 +134,15 @@ protected:
 	void doSyncRecordStore ();
 
 private:
+	// Reset checked states for row expand toggles, as appropriate for item expand state
+	void resetExpandToggles ();
+
 	CardView *cardView;
 	AdminSecretWindow *adminSecretWindow;
 	WidgetHandle addressToggle;
 	WidgetHandle addressTextFieldWindow;
 	WidgetHandle emptyServerWindow;
+	WidgetHandle expandServersToggle;
 	StringList agentIdList;
 	StringList cardIdList;
 	int attachedServerCount;

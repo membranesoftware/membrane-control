@@ -31,7 +31,7 @@
 #include "Config.h"
 #include "SystemInterface.h"
 
-const char *SystemInterface::version = "17-stable-2c2083f3";
+const char *SystemInterface::version = "18-stable-80f7052f";
 const char *SystemInterface::Command_AgentConfiguration = "AgentConfiguration";
 const char *SystemInterface::Command_AgentContact = "AgentContact";
 const char *SystemInterface::Command_AgentStatus = "AgentStatus";
@@ -52,7 +52,6 @@ const char *SystemInterface::Command_CreateMediaStream = "CreateMediaStream";
 const char *SystemInterface::Command_CreateTimelapseCaptureIntent = "CreateTimelapseCaptureIntent";
 const char *SystemInterface::Command_CreateWebDisplayIntent = "CreateWebDisplayIntent";
 const char *SystemInterface::Command_EndSet = "EndSet";
-const char *SystemInterface::Command_EventRecord = "EventRecord";
 const char *SystemInterface::Command_FindCaptureImages = "FindCaptureImages";
 const char *SystemInterface::Command_FindCaptureImagesResult = "FindCaptureImagesResult";
 const char *SystemInterface::Command_FindItems = "FindItems";
@@ -79,7 +78,6 @@ const char *SystemInterface::Command_MediaServerStatus = "MediaServerStatus";
 const char *SystemInterface::Command_MonitorServerStatus = "MonitorServerStatus";
 const char *SystemInterface::Command_PlayCacheStream = "PlayCacheStream";
 const char *SystemInterface::Command_PlayMedia = "PlayMedia";
-const char *SystemInterface::Command_ReadEvents = "ReadEvents";
 const char *SystemInterface::Command_ReadTasks = "ReadTasks";
 const char *SystemInterface::Command_RemoveIntent = "RemoveIntent";
 const char *SystemInterface::Command_RemoveMedia = "RemoveMedia";
@@ -90,6 +88,7 @@ const char *SystemInterface::Command_ScanMediaItems = "ScanMediaItems";
 const char *SystemInterface::Command_ServerError = "ServerError";
 const char *SystemInterface::Command_SetAdminSecret = "SetAdminSecret";
 const char *SystemInterface::Command_SetIntentActive = "SetIntentActive";
+const char *SystemInterface::Command_ShowAgentStatus = "ShowAgentStatus";
 const char *SystemInterface::Command_ShowWebUrl = "ShowWebUrl";
 const char *SystemInterface::Command_ShutdownAgent = "ShutdownAgent";
 const char *SystemInterface::Command_StartServers = "StartServers";
@@ -102,6 +101,7 @@ const char *SystemInterface::Command_TimelapseCaptureIntentState = "TimelapseCap
 const char *SystemInterface::Command_UpdateAgentConfiguration = "UpdateAgentConfiguration";
 const char *SystemInterface::Command_UpdateIntentState = "UpdateIntentState";
 const char *SystemInterface::Command_WatchEvents = "WatchEvents";
+const char *SystemInterface::Command_WatchStatus = "WatchStatus";
 const char *SystemInterface::Command_WatchTasks = "WatchTasks";
 const char *SystemInterface::Command_WebDisplayIntentState = "WebDisplayIntentState";
 const char *SystemInterface::Constant_CreateTimePrefixField = "a";
@@ -139,7 +139,6 @@ void SystemInterface::populate () {
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("CreateTimelapseCaptureIntent"), SystemInterface::Command (70, StdString ("CreateTimelapseCaptureIntent"), StdString ("CreateTimelapseCaptureIntent"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("CreateWebDisplayIntent"), SystemInterface::Command (35, StdString ("CreateWebDisplayIntent"), StdString ("CreateWebDisplayIntent"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("EndSet"), SystemInterface::Command (21, StdString ("EndSet"), StdString ("EmptyObject"))));
-  commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("EventRecord"), SystemInterface::Command (40, StdString ("EventRecord"), StdString ("EventRecord"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("FindCaptureImages"), SystemInterface::Command (74, StdString ("FindCaptureImages"), StdString ("FindCaptureImages"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("FindCaptureImagesResult"), SystemInterface::Command (75, StdString ("FindCaptureImagesResult"), StdString ("FindCaptureImagesResult"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("FindItems"), SystemInterface::Command (3, StdString ("FindItems"), StdString ("FindItems"))));
@@ -166,7 +165,6 @@ void SystemInterface::populate () {
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("MonitorServerStatus"), SystemInterface::Command (12, StdString ("MonitorServerStatus"), StdString ("MonitorServerStatus"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("PlayCacheStream"), SystemInterface::Command (57, StdString ("PlayCacheStream"), StdString ("PlayCacheStream"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("PlayMedia"), SystemInterface::Command (30, StdString ("PlayMedia"), StdString ("PlayMedia"))));
-  commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("ReadEvents"), SystemInterface::Command (18, StdString ("ReadEvents"), StdString ("ReadEvents"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("ReadTasks"), SystemInterface::Command (6, StdString ("ReadTasks"), StdString ("EmptyObject"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("RemoveIntent"), SystemInterface::Command (37, StdString ("RemoveIntent"), StdString ("RemoveIntent"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("RemoveMedia"), SystemInterface::Command (77, StdString ("RemoveMedia"), StdString ("RemoveMedia"))));
@@ -177,6 +175,7 @@ void SystemInterface::populate () {
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("ServerError"), SystemInterface::Command (20, StdString ("ServerError"), StdString ("ServerError"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("SetAdminSecret"), SystemInterface::Command (61, StdString ("SetAdminSecret"), StdString ("SetAdminSecret"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("SetIntentActive"), SystemInterface::Command (38, StdString ("SetIntentActive"), StdString ("SetIntentActive"))));
+  commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("ShowAgentStatus"), SystemInterface::Command (41, StdString ("ShowAgentStatus"), StdString ("ShowAgentStatus"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("ShowWebUrl"), SystemInterface::Command (34, StdString ("ShowWebUrl"), StdString ("ShowWebUrl"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("ShutdownAgent"), SystemInterface::Command (43, StdString ("ShutdownAgent"), StdString ("EmptyObject"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("StartServers"), SystemInterface::Command (47, StdString ("StartServers"), StdString ("EmptyObject"))));
@@ -189,6 +188,7 @@ void SystemInterface::populate () {
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("UpdateAgentConfiguration"), SystemInterface::Command (42, StdString ("UpdateAgentConfiguration"), StdString ("UpdateAgentConfiguration"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("UpdateIntentState"), SystemInterface::Command (39, StdString ("UpdateIntentState"), StdString ("UpdateIntentState"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("WatchEvents"), SystemInterface::Command (27, StdString ("WatchEvents"), StdString ("WatchEvents"))));
+  commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("WatchStatus"), SystemInterface::Command (82, StdString ("WatchStatus"), StdString ("EmptyObject"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("WatchTasks"), SystemInterface::Command (7, StdString ("WatchTasks"), StdString ("WatchTasks"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("WebDisplayIntentState"), SystemInterface::Command (49, StdString ("WebDisplayIntentState"), StdString ("WebDisplayIntentState"))));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("AgentConfiguration"), SystemInterface::getParams_AgentConfiguration));
@@ -209,7 +209,6 @@ void SystemInterface::populate () {
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("CreateTimelapseCaptureIntent"), SystemInterface::getParams_CreateTimelapseCaptureIntent));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("CreateWebDisplayIntent"), SystemInterface::getParams_CreateWebDisplayIntent));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("EmptyObject"), SystemInterface::getParams_EmptyObject));
-  getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("EventRecord"), SystemInterface::getParams_EventRecord));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("FindCaptureImages"), SystemInterface::getParams_FindCaptureImages));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("FindCaptureImagesResult"), SystemInterface::getParams_FindCaptureImagesResult));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("FindItems"), SystemInterface::getParams_FindItems));
@@ -227,7 +226,6 @@ void SystemInterface::populate () {
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("GetMedia"), SystemInterface::getParams_GetMedia));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("GetThumbnailImage"), SystemInterface::getParams_GetThumbnailImage));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("IntentState"), SystemInterface::getParams_IntentState));
-  getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("MasterServerConfiguration"), SystemInterface::getParams_MasterServerConfiguration));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("MediaDisplayIntentState"), SystemInterface::getParams_MediaDisplayIntentState));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("MediaDisplayItem"), SystemInterface::getParams_MediaDisplayItem));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("MediaItem"), SystemInterface::getParams_MediaItem));
@@ -237,7 +235,6 @@ void SystemInterface::populate () {
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("MonitorServerStatus"), SystemInterface::getParams_MonitorServerStatus));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("PlayCacheStream"), SystemInterface::getParams_PlayCacheStream));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("PlayMedia"), SystemInterface::getParams_PlayMedia));
-  getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("ReadEvents"), SystemInterface::getParams_ReadEvents));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("RemoveIntent"), SystemInterface::getParams_RemoveIntent));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("RemoveMedia"), SystemInterface::getParams_RemoveMedia));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("RemoveStream"), SystemInterface::getParams_RemoveStream));
@@ -246,6 +243,7 @@ void SystemInterface::populate () {
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("ServerError"), SystemInterface::getParams_ServerError));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("SetAdminSecret"), SystemInterface::getParams_SetAdminSecret));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("SetIntentActive"), SystemInterface::getParams_SetIntentActive));
+  getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("ShowAgentStatus"), SystemInterface::getParams_ShowAgentStatus));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("ShowWebUrl"), SystemInterface::getParams_ShowWebUrl));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("StreamItem"), SystemInterface::getParams_StreamItem));
   getParamsMap.insert (std::pair<StdString, SystemInterface::GetParamsFunction> (StdString ("StreamServerConfiguration"), SystemInterface::getParams_StreamServerConfiguration));
@@ -275,7 +273,6 @@ void SystemInterface::populate () {
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("CreateTimelapseCaptureIntent"), SystemInterface::populateDefaultFields_CreateTimelapseCaptureIntent));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("CreateWebDisplayIntent"), SystemInterface::populateDefaultFields_CreateWebDisplayIntent));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("EmptyObject"), SystemInterface::populateDefaultFields_EmptyObject));
-  populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("EventRecord"), SystemInterface::populateDefaultFields_EventRecord));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("FindCaptureImages"), SystemInterface::populateDefaultFields_FindCaptureImages));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("FindCaptureImagesResult"), SystemInterface::populateDefaultFields_FindCaptureImagesResult));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("FindItems"), SystemInterface::populateDefaultFields_FindItems));
@@ -293,7 +290,6 @@ void SystemInterface::populate () {
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("GetMedia"), SystemInterface::populateDefaultFields_GetMedia));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("GetThumbnailImage"), SystemInterface::populateDefaultFields_GetThumbnailImage));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("IntentState"), SystemInterface::populateDefaultFields_IntentState));
-  populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("MasterServerConfiguration"), SystemInterface::populateDefaultFields_MasterServerConfiguration));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("MediaDisplayIntentState"), SystemInterface::populateDefaultFields_MediaDisplayIntentState));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("MediaDisplayItem"), SystemInterface::populateDefaultFields_MediaDisplayItem));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("MediaItem"), SystemInterface::populateDefaultFields_MediaItem));
@@ -303,7 +299,6 @@ void SystemInterface::populate () {
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("MonitorServerStatus"), SystemInterface::populateDefaultFields_MonitorServerStatus));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("PlayCacheStream"), SystemInterface::populateDefaultFields_PlayCacheStream));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("PlayMedia"), SystemInterface::populateDefaultFields_PlayMedia));
-  populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("ReadEvents"), SystemInterface::populateDefaultFields_ReadEvents));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("RemoveIntent"), SystemInterface::populateDefaultFields_RemoveIntent));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("RemoveMedia"), SystemInterface::populateDefaultFields_RemoveMedia));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("RemoveStream"), SystemInterface::populateDefaultFields_RemoveStream));
@@ -312,6 +307,7 @@ void SystemInterface::populate () {
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("ServerError"), SystemInterface::populateDefaultFields_ServerError));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("SetAdminSecret"), SystemInterface::populateDefaultFields_SetAdminSecret));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("SetIntentActive"), SystemInterface::populateDefaultFields_SetIntentActive));
+  populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("ShowAgentStatus"), SystemInterface::populateDefaultFields_ShowAgentStatus));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("ShowWebUrl"), SystemInterface::populateDefaultFields_ShowWebUrl));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("StreamItem"), SystemInterface::populateDefaultFields_StreamItem));
   populateDefaultFieldsMap.insert (std::pair<StdString, SystemInterface::PopulateDefaultFieldsFunction> (StdString ("StreamServerConfiguration"), SystemInterface::populateDefaultFields_StreamServerConfiguration));
@@ -341,7 +337,6 @@ void SystemInterface::populate () {
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("CreateTimelapseCaptureIntent"), SystemInterface::hashFields_CreateTimelapseCaptureIntent));
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("CreateWebDisplayIntent"), SystemInterface::hashFields_CreateWebDisplayIntent));
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("EmptyObject"), SystemInterface::hashFields_EmptyObject));
-  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("EventRecord"), SystemInterface::hashFields_EventRecord));
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("FindCaptureImages"), SystemInterface::hashFields_FindCaptureImages));
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("FindCaptureImagesResult"), SystemInterface::hashFields_FindCaptureImagesResult));
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("FindItems"), SystemInterface::hashFields_FindItems));
@@ -359,7 +354,6 @@ void SystemInterface::populate () {
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("GetMedia"), SystemInterface::hashFields_GetMedia));
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("GetThumbnailImage"), SystemInterface::hashFields_GetThumbnailImage));
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("IntentState"), SystemInterface::hashFields_IntentState));
-  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("MasterServerConfiguration"), SystemInterface::hashFields_MasterServerConfiguration));
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("MediaDisplayIntentState"), SystemInterface::hashFields_MediaDisplayIntentState));
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("MediaDisplayItem"), SystemInterface::hashFields_MediaDisplayItem));
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("MediaItem"), SystemInterface::hashFields_MediaItem));
@@ -369,7 +363,6 @@ void SystemInterface::populate () {
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("MonitorServerStatus"), SystemInterface::hashFields_MonitorServerStatus));
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("PlayCacheStream"), SystemInterface::hashFields_PlayCacheStream));
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("PlayMedia"), SystemInterface::hashFields_PlayMedia));
-  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("ReadEvents"), SystemInterface::hashFields_ReadEvents));
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("RemoveIntent"), SystemInterface::hashFields_RemoveIntent));
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("RemoveMedia"), SystemInterface::hashFields_RemoveMedia));
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("RemoveStream"), SystemInterface::hashFields_RemoveStream));
@@ -378,6 +371,7 @@ void SystemInterface::populate () {
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("ServerError"), SystemInterface::hashFields_ServerError));
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("SetAdminSecret"), SystemInterface::hashFields_SetAdminSecret));
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("SetIntentActive"), SystemInterface::hashFields_SetIntentActive));
+  hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("ShowAgentStatus"), SystemInterface::hashFields_ShowAgentStatus));
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("ShowWebUrl"), SystemInterface::hashFields_ShowWebUrl));
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("StreamItem"), SystemInterface::hashFields_StreamItem));
   hashFieldsMap.insert (std::pair<StdString, SystemInterface::HashFieldsFunction> (StdString ("StreamServerConfiguration"), SystemInterface::hashFields_StreamServerConfiguration));
@@ -399,7 +393,6 @@ void SystemInterface::getParams_AgentConfiguration (std::list<SystemInterface::P
   destList->push_back (SystemInterface::Param (StdString ("streamServerConfiguration"), StdString ("StreamServerConfiguration"), StdString (""), 0));
   destList->push_back (SystemInterface::Param (StdString ("monitorServerConfiguration"), StdString ("MonitorServerConfiguration"), StdString (""), 0));
   destList->push_back (SystemInterface::Param (StdString ("cameraServerConfiguration"), StdString ("CameraServerConfiguration"), StdString (""), 0));
-  destList->push_back (SystemInterface::Param (StdString ("masterServerConfiguration"), StdString ("MasterServerConfiguration"), StdString (""), 0));
 }
 
 void SystemInterface::getParams_AgentContact (std::list<SystemInterface::Param> *destList) {
@@ -429,6 +422,9 @@ void SystemInterface::getParams_AgentStatus (std::list<SystemInterface::Param> *
   destList->push_back (SystemInterface::Param (StdString ("platform"), StdString ("string"), StdString (""), 0));
   destList->push_back (SystemInterface::Param (StdString ("isEnabled"), StdString ("boolean"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("taskCount"), StdString ("number"), StdString (""), 17));
+  destList->push_back (SystemInterface::Param (StdString ("runTaskName"), StdString ("string"), StdString (""), 0));
+  destList->push_back (SystemInterface::Param (StdString ("runTaskSubtitle"), StdString ("string"), StdString (""), 0));
+  destList->push_back (SystemInterface::Param (StdString ("runTaskPercentComplete"), StdString ("number"), 128, (double) 0, (double) 100));
   destList->push_back (SystemInterface::Param (StdString ("runCount"), StdString ("number"), StdString (""), 17));
   destList->push_back (SystemInterface::Param (StdString ("maxRunCount"), StdString ("number"), StdString (""), 17));
   destList->push_back (SystemInterface::Param (StdString ("mediaServerStatus"), StdString ("MediaServerStatus"), StdString (""), 0));
@@ -559,11 +555,6 @@ void SystemInterface::getParams_EmptyObject (std::list<SystemInterface::Param> *
   destList->clear ();
 }
 
-void SystemInterface::getParams_EventRecord (std::list<SystemInterface::Param> *destList) {
-  destList->clear ();
-  destList->push_back (SystemInterface::Param (StdString ("record"), StdString ("object"), StdString (""), 257));
-}
-
 void SystemInterface::getParams_FindCaptureImages (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("minTime"), StdString ("number"), StdString (""), 17));
@@ -672,10 +663,6 @@ void SystemInterface::getParams_IntentState (std::list<SystemInterface::Param> *
   destList->push_back (SystemInterface::Param (StdString ("state"), StdString ("object"), StdString (""), 1));
 }
 
-void SystemInterface::getParams_MasterServerConfiguration (std::list<SystemInterface::Param> *destList) {
-  destList->clear ();
-}
-
 void SystemInterface::getParams_MediaDisplayIntentState (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("items"), StdString ("array"), StdString ("MediaDisplayItem"), 3));
@@ -694,6 +681,8 @@ void SystemInterface::getParams_MediaDisplayItem (std::list<SystemInterface::Par
   destList->push_back (SystemInterface::Param (StdString ("streamUrl"), StdString ("string"), StdString (""), 65));
   destList->push_back (SystemInterface::Param (StdString ("streamId"), StdString ("string"), StdString (""), 33));
   destList->push_back (SystemInterface::Param (StdString ("startPosition"), StdString ("number"), StdString (""), 16));
+  destList->push_back (SystemInterface::Param (StdString ("thumbnailUrl"), StdString ("string"), StdString (""), 66));
+  destList->push_back (SystemInterface::Param (StdString ("thumbnailIndex"), StdString ("number"), StdString (""), 16));
 }
 
 void SystemInterface::getParams_MediaItem (std::list<SystemInterface::Param> *destList) {
@@ -737,6 +726,8 @@ void SystemInterface::getParams_MonitorServerStatus (std::list<SystemInterface::
   destList->push_back (SystemInterface::Param (StdString ("totalStorage"), StdString ("number"), StdString (""), 17));
   destList->push_back (SystemInterface::Param (StdString ("streamCount"), StdString ("number"), StdString (""), 17));
   destList->push_back (SystemInterface::Param (StdString ("thumbnailPath"), StdString ("string"), StdString (""), 65));
+  destList->push_back (SystemInterface::Param (StdString ("screenshotPath"), StdString ("string"), StdString (""), 65));
+  destList->push_back (SystemInterface::Param (StdString ("screenshotTime"), StdString ("number"), StdString (""), 17));
   destList->push_back (SystemInterface::Param (StdString ("isPlaying"), StdString ("boolean"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("mediaName"), StdString ("string"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("isShowingUrl"), StdString ("boolean"), StdString (""), 1));
@@ -760,10 +751,7 @@ void SystemInterface::getParams_PlayMedia (std::list<SystemInterface::Param> *de
   destList->push_back (SystemInterface::Param (StdString ("startPosition"), StdString ("number"), StdString (""), 16));
   destList->push_back (SystemInterface::Param (StdString ("minStartPositionDelta"), StdString ("number"), 128, (double) 0, (double) 100));
   destList->push_back (SystemInterface::Param (StdString ("maxStartPositionDelta"), StdString ("number"), 128, (double) 0, (double) 100));
-}
-
-void SystemInterface::getParams_ReadEvents (std::list<SystemInterface::Param> *destList) {
-  destList->clear ();
+  destList->push_back (SystemInterface::Param (StdString ("thumbnailUrl"), StdString ("string"), StdString (""), 66));
 }
 
 void SystemInterface::getParams_RemoveIntent (std::list<SystemInterface::Param> *destList) {
@@ -809,6 +797,13 @@ void SystemInterface::getParams_SetIntentActive (std::list<SystemInterface::Para
   destList->push_back (SystemInterface::Param (StdString ("isActive"), StdString ("boolean"), StdString (""), 1));
 }
 
+void SystemInterface::getParams_ShowAgentStatus (std::list<SystemInterface::Param> *destList) {
+  destList->clear ();
+  destList->push_back (SystemInterface::Param (StdString ("hostname"), StdString ("string"), StdString (""), 7));
+  destList->push_back (SystemInterface::Param (StdString ("authorizePath"), StdString ("string"), StdString (""), 3));
+  destList->push_back (SystemInterface::Param (StdString ("authorizeSecret"), StdString ("string"), StdString (""), 1));
+}
+
 void SystemInterface::getParams_ShowWebUrl (std::list<SystemInterface::Param> *destList) {
   destList->clear ();
   destList->push_back (SystemInterface::Param (StdString ("url"), StdString ("string"), StdString (""), 67));
@@ -847,6 +842,7 @@ void SystemInterface::getParams_StreamServerStatus (std::list<SystemInterface::P
   destList->push_back (SystemInterface::Param (StdString ("hlsStreamPath"), StdString ("string"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("hlsHtml5Path"), StdString ("string"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("thumbnailPath"), StdString ("string"), StdString (""), 1));
+  destList->push_back (SystemInterface::Param (StdString ("dashHtml5Path"), StdString ("string"), StdString (""), 1));
 }
 
 void SystemInterface::getParams_TaskItem (std::list<SystemInterface::Param> *destList) {
@@ -854,8 +850,6 @@ void SystemInterface::getParams_TaskItem (std::list<SystemInterface::Param> *des
   destList->push_back (SystemInterface::Param (StdString ("id"), StdString ("string"), StdString (""), 33));
   destList->push_back (SystemInterface::Param (StdString ("name"), StdString ("string"), StdString (""), 3));
   destList->push_back (SystemInterface::Param (StdString ("subtitle"), StdString ("string"), StdString (""), 1));
-  destList->push_back (SystemInterface::Param (StdString ("tags"), StdString ("array"), StdString ("string"), 3));
-  destList->push_back (SystemInterface::Param (StdString ("description"), StdString ("string"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("isRunning"), StdString ("boolean"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("percentComplete"), StdString ("number"), 129, (double) 0, (double) 100));
   destList->push_back (SystemInterface::Param (StdString ("createTime"), StdString ("number"), StdString (""), 9));
@@ -1026,9 +1020,6 @@ void SystemInterface::populateDefaultFields_CreateWebDisplayIntent (Json *destOb
 void SystemInterface::populateDefaultFields_EmptyObject (Json *destObject) {
 }
 
-void SystemInterface::populateDefaultFields_EventRecord (Json *destObject) {
-}
-
 void SystemInterface::populateDefaultFields_FindCaptureImages (Json *destObject) {
   if (! destObject->exists ("minTime")) {
     destObject->set ("minTime", 0);
@@ -1134,9 +1125,6 @@ void SystemInterface::populateDefaultFields_IntentState (Json *destObject) {
   }
 }
 
-void SystemInterface::populateDefaultFields_MasterServerConfiguration (Json *destObject) {
-}
-
 void SystemInterface::populateDefaultFields_MediaDisplayIntentState (Json *destObject) {
   if (! destObject->exists ("minStartPositionDelta")) {
     destObject->set ("minStartPositionDelta", 0);
@@ -1192,6 +1180,12 @@ void SystemInterface::populateDefaultFields_MonitorServerStatus (Json *destObjec
   if (! destObject->exists ("thumbnailPath")) {
     destObject->set ("thumbnailPath", "");
   }
+  if (! destObject->exists ("screenshotPath")) {
+    destObject->set ("screenshotPath", "");
+  }
+  if (! destObject->exists ("screenshotTime")) {
+    destObject->set ("screenshotTime", 0);
+  }
   if (! destObject->exists ("mediaName")) {
     destObject->set ("mediaName", "");
   }
@@ -1210,9 +1204,6 @@ void SystemInterface::populateDefaultFields_PlayMedia (Json *destObject) {
   if (! destObject->exists ("mediaName")) {
     destObject->set ("mediaName", "");
   }
-}
-
-void SystemInterface::populateDefaultFields_ReadEvents (Json *destObject) {
 }
 
 void SystemInterface::populateDefaultFields_RemoveIntent (Json *destObject) {
@@ -1248,6 +1239,15 @@ void SystemInterface::populateDefaultFields_SetAdminSecret (Json *destObject) {
 void SystemInterface::populateDefaultFields_SetIntentActive (Json *destObject) {
 }
 
+void SystemInterface::populateDefaultFields_ShowAgentStatus (Json *destObject) {
+  if (! destObject->exists ("authorizePath")) {
+    destObject->set ("authorizePath", "C18HZb3wsXQoMQN6Laz8S5Lq");
+  }
+  if (! destObject->exists ("authorizeSecret")) {
+    destObject->set ("authorizeSecret", "");
+  }
+}
+
 void SystemInterface::populateDefaultFields_ShowWebUrl (Json *destObject) {
 }
 
@@ -1269,9 +1269,6 @@ void SystemInterface::populateDefaultFields_StreamServerStatus (Json *destObject
 void SystemInterface::populateDefaultFields_TaskItem (Json *destObject) {
   if (! destObject->exists ("subtitle")) {
     destObject->set ("subtitle", "");
-  }
-  if (! destObject->exists ("description")) {
-    destObject->set ("description", "");
   }
   if (! destObject->exists ("percentComplete")) {
     destObject->set ("percentComplete", 0);
@@ -1330,11 +1327,6 @@ void SystemInterface::hashFields_AgentConfiguration (Json *commandParams, System
   if (commandParams->exists ("isEnabled")) {
     s.sprintf ("%s", commandParams->getBoolean ("isEnabled", false) ? "true" : "false");
     hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
-  }
-  if (commandParams->exists ("masterServerConfiguration")) {
-    if (commandParams->getObject ("masterServerConfiguration", &obj)) {
-      SystemInterface::hashFields_MasterServerConfiguration (&obj, hashUpdateFn, hashContextPtr);
-    }
   }
   if (commandParams->exists ("mediaServerConfiguration")) {
     if (commandParams->getObject ("mediaServerConfiguration", &obj)) {
@@ -1435,6 +1427,22 @@ void SystemInterface::hashFields_AgentStatus (Json *commandParams, SystemInterfa
   }
   s.sprintf ("%lli", (long long int) commandParams->getNumber ("runCount", (int64_t) 0));
   hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  if (commandParams->exists ("runTaskName")) {
+    s = commandParams->getString ("runTaskName", "");
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
+  }
+  if (commandParams->exists ("runTaskPercentComplete")) {
+    s.sprintf ("%lli", (long long int) commandParams->getNumber ("runTaskPercentComplete", (int64_t) 0));
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  if (commandParams->exists ("runTaskSubtitle")) {
+    s = commandParams->getString ("runTaskSubtitle", "");
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
+  }
   if (commandParams->exists ("streamServerStatus")) {
     if (commandParams->getObject ("streamServerStatus", &obj)) {
       SystemInterface::hashFields_StreamServerStatus (&obj, hashUpdateFn, hashContextPtr);
@@ -1752,10 +1760,6 @@ void SystemInterface::hashFields_EmptyObject (Json *commandParams, SystemInterfa
 
 }
 
-void SystemInterface::hashFields_EventRecord (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
-
-}
-
 void SystemInterface::hashFields_FindCaptureImages (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
   StdString s;
 
@@ -1967,10 +1971,6 @@ void SystemInterface::hashFields_IntentState (Json *commandParams, SystemInterfa
   }
 }
 
-void SystemInterface::hashFields_MasterServerConfiguration (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
-
-}
-
 void SystemInterface::hashFields_MediaDisplayIntentState (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
   Json obj;
   StdString s;
@@ -2017,6 +2017,16 @@ void SystemInterface::hashFields_MediaDisplayItem (Json *commandParams, SystemIn
   s = commandParams->getString ("streamUrl", "");
   if (! s.empty ()) {
     hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  if (commandParams->exists ("thumbnailIndex")) {
+    s.sprintf ("%lli", (long long int) commandParams->getNumber ("thumbnailIndex", (int64_t) 0));
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  if (commandParams->exists ("thumbnailUrl")) {
+    s = commandParams->getString ("thumbnailUrl", "");
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
   }
 }
 
@@ -2114,6 +2124,12 @@ void SystemInterface::hashFields_MonitorServerStatus (Json *commandParams, Syste
   if (! s.empty ()) {
     hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
   }
+  s = commandParams->getString ("screenshotPath", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s.sprintf ("%lli", (long long int) commandParams->getNumber ("screenshotTime", (int64_t) 0));
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
   s = commandParams->getString ("showUrl", "");
   if (! s.empty ()) {
     hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
@@ -2180,10 +2196,12 @@ void SystemInterface::hashFields_PlayMedia (Json *commandParams, SystemInterface
       hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
     }
   }
-}
-
-void SystemInterface::hashFields_ReadEvents (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
-
+  if (commandParams->exists ("thumbnailUrl")) {
+    s = commandParams->getString ("thumbnailUrl", "");
+    if (! s.empty ()) {
+      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+    }
+  }
 }
 
 void SystemInterface::hashFields_RemoveIntent (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
@@ -2266,6 +2284,23 @@ void SystemInterface::hashFields_SetIntentActive (Json *commandParams, SystemInt
   hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
 }
 
+void SystemInterface::hashFields_ShowAgentStatus (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
+  StdString s;
+
+  s = commandParams->getString ("authorizePath", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s = commandParams->getString ("authorizeSecret", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+  s = commandParams->getString ("hostname", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
+}
+
 void SystemInterface::hashFields_ShowWebUrl (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
   StdString s;
 
@@ -2342,6 +2377,10 @@ void SystemInterface::hashFields_StreamServerConfiguration (Json *commandParams,
 void SystemInterface::hashFields_StreamServerStatus (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
   StdString s;
 
+  s = commandParams->getString ("dashHtml5Path", "");
+  if (! s.empty ()) {
+    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  }
   s.sprintf ("%lli", (long long int) commandParams->getNumber ("freeStorage", (int64_t) 0));
   hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
   s = commandParams->getString ("hlsHtml5Path", "");
@@ -2366,14 +2405,9 @@ void SystemInterface::hashFields_StreamServerStatus (Json *commandParams, System
 
 void SystemInterface::hashFields_TaskItem (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr) {
   StdString s;
-  int i, len;
 
   s.sprintf ("%lli", (long long int) commandParams->getNumber ("createTime", (int64_t) 0));
   hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
-  s = commandParams->getString ("description", "");
-  if (! s.empty ()) {
-    hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
-  }
   s.sprintf ("%lli", (long long int) commandParams->getNumber ("endTime", (int64_t) 0));
   hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
   s = commandParams->getString ("id", "");
@@ -2391,13 +2425,6 @@ void SystemInterface::hashFields_TaskItem (Json *commandParams, SystemInterface:
   s = commandParams->getString ("subtitle", "");
   if (! s.empty ()) {
     hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
-  }
-  len = commandParams->getArrayLength ("tags");
-  for (i = 0; i < len; ++i) {
-    s = commandParams->getArrayString ("tags", i, StdString (""));
-    if (! s.empty ()) {
-      hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
-    }
   }
 }
 

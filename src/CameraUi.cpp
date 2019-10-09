@@ -126,19 +126,35 @@ std::map<StdString, CameraUi::AutoReloadInfo>::iterator CameraUi::getAutoReloadI
 }
 
 int CameraUi::doLoad () {
+	UiConfiguration *uiconfig;
 	UiText *uitext;
+	Panel *panel;
+	Toggle *toggle;
 
+	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
+
 	cameraCount = 0;
 	cardDetail = App::instance->prefsMap.find (App::CameraUiImageSizeKey, (int) CardView::MediumDetail);
 	isAutoReloading = App::instance->prefsMap.find (App::CameraUiAutoReloadKey, false);
 
 	cardView = (CardView *) addWidget (new CardView (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight));
 	cardView->isKeyboardScrollEnabled = true;
-	cardView->setRowHeader (CameraUi::AgentRow, createRowHeaderPanel (uitext->getText (UiTextString::cameras).capitalized ()));
+	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
+
+	panel = new Panel ();
+	panel->setFillBg (true, uiconfig->mediumBackgroundColor);
+	toggle = (Toggle *) panel->addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandAllLessButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandAllMoreButtonSprite)));
+	toggle->setImageColor (uiconfig->flatButtonTextColor);
+	toggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::minimizeAll).capitalized (), uitext->getText (UiTextString::expandAll).capitalized ());
+	toggle->setStateChangeCallback (CameraUi::expandAgentsToggleStateChanged, this);
+	expandAgentsToggle.assign (toggle);
+	cardView->addItem (createRowHeaderPanel (uitext->getText (UiTextString::cameras).capitalized (), panel), StdString (""), CameraUi::AgentToggleRow);
+
+	cardView->setRowReverseSorted (CameraUi::ExpandedAgentRow, true);
+
 	cardView->setRowHeader (CameraUi::CaptureRow, createRowHeaderPanel (uitext->getText (UiTextString::timelapseImages).capitalized ()));
 	cardView->setRowDetail (CameraUi::CaptureRow, cardDetail);
-	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 
 	return (Result::Success);
 }
@@ -147,6 +163,7 @@ void CameraUi::doUnload () {
 	autoReloadToggle.clear ();
 	emptyStateWindow.clear ();
 	selectedCameraMap.clear ();
+	expandAgentsToggle.clear ();
 	autoReloadMap.clear ();
 }
 
@@ -262,6 +279,7 @@ void CameraUi::doResume () {
 	App::instance->setNextBackgroundTexturePath ("ui/CameraUi/bg");
 	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
 	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
+	resetExpandToggles ();
 }
 
 void CameraUi::doUpdate (int msElapsed) {
@@ -270,6 +288,7 @@ void CameraUi::doUpdate (int msElapsed) {
 	int64_t now, t;
 
 	autoReloadToggle.compact ();
+	expandAgentsToggle.compact ();
 	emptyStateWindow.compact ();
 	commandPopup.compact ();
 
@@ -323,12 +342,12 @@ void CameraUi::doSyncRecordStore () {
 	window = (IconCardWindow *) emptyStateWindow.widget;
 	if (cameraCount <= 0) {
 		if (! window) {
-			window = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::ServerIconSprite), uitext->getText (UiTextString::cameraUiEmptyAgentStatusTitle), StdString (""), uitext->getText (UiTextString::cameraUiEmptyAgentStatusText));
+			window = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::LargeServerIconSprite), uitext->getText (UiTextString::cameraUiEmptyAgentStatusTitle), StdString (""), uitext->getText (UiTextString::cameraUiEmptyAgentStatusText));
 			window->setLink (uitext->getText (UiTextString::learnMore).capitalized (), App::getHelpUrl ("servers"));
 			emptyStateWindow.assign (window);
 
 			window->itemId.assign (cardView->getAvailableItemId ());
-			cardView->addItem (window, window->itemId, CameraUi::AgentRow);
+			cardView->addItem (window, window->itemId, CameraUi::UnexpandedAgentRow);
 		}
 	}
 	else {
@@ -340,6 +359,7 @@ void CameraUi::doSyncRecordStore () {
 
 	cardView->syncRecordStore ();
 	cardView->refresh ();
+	resetExpandToggles ();
 }
 
 StdString CameraUi::getSelectedCameraNames (float maxWidth) {
@@ -376,6 +396,7 @@ void CameraUi::processCameraAgent (void *uiPtr, Json *record, const StdString &r
 	std::map<StdString, CameraUi::AutoReloadInfo>::iterator info;
 	StringList items;
 	StdString id;
+	int row, pos;
 
 	ui = (CameraUi *) uiPtr;
 	interface = &(App::instance->systemInterface);
@@ -384,7 +405,6 @@ void CameraUi::processCameraAgent (void *uiPtr, Json *record, const StdString &r
 		camera = new CameraWindow (recordId, &(ui->sprites));
 		camera->setSelectStateChangeCallback (CameraUi::cameraSelectStateChanged, ui);
 		camera->setExpandStateChangeCallback (CameraUi::cardExpandStateChanged, ui);
-		camera->sortKey.sprintf ("a%s", App::instance->systemInterface.getCommandAgentName (record).lowercased ().c_str ());
 
 		App::instance->prefsMap.find (App::CameraUiSelectedAgentsKey, &items);
 		if (items.contains (recordId)) {
@@ -393,11 +413,18 @@ void CameraUi::processCameraAgent (void *uiPtr, Json *record, const StdString &r
 		}
 
 		App::instance->prefsMap.find (App::CameraUiExpandedAgentsKey, &items);
-		if (items.contains (recordId)) {
+		pos = items.indexOf (recordId);
+		if (pos < 0) {
+			row = CameraUi::UnexpandedAgentRow;
+			camera->sortKey.sprintf ("a%s", App::instance->systemInterface.getCommandAgentName (record).lowercased ().c_str ());
+		}
+		else {
+			row = CameraUi::ExpandedAgentRow;
 			camera->setExpanded (true, true);
+			camera->sortKey.sprintf ("%016llx", (long long int) (items.size () - pos));
 		}
 
-		ui->cardView->addItem (camera, recordId, CameraUi::AgentRow);
+		ui->cardView->addItem (camera, recordId, row);
 		camera->animateNewCard ();
 		App::instance->agentControl.refreshAgentStatus (recordId);
 	}
@@ -434,9 +461,24 @@ void CameraUi::processCameraAgent (void *uiPtr, Json *record, const StdString &r
 
 void CameraUi::cardExpandStateChanged (void *uiPtr, Widget *widgetPtr) {
 	CameraUi *ui;
+	CameraWindow *camera;
 
 	ui = (CameraUi *) uiPtr;
-	ui->cardView->refresh ();
+	camera = CameraWindow::castWidget (widgetPtr);
+	if (camera) {
+		if (camera->isExpanded) {
+			camera->sortKey.sprintf ("%016llx", (long long int) OsUtil::getTime ());
+			ui->cardView->setItemRow (camera->agentId, CameraUi::ExpandedAgentRow);
+		}
+		else {
+			camera->sortKey.sprintf ("a%s", camera->agentName.lowercased ().c_str ());
+			ui->cardView->setItemRow (camera->agentId, CameraUi::UnexpandedAgentRow);
+		}
+		camera->resetInputState ();
+		camera->animateNewCard ();
+		ui->cardView->refresh ();
+		ui->resetExpandToggles ();
+	}
 }
 
 void CameraUi::imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr) {
@@ -515,11 +557,57 @@ void CameraUi::largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr) {
 	App::instance->prefsMap.insert (App::CameraUiImageSizeKey, ui->cardDetail);
 }
 
+void CameraUi::expandAgentsToggleStateChanged (void *uiPtr, Widget *widgetPtr) {
+	CameraUi *ui;
+	Toggle *toggle;
+	CameraWindow *camera;
+	StringList idlist;
+	StringList::iterator i, end;
+	int64_t now;
+
+	ui = (CameraUi *) uiPtr;
+	toggle = (Toggle *) ui->expandAgentsToggle.widget;
+	if (! toggle) {
+		return;
+	}
+
+	now = OsUtil::getTime ();
+	ui->cardView->processItems (CameraUi::appendAgentId, &idlist);
+	i = idlist.begin ();
+	end = idlist.end ();
+	while (i != end) {
+		camera = CameraWindow::castWidget (ui->cardView->getItem (*i));
+		if (camera) {
+			if (toggle->isChecked) {
+				camera->setExpanded (false, true);
+				camera->sortKey.sprintf ("a%s", camera->agentName.lowercased ().c_str ());
+				ui->cardView->setItemRow (camera->agentId, CameraUi::UnexpandedAgentRow, true);
+			}
+			else {
+				camera->setExpanded (true, true);
+				camera->sortKey.sprintf ("%016llx%s", (long long int) now, camera->agentName.lowercased ().c_str ());
+				ui->cardView->setItemRow (camera->agentId, CameraUi::ExpandedAgentRow, true);
+			}
+		}
+		++i;
+	}
+	ui->cardView->refresh ();
+}
+
+void CameraUi::appendAgentId (void *stringListPtr, Widget *widgetPtr) {
+	CameraWindow *camera;
+
+	camera = CameraWindow::castWidget (widgetPtr);
+	if (camera) {
+		((StringList *) stringListPtr)->push_back (camera->agentId);
+	}
+}
+
 void CameraUi::reloadButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	CameraUi *ui;
 
 	ui = (CameraUi *) uiPtr;
-	ui->cardView->processRowItems (CameraUi::AgentRow, CameraUi::reloadAgent, ui);
+	ui->cardView->processItems (CameraUi::reloadAgent, ui);
 }
 
 void CameraUi::reloadAgent (void *uiPtr, Widget *widgetPtr) {
@@ -551,7 +639,7 @@ void CameraUi::autoReloadToggleStateChanged (void *uiPtr, Widget *widgetPtr) {
 	ui->isAutoReloading = toggle->isChecked;
 	ui->autoReloadMap.clear ();
 	if (ui->isAutoReloading) {
-		ui->cardView->processRowItems (CameraUi::AgentRow, CameraUi::reloadAgent, ui);
+		ui->cardView->processItems (CameraUi::reloadAgent, ui);
 	}
 }
 
@@ -869,4 +957,27 @@ void CameraUi::captureViewButtonClicked (void *uiPtr, Widget *widgetPtr) {
 
 	timelineui = new CameraTimelineUi (capture->agentId, capture->agentName);
 	App::instance->uiStack.pushUi (timelineui);
+}
+
+void CameraUi::resetExpandToggles () {
+	Toggle *toggle;
+	int count;
+
+	toggle = (Toggle *) expandAgentsToggle.widget;
+	if (toggle) {
+		count = 0;
+		cardView->processItems (CameraUi::countExpandedAgents, &count);
+		toggle->setChecked ((count <= 0), true);
+	}
+}
+
+void CameraUi::countExpandedAgents (void *intPtr, Widget *widgetPtr) {
+	CameraWindow *camera;
+	int *count;
+
+	camera = CameraWindow::castWidget (widgetPtr);
+	count = (int *) intPtr;
+	if (camera && count && camera->isExpanded) {
+		++(*count);
+	}
 }

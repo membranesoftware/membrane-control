@@ -56,13 +56,17 @@
 
 const float WebPlaylistWindow::windowWidthMultiplier = 0.45f;
 const int WebPlaylistWindow::itemDisplayDurations[] = { 3 * 3600, 3600, 900, 420, 180 };
+const char *WebPlaylistWindow::PlaylistNameKey = "a";
+const char *WebPlaylistWindow::IsSelectedKey = "b";
+const char *WebPlaylistWindow::IsExpandedKey = "c";
+const char *WebPlaylistWindow::UrlListKey = "d";
+const char *WebPlaylistWindow::IsShuffleKey = "e";
+const char *WebPlaylistWindow::ItemDisplayDurationKey = "f";
 
 WebPlaylistWindow::WebPlaylistWindow ()
 : Panel ()
 , isSelected (false)
 , isExpanded (false)
-, menuPositionX (0.0f)
-, menuPositionY (0.0f)
 , windowWidth (0.0f)
 , iconImage (NULL)
 , nameLabel (NULL)
@@ -73,15 +77,12 @@ WebPlaylistWindow::WebPlaylistWindow ()
 , urlListView (NULL)
 , selectToggle (NULL)
 , expandToggle (NULL)
-, menuButton (NULL)
 , selectStateChangeCallback (NULL)
 , selectStateChangeCallbackData (NULL)
 , expandStateChangeCallback (NULL)
 , expandStateChangeCallbackData (NULL)
 , nameClickCallback (NULL)
 , nameClickCallbackData (NULL)
-, menuClickCallback (NULL)
-, menuClickCallbackData (NULL)
 , urlListChangeCallback (NULL)
 , urlListChangeCallbackData (NULL)
 {
@@ -98,6 +99,7 @@ WebPlaylistWindow::WebPlaylistWindow ()
 
 	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::PlaylistIconSprite)));
 	nameLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::BodyFont, uiconfig->primaryTextColor)));
+	nameLabel->setPadding (0.0f, 0.0f);
 	nameLabel->setMouseClickCallback (WebPlaylistWindow::nameLabelClicked, this);
 	nameLabel->setMouseHoverTooltip (uitext->getText (UiTextString::clickRenameTooltip));
 
@@ -124,22 +126,17 @@ WebPlaylistWindow::WebPlaylistWindow ()
 	selectToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::StarOutlineButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::StarButtonSprite)));
 	selectToggle->setImageColor (uiconfig->flatButtonTextColor);
 	selectToggle->setStateChangeCallback (WebPlaylistWindow::selectToggleStateChanged, this);
-	selectToggle->setMouseHoverTooltip (uitext->getText (UiTextString::selectToggleTooltip));
+	selectToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::unselectedToggleTooltip), uitext->getText (UiTextString::selectedToggleTooltip));
 
 	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
 	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
 	expandToggle->setStateChangeCallback (WebPlaylistWindow::expandToggleStateChanged, this);
-	expandToggle->setMouseHoverTooltip (uitext->getText (UiTextString::expandToggleTooltip));
+	expandToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::expand).capitalized (), uitext->getText (UiTextString::minimize).capitalized ());
 
-	menuButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::MainMenuButtonSprite)));
-	menuButton->setMouseClickCallback (WebPlaylistWindow::menuButtonClicked, this);
-	menuButton->setImageColor (uiconfig->flatButtonTextColor);
-	menuButton->setMouseHoverTooltip (uitext->getText (UiTextString::moreActionsTooltip));
-	menuButton->isVisible = false;
-
-	urlCountLabel = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::WebLinkIconSprite), StdString ("0"), UiConfiguration::TitleFont));
+	urlCountLabel = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::WebLinkIconSprite), StdString ("0"), UiConfiguration::TitleFont, uiconfig->lightPrimaryTextColor));
 	urlCountLabel->setPadding (0.0f, 0.0f);
 	urlCountLabel->setMouseHoverTooltip (uitext->getCountText (0, UiTextString::webPlaylistItem, UiTextString::webPlaylistItems));
+	urlCountLabel->setTextChangeHighlight (true, uiconfig->primaryTextColor);
 
 	urlListView = (ListView *) addWidget (new ListView (windowWidth - (widthPadding * 2.0f), 6, UiConfiguration::CaptionFont, StdString (""), uitext->getText (UiTextString::emptyWebPlaylistAddressList)));
 	urlListView->setListChangeCallback (WebPlaylistWindow::urlListChanged, this);
@@ -177,17 +174,6 @@ void WebPlaylistWindow::setExpandStateChangeCallback (Widget::EventCallback call
 void WebPlaylistWindow::setNameClickCallback (Widget::EventCallback callback, void *callbackData) {
 	nameClickCallback = callback;
 	nameClickCallbackData = callbackData;
-}
-
-void WebPlaylistWindow::setMenuClickCallback (Widget::EventCallback callback, void *callbackData) {
-	menuClickCallback = callback;
-	menuClickCallbackData = callbackData;
-	if (menuClickCallback) {
-		menuButton->isVisible = true;
-	}
-	else {
-		menuButton->isVisible = false;
-	}
 }
 
 void WebPlaylistWindow::setUrlListChangeCallback (Widget::EventCallback callback, void *callbackData) {
@@ -234,6 +220,7 @@ void WebPlaylistWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCa
 		setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 		expandToggle->setChecked (true, shouldSkipStateChangeCallback);
 		nameLabel->setFont (UiConfiguration::HeadlineFont);
+		urlCountLabel->setTextFont (UiConfiguration::HeadlineFont);
 		urlListView->isVisible = true;
 		shuffleToggle->isVisible = true;
 		itemDisplayDurationLabel->isVisible = true;
@@ -243,6 +230,7 @@ void WebPlaylistWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCa
 		setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
 		expandToggle->setChecked (false, shouldSkipStateChangeCallback);
 		nameLabel->setFont (UiConfiguration::BodyFont);
+		urlCountLabel->setTextFont (UiConfiguration::BodyFont);
 		urlListView->isVisible = false;
 		shuffleToggle->isVisible = false;
 		itemDisplayDurationLabel->isVisible = false;
@@ -265,17 +253,17 @@ void WebPlaylistWindow::refreshLayout () {
 	y2 = 0.0f;
 
 	iconImage->flowRight (&x, y, &x2, &y2);
-	nameLabel->flowRight (&x, y, &x2, &y2);
+	nameLabel->flowDown (x, &y, &x2, &y2);
 	if (! isExpanded) {
-		if (menuButton->isVisible) {
-			menuButton->flowRight (&x, y, &x2, &y2);
-		}
 		urlCountLabel->flowRight (&x, y, &x2, &y2);
 	}
+
+	x = x2 + uiconfig->marginSize;
+	y = y0;
 	expandToggle->flowRight (&x, y, &x2, &y2);
 	selectToggle->flowRight (&x, y, &x2, &y2);
-	if (! isExpanded) {
-		urlCountLabel->centerVertical (y0, y2);
+	if (isExpanded) {
+		nameLabel->centerVertical (y0, y2);
 	}
 
 	x = x0;
@@ -288,9 +276,6 @@ void WebPlaylistWindow::refreshLayout () {
 		urlCountLabel->flowRight (&x, y, &x2, &y2);
 		shuffleToggle->flowRight (&x, y, &x2, &y2);
 		itemDisplayDurationSlider->flowRight (&x, y, &x2, &y2);
-		if (menuButton->isVisible) {
-			menuButton->flowRight (&x, y, &x2, &y2);
-		}
 
 		urlCountLabel->centerVertical (y0, y2);
 		shuffleToggle->centerVertical (y0, y2);
@@ -301,28 +286,16 @@ void WebPlaylistWindow::refreshLayout () {
 		x2 = 0.0f;
 		y = y2;
 		urlListView->flowRight (&x, y, &x2, &y2);
+		setFixedSize (true, windowWidth, y2 + heightPadding);
+	}
+	else {
+		setFixedSize (false);
+		resetSize ();
 	}
 
-	setFixedSize (true, windowWidth, y2 + heightPadding);
 	x = width - widthPadding;
 	selectToggle->flowLeft (&x);
 	expandToggle->flowLeft (&x);
-	if (! isExpanded) {
-		if (menuButton->isVisible) {
-			menuButton->flowLeft (&x);
-		}
-		urlCountLabel->flowLeft (&x);
-	}
-
-	if (isExpanded) {
-		x = width - widthPadding;
-		if (menuButton->isVisible) {
-			menuButton->flowLeft (&x);
-		}
-	}
-
-	menuPositionX = menuButton->position.x;
-	menuPositionY = menuButton->position.y + menuButton->height;
 }
 
 void WebPlaylistWindow::resetNameLabel () {
@@ -332,13 +305,15 @@ void WebPlaylistWindow::resetNameLabel () {
 	uiconfig = &(App::instance->uiConfig);
 	if (isExpanded) {
 		w = expandToggle->position.x;
+		w -= nameLabel->position.x;
+		w -= uiconfig->marginSize;
+		nameLabel->setText (Label::getTruncatedText (playlistName, UiConfiguration::HeadlineFont, w, StdString ("...")));
 	}
 	else {
-		w = urlCountLabel->position.x;
+		w = (windowWidth / 2.0f);
+		w -= (iconImage->width + expandToggle->width + selectToggle->width);
+		nameLabel->setText (Label::getTruncatedText (playlistName, UiConfiguration::BodyFont, w, StdString ("...")));
 	}
-	w -= nameLabel->position.x;
-	w -= uiconfig->marginSize;
-	nameLabel->setText (Label::getTruncatedText (playlistName, UiConfiguration::HeadlineFont, w, StdString ("...")));
 	refreshLayout ();
 }
 
@@ -415,15 +390,6 @@ void WebPlaylistWindow::addUrl (const StdString &url) {
 	urlListView->addItem (url);
 }
 
-void WebPlaylistWindow::menuButtonClicked (void *windowPtr, Widget *widgetPtr) {
-	WebPlaylistWindow *window;
-
-	window = (WebPlaylistWindow *) windowPtr;
-	if (window->menuClickCallback) {
-		window->menuClickCallback (window->menuClickCallbackData, window);
-	}
-}
-
 StdString WebPlaylistWindow::itemDisplayDurationSliderValueName (float sliderValue) {
 	if (FLOAT_EQUALS (sliderValue, 0.0f)) {
 		return (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::slowest).capitalized ().c_str (), OsUtil::getDurationDisplayString (WebPlaylistWindow::itemDisplayDurations[0] * 1000).c_str ()));
@@ -467,24 +433,18 @@ int WebPlaylistWindow::getItemDisplayDuration () {
 	return (WebPlaylistWindow::itemDisplayDurations[2]);
 }
 
-static const char *PLAYLIST_NAME_KEY = "a";
-static const char *IS_SELECTED_KEY = "b";
-static const char *IS_EXPANDED_KEY = "c";
-static const char *URL_LIST_KEY = "d";
-static const char *IS_SHUFFLE_KEY = "e";
-static const char *ITEM_DISPLAY_DURATION_KEY = "f";
 Json *WebPlaylistWindow::getState () {
 	Json *obj;
 	StringList urls;
 
 	obj = new Json ();
 	urlListView->getItems (&urls);
-	obj->set (PLAYLIST_NAME_KEY, playlistName);
-	obj->set (URL_LIST_KEY, &urls);
-	obj->set (IS_SHUFFLE_KEY, shuffleToggle->isChecked);
-	obj->set (ITEM_DISPLAY_DURATION_KEY, getItemDisplayDuration ());
-	obj->set (IS_SELECTED_KEY, isSelected);
-	obj->set (IS_EXPANDED_KEY, isExpanded);
+	obj->set (WebPlaylistWindow::PlaylistNameKey, playlistName);
+	obj->set (WebPlaylistWindow::UrlListKey, &urls);
+	obj->set (WebPlaylistWindow::IsShuffleKey, shuffleToggle->isChecked);
+	obj->set (WebPlaylistWindow::ItemDisplayDurationKey, getItemDisplayDuration ());
+	obj->set (WebPlaylistWindow::IsSelectedKey, isSelected);
+	obj->set (WebPlaylistWindow::IsExpandedKey, isExpanded);
 
 	return (obj);
 }
@@ -495,15 +455,15 @@ void WebPlaylistWindow::setState (Json *stateObject) {
 	int duration;
 	bool b;
 
-	val = stateObject->getString (PLAYLIST_NAME_KEY, "");
+	val = stateObject->getString (WebPlaylistWindow::PlaylistNameKey, "");
 	if (! val.empty ()) {
 		setPlaylistName (val);
 	}
 
-	stateObject->getStringList (URL_LIST_KEY, &urls);
+	stateObject->getStringList (WebPlaylistWindow::UrlListKey, &urls);
 	urlListView->setItems (&urls);
 
-	duration = stateObject->getNumber (ITEM_DISPLAY_DURATION_KEY, WebPlaylistWindow::itemDisplayDurations[2]);
+	duration = stateObject->getNumber (WebPlaylistWindow::ItemDisplayDurationKey, WebPlaylistWindow::itemDisplayDurations[2]);
 	if (duration == WebPlaylistWindow::itemDisplayDurations[0]) {
 		itemDisplayDurationSlider->setValue (0.0f);
 	}
@@ -520,13 +480,13 @@ void WebPlaylistWindow::setState (Json *stateObject) {
 		itemDisplayDurationSlider->setValue (1.0f);
 	}
 
-	shuffleToggle->setChecked (stateObject->getBoolean (IS_SHUFFLE_KEY, false));
+	shuffleToggle->setChecked (stateObject->getBoolean (WebPlaylistWindow::IsShuffleKey, false));
 
-	b = stateObject->getBoolean (IS_SELECTED_KEY, false);
+	b = stateObject->getBoolean (WebPlaylistWindow::IsSelectedKey, false);
 	isSelected = ! b;
 	setSelected (b, true);
 
-	b = stateObject->getBoolean (IS_EXPANDED_KEY, false);
+	b = stateObject->getBoolean (WebPlaylistWindow::IsExpandedKey, false);
 	isExpanded = ! b;
 	setExpanded (b, true);
 }

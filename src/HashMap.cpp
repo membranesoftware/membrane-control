@@ -323,6 +323,14 @@ void HashMap::insert (const char *key, const StdString &value) {
 	insert (StdString (key), value);
 }
 
+void HashMap::insert (const StdString &key, const char *value) {
+	insert (key, StdString (value));
+}
+
+void HashMap::insert (const char *key, const char *value) {
+	insert (StdString (key), StdString (value));
+}
+
 void HashMap::insert (const StdString &key, bool value) {
 	insert (key, value ? StdString ("true") : StdString ("false"));
 }

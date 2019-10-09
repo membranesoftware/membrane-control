@@ -101,7 +101,7 @@ ServerWindow::ServerWindow (const StdString &agentId)
 	setCornerRadius (uiconfig->cornerRadius);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::ServerIconSprite)));
+	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeServerIconSprite)));
 	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::BodyFont, uiconfig->primaryTextColor));
 
 	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
@@ -149,7 +149,7 @@ ServerWindow::ServerWindow (const StdString &agentId)
 	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
 	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
 	expandToggle->setStateChangeCallback (ServerWindow::expandToggleStateChanged, this);
-	expandToggle->setMouseHoverTooltip (uitext->getText (UiTextString::expandToggleTooltip));
+	expandToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::expand).capitalized (), uitext->getText (UiTextString::minimize).capitalized ());
 
 	checkForUpdatesButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::UpdateButtonSprite)));
 	checkForUpdatesButton->setMouseClickCallback (ServerWindow::checkForUpdatesButtonClicked, this);
@@ -297,7 +297,7 @@ void ServerWindow::syncRecordStore () {
 				break;
 			}
 			default: {
-				iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::ServerIconSprite)));
+				iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeServerIconSprite)));
 				break;
 			}
 		}
@@ -480,36 +480,35 @@ void ServerWindow::refreshLayout () {
 	x = x0;
 	y = y2 + uiconfig->marginSize;
 	x2 = 0.0f;
+	if (removeButton->isVisible) {
+		removeButton->flowRight (&x, y, &x2, &y2);
+	}
+	if (detachButton->isVisible) {
+		detachButton->flowRight (&x, y, &x2, &y2);
+	}
 	if (checkForUpdatesButton->isVisible) {
 		checkForUpdatesButton->flowRight (&x, y, &x2, &y2);
 	}
 	if (adminButton->isVisible) {
 		adminButton->flowRight (&x, y, &x2, &y2);
 	}
-	if (detachButton->isVisible) {
-		detachButton->flowRight (&x, y, &x2, &y2);
-	}
-	if (removeButton->isVisible) {
-		removeButton->flowRight (&x, y, &x2, &y2);
-	}
-
 	resetSize ();
 
 	x = width - widthPadding;
 	expandToggle->flowLeft (&x);
 
 	x = width - widthPadding;
-	if (removeButton->isVisible) {
-		removeButton->flowLeft (&x);
-	}
-	if (detachButton->isVisible) {
-		detachButton->flowLeft (&x);
-	}
 	if (adminButton->isVisible) {
 		adminButton->flowLeft (&x);
 	}
 	if (checkForUpdatesButton->isVisible) {
 		checkForUpdatesButton->flowLeft (&x);
+	}
+	if (detachButton->isVisible) {
+		detachButton->flowLeft (&x);
+	}
+	if (removeButton->isVisible) {
+		removeButton->flowLeft (&x);
 	}
 }
 

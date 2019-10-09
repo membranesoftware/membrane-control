@@ -52,18 +52,23 @@
 #include "IconLabelWindow.h"
 #include "MonitorWindow.h"
 
+const float MonitorWindow::screenshotImageScale = 0.27f;
+
 MonitorWindow::MonitorWindow (const StdString &agentId)
 : Panel ()
 , isSelected (false)
 , isExpanded (false)
+, isScreenshotDisplayEnabled (false)
 , isStorageDisplayEnabled (false)
 , agentId (agentId)
 , agentTaskCount (0)
+, screenshotTime (0)
 , menuPositionX (0.0f)
 , menuPositionY (0.0f)
 , iconImage (NULL)
 , nameLabel (NULL)
 , descriptionLabel (NULL)
+, screenshotImage (NULL)
 , statusIcon (NULL)
 , taskCountIcon (NULL)
 , storageIcon (NULL)
@@ -78,6 +83,8 @@ MonitorWindow::MonitorWindow (const StdString &agentId)
 , selectStateChangeCallbackData (NULL)
 , expandStateChangeCallback (NULL)
 , expandStateChangeCallbackData (NULL)
+, screenshotLoadCallback (NULL)
+, screenshotLoadCallbackData (NULL)
 , cacheButtonClickCallback (NULL)
 , cacheButtonMouseEnterCallback (NULL)
 , cacheButtonMouseExitCallback (NULL)
@@ -98,6 +105,12 @@ MonitorWindow::MonitorWindow (const StdString &agentId)
 
 	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	descriptionLabel->isVisible = false;
+
+	screenshotImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
+	screenshotImage->setLoadCallback (MonitorWindow::screenshotImageLoaded, this);
+	screenshotImage->setLoadResize (true, ((float) App::instance->windowWidth) * MonitorWindow::screenshotImageScale);
+	screenshotImage->setFillBg (true, uiconfig->darkBackgroundColor);
+	screenshotImage->isVisible = false;
 
 	statusIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::ActivityStateIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	statusIcon->setPadding (0.0f, 0.0f);
@@ -130,13 +143,13 @@ MonitorWindow::MonitorWindow (const StdString &agentId)
 	selectToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::StarOutlineButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::StarButtonSprite)));
 	selectToggle->setImageColor (uiconfig->flatButtonTextColor);
 	selectToggle->setStateChangeCallback (MonitorWindow::selectToggleStateChanged, this);
-	selectToggle->setMouseHoverTooltip (uitext->getText (UiTextString::selectToggleTooltip));
+	selectToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::unselectedToggleTooltip), uitext->getText (UiTextString::selectedToggleTooltip));
 	selectToggle->isVisible = false;
 
 	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
 	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
 	expandToggle->setStateChangeCallback (MonitorWindow::expandToggleStateChanged, this);
-	expandToggle->setMouseHoverTooltip (uitext->getText (UiTextString::expandToggleTooltip));
+	expandToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::expand).capitalized (), uitext->getText (UiTextString::minimize).capitalized ());
 
 	refreshLayout ();
 }
@@ -162,7 +175,8 @@ void MonitorWindow::syncRecordStore () {
 	SystemInterface *interface;
 	UiText *uitext;
 	Json *record, serverstatus;
-	StdString displayname, intentname, text;
+	StdString path, displayname, intentname, text;
+	int64_t t;
 	int intentlen, displaylen, count;
 
 	store = &(App::instance->agentControl.recordStore);
@@ -179,8 +193,23 @@ void MonitorWindow::syncRecordStore () {
 	agentName.assign (interface->getCommandAgentName (record));
 	nameLabel->setText (agentName);
 	agentTaskCount = interface->getCommandNumberParam (record, "taskCount", (int) 0);
-
 	descriptionLabel->setText (interface->getCommandStringParam (record, "applicationName", ""));
+
+	path = serverstatus.getString ("screenshotPath", "");
+	if ((! isScreenshotDisplayEnabled) || path.empty ()) {
+		screenshotImage->isVisible = false;
+	}
+	else {
+		screenshotImage->setLoadUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, NULL, path));
+		screenshotImage->isVisible = isExpanded;
+		t = serverstatus.getNumber ("screenshotTime", (int64_t) -1);
+		if ((t > 0) && (t != screenshotTime)) {
+			screenshotTime = t;
+			if (screenshotImage->isVisible) {
+				screenshotImage->reload ();
+			}
+		}
+	}
 
 	intentlen = 24;
 	displaylen = 32;
@@ -264,6 +293,25 @@ void MonitorWindow::setExpandStateChangeCallback (Widget::EventCallback callback
 	expandStateChangeCallbackData = callbackData;
 }
 
+void MonitorWindow::setScreenshotLoadCallback (Widget::EventCallback callback, void *callbackData) {
+	screenshotLoadCallback = callback;
+	screenshotLoadCallbackData = callbackData;
+}
+
+void MonitorWindow::setScreenshotDisplayEnabled (bool enable) {
+	if (isScreenshotDisplayEnabled == enable) {
+		return;
+	}
+	isScreenshotDisplayEnabled = enable;
+	if (isScreenshotDisplayEnabled) {
+		screenshotImage->isVisible = isExpanded;
+	}
+	else {
+		screenshotImage->isVisible = false;
+	}
+	refreshLayout ();
+}
+
 void MonitorWindow::setStorageDisplayEnabled (bool enable) {
 	if (isStorageDisplayEnabled == enable) {
 		return;
@@ -319,6 +367,14 @@ void MonitorWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallba
 		expandToggle->setChecked (true, shouldSkipStateChangeCallback);
 		nameLabel->setFont (UiConfiguration::HeadlineFont);
 		descriptionLabel->isVisible = true;
+
+		if (screenshotImage->isLoadUrlEmpty ()) {
+			screenshotImage->isVisible = false;
+		}
+		else {
+			screenshotImage->isVisible = isScreenshotDisplayEnabled;
+		}
+
 		statusIcon->isVisible = true;
 
 		if (agentTaskCount > 0) {
@@ -346,6 +402,7 @@ void MonitorWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallba
 		expandToggle->setChecked (false, shouldSkipStateChangeCallback);
 		nameLabel->setFont (UiConfiguration::BodyFont);
 		descriptionLabel->isVisible = false;
+		screenshotImage->isVisible = false;
 		statusIcon->isVisible = false;
 		taskCountIcon->isVisible = false;
 		storageIcon->isVisible = false;
@@ -372,7 +429,9 @@ void MonitorWindow::refreshLayout () {
 
 	iconImage->flowRight (&x, y, &x2, &y2);
 	nameLabel->flowDown (x, &y, &x2, &y2);
-	descriptionLabel->flowRight (&x, y, &x2, &y2);
+	if (descriptionLabel->isVisible) {
+		descriptionLabel->flowRight (&x, y, &x2, &y2);
+	}
 
 	x = x2 + uiconfig->marginSize;
 	y = y0;
@@ -390,6 +449,12 @@ void MonitorWindow::refreshLayout () {
 		statusIcon->flowDown (x, &y, &x2, &y2);
 	}
 
+	if (screenshotImage->isVisible) {
+		x = x0;
+		y = y2 + uiconfig->marginSize;
+		screenshotImage->flowDown (x, &y, &x2, &y2);
+	}
+
 	x = x0;
 	y = y2 + uiconfig->marginSize;
 	x2 = 0.0f;
@@ -400,10 +465,6 @@ void MonitorWindow::refreshLayout () {
 	if (taskCountIcon->isVisible) {
 		taskCountIcon->flowRight (&x, y, &x2, &y2);
 	}
-
-	x = x0;
-	y = y2 + uiconfig->marginSize;
-	x2 = 0.0f;
 	if (cacheButton && cacheButton->isVisible) {
 		cacheButton->flowRight (&x, y, &x2, &y2);
 	}
@@ -425,6 +486,15 @@ void MonitorWindow::refreshLayout () {
 		menuPositionY = menuButton->position.y + menuButton->height;
 	}
 	expandToggle->flowLeft (&x);
+}
+
+void MonitorWindow::screenshotImageLoaded (void *windowPtr, Widget *widgetPtr) {
+	MonitorWindow *window;
+
+	window = (MonitorWindow *) windowPtr;
+	if (window->screenshotLoadCallback) {
+		window->screenshotLoadCallback (window->screenshotLoadCallbackData, window);
+	}
 }
 
 void MonitorWindow::menuButtonClicked (void *windowPtr, Widget *widgetPtr) {

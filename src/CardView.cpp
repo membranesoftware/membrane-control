@@ -144,6 +144,17 @@ void CardView::setRowItemMarginSize (int row, float marginSize) {
 	refreshLayout ();
 }
 
+void CardView::setRowReverseSorted (int row, bool enable) {
+	std::map<int, CardView::Row>::iterator pos;
+
+	pos = getRow (row);
+	if (enable == pos->second.isReverseSorted) {
+		return;
+	}
+	pos->second.isReverseSorted = enable;
+	refreshLayout ();
+}
+
 void CardView::setRowSelectionAnimated (int row, bool enable) {
 	std::map<int, CardView::Row>::iterator pos;
 
@@ -528,6 +539,22 @@ void CardView::removeRowItems (int row) {
 	refreshLayout ();
 }
 
+void CardView::setItemRow (const StdString &itemId, int targetRow, bool shouldSkipRefreshLayout) {
+	std::list<CardView::Item>::iterator pos;
+
+	SDL_LockMutex (itemMutex);
+	pos = findItemPosition (itemId);
+	if ((pos != itemList.end ()) && (pos->row != targetRow)) {
+		pos->row = targetRow;
+		isSorted = false;
+	}
+	SDL_UnlockMutex (itemMutex);
+
+	if (! shouldSkipRefreshLayout) {
+		refreshLayout ();
+	}
+}
+
 void CardView::removeAllItems () {
 	std::list<CardView::Item>::iterator i, end;
 
@@ -741,7 +768,9 @@ void CardView::doSort () {
 			++i;
 		}
 
-		rowlist.sort (CardView::compareItems);
+		ri = getRow (row);
+		rowlist.sort (ri->second.isReverseSorted ? CardView::compareItemsDescending : CardView::compareItemsAscending);
+
 		i = rowlist.begin ();
 		iend = rowlist.end ();
 		while (i != iend) {
@@ -789,8 +818,12 @@ void CardView::resetItemIdMap () {
 	}
 }
 
-bool CardView::compareItems (const CardView::Item &a, const CardView::Item &b) {
+bool CardView::compareItemsAscending (const CardView::Item &a, const CardView::Item &b) {
 	return (a.panel->sortKey.compare (b.panel->sortKey) <= 0);
+}
+
+bool CardView::compareItemsDescending (const CardView::Item &a, const CardView::Item &b) {
+	return (a.panel->sortKey.compare (b.panel->sortKey) > 0);
 }
 
 std::list<CardView::Item>::iterator CardView::findItemPosition (const StdString &itemId) {

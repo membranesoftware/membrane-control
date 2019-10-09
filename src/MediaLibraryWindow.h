@@ -38,6 +38,7 @@
 #include "Label.h"
 #include "Button.h"
 #include "Toggle.h"
+#include "ProgressBar.h"
 #include "IconLabelWindow.h"
 #include "Panel.h"
 
@@ -96,6 +97,10 @@ private:
 	IconLabelWindow *storageIcon;
 	IconLabelWindow *mediaCountIcon;
 	IconLabelWindow *streamCountIcon;
+	Image *taskImage;
+	Label *taskNameLabel;
+	Label *taskSubtitleLabel;
+	ProgressBar *taskProgressBar;
 	Button *menuButton;
 	Toggle *selectToggle;
 	Toggle *expandToggle;

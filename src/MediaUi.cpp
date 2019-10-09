@@ -136,6 +136,8 @@ void MediaUi::setHelpWindowContent (HelpWindow *helpWindow) {
 int MediaUi::doLoad () {
 	UiConfiguration *uiconfig;
 	UiText *uitext;
+	Panel *panel;
+	Toggle *toggle;
 
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
@@ -151,7 +153,27 @@ int MediaUi::doLoad () {
 
 	cardView = (CardView *) addWidget (new CardView (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight));
 	cardView->isKeyboardScrollEnabled = true;
-	cardView->setRowHeader (MediaUi::PlaylistRow, createRowHeaderPanel (uitext->getText (UiTextString::playlists).capitalized ()));
+
+	panel = new Panel ();
+	panel->setFillBg (true, uiconfig->mediumBackgroundColor);
+	toggle = (Toggle *) panel->addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandAllLessButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandAllMoreButtonSprite)));
+	toggle->setImageColor (uiconfig->flatButtonTextColor);
+	toggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::minimizeAll).capitalized (), uitext->getText (UiTextString::expandAll).capitalized ());
+	toggle->setStateChangeCallback (MediaUi::expandAgentsToggleStateChanged, this);
+	expandAgentsToggle.assign (toggle);
+	cardView->addItem (createRowHeaderPanel (uitext->getText (UiTextString::servers).capitalized (), panel), StdString (""), MediaUi::AgentToggleRow);
+
+	cardView->setRowReverseSorted (MediaUi::ExpandedAgentRow, true);
+
+	panel = new Panel ();
+	panel->setFillBg (true, uiconfig->mediumBackgroundColor);
+	toggle = (Toggle *) panel->addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandAllLessButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandAllMoreButtonSprite)));
+	toggle->setImageColor (uiconfig->flatButtonTextColor);
+	toggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::minimizeAll).capitalized (), uitext->getText (UiTextString::expandAll).capitalized ());
+	toggle->setStateChangeCallback (MediaUi::expandPlaylistsToggleStateChanged, this);
+	expandPlaylistsToggle.assign (toggle);
+	cardView->addItem (createRowHeaderPanel (uitext->getText (UiTextString::playlists).capitalized (), panel), StdString (""), MediaUi::PlaylistToggleRow);
+
 	cardView->setRowHeader (MediaUi::EmptyMediaRow, createRowHeaderPanel (uitext->getText (UiTextString::media).capitalized ()));
 	cardView->setRowHeader (MediaUi::MediaRow, createRowHeaderPanel (uitext->getText (UiTextString::media).capitalized ()));
 	cardView->setRowItemMarginSize (MediaUi::MediaRow, 0.0f);
@@ -170,6 +192,8 @@ void MediaUi::doUnload () {
 	selectedPlaylistWindow.clear ();
 	selectedMonitorMap.clear ();
 	selectedMediaMap.clear ();
+	expandAgentsToggle.clear ();
+	expandPlaylistsToggle.clear ();
 
 	SDL_LockMutex (findMediaStreamsMapMutex);
 	findMediaStreamsMap.clear ();
@@ -235,7 +259,7 @@ void MediaUi::doResume () {
 	StringList items;
 	StringList::iterator i, end;
 	StdString id;
-	StreamPlaylistWindow *window;
+	StreamPlaylistWindow *playlist;
 	Json *obj;
 
 	App::instance->setNextBackgroundTexturePath ("ui/MediaUi/bg");
@@ -253,22 +277,24 @@ void MediaUi::doResume () {
 		while (i != end) {
 			obj = new Json ();
 			if (obj->parse (*i)) {
-				window = createStreamPlaylistWindow ();
-				window->setState (obj);
+				playlist = createStreamPlaylistWindow ();
+				playlist->setState (obj);
 
 				id = cardView->getAvailableItemId ();
-				window->itemId.assign (id);
-				window->sortKey.assign (window->playlistName.lowercased ());
-				cardView->addItem (window, id, MediaUi::PlaylistRow);
-				window->animateNewCard ();
-				if (window->isSelected) {
-					selectedPlaylistWindow.assign (window);
+				playlist->itemId.assign (id);
+				playlist->sortKey.assign (playlist->playlistName.lowercased ());
+				cardView->addItem (playlist, id, playlist->isExpanded ? MediaUi::ExpandedPlaylistRow : MediaUi::UnexpandedPlaylistRow);
+				playlist->animateNewCard ();
+				if (playlist->isSelected) {
+					selectedPlaylistWindow.assign (playlist);
 				}
 			}
 			delete (obj);
 			++i;
 		}
 	}
+
+	resetExpandToggles ();
 }
 
 void MediaUi::doPause () {
@@ -376,6 +402,8 @@ void MediaUi::doUpdate (int msElapsed) {
 	commandPopup.compact ();
 	lastSelectedMediaWindow.compact ();
 	selectedPlaylistWindow.compact ();
+	expandAgentsToggle.compact ();
+	expandPlaylistsToggle.compact ();
 
 	if (recordReceiveCount > 0) {
 		now = OsUtil::getTime ();
@@ -500,10 +528,10 @@ void MediaUi::doSyncRecordStore () {
 		window = NULL;
 		switch (type) {
 			case MediaUi::EmptyAgentState: {
-				window = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::ServerIconSprite), uitext->getText (UiTextString::mediaUiEmptyAgentStatusTitle), StdString (""), uitext->getText (UiTextString::mediaUiEmptyAgentStatusText));
+				window = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::LargeServerIconSprite), uitext->getText (UiTextString::mediaUiEmptyAgentStatusTitle), StdString (""), uitext->getText (UiTextString::mediaUiEmptyAgentStatusText));
 				window->setLink (uitext->getText (UiTextString::learnMore).capitalized (), App::getHelpUrl ("servers"));
 				window->itemId.assign (cardView->getAvailableItemId ());
-				cardView->addItem (window, window->itemId, MediaUi::AgentRow);
+				cardView->addItem (window, window->itemId, MediaUi::UnexpandedAgentRow);
 				emptyStateWindow.assign (window);
 				break;
 			}
@@ -528,28 +556,39 @@ void MediaUi::doSyncRecordStore () {
 
 	cardView->syncRecordStore ();
 	cardView->refresh ();
+	resetExpandToggles ();
 }
 
 void MediaUi::processMediaServerAgent (void *uiPtr, Json *record, const StdString &recordId) {
 	MediaUi *ui;
-	MediaLibraryWindow *window;
+	SystemInterface *interface;
+	MediaLibraryWindow *medialibrary;
 	StringList items;
+	int row, pos;
 
 	ui = (MediaUi *) uiPtr;
+	interface = &(App::instance->systemInterface);
+
 	++(ui->mediaServerCount);
 	if (! ui->cardView->contains (recordId)) {
-		window = new MediaLibraryWindow (recordId);
-		window->setMenuClickCallback (MediaUi::mediaLibraryMenuClicked, ui);
-		window->setExpandStateChangeCallback (MediaUi::cardExpandStateChanged, ui);
-		window->sortKey.sprintf ("a%s", App::instance->systemInterface.getCommandAgentName (record).lowercased ().c_str ());
+		medialibrary = new MediaLibraryWindow (recordId);
+		medialibrary->setMenuClickCallback (MediaUi::mediaLibraryMenuClicked, ui);
+		medialibrary->setExpandStateChangeCallback (MediaUi::cardExpandStateChanged, ui);
 
 		App::instance->prefsMap.find (App::MediaUiExpandedAgentsKey, &items);
-		if (items.contains (recordId)) {
-			window->setExpanded (true, true);
+		pos = items.indexOf (recordId);
+		if (pos < 0) {
+			row = MediaUi::UnexpandedAgentRow;
+			medialibrary->sortKey.sprintf ("a%s", interface->getCommandAgentName (record).lowercased ().c_str ());
+		}
+		else {
+			row = MediaUi::ExpandedAgentRow;
+			medialibrary->setExpanded (true, true);
+			medialibrary->sortKey.sprintf ("%016llx", (long long int) (items.size () - pos));
 		}
 
-		ui->cardView->addItem (window, recordId, MediaUi::AgentRow);
-		window->animateNewCard ();
+		ui->cardView->addItem (medialibrary, recordId, row);
+		medialibrary->animateNewCard ();
 		App::instance->agentControl.refreshAgentStatus (recordId);
 		ui->addLinkAgent (recordId);
 	}
@@ -557,38 +596,51 @@ void MediaUi::processMediaServerAgent (void *uiPtr, Json *record, const StdStrin
 
 void MediaUi::processMonitorAgent (void *uiPtr, Json *record, const StdString &recordId) {
 	MediaUi *ui;
-	MonitorWindow *window;
+	SystemInterface *interface;
+	MonitorWindow *monitor;
 	StringList items;
+	int row, pos;
 
 	ui = (MediaUi *) uiPtr;
+	interface = &(App::instance->systemInterface);
+
 	if (! ui->cardView->contains (recordId)) {
-		window = new MonitorWindow (recordId);
-		window->setStorageDisplayEnabled (true);
-		window->setSelectStateChangeCallback (MediaUi::monitorSelectStateChanged, ui);
-		window->setExpandStateChangeCallback (MediaUi::cardExpandStateChanged, ui);
-		window->addCacheButton (ui->sprites.getSprite (MediaUi::CacheButtonSprite), MediaUi::monitorCacheButtonClicked, NULL, NULL, ui);
-		window->sortKey.sprintf ("b%s", App::instance->systemInterface.getCommandAgentName (record).lowercased ().c_str ());
+		monitor = new MonitorWindow (recordId);
+		monitor->setScreenshotDisplayEnabled (true);
+		monitor->setStorageDisplayEnabled (true);
+		monitor->setSelectStateChangeCallback (MediaUi::monitorSelectStateChanged, ui);
+		monitor->setExpandStateChangeCallback (MediaUi::cardExpandStateChanged, ui);
+		monitor->setScreenshotLoadCallback (MediaUi::monitorScreenshotLoaded, ui);
+		monitor->addCacheButton (ui->sprites.getSprite (MediaUi::CacheButtonSprite), MediaUi::monitorCacheButtonClicked, NULL, NULL, ui);
 
 		App::instance->prefsMap.find (App::MediaUiSelectedAgentsKey, &items);
 		if (items.contains (recordId)) {
-			window->setSelected (true, true);
+			monitor->setSelected (true, true);
 			ui->selectedMonitorMap.insert (recordId, App::instance->systemInterface.getCommandAgentName (record));
 		}
 
 		App::instance->prefsMap.find (App::MediaUiExpandedAgentsKey, &items);
-		if (items.contains (recordId)) {
-			window->setExpanded (true, true);
+		pos = items.indexOf (recordId);
+		if (pos < 0) {
+			row = MediaUi::UnexpandedAgentRow;
+			monitor->sortKey.sprintf ("b%s", interface->getCommandAgentName (record).lowercased ().c_str ());
+		}
+		else {
+			row = MediaUi::ExpandedAgentRow;
+			monitor->setExpanded (true, true);
+			monitor->sortKey.sprintf ("%016llx", (long long int) (items.size () - pos));
 		}
 
-		ui->cardView->addItem (window, recordId, MediaUi::AgentRow);
-		window->animateNewCard ();
+		ui->cardView->addItem (monitor, recordId, row);
+		monitor->animateNewCard ();
 		App::instance->agentControl.refreshAgentStatus (recordId);
+		ui->addLinkAgent (recordId);
 	}
 }
 
 void MediaUi::processMediaItem (void *uiPtr, Json *record, const StdString &recordId) {
 	MediaUi *ui;
-	MediaWindow *window;
+	MediaWindow *media;
 	SystemInterface *interface;
 	StdString mediaid, agentid;
 	Json *params, *streamrecord;
@@ -638,20 +690,20 @@ void MediaUi::processMediaItem (void *uiPtr, Json *record, const StdString &reco
 			}
 
 			if (show) {
-				window = new MediaWindow (record);
-				window->setMediaImageClickCallback (MediaUi::mediaWindowImageClicked, ui);
-				window->setViewButtonClickCallback (MediaUi::mediaWindowViewButtonClicked, ui);
-				window->setSelectStateChangeCallback (MediaUi::mediaWindowSelectStateChanged, ui);
+				media = new MediaWindow (record);
+				media->setMediaImageClickCallback (MediaUi::mediaWindowImageClicked, ui);
+				media->setViewButtonClickCallback (MediaUi::mediaWindowViewButtonClicked, ui);
+				media->setSelectStateChangeCallback (MediaUi::mediaWindowSelectStateChanged, ui);
 				if (ui->mediaSortOrder == SystemInterface::Constant_NewestSort) {
-					window->sortKey.sprintf ("%016llx", (long long int) (0x7FFFFFFFFFFFFFFFLL - interface->getCommandNumberParam (record, "mtime", (int64_t) 0)));
+					media->sortKey.sprintf ("%016llx", (long long int) (0x7FFFFFFFFFFFFFFFLL - interface->getCommandNumberParam (record, "mtime", (int64_t) 0)));
 				}
 				else {
-					window->sortKey.assign (window->mediaName);
+					media->sortKey.assign (media->mediaName);
 				}
 				if (ui->selectedMediaMap.exists (recordId)) {
-					window->setSelected (true, true);
+					media->setSelected (true, true);
 				}
-				ui->cardView->addItem (window, recordId, MediaUi::MediaRow);
+				ui->cardView->addItem (media, recordId, MediaUi::MediaRow);
 			}
 		}
 	}
@@ -659,32 +711,57 @@ void MediaUi::processMediaItem (void *uiPtr, Json *record, const StdString &reco
 
 bool MediaUi::matchMediaItem (void *idPtr, Widget *widget) {
 	StdString *id;
-	MediaWindow *window;
+	MediaWindow *media;
 
-	window = MediaWindow::castWidget (widget);
-	if (! window) {
+	media = MediaWindow::castWidget (widget);
+	if (! media) {
 		return (false);
 	}
 
 	id = (StdString *) idPtr;
-	return (id->equals (window->mediaId));
+	return (id->equals (media->mediaId));
 }
 
 void MediaUi::handleLinkClientConnect (const StdString &agentId) {
-	Json *params;
+	RecordStore *store;
+	SystemInterface *interface;
+	Json *record, *params;
+	bool ismedia, ismonitor;
 	std::map<StdString, MediaUi::MediaServerInfo>::iterator info;
 
-	SDL_LockMutex (mediaServerMapMutex);
-	if (mediaServerMap.count (agentId) <= 0) {
-		info = getMediaServerInfo (agentId);
-		info->second.resultOffset = MediaUi::pageSize;
-		params = new Json ();
-		params->set ("searchKey", searchKey);
-		params->set ("maxResults", MediaUi::pageSize);
-		params->set ("sortOrder", mediaSortOrder);
-		App::instance->agentControl.writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindItems, SystemInterface::Constant_Media, params), agentId);
+	store = &(App::instance->agentControl.recordStore);
+	interface = &(App::instance->systemInterface);
+	ismedia = false;
+	ismonitor = false;
+	store->lock ();
+	record = store->findRecord (agentId, SystemInterface::CommandId_AgentStatus);
+	if (record) {
+		if (interface->getCommandObjectParam (record, "mediaServerStatus", NULL)) {
+			ismedia = true;
+		}
+		if (interface->getCommandObjectParam (record, "monitorServerStatus", NULL)) {
+			ismonitor = true;
+		}
 	}
-	SDL_UnlockMutex (mediaServerMapMutex);
+	store->unlock ();
+
+	if (ismedia) {
+		SDL_LockMutex (mediaServerMapMutex);
+		if (mediaServerMap.count (agentId) <= 0) {
+			info = getMediaServerInfo (agentId);
+			info->second.resultOffset = MediaUi::pageSize;
+			params = new Json ();
+			params->set ("searchKey", searchKey);
+			params->set ("maxResults", MediaUi::pageSize);
+			params->set ("sortOrder", mediaSortOrder);
+			App::instance->agentControl.writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindItems, SystemInterface::Constant_Media, params), agentId);
+		}
+		SDL_UnlockMutex (mediaServerMapMutex);
+	}
+
+	if (ismedia || ismonitor) {
+		App::instance->agentControl.writeLinkCommand (App::instance->createCommand (SystemInterface::Command_WatchStatus, SystemInterface::Constant_Admin), agentId);
+	}
 }
 
 void MediaUi::handleLinkClientCommand (const StdString &agentId, int commandId, Json *command) {
@@ -985,7 +1062,7 @@ void MediaUi::reloadButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	ui->findMediaStreamsMap.clear ();
 	SDL_UnlockMutex (ui->findMediaStreamsMapMutex);
 
-	ui->cardView->processRowItems (MediaUi::AgentRow, MediaUi::reloadAgent, ui);
+	ui->cardView->processItems (MediaUi::reloadAgent, ui);
 	ui->loadSearchResults ();
 }
 
@@ -1024,12 +1101,12 @@ StdString MediaUi::getAvailablePlaylistName () {
 
 	basename.assign (App::instance->uiText.getText (UiTextString::playlist).capitalized ());
 	name.assign (basename);
-	cardView->processRowItems (MediaUi::PlaylistRow, MediaUi::matchPlaylistName, &name);
+	cardView->processItems (MediaUi::matchPlaylistName, &name);
 	if (name.empty ()) {
 		i = 2;
 		while (true) {
 			name.sprintf ("%s %i", basename.c_str (), i);
-			cardView->processRowItems (MediaUi::PlaylistRow, MediaUi::matchPlaylistName, &name);
+			cardView->processItems (MediaUi::matchPlaylistName, &name);
 			if (! name.empty ()) {
 				break;
 			}
@@ -1041,16 +1118,16 @@ StdString MediaUi::getAvailablePlaylistName () {
 }
 
 void MediaUi::matchPlaylistName (void *stringPtr, Widget *widgetPtr) {
-	StreamPlaylistWindow *window;
+	StreamPlaylistWindow *playlist;
 	StdString *name;
 
-	window = StreamPlaylistWindow::castWidget (widgetPtr);
-	if (! window) {
+	playlist = StreamPlaylistWindow::castWidget (widgetPtr);
+	if (! playlist) {
 		return;
 	}
 
 	name = (StdString *) stringPtr;
-	if (name->lowercased ().equals (window->playlistName.lowercased ())) {
+	if (name->lowercased ().equals (playlist->playlistName.lowercased ())) {
 		name->assign ("");
 	}
 }
@@ -1107,7 +1184,7 @@ void MediaUi::itemUiThumbnailClicked (void *uiPtr, Widget *widgetPtr) {
 	}
 
 	target->setDisplayTimestamp (thumbnail->thumbnailTimestamp);
-	target->setImageUrl (thumbnail->sourceUrl);
+	target->setThumbnail (thumbnail->sourceUrl, thumbnail->thumbnailIndex);
 	target->setSelected (true);
 
 	App::instance->uiStack.popUi ();
@@ -1172,9 +1249,176 @@ void MediaUi::mediaWindowSelectStateChanged (void *uiPtr, Widget *widgetPtr) {
 
 void MediaUi::cardExpandStateChanged (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
+	MonitorWindow *monitor;
+	MediaLibraryWindow *medialibrary;
+	StreamPlaylistWindow *playlist;
 
 	ui = (MediaUi *) uiPtr;
+
+	monitor = MonitorWindow::castWidget (widgetPtr);
+	if (monitor) {
+		if (monitor->isExpanded) {
+			monitor->sortKey.sprintf ("%016llx", (long long int) OsUtil::getTime ());
+			ui->cardView->setItemRow (monitor->agentId, MediaUi::ExpandedAgentRow);
+		}
+		else {
+			monitor->sortKey.sprintf ("b%s", monitor->agentName.lowercased ().c_str ());
+			ui->cardView->setItemRow (monitor->agentId, MediaUi::UnexpandedAgentRow);
+		}
+		monitor->resetInputState ();
+		monitor->animateNewCard ();
+		ui->resetExpandToggles ();
+		ui->cardView->refresh ();
+		return;
+	}
+
+	medialibrary = MediaLibraryWindow::castWidget (widgetPtr);
+	if (medialibrary) {
+		if (medialibrary->isExpanded) {
+			medialibrary->sortKey.sprintf ("%016llx", (long long int) OsUtil::getTime ());
+			ui->cardView->setItemRow (medialibrary->agentId, MediaUi::ExpandedAgentRow);
+		}
+		else {
+			medialibrary->sortKey.sprintf ("a%s", medialibrary->agentName.lowercased ().c_str ());
+			ui->cardView->setItemRow (medialibrary->agentId, MediaUi::UnexpandedAgentRow);
+		}
+		medialibrary->resetInputState ();
+		medialibrary->animateNewCard ();
+		ui->resetExpandToggles ();
+		ui->cardView->refresh ();
+		return;
+	}
+
+	playlist = StreamPlaylistWindow::castWidget (widgetPtr);
+	if (playlist) {
+		if (playlist->isExpanded) {
+			ui->cardView->setItemRow (playlist->itemId, MediaUi::ExpandedPlaylistRow);
+		}
+		else {
+			playlist->sortKey.assign (playlist->playlistName.lowercased ());
+			ui->cardView->setItemRow (playlist->itemId, MediaUi::UnexpandedPlaylistRow);
+		}
+		playlist->resetInputState ();
+		playlist->animateNewCard ();
+		ui->resetExpandToggles ();
+		ui->cardView->refresh ();
+		return;
+	}
+}
+
+void MediaUi::expandAgentsToggleStateChanged (void *uiPtr, Widget *widgetPtr) {
+	MediaUi *ui;
+	Toggle *toggle;
+	Widget *item;
+	MonitorWindow *monitor;
+	MediaLibraryWindow *medialibrary;
+	StringList idlist;
+	StringList::iterator i, end;
+	int64_t now;
+
+	ui = (MediaUi *) uiPtr;
+	toggle = (Toggle *) ui->expandAgentsToggle.widget;
+	if (! toggle) {
+		return;
+	}
+
+	now = OsUtil::getTime ();
+	ui->cardView->processItems (MediaUi::appendAgentId, &idlist);
+	i = idlist.begin ();
+	end = idlist.end ();
+	while (i != end) {
+		item = ui->cardView->getItem (*i);
+		monitor = MonitorWindow::castWidget (item);
+		if (monitor) {
+			if (toggle->isChecked) {
+				monitor->setExpanded (false, true);
+				monitor->sortKey.sprintf ("b%s", monitor->agentName.lowercased ().c_str ());
+				ui->cardView->setItemRow (monitor->agentId, MediaUi::UnexpandedAgentRow, true);
+			}
+			else {
+				monitor->setExpanded (true, true);
+				monitor->sortKey.sprintf ("%016llx%s", (long long int) now, monitor->agentName.lowercased ().c_str ());
+				ui->cardView->setItemRow (monitor->agentId, MediaUi::ExpandedAgentRow, true);
+			}
+		}
+		else {
+			medialibrary = MediaLibraryWindow::castWidget (item);
+			if (medialibrary) {
+				if (toggle->isChecked) {
+					medialibrary->setExpanded (false, true);
+					medialibrary->sortKey.sprintf ("a%s", medialibrary->agentName.lowercased ().c_str ());
+					ui->cardView->setItemRow (medialibrary->agentId, MediaUi::UnexpandedAgentRow, true);
+				}
+				else {
+					medialibrary->setExpanded (true, true);
+					medialibrary->sortKey.sprintf ("%016llx%s", (long long int) now, medialibrary->agentName.lowercased ().c_str ());
+					ui->cardView->setItemRow (medialibrary->agentId, MediaUi::ExpandedAgentRow, true);
+				}
+			}
+		}
+		++i;
+	}
 	ui->cardView->refresh ();
+}
+
+void MediaUi::appendAgentId (void *stringListPtr, Widget *widgetPtr) {
+	MonitorWindow *monitor;
+	MediaLibraryWindow *medialibrary;
+
+	monitor = MonitorWindow::castWidget (widgetPtr);
+	if (monitor) {
+		((StringList *) stringListPtr)->push_back (monitor->agentId);
+		return;
+	}
+
+	medialibrary = MediaLibraryWindow::castWidget (widgetPtr);
+	if (medialibrary) {
+		((StringList *) stringListPtr)->push_back (medialibrary->agentId);
+		return;
+	}
+}
+
+void MediaUi::expandPlaylistsToggleStateChanged (void *uiPtr, Widget *widgetPtr) {
+	MediaUi *ui;
+	Toggle *toggle;
+	StreamPlaylistWindow *playlist;
+	StringList idlist;
+	StringList::iterator i, end;
+
+	ui = (MediaUi *) uiPtr;
+	toggle = (Toggle *) ui->expandPlaylistsToggle.widget;
+	if (! toggle) {
+		return;
+	}
+
+	ui->cardView->processItems (MediaUi::appendPlaylistId, &idlist);
+	i = idlist.begin ();
+	end = idlist.end ();
+	while (i != end) {
+		playlist = StreamPlaylistWindow::castWidget (ui->cardView->getItem (*i));
+		if (playlist) {
+			if (toggle->isChecked) {
+				playlist->setExpanded (false, true);
+				ui->cardView->setItemRow (playlist->itemId, MediaUi::UnexpandedPlaylistRow, true);
+			}
+			else {
+				playlist->setExpanded (true, true);
+				ui->cardView->setItemRow (playlist->itemId, MediaUi::ExpandedPlaylistRow, true);
+			}
+		}
+		++i;
+	}
+	ui->cardView->refresh ();
+}
+
+void MediaUi::appendPlaylistId (void *stringListPtr, Widget *widgetPtr) {
+	StreamPlaylistWindow *playlist;
+
+	playlist = StreamPlaylistWindow::castWidget (widgetPtr);
+	if (playlist) {
+		((StringList *) stringListPtr)->push_back (playlist->itemId);
+		return;
+	}
 }
 
 void MediaUi::mediaLibraryMenuClicked (void *uiPtr, Widget *widgetPtr) {
@@ -1244,6 +1488,13 @@ void MediaUi::monitorSelectStateChanged (void *uiPtr, Widget *widgetPtr) {
 	}
 }
 
+void MediaUi::monitorScreenshotLoaded (void *uiPtr, Widget *widgetPtr) {
+	MediaUi *ui;
+
+	ui = (MediaUi *) uiPtr;
+	ui->cardView->refresh ();
+}
+
 void MediaUi::monitorCacheButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	MonitorCacheUi *cacheui;
 	MonitorWindow *target;
@@ -1259,19 +1510,19 @@ void MediaUi::monitorCacheButtonClicked (void *uiPtr, Widget *widgetPtr) {
 
 void MediaUi::playlistSelectStateChanged (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
-	StreamPlaylistWindow *window, *item;
+	StreamPlaylistWindow *playlist, *item;
 
 	ui = (MediaUi *) uiPtr;
-	window = (StreamPlaylistWindow *) widgetPtr;
-	if (window->isSelected) {
-		if (ui->selectedPlaylistWindow.widget != window) {
+	playlist = (StreamPlaylistWindow *) widgetPtr;
+	if (playlist->isSelected) {
+		if (ui->selectedPlaylistWindow.widget != playlist) {
 			if (ui->selectedPlaylistWindow.widget) {
 				item = StreamPlaylistWindow::castWidget (ui->selectedPlaylistWindow.widget);
 				if (item) {
 					item->setSelected (false, true);
 				}
 			}
-			ui->selectedPlaylistWindow.assign (window);
+			ui->selectedPlaylistWindow.assign (playlist);
 		}
 	}
 	else {
@@ -1316,14 +1567,14 @@ void MediaUi::playlistRenameActionClicked (void *uiPtr, Widget *widgetPtr) {
 
 void MediaUi::playlistNameEdited (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
-	StreamPlaylistWindow *target;
+	StreamPlaylistWindow *playlist;
 	TextFieldWindow *textfield;
 	StdString name;
 
 	ui = (MediaUi *) uiPtr;
 	textfield = TextFieldWindow::castWidget (ui->actionWidget.widget);
-	target = StreamPlaylistWindow::castWidget (ui->actionTarget.widget);
-	if ((! textfield) || (! target)) {
+	playlist = StreamPlaylistWindow::castWidget (ui->actionTarget.widget);
+	if ((! textfield) || (! playlist)) {
 		return;
 	}
 
@@ -1331,7 +1582,8 @@ void MediaUi::playlistNameEdited (void *uiPtr, Widget *widgetPtr) {
 	if (name.empty ()) {
 		name.assign (ui->getAvailablePlaylistName ());
 	}
-	target->setPlaylistName (name);
+	playlist->setPlaylistName (name);
+	playlist->sortKey.assign (playlist->playlistName.lowercased ());
 	ui->clearPopupWidgets ();
 }
 
@@ -1790,6 +2042,9 @@ void MediaUi::playButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	params->set ("streamUrl", streamurl);
 	params->set ("streamId", media->streamId);
 	params->set ("startPosition", startpos);
+	if (! media->playThumbnailUrl.empty ()) {
+		params->set ("thumbnailUrl", media->playThumbnailUrl);
+	}
 	count = App::instance->agentControl.invokeCommand (&idlist, App::instance->createCommand (SystemInterface::Command_PlayMedia, SystemInterface::Constant_Monitor, params));
 	if (count <= 0) {
 		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
@@ -1857,8 +2112,7 @@ void MediaUi::browserPlayButtonClicked (void *uiPtr, Widget *widgetPtr) {
 
 	params = new Json ();
 	params->set ("streamId", media->streamId);
-	// TODO: Get the URL path from somewhere else (i.e. from a StreamServerStatus field)
-	OsUtil::openUrl (App::instance->agentControl.getAgentSecondaryUrl (media->streamAgentId, App::instance->createCommand (SystemInterface::Command_GetDashHtml5Interface, SystemInterface::Constant_Stream, params), StdString ("/streamserver/play")));
+	OsUtil::openUrl (App::instance->agentControl.getAgentSecondaryUrl (media->streamAgentId, App::instance->createCommand (SystemInterface::Command_GetDashHtml5Interface, SystemInterface::Constant_Stream, params), media->dashHtml5Path));
 }
 
 void MediaUi::configureStreamButtonClicked (void *uiPtr, Widget *widgetPtr) {
@@ -2140,7 +2394,7 @@ void MediaUi::addPlaylistItemButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
 	MediaWindow *media;
 	StreamPlaylistWindow *playlist;
-	StdString streamurl;
+	StdString streamurl, thumbnailurl;
 	HashMap::Iterator i;
 	StdString mediaid;
 	int count;
@@ -2165,7 +2419,11 @@ void MediaUi::addPlaylistItemButtonClicked (void *uiPtr, Widget *widgetPtr) {
 				startpos = 0.0f;
 			}
 			startpos /= 1000.0f;
-			playlist->addItem (streamurl, media->streamId, media->mediaName, startpos);
+
+			if (! media->streamThumbnailPath.empty ()) {
+				thumbnailurl = App::instance->agentControl.getAgentSecondaryUrl (media->streamAgentId, NULL, media->streamThumbnailPath);
+			}
+			playlist->addItem (streamurl, media->streamId, media->mediaName, startpos, thumbnailurl, media->playThumbnailIndex);
 		}
 	}
 
@@ -2189,7 +2447,7 @@ void MediaUi::createPlaylistButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	playlist->itemId.assign (id);
 	playlist->setPlaylistName (ui->getAvailablePlaylistName ());
 	playlist->setExpanded (true);
-	ui->cardView->addItem (playlist, id, MediaUi::PlaylistRow);
+	ui->cardView->addItem (playlist, id, MediaUi::ExpandedPlaylistRow);
 	playlist->animateNewCard ();
 	playlist->setSelected (true);
 	ui->cardView->scrollToItem (id);
@@ -2271,4 +2529,62 @@ StdString MediaUi::getSelectedMediaNames (float maxWidth, bool isStreamRequired)
 	Label::truncateText (&text, UiConfiguration::CaptionFont, maxWidth, StdString::createSprintf ("... (%i)", (int) names.size ()));
 
 	return (text);
+}
+
+void MediaUi::resetExpandToggles () {
+	Toggle *toggle;
+	int count;
+
+	toggle = (Toggle *) expandAgentsToggle.widget;
+	if (toggle) {
+		count = 0;
+		cardView->processItems (MediaUi::countExpandedAgents, &count);
+		toggle->setChecked ((count <= 0), true);
+	}
+
+	toggle = (Toggle *) expandPlaylistsToggle.widget;
+	if (toggle) {
+		count = 0;
+		cardView->processItems (MediaUi::countExpandedPlaylists, &count);
+		toggle->setChecked ((count <= 0), true);
+	}
+}
+
+void MediaUi::countExpandedAgents (void *intPtr, Widget *widgetPtr) {
+	MonitorWindow *monitor;
+	MediaLibraryWindow *medialibrary;
+	int *count;
+
+	count = (int *) intPtr;
+	if (! count) {
+		return;
+	}
+
+	monitor = MonitorWindow::castWidget (widgetPtr);
+	if (monitor && monitor->isExpanded) {
+		++(*count);
+		return;
+	}
+
+	medialibrary = MediaLibraryWindow::castWidget (widgetPtr);
+	if (medialibrary && medialibrary->isExpanded) {
+		++(*count);
+		return;
+	}
+}
+
+void MediaUi::countExpandedPlaylists (void *intPtr, Widget *widgetPtr) {
+	StreamPlaylistWindow *playlist;
+	int *count;
+
+	count = (int *) intPtr;
+	if (! count) {
+		return;
+	}
+
+	playlist = StreamPlaylistWindow::castWidget (widgetPtr);
+	if (playlist && playlist->isExpanded) {
+		++(*count);
+		return;
+	}
 }

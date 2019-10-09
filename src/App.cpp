@@ -76,7 +76,7 @@ const char *App::WebKioskUiSelectedAgentsKey = "WebKiosk_SelectedAgents";
 const char *App::WebKioskUiExpandedAgentsKey = "WebKiosk_ExpandedAgents";
 const char *App::WebKioskUiPlaylistsKey = "WebKiosk_Playlists";
 const char *App::WebKioskUiToolbarModeKey = "WebKiosk_ToolbarMode";
-const char *App::MainUiShowAllEnabledKey = "Main_ShowAllEnabled";
+const char *App::MainUiExpandedUiTypesKey = "Main_ExpandedUiTypes";
 const char *App::MainUiApplicationNewsItemsKey = "Main_ApplicationNewsItems";
 const char *App::MediaUiImageSizeKey = "Media_ImageSize";
 const char *App::MediaUiSortOrderKey = "Media_SortOrder";
@@ -207,15 +207,20 @@ App::~App () {
 }
 
 int App::getImageScale (int w, int h) {
-	int i;
+	int i, result;
 
+	if ((w <= 0) || (h <= 0)) {
+		return (-1);
+	}
+
+	result = 0;
 	for (i = 0; i < App::windowSizeCount; ++i) {
-		if ((w == App::windowWidths[i]) && (h == App::windowHeights[i])) {
-			return (i);
+		if (w >= App::windowWidths[i]) {
+			result = i;
 		}
 	}
 
-	return (-1);
+	return (result);
 }
 
 int App::run () {
@@ -241,21 +246,6 @@ int App::run () {
 	}
 
 	isHttpsEnabled = prefsMap.find (App::HttpsKey, true);
-	windowWidth = prefsMap.find (App::WindowWidthKey, 0);
-	windowHeight = prefsMap.find (App::WindowHeightKey, 0);
-	imageScale = getImageScale (windowWidth, windowHeight);
-	i = prefsMap.find (App::FontScaleKey, App::fontScaleCount / 2);
-	if ((i >= 0) && (i < App::fontScaleCount)) {
-		fontScale = App::fontScales[i];
-		nextFontScale = fontScale;
-	}
-
-	clipRect.x = 0;
-	clipRect.y = 0;
-	clipRect.w = windowWidth;
-	clipRect.h = windowHeight;
-	nextWindowWidth = windowWidth;
-	nextWindowHeight = windowHeight;
 
 	if (SDL_Init (SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
 		Log::err ("Failed to start SDL: %s", SDL_GetError ());
@@ -310,6 +300,11 @@ int App::run () {
 		displayVdpi = 72.0f;
 	}
 
+	if ((windowWidth <= 0) || (windowHeight <= 0)) {
+		windowWidth = prefsMap.find (App::WindowWidthKey, 0);
+		windowHeight = prefsMap.find (App::WindowHeightKey, 0);
+	}
+	imageScale = getImageScale (windowWidth, windowHeight);
 	if (imageScale < 0) {
 		imageScale = 0;
 		windowWidth = App::windowWidths[0];
@@ -321,11 +316,11 @@ int App::run () {
 		else {
 			for (i = 0; i < App::windowSizeCount; ++i) {
 				if ((rect.w >= App::windowWidths[i]) && (rect.h >= App::windowHeights[i])) {
-					imageScale = i;
 					windowWidth = App::windowWidths[i];
 					windowHeight = App::windowHeights[i];
 				}
 			}
+			imageScale = getImageScale (windowWidth, windowHeight);
 			Log::debug ("Set window size from display usable bounds; boundsRect=x%i,y%i,w%i,h%i windowWidth=%i windowHeight=%i imageScale=%i", rect.x, rect.y, rect.w, rect.h, windowWidth, windowHeight, imageScale);
 		}
 	}
@@ -335,6 +330,7 @@ int App::run () {
 		Log::err ("Failed to create application window: %s", SDL_GetError ());
 		return (Result::SdlOperationFailedError);
 	}
+
 	result = SDL_GetRendererInfo (render, &renderinfo);
 	if (result != 0) {
 		Log::err ("Failed to create application renderer: %s", SDL_GetError ());
@@ -345,6 +341,19 @@ int App::run () {
 	}
 	if (isTextureRenderEnabled) {
 		isInterfaceAnimationEnabled = prefsMap.find (App::ShowInterfaceAnimationsKey, true);
+	}
+
+	clipRect.x = 0;
+	clipRect.y = 0;
+	clipRect.w = windowWidth;
+	clipRect.h = windowHeight;
+	nextWindowWidth = windowWidth;
+	nextWindowHeight = windowHeight;
+
+	i = prefsMap.find (App::FontScaleKey, App::fontScaleCount / 2);
+	if ((i >= 0) && (i < App::fontScaleCount)) {
+		fontScale = App::fontScales[i];
+		nextFontScale = fontScale;
 	}
 
 	SDL_SetWindowTitle (window, uiText.getText (UiTextString::windowTitle).c_str ());
@@ -1002,6 +1011,11 @@ void App::handleLinkClientCommand (const StdString &agentId, Json *command) {
 	switch (commandid) {
 		case SystemInterface::CommandId_TaskItem: {
 			agentControl.recordStore.addRecord (command);
+			shouldSyncRecordStore = true;
+			break;
+		}
+		case SystemInterface::CommandId_AgentStatus: {
+			agentControl.storeAgentStatus (command);
 			shouldSyncRecordStore = true;
 			break;
 		}

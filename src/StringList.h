@@ -63,6 +63,10 @@ public:
 	// Return a boolean value indicating if the list contains an item matching the specified value
 	bool contains (const StdString &item);
 
+	// Return the index of the specified item in the list, or -1 if the item was not found
+	int indexOf (const StdString &item);
+	int indexOf (const char *item);
+
 	// Return a boolean value indicating if the list contains all items from another list, in the same order
 	bool equals (StringList *stringList);
 

@@ -158,6 +158,16 @@ int main (int argc, char **argv)
 		App::instance->minUpdateFrameDelay = result;
 	}
 
+	val = OsUtil::getEnvValue ("WINDOW_WIDTH", "");
+	if ((! val.empty ()) && val.parseInt (&result) && (result > 0)) {
+		App::instance->windowWidth = result;
+	}
+
+	val = OsUtil::getEnvValue ("WINDOW_HEIGHT", "");
+	if ((! val.empty ()) && val.parseInt (&result) && (result > 0)) {
+		App::instance->windowHeight = result;
+	}
+
 	exitval = 0;
 	result = App::instance->run ();
 	if (result != Result::Success) {

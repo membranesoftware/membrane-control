@@ -86,6 +86,10 @@ void IconLabelWindow::setTextColor (const Color &textColor) {
 	label->textColor.assign (textColor);
 }
 
+void IconLabelWindow::setTextFont (int fontType) {
+	label->setFont (fontType);
+}
+
 void IconLabelWindow::setTextChangeHighlight (bool enable, const Color &highlightColor) {
 	isTextChangeHighlightEnabled = enable;
 	if (isTextChangeHighlightEnabled) {

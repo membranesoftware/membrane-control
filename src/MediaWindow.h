@@ -54,6 +54,7 @@ public:
 	StdString mediaPath;
 	StdString thumbnailPath;
 	StdString hlsStreamPath;
+	StdString dashHtml5Path;
 	int thumbnailCount;
 	int mediaWidth, mediaHeight;
 	float mediaDuration;
@@ -63,6 +64,9 @@ public:
 	StdString streamId;
 	StdString streamAgentId;
 	StdString streamAgentName;
+	StdString streamThumbnailPath;
+	StdString playThumbnailUrl;
+	int playThumbnailIndex;
 	float displayTimestamp;
 	bool isSelected;
 
@@ -78,9 +82,6 @@ public:
 	// Set a callback that should be invoked when the view button is clicked
 	void setViewButtonClickCallback (Widget::EventCallback callback, void *callbackData);
 
-	// Set the URL that should be used to load the window's thumbnail image
-	void setImageUrl (const StdString &url);
-
 	// Set the timestamp that should be shown for the media item, with a negative value specifying that no timestamp should be shown
 	void setDisplayTimestamp (float timestamp);
 
@@ -89,6 +90,9 @@ public:
 
 	// Return a boolean value indicating if the window is configured to load thumbnail images
 	bool hasThumbnails ();
+
+	// Set the URL that should be used to load the window's thumbnail image, along with the thumbnail's stream index
+	void setThumbnail (const StdString &imageUrl, int thumbnailIndex);
 
 	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
 	void syncRecordStore ();

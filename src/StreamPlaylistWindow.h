@@ -59,8 +59,6 @@ public:
 	bool isSelected;
 	bool isExpanded;
 	StdString playlistName;
-	float menuPositionX;
-	float menuPositionY;
 
 	// Set a callback that should be invoked when the select toggle's checked state changes
 	void setSelectStateChangeCallback (Widget::EventCallback callback, void *callbackData);
@@ -70,9 +68,6 @@ public:
 
 	// Set a callback that should be invoked when the window's rename action is clicked
 	void setRenameClickCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback that should be invoked when the window's menu button is clicked
-	void setMenuClickCallback (Widget::EventCallback callback, void *callbackData);
 
 	// Set a callback that should be invoked when the window's list content changes
 	void setListChangeCallback (Widget::EventCallback callback, void *callbackData);
@@ -90,7 +85,7 @@ public:
 	int getItemCount ();
 
 	// Add an item to the window's playlist
-	void addItem (const StdString &streamUrl, const StdString &streamId, const StdString &mediaName, float startPosition);
+	void addItem (const StdString &streamUrl, const StdString &streamId, const StdString &mediaName, float startPosition, const StdString &thumbnailUrl, int thumbnailIndex);
 
 	// Return a newly created Json object suitable for storing the window's state
 	Json *getState ();
@@ -113,7 +108,6 @@ public:
 	static void selectToggleStateChanged (void *windowPtr, Widget *widgetPtr);
 	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
 	static void itemListChanged (void *windowPtr, Widget *widgetPtr);
-	static void menuButtonClicked (void *windowPtr, Widget *widgetPtr);
 	static void startPositionSliderValueHovered (void *windowPtr, Widget *widgetPtr);
 	static void startPositionSliderValueChanged (void *windowPtr, Widget *widgetPtr);
 	static void playDurationSliderValueHovered (void *windowPtr, Widget *widgetPtr);
@@ -130,12 +124,31 @@ protected:
 	void refreshLayout ();
 
 private:
+	// Constants to use as object field names
+	static const char *PlaylistNameKey;
+	static const char *IsSelectedKey;
+	static const char *IsExpandedKey;
+	static const char *StartPositionMinKey;
+	static const char *StartPositionMaxKey;
+	static const char *PlayDurationMinKey;
+	static const char *PlayDurationMaxKey;
+	static const char *ItemListKey;
+	static const char *IsShuffleKey;
+	static const char *StreamUrlKey;
+	static const char *StreamIdKey;
+	static const char *MediaNameKey;
+	static const char *StartPositionKey;
+	static const char *ThumbnailUrlKey;
+	static const char *ThumbnailIndexKey;
+
 	struct Item {
 		StdString streamUrl;
 		StdString streamId;
 		StdString mediaName;
 		float startPosition;
-		Item (): startPosition (0.0f) { }
+		StdString thumbnailUrl;
+		int thumbnailIndex;
+		Item (): startPosition (0.0f), thumbnailIndex (0) { }
 	};
 
 	// Reset the text shown by the name label, truncating it as needed to fit in its available space
@@ -147,7 +160,6 @@ private:
 	IconLabelWindow *itemCountLabel;
 	Toggle *selectToggle;
 	Toggle *expandToggle;
-	Button *menuButton;
 	ToggleWindow *shuffleToggle;
 	Slider *startPositionMinSlider;
 	Slider *startPositionMaxSlider;
@@ -164,8 +176,6 @@ private:
 	void *expandStateChangeCallbackData;
 	Widget::EventCallback renameClickCallback;
 	void *renameClickCallbackData;
-	Widget::EventCallback menuClickCallback;
-	void *menuClickCallbackData;
 	Widget::EventCallback listChangeCallback;
 	void *listChangeCallbackData;
 };

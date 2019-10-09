@@ -60,7 +60,6 @@ public:
   static const char *Command_CreateTimelapseCaptureIntent;
   static const char *Command_CreateWebDisplayIntent;
   static const char *Command_EndSet;
-  static const char *Command_EventRecord;
   static const char *Command_FindCaptureImages;
   static const char *Command_FindCaptureImagesResult;
   static const char *Command_FindItems;
@@ -87,7 +86,6 @@ public:
   static const char *Command_MonitorServerStatus;
   static const char *Command_PlayCacheStream;
   static const char *Command_PlayMedia;
-  static const char *Command_ReadEvents;
   static const char *Command_ReadTasks;
   static const char *Command_RemoveIntent;
   static const char *Command_RemoveMedia;
@@ -98,6 +96,7 @@ public:
   static const char *Command_ServerError;
   static const char *Command_SetAdminSecret;
   static const char *Command_SetIntentActive;
+  static const char *Command_ShowAgentStatus;
   static const char *Command_ShowWebUrl;
   static const char *Command_ShutdownAgent;
   static const char *Command_StartServers;
@@ -110,6 +109,7 @@ public:
   static const char *Command_UpdateAgentConfiguration;
   static const char *Command_UpdateIntentState;
   static const char *Command_WatchEvents;
+  static const char *Command_WatchStatus;
   static const char *Command_WatchTasks;
   static const char *Command_WebDisplayIntentState;
   static const int CommandId_AgentConfiguration = 45;
@@ -132,7 +132,6 @@ public:
   static const int CommandId_CreateTimelapseCaptureIntent = 70;
   static const int CommandId_CreateWebDisplayIntent = 35;
   static const int CommandId_EndSet = 21;
-  static const int CommandId_EventRecord = 40;
   static const int CommandId_FindCaptureImages = 74;
   static const int CommandId_FindCaptureImagesResult = 75;
   static const int CommandId_FindItems = 3;
@@ -159,7 +158,6 @@ public:
   static const int CommandId_MonitorServerStatus = 12;
   static const int CommandId_PlayCacheStream = 57;
   static const int CommandId_PlayMedia = 30;
-  static const int CommandId_ReadEvents = 18;
   static const int CommandId_ReadTasks = 6;
   static const int CommandId_RemoveIntent = 37;
   static const int CommandId_RemoveMedia = 77;
@@ -170,6 +168,7 @@ public:
   static const int CommandId_ServerError = 20;
   static const int CommandId_SetAdminSecret = 61;
   static const int CommandId_SetIntentActive = 38;
+  static const int CommandId_ShowAgentStatus = 41;
   static const int CommandId_ShowWebUrl = 34;
   static const int CommandId_ShutdownAgent = 43;
   static const int CommandId_StartServers = 47;
@@ -182,6 +181,7 @@ public:
   static const int CommandId_UpdateAgentConfiguration = 42;
   static const int CommandId_UpdateIntentState = 39;
   static const int CommandId_WatchEvents = 27;
+  static const int CommandId_WatchStatus = 82;
   static const int CommandId_WatchTasks = 7;
   static const int CommandId_WebDisplayIntentState = 49;
   static const int ParamFlag_Required = 1;
@@ -402,7 +402,6 @@ public:
   static void getParams_CreateTimelapseCaptureIntent (std::list<SystemInterface::Param> *destList);
   static void getParams_CreateWebDisplayIntent (std::list<SystemInterface::Param> *destList);
   static void getParams_EmptyObject (std::list<SystemInterface::Param> *destList);
-  static void getParams_EventRecord (std::list<SystemInterface::Param> *destList);
   static void getParams_FindCaptureImages (std::list<SystemInterface::Param> *destList);
   static void getParams_FindCaptureImagesResult (std::list<SystemInterface::Param> *destList);
   static void getParams_FindItems (std::list<SystemInterface::Param> *destList);
@@ -420,7 +419,6 @@ public:
   static void getParams_GetMedia (std::list<SystemInterface::Param> *destList);
   static void getParams_GetThumbnailImage (std::list<SystemInterface::Param> *destList);
   static void getParams_IntentState (std::list<SystemInterface::Param> *destList);
-  static void getParams_MasterServerConfiguration (std::list<SystemInterface::Param> *destList);
   static void getParams_MediaDisplayIntentState (std::list<SystemInterface::Param> *destList);
   static void getParams_MediaDisplayItem (std::list<SystemInterface::Param> *destList);
   static void getParams_MediaItem (std::list<SystemInterface::Param> *destList);
@@ -430,7 +428,6 @@ public:
   static void getParams_MonitorServerStatus (std::list<SystemInterface::Param> *destList);
   static void getParams_PlayCacheStream (std::list<SystemInterface::Param> *destList);
   static void getParams_PlayMedia (std::list<SystemInterface::Param> *destList);
-  static void getParams_ReadEvents (std::list<SystemInterface::Param> *destList);
   static void getParams_RemoveIntent (std::list<SystemInterface::Param> *destList);
   static void getParams_RemoveMedia (std::list<SystemInterface::Param> *destList);
   static void getParams_RemoveStream (std::list<SystemInterface::Param> *destList);
@@ -439,6 +436,7 @@ public:
   static void getParams_ServerError (std::list<SystemInterface::Param> *destList);
   static void getParams_SetAdminSecret (std::list<SystemInterface::Param> *destList);
   static void getParams_SetIntentActive (std::list<SystemInterface::Param> *destList);
+  static void getParams_ShowAgentStatus (std::list<SystemInterface::Param> *destList);
   static void getParams_ShowWebUrl (std::list<SystemInterface::Param> *destList);
   static void getParams_StreamItem (std::list<SystemInterface::Param> *destList);
   static void getParams_StreamServerConfiguration (std::list<SystemInterface::Param> *destList);
@@ -468,7 +466,6 @@ public:
   static void populateDefaultFields_CreateTimelapseCaptureIntent (Json *destObject);
   static void populateDefaultFields_CreateWebDisplayIntent (Json *destObject);
   static void populateDefaultFields_EmptyObject (Json *destObject);
-  static void populateDefaultFields_EventRecord (Json *destObject);
   static void populateDefaultFields_FindCaptureImages (Json *destObject);
   static void populateDefaultFields_FindCaptureImagesResult (Json *destObject);
   static void populateDefaultFields_FindItems (Json *destObject);
@@ -486,7 +483,6 @@ public:
   static void populateDefaultFields_GetMedia (Json *destObject);
   static void populateDefaultFields_GetThumbnailImage (Json *destObject);
   static void populateDefaultFields_IntentState (Json *destObject);
-  static void populateDefaultFields_MasterServerConfiguration (Json *destObject);
   static void populateDefaultFields_MediaDisplayIntentState (Json *destObject);
   static void populateDefaultFields_MediaDisplayItem (Json *destObject);
   static void populateDefaultFields_MediaItem (Json *destObject);
@@ -496,7 +492,6 @@ public:
   static void populateDefaultFields_MonitorServerStatus (Json *destObject);
   static void populateDefaultFields_PlayCacheStream (Json *destObject);
   static void populateDefaultFields_PlayMedia (Json *destObject);
-  static void populateDefaultFields_ReadEvents (Json *destObject);
   static void populateDefaultFields_RemoveIntent (Json *destObject);
   static void populateDefaultFields_RemoveMedia (Json *destObject);
   static void populateDefaultFields_RemoveStream (Json *destObject);
@@ -505,6 +500,7 @@ public:
   static void populateDefaultFields_ServerError (Json *destObject);
   static void populateDefaultFields_SetAdminSecret (Json *destObject);
   static void populateDefaultFields_SetIntentActive (Json *destObject);
+  static void populateDefaultFields_ShowAgentStatus (Json *destObject);
   static void populateDefaultFields_ShowWebUrl (Json *destObject);
   static void populateDefaultFields_StreamItem (Json *destObject);
   static void populateDefaultFields_StreamServerConfiguration (Json *destObject);
@@ -534,7 +530,6 @@ public:
   static void hashFields_CreateTimelapseCaptureIntent (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_CreateWebDisplayIntent (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_EmptyObject (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
-  static void hashFields_EventRecord (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_FindCaptureImages (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_FindCaptureImagesResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_FindItems (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
@@ -552,7 +547,6 @@ public:
   static void hashFields_GetMedia (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_GetThumbnailImage (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_IntentState (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
-  static void hashFields_MasterServerConfiguration (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_MediaDisplayIntentState (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_MediaDisplayItem (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_MediaItem (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
@@ -562,7 +556,6 @@ public:
   static void hashFields_MonitorServerStatus (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_PlayCacheStream (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_PlayMedia (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
-  static void hashFields_ReadEvents (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_RemoveIntent (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_RemoveMedia (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_RemoveStream (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
@@ -571,6 +564,7 @@ public:
   static void hashFields_ServerError (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_SetAdminSecret (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_SetIntentActive (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_ShowAgentStatus (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_ShowWebUrl (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_StreamItem (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_StreamServerConfiguration (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);

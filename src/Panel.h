@@ -131,7 +131,7 @@ public:
 	virtual void setPadding (float widthPaddingSize, float heightPaddingSize);
 
 	// Set the fixed size option. If enabled, the panel uses the specified width and height values instead of dynamic resizing to fit contained elements.
-	void setFixedSize (bool enable, float fixedWidth, float fixedHeight);
+	void setFixedSize (bool enable, float fixedWidth = 0.0f, float fixedHeight = 0.0f);
 
 	// Set the mouse drag scroll option. If enabled, the panel responds to mouse drag actions by scrolling its view position.
 	void setMouseDragScroll (bool enable);

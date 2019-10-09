@@ -45,7 +45,6 @@
 #include "Button.h"
 #include "TextArea.h"
 #include "Toggle.h"
-#include "ToggleWindow.h"
 #include "Image.h"
 #include "Json.h"
 #include "SystemInterface.h"
@@ -58,91 +57,139 @@
 UiLaunchWindow::UiLaunchWindow (int uiType, SpriteGroup *mainUiSpriteGroup)
 : Panel ()
 , uiType (uiType)
+, isExpanded (false)
 , sprites (mainUiSpriteGroup)
 , iconImage (NULL)
 , nameLabel (NULL)
 , descriptionText (NULL)
+, expandToggle (NULL)
 , openButton (NULL)
+, expandStateChangeCallback (NULL)
+, expandStateChangeCallbackData (NULL)
 , openCallback (NULL)
 , openCallbackData (NULL)
 {
 	UiConfiguration *uiconfig;
 	UiText *uitext;
-	Sprite *sprite;
+	Sprite *iconsprite;
 	IconLabelWindow *icon;
 	StdString name, text;
 
 	classId = ClassId::UiLaunchWindow;
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
-	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
+	setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
 	setCornerRadius (uiconfig->cornerRadius);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
+	iconsprite = NULL;
 	switch (uiType) {
 		case UiLaunchWindow::ServerUi: {
 			name.assign (uitext->getText (UiTextString::servers).capitalized ());
 			text.assign (uitext->getText (UiTextString::serverUiDescription));
+			iconsprite = uiconfig->coreSprites.getSprite (UiConfiguration::LargeServerIconSprite);
 
-			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (MainUi::ServerIconSprite), uitext->getCountText (0, UiTextString::serverConnected, UiTextString::serversConnected), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
+			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (MainUi::ConnectionIconSprite), StdString ("0"), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+			icon->setPadding (0.0f, 0.0f);
+			icon->setMouseHoverTooltip (uitext->getCountText (0, UiTextString::serverConnected, UiTextString::serversConnected));
+			countIcons.push_back (icon);
+
+			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (MainUi::ConnectionIconSprite), uitext->getCountText (0, UiTextString::serverConnected, UiTextString::serversConnected), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+			icon->isVisible = false;
 			noteIcons.push_back (icon);
 			break;
 		}
 		case UiLaunchWindow::MediaUi: {
 			name.assign (uitext->getText (UiTextString::media).capitalized ());
 			text.assign (uitext->getText (UiTextString::mediaUiDescription));
+			iconsprite = uiconfig->coreSprites.getSprite (UiConfiguration::LargeMediaIconSprite);
 
-			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (MainUi::ServerIconSprite), uitext->getCountText (0, UiTextString::mediaServerConnected, UiTextString::mediaServersConnected), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
+			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (MainUi::ConnectionIconSprite), StdString ("0"), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+			icon->setPadding (0.0f, 0.0f);
+			icon->setMouseHoverTooltip (uitext->getCountText (0, UiTextString::mediaServerConnected, UiTextString::mediaServersConnected));
+			countIcons.push_back (icon);
+
+			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (MainUi::ConnectionIconSprite), uitext->getCountText (0, UiTextString::mediaServerConnected, UiTextString::mediaServersConnected), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+			icon->isVisible = false;
 			noteIcons.push_back (icon);
-			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallMediaIconSprite), uitext->getCountText (0, UiTextString::videoFileInCatalog, UiTextString::videoFilesInCatalog), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
+			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallMediaIconSprite), uitext->getCountText (0, UiTextString::videoFileInCatalog, UiTextString::videoFilesInCatalog), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+			icon->isVisible = false;
 			noteIcons.push_back (icon);
-			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite), uitext->getCountText (0, UiTextString::videoStreamPlayable, UiTextString::videoStreamsPlayable), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
+			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite), uitext->getCountText (0, UiTextString::videoStreamPlayable, UiTextString::videoStreamsPlayable), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+			icon->isVisible = false;
 			noteIcons.push_back (icon);
 			break;
 		}
 		case UiLaunchWindow::WebKioskUi: {
 			name.assign (uitext->getText (UiTextString::webKiosk).capitalized ());
 			text.assign (uitext->getText (UiTextString::webKioskUiDescription));
+			iconsprite = uiconfig->coreSprites.getSprite (UiConfiguration::LargeDisplayIconSprite);
 
-			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallDisplayIconSprite), uitext->getCountText (0, UiTextString::monitorConnected, UiTextString::monitorsConnected), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
+			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (MainUi::ConnectionIconSprite), StdString ("0"), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+			icon->setPadding (0.0f, 0.0f);
+			icon->setMouseHoverTooltip (uitext->getCountText (0, UiTextString::monitorConnected, UiTextString::monitorsConnected));
+			countIcons.push_back (icon);
+
+			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (MainUi::ConnectionIconSprite), uitext->getCountText (0, UiTextString::monitorConnected, UiTextString::monitorsConnected), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+			icon->isVisible = false;
 			noteIcons.push_back (icon);
 			break;
 		}
 		case UiLaunchWindow::CameraUi: {
 			name.assign (uitext->getText (UiTextString::cameras).capitalized ());
 			text.assign (uitext->getText (UiTextString::cameraUiDescription));
+			iconsprite = uiconfig->coreSprites.getSprite (UiConfiguration::LargeCameraIconSprite);
 
-			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallCameraIconSprite), uitext->getCountText (0, UiTextString::cameraConnected, UiTextString::camerasConnected), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
+			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (MainUi::ConnectionIconSprite), StdString ("0"), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+			icon->setPadding (0.0f, 0.0f);
+			icon->setMouseHoverTooltip (uitext->getCountText (0, UiTextString::cameraConnected, UiTextString::camerasConnected));
+			countIcons.push_back (icon);
+
+			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (MainUi::ConnectionIconSprite), uitext->getCountText (0, UiTextString::cameraConnected, UiTextString::camerasConnected), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+			icon->isVisible = false;
 			noteIcons.push_back (icon);
 			break;
 		}
 		case UiLaunchWindow::CommandUi: {
 			name.assign (uitext->getText (UiTextString::commands).capitalized ());
 			text.assign (uitext->getText (UiTextString::commandUiDescription));
+			iconsprite = uiconfig->coreSprites.getSprite (UiConfiguration::LargeCommandIconSprite);
 
-			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallCommandIconSprite), uitext->getCountText (0, UiTextString::recentCommand, UiTextString::recentCommands), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
+			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallCommandIconSprite), StdString ("0"), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+			icon->setPadding (0.0f, 0.0f);
+			icon->setMouseHoverTooltip (uitext->getCountText (0, UiTextString::storedCommand, UiTextString::storedCommands));
+			countIcons.push_back (icon);
+
+			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallCommandIconSprite), uitext->getCountText (0, UiTextString::recentCommand, UiTextString::recentCommands), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+			icon->isVisible = false;
 			noteIcons.push_back (icon);
-			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallCommandIconSprite), uitext->getCountText (0, UiTextString::storedCommand, UiTextString::storedCommands), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
+			icon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallCommandIconSprite), uitext->getCountText (0, UiTextString::storedCommand, UiTextString::storedCommands), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+			icon->isVisible = false;
 			noteIcons.push_back (icon);
 			break;
 		}
 	}
 
-	sprite = sprites->getSprite (MainUi::UiIconSprite);
-	if (! sprite) {
-		sprite = uiconfig->coreSprites.getSprite (UiConfiguration::SettingsButtonSprite);
+	if (! iconsprite) {
+		iconsprite = sprites->getSprite (MainUi::UiIconSprite);
 	}
-	iconImage = (Image *) addWidget (new Image (sprite));
-	nameLabel = (Label *) addWidget (new Label (name, UiConfiguration::HeadlineFont, uiconfig->primaryTextColor));
+	iconImage = (Image *) addWidget (new Image (iconsprite));
+	nameLabel = (Label *) addWidget (new Label (name, UiConfiguration::BodyFont, uiconfig->primaryTextColor));
 
 	descriptionText = (TextArea *) addWidget (new TextArea (UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	descriptionText->setText (text);
+	descriptionText->isVisible = false;
 
-	openButton = (Button *) addWidget (new Button (uitext->getText (UiTextString::open).uppercased ()));
+	openButton = (Button *) addWidget (new Button (StdString (""), sprites->getSprite (MainUi::OpenButtonSprite)));
 	openButton->zLevel = 1;
 	openButton->setMouseClickCallback (UiLaunchWindow::openButtonClicked, this);
-	openButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
+	openButton->setImageColor (uiconfig->flatButtonTextColor);
 	openButton->setMouseHoverTooltip (uitext->getText (UiTextString::uiLaunchOpenButtonTooltip));
+
+	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
+	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
+	expandToggle->setStateChangeCallback (UiLaunchWindow::expandToggleStateChanged, this);
+	expandToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::expand).capitalized (), uitext->getText (UiTextString::minimize).capitalized ());
 
 	refreshLayout ();
 }
@@ -163,12 +210,58 @@ UiLaunchWindow *UiLaunchWindow::castWidget (Widget *widget) {
 	return (UiLaunchWindow::isWidgetType (widget) ? (UiLaunchWindow *) widget : NULL);
 }
 
+void UiLaunchWindow::setExpandStateChangeCallback (Widget::EventCallback callback, void *callbackData) {
+	expandStateChangeCallback = callback;
+	expandStateChangeCallbackData = callbackData;
+}
+
 void UiLaunchWindow::setOpenCallback (Widget::EventCallback callback, void *callbackData) {
 	openCallback = callback;
 	openCallbackData = callbackData;
 }
 
+void UiLaunchWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallback) {
+	UiConfiguration *uiconfig;
+	std::vector<IconLabelWindow *>::iterator i, end;
+
+	if (expanded == isExpanded) {
+		return;
+	}
+
+	uiconfig = &(App::instance->uiConfig);
+	isExpanded = expanded;
+	if (isExpanded) {
+		setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
+		expandToggle->setChecked (true, shouldSkipStateChangeCallback);
+		nameLabel->setFont (UiConfiguration::HeadlineFont);
+		descriptionText->isVisible = true;
+	}
+	else {
+		setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
+		expandToggle->setChecked (false, shouldSkipStateChangeCallback);
+		nameLabel->setFont (UiConfiguration::BodyFont);
+		descriptionText->isVisible = false;
+	}
+
+	i = countIcons.begin ();
+	end = countIcons.end ();
+	while (i != end) {
+		(*i)->isVisible = (! isExpanded);
+		++i;
+	}
+
+	i = noteIcons.begin ();
+	end = noteIcons.end ();
+	while (i != end) {
+		(*i)->isVisible = isExpanded;
+		++i;
+	}
+
+	refreshLayout ();
+}
+
 void UiLaunchWindow::syncRecordStore () {
+	UiConfiguration *uiconfig;
 	UiText *uitext;
 	RecordStore *store;
 	IconLabelWindow *icon;
@@ -176,49 +269,73 @@ void UiLaunchWindow::syncRecordStore () {
 	int64_t maxage;
 
 	uitext = &(App::instance->uiText);
+	uiconfig = &(App::instance->uiConfig);
 	store = &(App::instance->agentControl.recordStore);
 
 	maxage = App::instance->prefsMap.find (App::ServerTimeoutKey, App::defaultServerTimeout) * 1000;
 	switch (uiType) {
 		case UiLaunchWindow::ServerUi: {
-			icon = noteIcons.at (0);
 			count = store->countCommandRecords (SystemInterface::CommandId_AgentStatus, maxage);
+			icon = countIcons.at (0);
+			icon->setText (StdString::createSprintf ("%i", count));
+			icon->setTextColor ((count > 0) ? uiconfig->lightPrimaryTextColor : uiconfig->errorTextColor);
+			icon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::serverConnected, UiTextString::serversConnected));
+			icon = noteIcons.at (0);
 			icon->setText (uitext->getCountText (count, UiTextString::serverConnected, UiTextString::serversConnected));
+			icon->setTextColor ((count > 0) ? uiconfig->lightPrimaryTextColor : uiconfig->errorTextColor);
 			break;
 		}
 		case UiLaunchWindow::MediaUi: {
-			icon = noteIcons.at (0);
 			count = store->countAgentRecords ("mediaServerStatus", maxage);
+			icon = countIcons.at (0);
+			icon->setText (StdString::createSprintf ("%i", count));
+			icon->setTextColor ((count > 0) ? uiconfig->lightPrimaryTextColor : uiconfig->errorTextColor);
+			icon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::mediaServerConnected, UiTextString::mediaServersConnected));
+			icon = noteIcons.at (0);
 			icon->setText (uitext->getCountText (count, UiTextString::mediaServerConnected, UiTextString::mediaServersConnected));
+			icon->setTextColor ((count > 0) ? uiconfig->lightPrimaryTextColor : uiconfig->errorTextColor);
 
-			icon = noteIcons.at (1);
 			count = countMediaItems (store);
+			icon = noteIcons.at (1);
 			icon->setText (uitext->getCountText (count, UiTextString::videoFileInCatalog, UiTextString::videoFilesInCatalog));
 
-			icon = noteIcons.at (2);
 			count = countStreamItems (store);
+			icon = noteIcons.at (2);
 			icon->setText (uitext->getCountText (count, UiTextString::videoStreamPlayable, UiTextString::videoStreamsPlayable));
 			break;
 		}
 		case UiLaunchWindow::WebKioskUi: {
+			count = store->countAgentRecords ("monitorServerStatus", maxage);
+			icon = countIcons.at (0);
+			icon->setText (StdString::createSprintf ("%i", count));
+			icon->setTextColor ((count > 0) ? uiconfig->lightPrimaryTextColor : uiconfig->errorTextColor);
+			icon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::monitorConnected, UiTextString::monitorsConnected));
 			icon = noteIcons.at (0);
-			count = store->countRecords (WebKioskUi::matchWebKioskAgentStatus, NULL, maxage);
 			icon->setText (uitext->getCountText (count, UiTextString::monitorConnected, UiTextString::monitorsConnected));
+			icon->setTextColor ((count > 0) ? uiconfig->lightPrimaryTextColor : uiconfig->errorTextColor);
 			break;
 		}
 		case UiLaunchWindow::CameraUi: {
-			icon = noteIcons.at (0);
 			count = store->countAgentRecords ("cameraServerStatus", maxage);
+			icon = countIcons.at (0);
+			icon->setText (StdString::createSprintf ("%i", count));
+			icon->setTextColor ((count > 0) ? uiconfig->lightPrimaryTextColor : uiconfig->errorTextColor);
+			icon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::cameraConnected, UiTextString::camerasConnected));
+			icon = noteIcons.at (0);
 			icon->setText (uitext->getCountText (count, UiTextString::cameraConnected, UiTextString::camerasConnected));
+			icon->setTextColor ((count > 0) ? uiconfig->lightPrimaryTextColor : uiconfig->errorTextColor);
 			break;
 		}
 		case UiLaunchWindow::CommandUi: {
-			icon = noteIcons.at (0);
 			count = App::instance->agentControl.commandStore.getRecentCommandCount ();
+			icon = noteIcons.at (0);
 			icon->setText (uitext->getCountText (count, UiTextString::recentCommand, UiTextString::recentCommands));
 
-			icon = noteIcons.at (1);
 			count = App::instance->agentControl.commandStore.getStoredCommandCount ();
+			icon = countIcons.at (0);
+			icon->setText (StdString::createSprintf ("%i", count));
+			icon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::storedCommand, UiTextString::storedCommands));
+			icon = noteIcons.at (1);
 			icon->setText (uitext->getCountText (count, UiTextString::storedCommand, UiTextString::storedCommands));
 			break;
 		}
@@ -267,76 +384,85 @@ void UiLaunchWindow::addStreamCount (void *sumPtr, Json *record, const StdString
 	}
 }
 
-bool UiLaunchWindow::isReadyState (int uiType, RecordStore *store) {
-	int64_t maxage;
-
-	maxage = App::instance->prefsMap.find (App::ServerTimeoutKey, App::defaultServerTimeout) * 1000;
-	switch (uiType) {
-		case UiLaunchWindow::MediaUi: {
-			if (store->countAgentRecords ("mediaServerStatus", maxage) > 0) {
-				return (true);
-			}
-			break;
-		}
-		case UiLaunchWindow::WebKioskUi: {
-			if (store->countRecords (WebKioskUi::matchWebKioskAgentStatus, NULL, maxage) > 0) {
-				return (true);
-			}
-			break;
-		}
-		case UiLaunchWindow::CameraUi: {
-			if (store->countAgentRecords ("cameraServerStatus", maxage) > 0) {
-				return (true);
-			}
-			break;
-		}
-		case UiLaunchWindow::CommandUi: {
-			if ((App::instance->agentControl.commandStore.getStoredCommandCount () > 0) || (App::instance->agentControl.commandStore.getRecentCommandCount () > 0)) {
-				return (true);
-			}
-			break;
-		}
-	}
-
-	return (false);
-}
-
 void UiLaunchWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	IconLabelWindow *icon;
 	std::vector<IconLabelWindow *>::iterator i, end;
-	float x, y;
+	float x, y, x0, y0, x2, y2;
 
 	uiconfig = &(App::instance->uiConfig);
-	x = widthPadding;
+	x0 = widthPadding;
+	y0 = heightPadding;
+	x = x0;
+	y = y0;
+	x2 = 0.0f;
+	y2 = 0.0f;
+	iconImage->flowRight (&x, y, &x2, &y2);
+	nameLabel->flowDown (x, &y, &x2, &y2);
+
 	y = heightPadding;
-	iconImage->position.assign (x, y);
-
-	x += iconImage->width + uiconfig->marginSize;
-	nameLabel->position.assign (x, y + (iconImage->height / 2.0f) - (nameLabel->height / 2.0f));
-
-	x = widthPadding;
-	y += iconImage->height + uiconfig->marginSize;
-
-	descriptionText->position.assign (x, y);
-	y += descriptionText->height + uiconfig->marginSize;
-
-	i = noteIcons.begin ();
-	end = noteIcons.end ();
-	while (i != end) {
-		icon = *i;
-		icon->position.assign (x, y);
-		y += icon->height + uiconfig->marginSize;
-		++i;
+	x = x2 + uiconfig->marginSize;
+	expandToggle->flowRight (&x, y, &x2, &y2);
+	if (! isExpanded) {
+		openButton->flowRight (&x, y, &x2, &y2);
 	}
 
-	openButton->position.assign (x, y);
+	if (! isExpanded) {
+		x = nameLabel->position.x;
+		y = nameLabel->position.y + nameLabel->height + uiconfig->marginSize;
+		x2 = 0.0f;
+		y2 = 0.0f;
+		i = countIcons.begin ();
+		end = countIcons.end ();
+		while (i != end) {
+			icon = *i;
+			icon->flowRight (&x, y, &x2, &y2);
+			++i;
+		}
+	}
+	else {
+		x = x0;
+		y = y2 + uiconfig->marginSize;
+		descriptionText->flowDown (x, &y, &x2, &y2);
+
+		x2 = 0.0f;
+		y2 = 0.0f;
+		i = noteIcons.begin ();
+		end = noteIcons.end ();
+		while (i != end) {
+			icon = *i;
+			icon->flowDown (x, &y, &x2, &y2);
+			++i;
+		}
+
+		openButton->flowDown (x, &y, &x2, &y2);
+	}
 
 	resetSize ();
 
-	x = width - widthPadding;
-	x -= openButton->width;
-	openButton->position.assign (x, y);
+	if (isExpanded) {
+		x = width - widthPadding;
+		expandToggle->flowLeft (&x);
+		x = width - widthPadding;
+		openButton->flowLeft (&x);
+	}
+	else {
+		x = width - widthPadding;
+		openButton->flowLeft (&x);
+		expandToggle->flowLeft (&x);
+	}
+}
+
+void UiLaunchWindow::expandToggleStateChanged (void *windowPtr, Widget *widgetPtr) {
+	UiLaunchWindow *window;
+	Toggle *toggle;
+
+	window = (UiLaunchWindow *) windowPtr;
+	toggle = (Toggle *) widgetPtr;
+	window->setExpanded (toggle->isChecked, true);
+	if (window->expandStateChangeCallback) {
+		window->expandStateChangeCallback (window->expandStateChangeCallbackData, window);
+	}
 }
 
 void UiLaunchWindow::openButtonClicked (void *windowPtr, Widget *widgetPtr) {

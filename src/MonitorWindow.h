@@ -44,16 +44,20 @@
 
 class MonitorWindow : public Panel {
 public:
+	static const float screenshotImageScale; // portion of total window width, from 0.0f to 1.0f
+
 	MonitorWindow (const StdString &agentId);
 	virtual ~MonitorWindow ();
 
 	// Read-only data members
 	bool isSelected;
 	bool isExpanded;
+	bool isScreenshotDisplayEnabled;
 	bool isStorageDisplayEnabled;
 	StdString agentId;
 	StdString agentName;
 	int agentTaskCount;
+	int64_t screenshotTime;
 	float menuPositionX;
 	float menuPositionY;
 
@@ -65,6 +69,12 @@ public:
 
 	// Set a callback that should be invoked when the expand toggle's checked state changes
 	void setExpandStateChangeCallback (Widget::EventCallback callback, void *callbackData);
+
+	// Set a callback that should be invoked when the screenshot image loads
+	void setScreenshotLoadCallback (Widget::EventCallback callback, void *callbackData);
+
+	// Set the enable state of the window's screenshot image
+	void setScreenshotDisplayEnabled (bool enable);
 
 	// Set the enable state of the window's storage display elements
 	void setStorageDisplayEnabled (bool enable);
@@ -88,6 +98,7 @@ public:
 	void setExpanded (bool expanded, bool shouldSkipStateChangeCallback = false);
 
 	// Callback functions
+	static void screenshotImageLoaded (void *windowPtr, Widget *widgetPtr);
 	static void menuButtonClicked (void *windowPtr, Widget *widgetPtr);
 	static void selectToggleStateChanged (void *windowPtr, Widget *widgetPtr);
 	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
@@ -106,6 +117,7 @@ private:
 	Image *iconImage;
 	Label *nameLabel;
 	Label *descriptionLabel;
+	ImageWindow *screenshotImage;
 	IconLabelWindow *statusIcon;
 	IconLabelWindow *taskCountIcon;
 	IconLabelWindow *storageIcon;
@@ -120,6 +132,8 @@ private:
 	void *selectStateChangeCallbackData;
 	Widget::EventCallback expandStateChangeCallback;
 	void *expandStateChangeCallbackData;
+	Widget::EventCallback screenshotLoadCallback;
+	void *screenshotLoadCallbackData;
 	Widget::EventCallback cacheButtonClickCallback;
 	Widget::EventCallback cacheButtonMouseEnterCallback;
 	Widget::EventCallback cacheButtonMouseExitCallback;

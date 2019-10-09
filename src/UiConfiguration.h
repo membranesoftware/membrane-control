@@ -79,7 +79,7 @@ public:
 		LargeErrorIconSprite = 33,
 		AboutButtonSprite = 34,
 		AgentAdminButtonSprite = 35,
-		ServerIconSprite = 36,
+		LargeServerIconSprite = 36,
 		LargeDisplayIconSprite = 37,
 		LargeMediaIconSprite = 38,
 		LargeStreamIconSprite = 39,
@@ -119,7 +119,10 @@ public:
 		ConnectionWaitingStateIconSprite = 73,
 		ServerDisabledStateIconSprite = 74,
 		LargeCommandIconSprite = 75,
-		SmallCommandIconSprite = 76
+		SmallCommandIconSprite = 76,
+		SmallServerIconSprite = 77,
+		ExpandAllLessButtonSprite = 78,
+		ExpandAllMoreButtonSprite = 79
 	};
 
 	// Constants to use for font types

@@ -243,6 +243,30 @@ bool StringList::contains (const StdString &item) {
 	return (found);
 }
 
+int StringList::indexOf (const StdString &item) {
+	StringList::iterator i1, i2;
+	int result, count;
+
+	result = -1;
+	count = 0;
+	i1 = begin ();
+	i2 = end ();
+	while (i1 != i2) {
+		if (item.equals (*i1)) {
+			result = count;
+			break;
+		}
+		++count;
+		++i1;
+	}
+
+	return (result);
+}
+
+int StringList::indexOf (const char *item) {
+	return (indexOf (StdString (item)));
+}
+
 bool StringList::equals (StringList *stringList) {
 	StringList::iterator i, iend, j, jend;
 

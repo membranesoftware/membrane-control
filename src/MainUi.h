@@ -56,14 +56,19 @@ public:
 	// Constants to use for sprite indexes
 	enum {
 		UiIconSprite = 0,
-		ServerIconSprite = 1,
-		ShowAllEnabledButtonSprite = 2,
-		ShowAllDisabledButtonSprite = 3,
+		OpenButtonSprite = 1,
+		TextMessageIconSprite = 2,
+		VideoMessageIconSprite = 3,
 		AnnouncementIconSprite = 4,
 		NextItemButtonSprite = 5,
 		UpdateIconSprite = 6,
-		TextMessageIconSprite = 7,
-		VideoMessageIconSprite = 8
+		ConnectionIconSprite = 7
+	};
+
+	// Constants to use for card view row numbers
+	enum {
+		UnexpandedUiRow = 0,
+		ExpandedUiRow = 1
 	};
 
 	MainUi ();
@@ -73,11 +78,11 @@ public:
 	void setHelpWindowContent (HelpWindow *helpWindow);
 
 	// Callback functions
+	static void appendExpandedUiType (void *stringListPtr, Widget *widgetPtr);
 	static void helpActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void uiExpandStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void uiOpenClicked (void *uiPtr, Widget *widgetPtr);
-	static void showAllToggleStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void nextBannerButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static bool matchUiType (void *intPtr, Widget *widgetPtr);
 	static void getApplicationNewsComplete (void *uiPtr, const StdString &targetUrl, int statusCode, SharedBuffer *responseData);
 	static void openUrlActionClicked (void *uiPtr, Widget *widgetPtr);
 
@@ -138,12 +143,10 @@ private:
 	SequenceList<MainUi::Banner> bannerList;
 	MainUi::Banner activeBanner;
 	CardView *cardView;
-	WidgetHandle showAllToggle;
 	WidgetHandle bannerWindow;
 	WidgetHandle bannerActionButton;
-	bool shouldResetShowAll;
-	int readyItemCount;
 	int bannerClock;
+	int agentCount;
 };
 
 #endif

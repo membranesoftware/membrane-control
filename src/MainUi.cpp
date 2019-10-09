@@ -34,6 +34,7 @@
 #include <vector>
 #include "Result.h"
 #include "StdString.h"
+#include "StringList.h"
 #include "Log.h"
 #include "App.h"
 #include "OsUtil.h"
@@ -69,9 +70,8 @@ const StdString MainUi::helpActionType = StdString ("b");
 MainUi::MainUi ()
 : Ui ()
 , cardView (NULL)
-, shouldResetShowAll (false)
-, readyItemCount (0)
 , bannerClock (0)
+, agentCount (0)
 {
 
 }
@@ -90,7 +90,7 @@ void MainUi::setHelpWindowContent (HelpWindow *helpWindow) {
 	uitext = &(App::instance->uiText);
 
 	helpWindow->setHelpText (uitext->getText (UiTextString::mainUiHelpTitle), uitext->getText (UiTextString::mainUiHelpText));
-	if (readyItemCount <= 0) {
+	if (agentCount <= 0) {
 		helpWindow->addAction (uitext->getText (UiTextString::mainUiServersHelpActionText), uitext->getText (UiTextString::learnMore).capitalized (), App::getHelpUrl ("servers"));
 	}
 
@@ -105,8 +105,10 @@ int MainUi::doLoad () {
 
 	cardView = (CardView *) addWidget (new CardView (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight));
 	cardView->isKeyboardScrollEnabled = true;
-	cardView->setRowHeader (0, createRowHeaderPanel (uitext->getText (UiTextString::mainMenu).capitalized ()));
 	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
+	cardView->setRowHeader (MainUi::UnexpandedUiRow, createRowHeaderPanel (uitext->getText (UiTextString::mainMenu).capitalized ()));
+
+	cardView->setRowReverseSorted (MainUi::ExpandedUiRow, true);
 
 	bannerList.randomizeOrder (&(App::instance->prng));
 	bannerIconTypeMap.insert (MainUi::announcementIconType, MainUi::AnnouncementIconSprite);
@@ -118,33 +120,18 @@ int MainUi::doLoad () {
 	bannerClock = 1200;
 	resetBanners ();
 
-	shouldResetShowAll = true;
 	App::instance->shouldSyncRecordStore = true;
 
 	return (Result::Success);
 }
 
 void MainUi::doUnload () {
-	showAllToggle.clear ();
 	bannerWindow.clear ();
 	bannerActionButton.clear ();
 }
 
 void MainUi::doAddMainToolbarItems (Toolbar *toolbar) {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
-	Toggle *toggle;
 
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-	toggle = new Toggle (sprites.getSprite (MainUi::ShowAllDisabledButtonSprite), sprites.getSprite (MainUi::ShowAllEnabledButtonSprite));
-	toggle->setInverseColor (true);
-	toggle->setChecked (App::instance->prefsMap.find (App::MainUiShowAllEnabledKey, false));
-	toggle->setStateChangeCallback (MainUi::showAllToggleStateChanged, this);
-	toggle->position.assign (App::instance->windowWidth - toggle->width - uiconfig->marginSize - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - toggle->height - uiconfig->marginSize);
-	toggle->setMouseHoverTooltip (uitext->getText (UiTextString::mainUiShowAllTooltip));
-	showAllToggle.assign (toggle);
-	toolbar->addRightItem (toggle);
 }
 
 void MainUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
@@ -171,6 +158,10 @@ void MainUi::doClearPopupWidgets () {
 }
 
 void MainUi::doResume () {
+	UiLaunchWindow *uiwindow;
+	StringList items;
+	int i, len, row, pos;
+
 	App::instance->setNextBackgroundTexturePath ("ui/MainUi/bg");
 	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
 	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
@@ -183,6 +174,31 @@ void MainUi::doResume () {
 		else {
 			App::instance->network.sendHttpGet (App::getApplicationNewsUrl (), MainUi::getApplicationNewsComplete, this);
 		}
+
+		App::instance->prefsMap.find (App::MainUiExpandedUiTypesKey, &items);
+		len = sizeof (MainUi::uiLaunchWindowTypes) / sizeof (MainUi::uiLaunchWindowTypes[0]);
+		for (i = 0; i < len; ++i) {
+			uiwindow = new UiLaunchWindow (MainUi::uiLaunchWindowTypes[i], &sprites);
+			uiwindow->setExpandStateChangeCallback (MainUi::uiExpandStateChanged, this);
+			uiwindow->setOpenCallback (MainUi::uiOpenClicked, this);
+			uiwindow->itemId.sprintf ("%08x", i);
+
+			pos = items.indexOf (StdString::createSprintf ("%i", uiwindow->uiType));
+			if (pos < 0) {
+				row = MainUi::UnexpandedUiRow;
+				uiwindow->sortKey.assign (uiwindow->itemId);
+			}
+			else {
+				row = MainUi::ExpandedUiRow;
+				uiwindow->setExpanded (true, true);
+				uiwindow->sortKey.sprintf ("%016llx", (long long int) (items.size () - pos));
+			}
+
+			cardView->addItem (uiwindow, uiwindow->itemId, row, true);
+			uiwindow->animateNewCard ();
+		}
+
+		cardView->refresh ();
 	}
 }
 
@@ -192,16 +208,27 @@ void MainUi::doRefresh () {
 }
 
 void MainUi::doPause () {
-	Toggle *toggle;
+	StringList items;
 
-	toggle = (Toggle *) showAllToggle.widget;
-	if (toggle) {
-		App::instance->prefsMap.insert (App::MainUiShowAllEnabledKey, toggle->isChecked);
+	cardView->processItems (MainUi::appendExpandedUiType, &items);
+	if (items.empty ()) {
+		App::instance->prefsMap.remove (App::MainUiExpandedUiTypesKey);
+	}
+	else {
+		App::instance->prefsMap.insert (App::MainUiExpandedUiTypesKey, &items);
+	}
+}
+
+void MainUi::appendExpandedUiType (void *stringListPtr, Widget *widgetPtr) {
+	UiLaunchWindow *uiwindow;
+
+	uiwindow = UiLaunchWindow::castWidget (widgetPtr);
+	if (uiwindow && uiwindow->isExpanded) {
+		((StringList *) stringListPtr)->push_back (StdString::createSprintf ("%i", uiwindow->uiType));
 	}
 }
 
 void MainUi::doUpdate (int msElapsed) {
-	showAllToggle.compact ();
 	bannerWindow.compact ();
 	bannerActionButton.compact ();
 
@@ -223,55 +250,9 @@ void MainUi::doResize () {
 
 void MainUi::doSyncRecordStore () {
 	RecordStore *store;
-	UiLaunchWindow *item;
-	Toggle *toggle;
-	StdString id;
-	int i, len, type, readycount;
-	bool show;
 
 	store = &(App::instance->agentControl.recordStore);
-	len = sizeof (MainUi::uiLaunchWindowTypes) / sizeof (MainUi::uiLaunchWindowTypes[0]);
-	readycount = 0;
-	for (i = 0; i < len; ++i) {
-		type = MainUi::uiLaunchWindowTypes[i];
-		if (UiLaunchWindow::isReadyState (type, store)) {
-			++readycount;
-			if (! cardView->findItem (MainUi::matchUiType, &type)) {
-				shouldResetShowAll = true;
-			}
-		}
-	}
-	readyItemCount = readycount;
-
-	if (shouldResetShowAll) {
-		shouldResetShowAll = false;
-
-		toggle = (Toggle *) showAllToggle.widget;
-		for (i = 0; i < len; ++i) {
-			type = MainUi::uiLaunchWindowTypes[i];
-			show = true;
-			if (toggle && (! toggle->isChecked)) {
-				if ((type != UiLaunchWindow::ServerUi) && (! UiLaunchWindow::isReadyState (type, store))) {
-					show = false;
-				}
-			}
-
-			id.sprintf ("%i", i);
-			if (show) {
-				if (! cardView->contains (id)) {
-					item = new UiLaunchWindow (type, &sprites);
-					item->itemId.assign (id);
-					item->setOpenCallback (MainUi::uiOpenClicked, this);
-					cardView->addItem (item, id, 0, true);
-					item->animateNewCard ();
-				}
-			}
-			else {
-				cardView->removeItem (id);
-			}
-		}
-	}
-
+	agentCount = store->countCommandRecords (SystemInterface::CommandId_AgentStatus, App::instance->prefsMap.find (App::ServerTimeoutKey, App::defaultServerTimeout) * 1000);
 	cardView->syncRecordStore ();
 	cardView->refresh ();
 }
@@ -280,13 +261,32 @@ void MainUi::helpActionClicked (void *uiPtr, Widget *widgetPtr) {
 	App::instance->uiStack.toggleHelpWindow ();
 }
 
+void MainUi::uiExpandStateChanged (void *uiPtr, Widget *widgetPtr) {
+	MainUi *ui;
+	UiLaunchWindow *uiwindow;
+
+	ui = (MainUi *) uiPtr;
+	uiwindow = (UiLaunchWindow *) widgetPtr;
+	if (uiwindow->isExpanded) {
+		uiwindow->sortKey.sprintf ("%016llx", (long long int) OsUtil::getTime ());
+		ui->cardView->setItemRow (uiwindow->itemId, MainUi::ExpandedUiRow);
+	}
+	else {
+		uiwindow->sortKey.assign (uiwindow->itemId);
+		ui->cardView->setItemRow (uiwindow->itemId, MainUi::UnexpandedUiRow);
+	}
+	uiwindow->resetInputState ();
+	uiwindow->animateNewCard ();
+	ui->cardView->refresh ();
+}
+
 void MainUi::uiOpenClicked (void *uiPtr, Widget *widgetPtr) {
-	UiLaunchWindow *window;
+	UiLaunchWindow *uiwindow;
 	Ui *ui;
 
-	window = (UiLaunchWindow *) widgetPtr;
+	uiwindow = (UiLaunchWindow *) widgetPtr;
 	ui = NULL;
-	switch (window->uiType) {
+	switch (uiwindow->uiType) {
 		case UiLaunchWindow::ServerUi: {
 			ui = (Ui *) new ServerUi ();
 			break;
@@ -312,27 +312,6 @@ void MainUi::uiOpenClicked (void *uiPtr, Widget *widgetPtr) {
 	if (ui) {
 		App::instance->uiStack.pushUi (ui);
 	}
-}
-
-void MainUi::showAllToggleStateChanged (void *uiPtr, Widget *widgetPtr) {
-	MainUi *ui;
-
-	ui = (MainUi *) uiPtr;
-	ui->shouldResetShowAll = true;
-	App::instance->shouldSyncRecordStore = true;
-}
-
-bool MainUi::matchUiType (void *intPtr, Widget *widgetPtr) {
-	UiLaunchWindow *item;
-	int *type;
-
-	item = UiLaunchWindow::castWidget (widgetPtr);
-	if (! item) {
-		return (false);
-	}
-
-	type = (int *) intPtr;
-	return (item->uiType == *type);
 }
 
 void MainUi::showNextBanner () {
@@ -472,6 +451,10 @@ void MainUi::resetBanners () {
 	item.actionType.assign (MainUi::openUrlActionType);
 	item.actionText.assign (uitext->getText (UiTextString::learnMore));
 	item.actionTarget.assign (App::getDonateUrl ());
+	bannerList.push_back (item);
+	item = MainUi::Banner ();
+	item.messageText.assign (uitext->getText (UiTextString::mouseHoverBannerMessage));
+	item.iconType.assign (MainUi::textMessageIconType);
 	bannerList.push_back (item);
 
 	bannerClock = 1200;

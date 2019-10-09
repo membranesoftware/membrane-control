@@ -96,7 +96,7 @@ public:
 	static const char *WebKioskUiExpandedAgentsKey;
 	static const char *WebKioskUiPlaylistsKey;
 	static const char *WebKioskUiToolbarModeKey;
-	static const char *MainUiShowAllEnabledKey;
+	static const char *MainUiExpandedUiTypesKey;
 	static const char *MainUiApplicationNewsItemsKey;
 	static const char *MediaUiImageSizeKey;
 	static const char *MediaUiSortOrderKey;

@@ -34,6 +34,7 @@
 
 #include <map>
 #include "StdString.h"
+#include "WidgetHandle.h"
 #include "CardView.h"
 #include "Button.h"
 #include "HelpWindow.h"
@@ -52,8 +53,10 @@ public:
 
 	// Constants to use for card view row numbers
 	enum {
-		AgentRow = 0,
-		CaptureRow = 1
+		AgentToggleRow = 0,
+		UnexpandedAgentRow = 1,
+		ExpandedAgentRow = 2,
+		CaptureRow = 3
 	};
 
 	CameraUi ();
@@ -114,6 +117,9 @@ protected:
 	static void smallImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void mediumImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void expandAgentsToggleStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void appendAgentId (void *stringListPtr, Widget *widgetPtr);
+	static void countExpandedAgents (void *intPtr, Widget *widgetPtr);
 	static void reloadButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void reloadAgent (void *uiPtr, Widget *widgetPtr);
 	static void autoReloadToggleStateChanged (void *uiPtr, Widget *widgetPtr);
@@ -147,6 +153,9 @@ private:
   // Return a string containing the set of selected camera agent names, appropriate for use in a command popup and truncated to fit within the specified maximum width, or an empty string if no camera agents are selected
 	StdString getSelectedCameraNames (float maxWidth);
 
+	// Reset checked states for row expand toggles, as appropriate for item expand state
+	void resetExpandToggles ();
+
 	CardView *cardView;
 	Button *configureTimelapseButton;
 	Button *clearTimelapseButton;
@@ -157,6 +166,7 @@ private:
 	WidgetHandle emptyStateWindow;
 	WidgetHandle commandPopup;
 	WidgetHandle commandPopupSource;
+	WidgetHandle expandAgentsToggle;
 	HashMap selectedCameraMap;
 	std::map<StdString, CameraUi::AutoReloadInfo> autoReloadMap;
 };

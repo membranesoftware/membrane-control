@@ -74,6 +74,8 @@ public:
 	// Set a key-value pair in the map
 	void insert (const StdString &key, const StdString &value);
 	void insert (const char *key, const StdString &value);
+	void insert (const StdString &key, const char *value);
+	void insert (const char *key, const char *value);
 	void insert (const StdString &key, bool value);
 	void insert (const char *key, bool value);
 	void insert (const StdString &key, int value);

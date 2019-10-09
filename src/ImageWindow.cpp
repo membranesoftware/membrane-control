@@ -329,9 +329,10 @@ void ImageWindow::endLoadImageResource (bool clearResourcePath) {
 
 void ImageWindow::createResourcePathTexture (void *windowPtr) {
 	ImageWindow *window;
-	SDL_Surface *surface;
+	SDL_Surface *surface, *scaledsurface;
 	SDL_Texture *texture;
 	Sprite *sprite;
+	float scaledw, scaledh;
 
 	window = (ImageWindow *) windowPtr;
 	if (window->isDestroyed) {
@@ -343,6 +344,25 @@ void ImageWindow::createResourcePathTexture (void *windowPtr) {
 	if (! surface) {
 		window->endLoadImageResource (true);
 		return;
+	}
+
+	if (window->isLoadResizeEnabled && (surface->w > 0)) {
+		scaledw = window->loadWidth;
+		scaledh = (float) surface->h;
+		scaledh *= window->loadWidth;
+		scaledh /= (float) surface->w;
+		if (scaledw < 1.0f) {
+			scaledw = 1.0f;
+		}
+		if (scaledh < 1.0f) {
+			scaledh = 1.0f;
+		}
+		scaledsurface = SDL_CreateRGBSurface (0, (int) floorf (scaledw), (int) floorf (scaledh), surface->format->BitsPerPixel, surface->format->Rmask, surface->format->Gmask, surface->format->Bmask, surface->format->Amask);
+		if (scaledsurface) {
+			SDL_BlitScaled (surface, NULL, scaledsurface, NULL);
+			SDL_FreeSurface (surface);
+			surface = scaledsurface;
+		}
 	}
 
 	texture = App::instance->resource.createTexture (window->imageResourcePath, surface);
@@ -394,7 +414,7 @@ void ImageWindow::getImageComplete (void *windowPtr, const StdString &targetUrl,
 	}
 
 	if ((! responseData) || responseData->empty ()) {
-		Log::warning ("Failed to get thumbnail image; targetUrl=\"%s\" statusCode=%i err=\"No response data\"", targetUrl.c_str (), statusCode);
+		Log::warning ("Failed to load image; targetUrl=\"%s\" statusCode=%i err=\"No response data\"", targetUrl.c_str (), statusCode);
 		window->endRequestImage (true);
 		return;
 	}

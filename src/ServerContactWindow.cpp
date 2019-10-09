@@ -71,7 +71,7 @@ ServerContactWindow::ServerContactWindow (const StdString &displayName, const St
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::ServerIconSprite)));
+	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeServerIconSprite)));
 	nameLabel = (Label *) addWidget (new Label (agentDisplayName, UiConfiguration::HeadlineFont, uiconfig->primaryTextColor));
 	statusLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::serverUiContactingAgentDescription), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 

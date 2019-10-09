@@ -122,8 +122,12 @@ enterPlaylistNamePrompt (Enter playlist name)
 enterSearchKeyPrompt (Enter search filter)
 enterStoredCommandNamePrompt (Enter a name for this command)
 emptyWebPlaylistAddressList (Addresses in this list are shown on the kiosk display)
-selectToggleTooltip Select or unselect this item
-expandToggleTooltip Expand or unexpand this item
+selectedToggleTooltip Selected (Click to unselect)
+unselectedToggleTooltip Unselected (Click to select)
+expand expand
+minimize minimize
+expandAll expand all
+minimizeAll minimize all
 mainMenuTooltip View the main action menu
 moreActionsTooltip View more actions
 textFieldEnterTooltip <Enter> Confirm field text
@@ -215,7 +219,6 @@ mediaUiDeleteStreamTooltip Delete playback streams for all selected videos
 mediaUiDeletePlaylistTooltip Delete the selected playlist
 mediaItemUiHelpTitle Media file
 mediaItemUiHelpText This interface shows thumbnail images from a media file's timeline.
-mediaItemUiHelpAction1Text Use the bottom toolbar to create a stream from this media item. When ready, the stream can be played on screens running the Membrane Monitor application.
 mediaItemUiConfigureStreamTooltip Prepare a playback stream for this video
 thumbnailImageSizeTooltip Set the display size for thumbnail images
 uiBackTooltip Return to the previous screen
@@ -225,7 +228,6 @@ reloadTooltip Refresh server state
 mainUiHelpTitle Membrane Control
 mainUiHelpText This application connects to other computers running Membrane Server, allowing you to access and control any resources they offer. The main menu shows Membrane Control's primary functions, each of which can be launched using its "OPEN" button.
 mainUiServersHelpActionText No Membrane Servers have been contacted. Open the "Servers" interface to locate other computers offering this service on the network.
-mainUiShowAllTooltip If enabled: Show all functions, even those that haven't yet established required server connections.
 mainUiNextBannerTooltip Show the next news item
 openHelpUrlError An error occurred in launching the web browser. For help, see: https://membranesoftware.com/
 openAboutUrlError An error occurred in launching the web browser. For information, see: https://membranesoftware.com/i/about-membrane-control
@@ -326,6 +328,7 @@ helpKeyBannerMessage Pressing Ctrl-h opens Membrane Control's help window.
 freeApplicationBannerMessage Membrane Control is free to download, requires no signup or account creation, and contains no ads or in-app purchases. Tell your friends!
 membraneSoftwareBannerMessage This application is brought to you by Membrane Software, creator of free applications for the computer users of the world.
 donateBannerMessage Membrane Control is supported by donations from users like you. If you get utility and enjoyment from this application, please think about contributing money to support its development. Any amount helps!
+mouseHoverBannerMessage Buttons show description text when the mouse pointer hovers over them.
 mediaAttributesTooltip Video attributes
 toolbarModeButtonTooltip Select control mode
 streamIconTooltip Playback stream available

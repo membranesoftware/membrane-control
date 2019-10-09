@@ -59,8 +59,12 @@ public:
 
 	// Constants to use for card view row numbers
 	enum {
-		AgentRow = 0,
-		PlaylistRow = 1
+		AgentToggleRow = 0,
+		UnexpandedAgentRow = 1,
+		ExpandedAgentRow = 2,
+		PlaylistToggleRow = 3,
+		UnexpandedPlaylistRow = 4,
+		ExpandedPlaylistRow = 5
 	};
 
 	// Constants to use for toolbar modes
@@ -73,10 +77,11 @@ public:
 	WebKioskUi ();
 	~WebKioskUi ();
 
-	static const StdString serverApplicationName;
-
 	// Set fields in the provided HelpWindow widget as appropriate for the UI's help content
 	void setHelpWindowContent (HelpWindow *helpWindow);
+
+	// Execute operations appropriate when an agent control link client becomes connected
+	void handleLinkClientConnect (const StdString &agentId);
 
 	// Clear the provided string if the widget is of the correct type and matches its content by name
 	static void matchPlaylistName (void *stringPtr, Widget *widgetPtr);
@@ -90,8 +95,15 @@ public:
 	static void appendExpandedAgentId (void *stringListPtr, Widget *widgetPtr);
 	static void agentSelectStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void agentExpandStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void agentScreenshotLoaded (void *uiPtr, Widget *widgetPtr);
 	static void playlistSelectStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void playlistExpandStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void expandAgentsToggleStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void appendAgentId (void *stringListPtr, Widget *widgetPtr);
+	static void countExpandedAgents (void *intPtr, Widget *widgetPtr);
+	static void expandPlaylistsToggleStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void appendPlaylistId (void *stringListPtr, Widget *widgetPtr);
+	static void countExpandedPlaylists (void *intPtr, Widget *widgetPtr);
 	static void modeButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void monitorModeActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void playlistModeActionClicked (void *uiPtr, Widget *widgetPtr);
@@ -100,7 +112,6 @@ public:
 	static void showUrlButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void addPlaylistButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void deletePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static bool matchWebKioskAgentStatus (void *ptr, Json *record);
 	static void addPlaylistUrl (void *urlStringPtr, Widget *widgetPtr);
 	static void writePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void playlistNameClicked (void *uiPtr, Widget *widgetPtr);
@@ -157,6 +168,9 @@ private:
 	// Set the control mode for the secondary toolbar, optionally forcing the reset even if the requested mode matches the mode already active
 	void setToolbarMode (int mode, bool forceReset = false);
 
+	// Reset checked states for row expand toggles, as appropriate for item expand state
+	void resetExpandToggles ();
+
 	// Return the provided base value, after appending suffixes as needed to generate an unused playlist name
 	StdString getAvailablePlaylistName ();
 
@@ -181,6 +195,8 @@ private:
 	Button *deletePlaylistButton;
 	WidgetHandle commandPopup;
 	WidgetHandle commandPopupSource;
+	WidgetHandle expandAgentsToggle;
+	WidgetHandle expandPlaylistsToggle;
 };
 
 #endif

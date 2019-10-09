@@ -63,8 +63,6 @@ public:
 	bool isSelected;
 	bool isExpanded;
 	StdString playlistName;
-	float menuPositionX;
-	float menuPositionY;
 
 	// Set a callback that should be invoked when the select toggle's checked state changes
 	void setSelectStateChangeCallback (Widget::EventCallback callback, void *callbackData);
@@ -74,9 +72,6 @@ public:
 
 	// Set a callback that should be invoked when the window's name is clicked
 	void setNameClickCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback that should be invoked when the window's menu button is clicked
-	void setMenuClickCallback (Widget::EventCallback callback, void *callbackData);
 
 	// Set a callback that should be invoked when the window's URL list is changed
 	void setUrlListChangeCallback (Widget::EventCallback callback, void *callbackData);
@@ -116,7 +111,6 @@ public:
 	static void selectToggleStateChanged (void *windowPtr, Widget *widgetPtr);
 	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
 	static void urlListChanged (void *windowPtr, Widget *widgetPtr);
-	static void menuButtonClicked (void *windowPtr, Widget *widgetPtr);
 	static StdString itemDisplayDurationSliderValueName (float sliderValue);
 
 protected:
@@ -130,6 +124,14 @@ protected:
 	void refreshLayout ();
 
 private:
+	// Constants to use as object field names
+	static const char *PlaylistNameKey;
+	static const char *IsSelectedKey;
+	static const char *IsExpandedKey;
+	static const char *UrlListKey;
+	static const char *IsShuffleKey;
+	static const char *ItemDisplayDurationKey;
+
 	// Reset the text shown by the name label, truncating it as needed to fit in its available space
 	void resetNameLabel ();
 
@@ -146,15 +148,12 @@ private:
 	ListView *urlListView;
 	Toggle *selectToggle;
 	Toggle *expandToggle;
-	Button *menuButton;
 	Widget::EventCallback selectStateChangeCallback;
 	void *selectStateChangeCallbackData;
 	Widget::EventCallback expandStateChangeCallback;
 	void *expandStateChangeCallbackData;
 	Widget::EventCallback nameClickCallback;
 	void *nameClickCallbackData;
-	Widget::EventCallback menuClickCallback;
-	void *menuClickCallbackData;
 	Widget::EventCallback urlListChangeCallback;
 	void *urlListChangeCallbackData;
 };

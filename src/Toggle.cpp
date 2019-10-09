@@ -158,6 +158,11 @@ void Toggle::setStateChangeCallback (Widget::EventCallback callback, void *callb
 	stateChangeCallbackData = callbackData;
 }
 
+void Toggle::setStateMouseHoverTooltips (const StdString &uncheckedTooltip, const StdString &checkedTooltip, int alignment) {
+	uncheckedButton->setMouseHoverTooltip (uncheckedTooltip, alignment);
+	checkedButton->setMouseHoverTooltip (checkedTooltip, alignment);
+}
+
 void Toggle::doResetInputState () {
 	Panel::doResetInputState ();
 	isFocused = false;

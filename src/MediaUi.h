@@ -64,11 +64,15 @@ public:
 
 	// Constants to use for card view row numbers
 	enum {
-		AgentRow = 0,
-		PlaylistRow = 1,
-		EmptyMediaRow = 2,
-		MediaRow = 3,
-		MediaLoadingRow = 4
+		AgentToggleRow = 0,
+		UnexpandedAgentRow = 1,
+		ExpandedAgentRow = 2,
+		PlaylistToggleRow = 3,
+		UnexpandedPlaylistRow = 4,
+		ExpandedPlaylistRow = 5,
+		EmptyMediaRow = 6,
+		MediaRow = 7,
+		MediaLoadingRow = 8
 	};
 
 	// Constants to use for toolbar modes
@@ -120,7 +124,13 @@ public:
 	static void largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void reloadButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void reloadAgent (void *uiPtr, Widget *widgetPtr);
+	static void expandAgentsToggleStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void appendAgentId (void *stringListPtr, Widget *widgetPtr);
+	static void expandPlaylistsToggleStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void appendPlaylistId (void *stringListPtr, Widget *widgetPtr);
 	static void cardExpandStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void countExpandedAgents (void *intPtr, Widget *widgetPtr);
+	static void countExpandedPlaylists (void *intPtr, Widget *widgetPtr);
 	static void mediaWindowImageClicked (void *uiPtr, Widget *widgetPtr);
 	static void mediaWindowViewButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void mediaWindowSelectStateChanged (void *uiPtr, Widget *widgetPtr);
@@ -134,6 +144,7 @@ public:
 	static void mediaLibraryMenuClicked (void *uiPtr, Widget *widgetPtr);
 	static void mediaLibraryScanActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void monitorSelectStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void monitorScreenshotLoaded (void *uiPtr, Widget *widgetPtr);
 	static void monitorCacheButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void itemUiThumbnailClicked (void *uiPtr, Widget *widgetPtr);
 	static void mediaItemUiMediaRemoved (void *uiPtr, Widget *widgetPtr);
@@ -233,6 +244,9 @@ private:
 	// Return a generated string that does not match any existing playlist name
 	StdString getAvailablePlaylistName ();
 
+	// Reset checked states for row expand toggles, as appropriate for item expand state
+	void resetExpandToggles ();
+
 	static const int pageSize;
 
 	int toolbarMode;
@@ -253,6 +267,8 @@ private:
 	WidgetHandle commandPopupSource;
 	WidgetHandle lastSelectedMediaWindow;
 	WidgetHandle selectedPlaylistWindow;
+	WidgetHandle expandAgentsToggle;
+	WidgetHandle expandPlaylistsToggle;
 	int cardDetail;
 	int emptyStateType;
 	bool isShowingMediaWithoutStreams;

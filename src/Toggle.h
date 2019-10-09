@@ -37,6 +37,7 @@
 #include "Sprite.h"
 #include "Button.h"
 #include "Color.h"
+#include "Widget.h"
 #include "Panel.h"
 
 class Toggle : public Panel {
@@ -68,6 +69,9 @@ public:
 
 	// Set a callback that should be invoked when the toggle button's checked state changes
 	void setStateChangeCallback (Widget::EventCallback callback, void *callbackData);
+
+	// Set mouse hover tooltips that should apply to the toggle based on its checked state
+	void setStateMouseHoverTooltips (const StdString &uncheckedTooltip, const StdString &checkedTooltip, int alignment = Widget::BottomAlignment);
 
 	// Return a boolean value indicating if the provided Widget is a member of this class
 	static bool isWidgetType (Widget *widget);

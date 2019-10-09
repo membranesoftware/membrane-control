@@ -74,6 +74,9 @@ public:
 	// Set the margin size that should be used for items in the specified row, overriding any default item margin size that might have been set
 	void setRowItemMarginSize (int row, float marginSize);
 
+	// Set the reverse sort option for the specified row. If enabled, the view sorts items from that row in descending order.
+	void setRowReverseSorted (int row, bool enable);
+
 	// Set the animated selection option for the specified row. If enabled, the view uses scaling effects to animate selection of items in the row.
 	void setRowSelectionAnimated (int row, bool enable);
 
@@ -120,6 +123,9 @@ public:
 	// Remove all items in the specified row from the view and destroy their underlying widgets
 	void removeRowItems (int row);
 
+	// Move an item in the view to the specified row, then invoke refreshLayout unless shouldSkipRefreshLayout is true.
+	void setItemRow (const StdString &itemId, int targetRow, bool shouldSkipRefreshLayout = false);
+
 	// Remove all items from the view and destroy their underlying widgets
 	void removeAllItems ();
 
@@ -160,11 +166,12 @@ private:
 	struct Row {
 		Panel *headerPanel;
 		float itemMarginSize;
+		bool isReverseSorted;
 		bool isSelectionAnimated;
 		int itemCount;
 		int layout;
 		float maxItemWidth;
-		Row (): headerPanel (NULL), itemMarginSize (-1.0f), isSelectionAnimated (false), itemCount (0), layout (-1), maxItemWidth (0.0f) { }
+		Row (): headerPanel (NULL), itemMarginSize (-1.0f), isReverseSorted (false), isSelectionAnimated (false), itemCount (0), layout (-1), maxItemWidth (0.0f) { }
 	};
 
 	// Sort the item list and populate secondary data structures. This method must be invoked only while holding a lock on itemMutex.
@@ -179,7 +186,8 @@ private:
 	// Return an iterator positioned at the specified item in the row map, creating the item if it doesn't already exist
 	std::map<int, CardView::Row>::iterator getRow (int rowNumber);
 
-	static bool compareItems (const CardView::Item &a, const CardView::Item &b);
+	static bool compareItemsAscending (const CardView::Item &a, const CardView::Item &b);
+	static bool compareItemsDescending (const CardView::Item &a, const CardView::Item &b);
 
 	float itemMarginSize;
 	SDL_mutex *itemMutex;

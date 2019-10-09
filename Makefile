@@ -134,9 +134,42 @@ O=ActionWindow.o \
 	Widget.o
 
 VPATH=$(SRCPATH)
-CFLAGS=$(PLATFORM_CFLAGS) -I$(SDL2_PREFIX)/include -I$(SDL2_PREFIX)/include/SDL2 -I$(JPEG_PREFIX)/include -I$(LIBPNG_PREFIX)/include -I$(SDL2_IMAGE_PREFIX)/include -I$(ZLIB_PREFIX)/include -I$(FREETYPE_PREFIX)/include -I$(FREETYPE_PREFIX)/include/freetype2 -I$(OPENSSL_PREFIX)/include -I$(CURL_PREFIX)/include -I$(LIBWEBSOCKETS_PREFIX)/include -I$(SRCPATH) $(EXTRA_CFLAGS)
-LDFLAGS=-L$(SDL2_PREFIX)/lib -L$(JPEG_PREFIX)/lib -L$(LIBPNG_PREFIX)/lib -L$(SDL2_IMAGE_PREFIX)/lib -L$(ZLIB_PREFIX)/lib -L$(FREETYPE_PREFIX)/lib -L$(OPENSSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -L$(LIBWEBSOCKETS_PREFIX)/lib $(EXTRA_LDFLAGS)
-LD_DYNAMIC_LIBS=-lSDL2 -lSDL2_image -lfreetype -ldl -lm -lpthread -lcurl -lwebsockets -lssl -lcrypto -lpng -ljpeg -lz
+CFLAGS=$(PLATFORM_CFLAGS) \
+	-I$(SDL2_PREFIX)/include \
+	-I$(SDL2_PREFIX)/include/SDL2 \
+	-I$(JPEG_PREFIX)/include \
+	-I$(LIBPNG_PREFIX)/include \
+	-I$(SDL2_IMAGE_PREFIX)/include \
+	-I$(ZLIB_PREFIX)/include \
+	-I$(FREETYPE_PREFIX)/include \
+	-I$(FREETYPE_PREFIX)/include/freetype2 \
+	-I$(OPENSSL_PREFIX)/include \
+	-I$(CURL_PREFIX)/include \
+	-I$(LIBWEBSOCKETS_PREFIX)/include \
+	-I$(SRCPATH) $(EXTRA_CFLAGS)
+LDFLAGS=-L$(SDL2_PREFIX)/lib \
+	-L$(JPEG_PREFIX)/lib \
+	-L$(LIBPNG_PREFIX)/lib \
+	-L$(SDL2_IMAGE_PREFIX)/lib \
+	-L$(ZLIB_PREFIX)/lib \
+	-L$(FREETYPE_PREFIX)/lib \
+	-L$(OPENSSL_PREFIX)/lib \
+	-L$(CURL_PREFIX)/lib \
+	-L$(LIBWEBSOCKETS_PREFIX)/lib \
+	$(EXTRA_LDFLAGS)
+LD_DYNAMIC_LIBS=-lSDL2 \
+	-lSDL2_image \
+	-lfreetype \
+	-ldl \
+	-lm \
+	-lpthread \
+	-lcurl \
+	-lwebsockets \
+	-lssl \
+	-lcrypto \
+	-lpng \
+	-ljpeg \
+	-lz
 
 all: $(PROJECT_NAME)
 

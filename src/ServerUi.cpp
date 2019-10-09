@@ -98,15 +98,30 @@ void ServerUi::setHelpWindowContent (HelpWindow *helpWindow) {
 }
 
 int ServerUi::doLoad () {
+	UiConfiguration *uiconfig;
 	UiText *uitext;
+	Panel *panel;
+	Toggle *toggle;
 
+	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 
 	cardView = (CardView *) addWidget (new CardView (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight));
 	cardView->isKeyboardScrollEnabled = true;
-	cardView->setRowHeader (ServerUi::AttachedServerRow, createRowHeaderPanel (uitext->getText (UiTextString::serverUiAttachedAgentsTitle)));
-	cardView->setRowHeader (ServerUi::UnattachedServerRow, createRowHeaderPanel (uitext->getText (UiTextString::serverUiUnattachedAgentsTitle)));
 	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
+
+	panel = new Panel ();
+	panel->setFillBg (true, uiconfig->mediumBackgroundColor);
+	toggle = (Toggle *) panel->addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandAllLessButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandAllMoreButtonSprite)));
+	toggle->setImageColor (uiconfig->flatButtonTextColor);
+	toggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::minimizeAll).capitalized (), uitext->getText (UiTextString::expandAll).capitalized ());
+	toggle->setStateChangeCallback (ServerUi::expandServersToggleStateChanged, this);
+	expandServersToggle.assign (toggle);
+	cardView->addItem (createRowHeaderPanel (uitext->getText (UiTextString::serverUiAttachedAgentsTitle), panel), StdString (""), ServerUi::AttachedServerToggleRow);
+
+	cardView->setRowReverseSorted (ServerUi::ExpandedAttachedServerRow, true);
+
+	cardView->setRowHeader (ServerUi::UnattachedServerRow, createRowHeaderPanel (uitext->getText (UiTextString::serverUiUnattachedAgentsTitle)));
 
 	adminSecretWindow = new AdminSecretWindow ();
 	adminSecretWindow->setAddButtonClickCallback (ServerUi::adminSecretAddButtonClicked, this);
@@ -121,6 +136,7 @@ void ServerUi::doUnload () {
 	addressToggle.clear ();
 	addressTextFieldWindow.clear ();
 	emptyServerWindow.clear ();
+	expandServersToggle.clear ();
 }
 
 void ServerUi::doAddMainToolbarItems (Toolbar *toolbar) {
@@ -169,6 +185,8 @@ void ServerUi::doResume () {
 
 	adminSecretWindow->readItems ();
 	App::instance->shouldSyncRecordStore = true;
+
+	resetExpandToggles ();
 }
 
 void ServerUi::doRefresh () {
@@ -209,7 +227,7 @@ void ServerUi::doUpdate (int msElapsed) {
 	ServerWindow *server;
 	ServerAttachWindow *attach;
 	IconCardWindow *emptycard;
-	int attachcount, unattachcount;
+	int attachcount, unattachcount, row, pos;
 
 	agentcontrol = &(App::instance->agentControl);
 	store = &(App::instance->agentControl.recordStore);
@@ -223,6 +241,7 @@ void ServerUi::doUpdate (int msElapsed) {
 		}
 	}
 	emptyServerWindow.compact ();
+	expandServersToggle.compact ();
 
 	cardIdList.clear ();
 	cardView->processItems (ServerUi::findDeletedWindows, this);
@@ -260,13 +279,19 @@ void ServerUi::doUpdate (int msElapsed) {
 				store->unlock ();
 
 				App::instance->prefsMap.find (App::ServerUiUnexpandedAgentsKey, &items);
-				if (! items.contains (id)) {
+				pos = items.indexOf (id);
+				if (pos < 0) {
+					row = ServerUi::ExpandedAttachedServerRow;
 					server->setExpanded (true, true);
+					server->sortKey.sprintf ("%016llx", (long long int) OsUtil::getTime ());
 				}
-				server->animateNewCard ();
+				else {
+					row = ServerUi::UnexpandedAttachedServerRow;
+					server->sortKey.assign (server->agentDisplayName.lowercased ());
+				}
 
-				server->sortKey.assign (server->agentDisplayName.lowercased ());
-				cardView->addItem (server, id, ServerUi::AttachedServerRow);
+				cardView->addItem (server, id, row);
+				server->animateNewCard ();
 			}
 		}
 		else {
@@ -283,6 +308,11 @@ void ServerUi::doUpdate (int msElapsed) {
 		}
 		++i;
 	}
+
+	if (attachedServerCount != attachcount) {
+		resetExpandToggles ();
+	}
+
 	attachedServerCount = attachcount;
 	unattachedServerCount = unattachcount;
 
@@ -292,7 +322,7 @@ void ServerUi::doUpdate (int msElapsed) {
 			emptycard = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::LargeErrorIconSprite), uitext->getText (UiTextString::serverUiEmptyAgentStatusTitle), StdString (""), uitext->getText (UiTextString::serverUiEmptyAgentStatusText1));
 			emptycard->setLink (uitext->getText (UiTextString::learnMore).capitalized (), App::getHelpUrl ("servers"));
 			emptycard->itemId.assign (cardView->getAvailableItemId ());
-			cardView->addItem (emptycard, emptycard->itemId, ServerUi::AttachedServerRow);
+			cardView->addItem (emptycard, emptycard->itemId, ServerUi::UnexpandedAttachedServerRow);
 			emptyServerWindow.assign (emptycard);
 		}
 	}
@@ -300,7 +330,7 @@ void ServerUi::doUpdate (int msElapsed) {
 		if (! emptycard) {
 			emptycard = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::LargeErrorIconSprite), uitext->getText (UiTextString::serverUiEmptyAgentStatusTitle), StdString (""), uitext->getText (UiTextString::serverUiEmptyAgentStatusText2));
 			emptycard->itemId.assign (cardView->getAvailableItemId ());
-			cardView->addItem (emptycard, emptycard->itemId, ServerUi::AttachedServerRow);
+			cardView->addItem (emptycard, emptycard->itemId, ServerUi::UnexpandedAttachedServerRow);
 			emptyServerWindow.assign (emptycard);
 		}
 	}
@@ -337,6 +367,7 @@ void ServerUi::doResize () {
 void ServerUi::doSyncRecordStore () {
 	cardView->syncRecordStore ();
 	cardView->refresh ();
+	resetExpandToggles ();
 }
 
 void ServerUi::reloadButtonClicked (void *uiPtr, Widget *widgetPtr) {
@@ -431,7 +462,7 @@ void ServerUi::addressTextFieldEdited (void *uiPtr, Widget *widgetPtr) {
 		window->setStateChangeCallback (ServerUi::serverContactWindowStateChanged, ui);
 		window->sortKey.assign (address.lowercased ());
 		window->itemId.assign (key);
-		ui->cardView->addItem (window, window->itemId, ServerUi::AttachedServerRow);
+		ui->cardView->addItem (window, window->itemId, ServerUi::ExpandedAttachedServerRow);
 	}
 	App::instance->shouldSyncRecordStore = true;
 }
@@ -459,9 +490,68 @@ void ServerUi::serverStatusChanged (void *uiPtr, Widget *widgetPtr) {
 
 void ServerUi::serverExpandStateChanged (void *uiPtr, Widget *widgetPtr) {
 	ServerUi *ui;
+	ServerWindow *server;
 
 	ui = (ServerUi *) uiPtr;
+	server = (ServerWindow *) widgetPtr;
+	if (server->isExpanded) {
+		server->sortKey.sprintf ("%016llx", (long long int) OsUtil::getTime ());
+		ui->cardView->setItemRow (server->agentId, ServerUi::ExpandedAttachedServerRow);
+	}
+	else {
+		server->sortKey.assign (server->agentDisplayName.lowercased ().c_str ());
+		ui->cardView->setItemRow (server->agentId, ServerUi::UnexpandedAttachedServerRow);
+	}
+	server->resetInputState ();
+	server->animateNewCard ();
 	ui->cardView->refresh ();
+	ui->resetExpandToggles ();
+}
+
+void ServerUi::expandServersToggleStateChanged (void *uiPtr, Widget *widgetPtr) {
+	ServerUi *ui;
+	Toggle *toggle;
+	ServerWindow *server;
+	StringList idlist;
+	StringList::iterator i, end;
+	int64_t now;
+
+	ui = (ServerUi *) uiPtr;
+	toggle = (Toggle *) ui->expandServersToggle.widget;
+	if (! toggle) {
+		return;
+	}
+
+	now = OsUtil::getTime ();
+	ui->cardView->processItems (ServerUi::appendAgentId, &idlist);
+	i = idlist.begin ();
+	end = idlist.end ();
+	while (i != end) {
+		server = ServerWindow::castWidget (ui->cardView->getItem (*i));
+		if (server) {
+			if (toggle->isChecked) {
+				server->setExpanded (false, true);
+				server->sortKey.assign (server->agentDisplayName.lowercased ());
+				ui->cardView->setItemRow (server->agentId, ServerUi::UnexpandedAttachedServerRow, true);
+			}
+			else {
+				server->setExpanded (true, true);
+				server->sortKey.sprintf ("%016llx%s", (long long int) now, server->agentDisplayName.lowercased ().c_str ());
+				ui->cardView->setItemRow (server->agentId, ServerUi::ExpandedAttachedServerRow, true);
+			}
+		}
+		++i;
+	}
+	ui->cardView->refresh ();
+}
+
+void ServerUi::appendAgentId (void *stringListPtr, Widget *widgetPtr) {
+	ServerWindow *server;
+
+	server = ServerWindow::castWidget (widgetPtr);
+	if (server) {
+		((StringList *) stringListPtr)->push_back (server->agentId);
+	}
 }
 
 void ServerUi::serverAttachActionClicked (void *uiPtr, Widget *widgetPtr) {
@@ -659,4 +749,27 @@ void ServerUi::serverContactWindowStateChanged (void *uiPtr, Widget *widgetPtr) 
 
 	ui = (ServerUi *) uiPtr;
 	ui->cardView->refresh ();
+}
+
+void ServerUi::resetExpandToggles () {
+	Toggle *toggle;
+	int count;
+
+	toggle = (Toggle *) expandServersToggle.widget;
+	if (toggle) {
+		count = 0;
+		cardView->processItems (ServerUi::countExpandedServers, &count);
+		toggle->setChecked ((count <= 0), true);
+	}
+}
+
+void ServerUi::countExpandedServers (void *intPtr, Widget *widgetPtr) {
+	ServerWindow *server;
+	int *count;
+
+	server = ServerWindow::castWidget (widgetPtr);
+	count = (int *) intPtr;
+	if (server && count && server->isExpanded) {
+		++(*count);
+	}
 }

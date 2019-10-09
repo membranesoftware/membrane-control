@@ -52,6 +52,9 @@ public:
 	// Set the window's text color
 	void setTextColor (const Color &textColor);
 
+	// Set the window's text font
+	void setTextFont (int fontType);
+
 	// Set the window's text change highlight option. If enabled, the window highlights text changes with a rotation from the specified color.
 	void setTextChangeHighlight (bool enable, const Color &highlightColor = Color (0.0f, 0.0f, 0.0f));
 

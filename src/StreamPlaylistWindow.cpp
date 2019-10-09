@@ -54,20 +54,32 @@
 #include "StreamPlaylistWindow.h"
 
 const float StreamPlaylistWindow::windowWidthMultiplier = 0.45f;
+const char *StreamPlaylistWindow::PlaylistNameKey = "a";
+const char *StreamPlaylistWindow::IsSelectedKey = "b";
+const char *StreamPlaylistWindow::IsExpandedKey = "c";
+const char *StreamPlaylistWindow::StartPositionMinKey = "d";
+const char *StreamPlaylistWindow::StartPositionMaxKey = "e";
+const char *StreamPlaylistWindow::PlayDurationMinKey = "f";
+const char *StreamPlaylistWindow::PlayDurationMaxKey = "g";
+const char *StreamPlaylistWindow::ItemListKey = "h";
+const char *StreamPlaylistWindow::IsShuffleKey = "i";
+const char *StreamPlaylistWindow::StreamUrlKey = "j";
+const char *StreamPlaylistWindow::StreamIdKey = "k";
+const char *StreamPlaylistWindow::MediaNameKey = "l";
+const char *StreamPlaylistWindow::StartPositionKey = "m";
+const char *StreamPlaylistWindow::ThumbnailUrlKey = "n";
+const char *StreamPlaylistWindow::ThumbnailIndexKey = "o";
 
 StreamPlaylistWindow::StreamPlaylistWindow ()
 : Panel ()
 , isSelected (false)
 , isExpanded (false)
-, menuPositionX (0.0f)
-, menuPositionY (0.0f)
 , windowWidth (0.0f)
 , iconImage (NULL)
 , nameLabel (NULL)
 , itemCountLabel (NULL)
 , selectToggle (NULL)
 , expandToggle (NULL)
-, menuButton (NULL)
 , shuffleToggle (NULL)
 , startPositionMinSlider (NULL)
 , startPositionMaxSlider (NULL)
@@ -84,8 +96,6 @@ StreamPlaylistWindow::StreamPlaylistWindow ()
 , expandStateChangeCallbackData (NULL)
 , renameClickCallback (NULL)
 , renameClickCallbackData (NULL)
-, menuClickCallback (NULL)
-, menuClickCallbackData (NULL)
 , listChangeCallback (NULL)
 , listChangeCallbackData (NULL)
 {
@@ -102,32 +112,28 @@ StreamPlaylistWindow::StreamPlaylistWindow ()
 
 	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::PlaylistIconSprite)));
 	nameLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::BodyFont, uiconfig->primaryTextColor)));
+	nameLabel->setPadding (0.0f, 0.0f);
 	nameLabel->setMouseClickCallback (StreamPlaylistWindow::nameLabelClicked, this);
 	nameLabel->setMouseHoverTooltip (uitext->getText (UiTextString::clickRenameTooltip));
 
-	itemCountLabel = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite), StdString ("0"), UiConfiguration::TitleFont));
+	itemCountLabel = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite), StdString ("0"), UiConfiguration::TitleFont, uiconfig->lightPrimaryTextColor));
 	itemCountLabel->setPadding (0.0f, 0.0f);
 	itemCountLabel->setMouseHoverTooltip (uitext->getCountText (0, UiTextString::streamPlaylistItem, UiTextString::streamPlaylistItems));
+	itemCountLabel->setTextChangeHighlight (true, uiconfig->primaryTextColor);
 
 	selectToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::StarOutlineButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::StarButtonSprite)));
 	selectToggle->setImageColor (uiconfig->flatButtonTextColor);
 	selectToggle->setStateChangeCallback (StreamPlaylistWindow::selectToggleStateChanged, this);
-	selectToggle->setMouseHoverTooltip (uitext->getText (UiTextString::selectToggleTooltip));
+	selectToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::unselectedToggleTooltip), uitext->getText (UiTextString::selectedToggleTooltip));
 
 	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
 	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
 	expandToggle->setStateChangeCallback (StreamPlaylistWindow::expandToggleStateChanged, this);
-	expandToggle->setMouseHoverTooltip (uitext->getText (UiTextString::expandToggleTooltip));
+	expandToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::expand).capitalized (), uitext->getText (UiTextString::minimize).capitalized ());
 
 	itemListView = (ListView *) addWidget (new ListView ((windowWidth - (widthPadding * 2.0f)), 6, UiConfiguration::CaptionFont, StdString (""), uitext->getText (UiTextString::emptyStreamPlaylistText)));
 	itemListView->setListChangeCallback (StreamPlaylistWindow::itemListChanged, this);
 	itemListView->isVisible = false;
-
-	menuButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::MainMenuButtonSprite)));
-	menuButton->setMouseClickCallback (StreamPlaylistWindow::menuButtonClicked, this);
-	menuButton->setImageColor (uiconfig->flatButtonTextColor);
-	menuButton->setMouseHoverTooltip (uitext->getText (UiTextString::moreActionsTooltip));
-	menuButton->isVisible = false;
 
 	shuffleToggle = (ToggleWindow *) addWidget (new ToggleWindow (new Toggle (), uitext->getText (UiTextString::shuffle).capitalized ()));
 	shuffleToggle->setPadding (0.0f, 0.0f);
@@ -218,18 +224,6 @@ void StreamPlaylistWindow::setRenameClickCallback (Widget::EventCallback callbac
 	renameClickCallbackData = callbackData;
 }
 
-void StreamPlaylistWindow::setMenuClickCallback (Widget::EventCallback callback, void *callbackData) {
-	menuClickCallback = callback;
-	menuClickCallbackData = callbackData;
-	if (menuClickCallback) {
-		menuButton->isVisible = true;
-	}
-	else {
-		menuButton->isVisible = false;
-	}
-	refreshLayout ();
-}
-
 void StreamPlaylistWindow::setListChangeCallback (Widget::EventCallback callback, void *callbackData) {
 	listChangeCallback = callback;
 	listChangeCallbackData = callbackData;
@@ -277,6 +271,7 @@ void StreamPlaylistWindow::setExpanded (bool expanded, bool shouldSkipStateChang
 		setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 		expandToggle->setChecked (true, shouldSkipStateChangeCallback);
 		nameLabel->setFont (UiConfiguration::HeadlineFont);
+		itemCountLabel->setTextFont (UiConfiguration::HeadlineFont);
 		itemListView->isVisible = true;
 		shuffleToggle->isVisible = true;
 		startPositionMinSlider->isVisible = true;
@@ -292,6 +287,7 @@ void StreamPlaylistWindow::setExpanded (bool expanded, bool shouldSkipStateChang
 		setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
 		expandToggle->setChecked (false, shouldSkipStateChangeCallback);
 		nameLabel->setFont (UiConfiguration::BodyFont);
+		itemCountLabel->setTextFont (UiConfiguration::BodyFont);
 		itemListView->isVisible = false;
 		shuffleToggle->isVisible = false;
 		startPositionMinSlider->isVisible = false;
@@ -326,17 +322,17 @@ void StreamPlaylistWindow::refreshLayout () {
 	y2 = 0.0f;
 
 	iconImage->flowRight (&x, y, &x2, &y2);
-	nameLabel->flowRight (&x, y, &x2, &y2);
+	nameLabel->flowDown (x, &y, &x2, &y2);
 	if (! isExpanded) {
-		if (menuButton->isVisible) {
-			menuButton->flowRight (&x, y, &x2, &y2);
-		}
 		itemCountLabel->flowRight (&x, y, &x2, &y2);
 	}
+
+	x = x2 + uiconfig->marginSize;
+	y = y0;
 	expandToggle->flowRight (&x, y, &x2, &y2);
 	selectToggle->flowRight (&x, y, &x2, &y2);
-	if (! isExpanded) {
-		itemCountLabel->centerVertical (y0, y2);
+	if (isExpanded) {
+		nameLabel->centerVertical (y0, y2);
 	}
 
 	x = x0;
@@ -348,9 +344,6 @@ void StreamPlaylistWindow::refreshLayout () {
 		x2 = 0.0f;
 		itemCountLabel->flowRight (&x, y, &x2, &y2);
 		shuffleToggle->flowRight (&x, y, &x2, &y2);
-		if (menuButton->isVisible) {
-			menuButton->flowRight (&x, y, &x2, &y2);
-		}
 
 		itemCountLabel->centerVertical (y0, y2);
 		shuffleToggle->centerVertical (y0, y2);
@@ -388,28 +381,16 @@ void StreamPlaylistWindow::refreshLayout () {
 		y = y2;
 		y0 = y;
 		itemListView->flowRight (&x, y, &x2, &y2);
+		setFixedSize (true, windowWidth, y2 + heightPadding);
+	}
+	else {
+		setFixedSize (false);
+		resetSize ();
 	}
 
-	setFixedSize (true, windowWidth, y2 + heightPadding);
 	x = width - widthPadding;
 	selectToggle->flowLeft (&x);
 	expandToggle->flowLeft (&x);
-	if (! isExpanded) {
-		if (menuButton->isVisible) {
-			menuButton->flowLeft (&x);
-		}
-		itemCountLabel->flowLeft (&x);
-	}
-
-	if (isExpanded) {
-		x = width - widthPadding;
-		if (menuButton->isVisible) {
-			menuButton->flowLeft (&x);
-		}
-	}
-
-	menuPositionX = menuButton->position.x;
-	menuPositionY = menuButton->position.y + menuButton->height;
 }
 
 void StreamPlaylistWindow::resetNameLabel () {
@@ -419,13 +400,15 @@ void StreamPlaylistWindow::resetNameLabel () {
 	uiconfig = &(App::instance->uiConfig);
 	if (isExpanded) {
 		w = expandToggle->position.x;
+		w -= nameLabel->position.x;
+		w -= uiconfig->marginSize;
+		nameLabel->setText (Label::getTruncatedText (playlistName, UiConfiguration::HeadlineFont, w, StdString ("...")));
 	}
 	else {
-		w = itemCountLabel->position.x;
+		w = (windowWidth / 2.0f);
+		w -= (iconImage->width + expandToggle->width + selectToggle->width);
+		nameLabel->setText (Label::getTruncatedText (playlistName, UiConfiguration::BodyFont, w, StdString ("...")));
 	}
-	w -= nameLabel->position.x;
-	w -= uiconfig->marginSize;
-	nameLabel->setText (Label::getTruncatedText (playlistName, UiConfiguration::HeadlineFont, w, StdString ("...")));
 	refreshLayout ();
 }
 
@@ -487,20 +470,11 @@ void StreamPlaylistWindow::itemListChanged (void *windowPtr, Widget *widgetPtr) 
 	}
 }
 
-void StreamPlaylistWindow::menuButtonClicked (void *windowPtr, Widget *widgetPtr) {
-	StreamPlaylistWindow *window;
-
-	window = (StreamPlaylistWindow *) windowPtr;
-	if (window->menuClickCallback) {
-		window->menuClickCallback (window->menuClickCallbackData, window);
-	}
-}
-
 int StreamPlaylistWindow::getItemCount () {
 	return (itemListView->getItemCount ());
 }
 
-void StreamPlaylistWindow::addItem (const StdString &streamUrl, const StdString &streamId, const StdString &mediaName, float startPosition) {
+void StreamPlaylistWindow::addItem (const StdString &streamUrl, const StdString &streamId, const StdString &mediaName, float startPosition, const StdString &thumbnailUrl, int thumbnailIndex) {
 	StreamPlaylistWindow::Item *item;
 
 	item = new StreamPlaylistWindow::Item ();
@@ -508,6 +482,8 @@ void StreamPlaylistWindow::addItem (const StdString &streamUrl, const StdString 
 	item->streamId.assign (streamId);
 	item->mediaName.assign (mediaName);
 	item->startPosition = startPosition;
+	item->thumbnailUrl.assign (thumbnailUrl);
+	item->thumbnailIndex = thumbnailIndex;
 	itemListView->addItem (StdString::createSprintf ("%s %s", OsUtil::getDurationString (startPosition * 1000.0f, OsUtil::HoursUnit).c_str (), mediaName.c_str ()), item, StreamPlaylistWindow::freeItem);
 }
 
@@ -643,19 +619,6 @@ void StreamPlaylistWindow::playDurationSliderValueChanged (void *windowPtr, Widg
 	window->refresh ();
 }
 
-static const char *PLAYLIST_NAME_KEY = "a";
-static const char *IS_SELECTED_KEY = "b";
-static const char *IS_EXPANDED_KEY = "c";
-static const char *START_POSITION_MIN_KEY = "d";
-static const char *START_POSITION_MAX_KEY = "e";
-static const char *PLAY_DURATION_MIN_KEY = "f";
-static const char *PLAY_DURATION_MAX_KEY = "g";
-static const char *ITEM_LIST_KEY = "h";
-static const char *IS_SHUFFLE_KEY = "i";
-static const char *STREAM_URL_KEY = "j";
-static const char *STREAM_ID_KEY = "k";
-static const char *MEDIA_NAME_KEY = "l";
-static const char *START_POSITION_KEY = "m";
 Json *StreamPlaylistWindow::getState () {
 	Json *obj, *itemobj;
 	StreamPlaylistWindow::Item *item;
@@ -663,29 +626,31 @@ Json *StreamPlaylistWindow::getState () {
 	int i, count;
 
 	obj = new Json ();
-	obj->set (PLAYLIST_NAME_KEY, playlistName);
-	obj->set (IS_SELECTED_KEY, isSelected);
-	obj->set (IS_EXPANDED_KEY, isExpanded);
-	obj->set (IS_SHUFFLE_KEY, shuffleToggle->isChecked);
-	obj->set (START_POSITION_MIN_KEY, startPositionMinSlider->value);
-	obj->set (START_POSITION_MAX_KEY, startPositionMaxSlider->value);
-	obj->set (PLAY_DURATION_MIN_KEY, playDurationMinSlider->value);
-	obj->set (PLAY_DURATION_MAX_KEY, playDurationMaxSlider->value);
+	obj->set (StreamPlaylistWindow::PlaylistNameKey, playlistName);
+	obj->set (StreamPlaylistWindow::IsSelectedKey, isSelected);
+	obj->set (StreamPlaylistWindow::IsExpandedKey, isExpanded);
+	obj->set (StreamPlaylistWindow::IsShuffleKey, shuffleToggle->isChecked);
+	obj->set (StreamPlaylistWindow::StartPositionMinKey, startPositionMinSlider->value);
+	obj->set (StreamPlaylistWindow::StartPositionMaxKey, startPositionMaxSlider->value);
+	obj->set (StreamPlaylistWindow::PlayDurationMinKey, playDurationMinSlider->value);
+	obj->set (StreamPlaylistWindow::PlayDurationMaxKey, playDurationMaxSlider->value);
 
 	count = itemListView->getItemCount ();
 	for (i = 0; i < count; ++i) {
 		item = (StreamPlaylistWindow::Item *) itemListView->getItemData (i);
 		if (item) {
 			itemobj = new Json ();
-			itemobj->set (STREAM_URL_KEY, item->streamUrl.c_str ());
-			itemobj->set (STREAM_ID_KEY, item->streamId.c_str ());
-			itemobj->set (MEDIA_NAME_KEY, item->mediaName.c_str ());
-			itemobj->set (START_POSITION_KEY, item->startPosition);
+			itemobj->set (StreamPlaylistWindow::StreamUrlKey, item->streamUrl.c_str ());
+			itemobj->set (StreamPlaylistWindow::StreamIdKey, item->streamId.c_str ());
+			itemobj->set (StreamPlaylistWindow::MediaNameKey, item->mediaName.c_str ());
+			itemobj->set (StreamPlaylistWindow::StartPositionKey, item->startPosition);
+			itemobj->set (StreamPlaylistWindow::ThumbnailUrlKey, item->thumbnailUrl);
+			itemobj->set (StreamPlaylistWindow::ThumbnailIndexKey, item->thumbnailIndex);
 
 			items.push_back (itemobj);
 		}
 	}
-	obj->set (ITEM_LIST_KEY, &items);
+	obj->set (StreamPlaylistWindow::ItemListKey, &items);
 
 	return (obj);
 }
@@ -697,34 +662,36 @@ void StreamPlaylistWindow::setState (Json *stateObject) {
 	int i, count;
 	bool b;
 
-	val = stateObject->getString (PLAYLIST_NAME_KEY, "");
+	val = stateObject->getString (StreamPlaylistWindow::PlaylistNameKey, "");
 	if (! val.empty ()) {
 		setPlaylistName (val);
 	}
 
-	shuffleToggle->setChecked (stateObject->getBoolean (IS_SHUFFLE_KEY, false));
-	startPositionMinSlider->setValue (stateObject->getNumber (START_POSITION_MIN_KEY, 60.0f));
-	startPositionMaxSlider->setValue (stateObject->getNumber (START_POSITION_MAX_KEY, 300.0f));
-	playDurationMinSlider->setValue (stateObject->getNumber (PLAY_DURATION_MIN_KEY, 60.0f));
-	playDurationMaxSlider->setValue (stateObject->getNumber (PLAY_DURATION_MAX_KEY, 300.0f));
+	shuffleToggle->setChecked (stateObject->getBoolean (StreamPlaylistWindow::IsShuffleKey, false));
+	startPositionMinSlider->setValue (stateObject->getNumber (StreamPlaylistWindow::StartPositionMinKey, 60.0f));
+	startPositionMaxSlider->setValue (stateObject->getNumber (StreamPlaylistWindow::StartPositionMaxKey, 300.0f));
+	playDurationMinSlider->setValue (stateObject->getNumber (StreamPlaylistWindow::PlayDurationMinKey, 60.0f));
+	playDurationMaxSlider->setValue (stateObject->getNumber (StreamPlaylistWindow::PlayDurationMaxKey, 300.0f));
 
-	count = stateObject->getArrayLength (ITEM_LIST_KEY);
+	count = stateObject->getArrayLength (StreamPlaylistWindow::ItemListKey);
 	for (i = 0; i < count; ++i) {
-		if (stateObject->getArrayObject (ITEM_LIST_KEY, i, &itemobj)) {
-			item.streamUrl.assign (itemobj.getString (STREAM_URL_KEY, ""));
-			item.streamId.assign (itemobj.getString (STREAM_ID_KEY, ""));
-			item.mediaName.assign (itemobj.getString (MEDIA_NAME_KEY, ""));
-			item.startPosition = itemobj.getNumber (START_POSITION_KEY, 0.0f);
+		if (stateObject->getArrayObject (StreamPlaylistWindow::ItemListKey, i, &itemobj)) {
+			item.streamUrl.assign (itemobj.getString (StreamPlaylistWindow::StreamUrlKey, ""));
+			item.streamId.assign (itemobj.getString (StreamPlaylistWindow::StreamIdKey, ""));
+			item.mediaName.assign (itemobj.getString (StreamPlaylistWindow::MediaNameKey, ""));
+			item.startPosition = itemobj.getNumber (StreamPlaylistWindow::StartPositionKey, 0.0f);
+			item.thumbnailUrl.assign (itemobj.getString (StreamPlaylistWindow::ThumbnailUrlKey, ""));
+			item.thumbnailIndex = itemobj.getNumber (StreamPlaylistWindow::ThumbnailIndexKey, (int) 0);
 
-			addItem (item.streamUrl, item.streamId, item.mediaName, item.startPosition);
+			addItem (item.streamUrl, item.streamId, item.mediaName, item.startPosition, item.thumbnailUrl, item.thumbnailIndex);
 		}
 	}
 
-	b = stateObject->getBoolean (IS_SELECTED_KEY, false);
+	b = stateObject->getBoolean (StreamPlaylistWindow::IsSelectedKey, false);
 	isSelected = ! b;
 	setSelected (b, true);
 
-	b = stateObject->getBoolean (IS_EXPANDED_KEY, false);
+	b = stateObject->getBoolean (StreamPlaylistWindow::IsExpandedKey, false);
 	isExpanded = ! b;
 	setExpanded (b, true);
 }
@@ -747,6 +714,11 @@ Json *StreamPlaylistWindow::getCreateCommand () {
 			itemparams->set ("streamUrl", item->streamUrl);
 			itemparams->set ("streamId", item->streamId);
 			itemparams->set ("startPosition", item->startPosition);
+
+			if ((! item->thumbnailUrl.empty ()) && (item->thumbnailIndex >= 0)) {
+				itemparams->set ("thumbnailUrl", item->thumbnailUrl);
+				itemparams->set ("thumbnailIndex", item->thumbnailIndex);
+			}
 
 			items.push_back (itemparams);
 		}

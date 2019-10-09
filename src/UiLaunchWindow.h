@@ -39,6 +39,7 @@
 #include "Image.h"
 #include "Label.h"
 #include "Button.h"
+#include "Toggle.h"
 #include "TextArea.h"
 #include "IconLabelWindow.h"
 #include "Panel.h"
@@ -62,6 +63,10 @@ public:
 
 	// Read-only data members
 	int uiType;
+	bool isExpanded;
+
+	// Set a callback that should be invoked when the expand toggle's checked state changes
+	void setExpandStateChangeCallback (Widget::EventCallback callback, void *callbackData);
 
 	// Set a function that should be invoked when the window's open action is clicked
 	void setOpenCallback (Widget::EventCallback callback, void *callbackData);
@@ -69,16 +74,17 @@ public:
 	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
 	void syncRecordStore ();
 
+	// Set the window's expand state, then execute any expand state change callback that might be configured unless shouldSkipStateChangeCallback is true
+	void setExpanded (bool expanded, bool shouldSkipStateChangeCallback = false);
+
 	// Return a boolean value indicating if the provided Widget is a member of this class
 	static bool isWidgetType (Widget *widget);
 
 	// Return a typecasted pointer to the provided widget, or NULL if the widget does not appear to be of the correct type
 	static UiLaunchWindow *castWidget (Widget *widget);
 
-	// Return a boolean value indicating if a window of the specified type would be ready if synced from the provided RecordStore
-	static bool isReadyState (int uiType, RecordStore *store);
-
 	// Callback functions
+	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
 	static void openButtonClicked (void *windowPtr, Widget *widgetPtr);
 	static void addMediaCount (void *sumPtr, Json *record, const StdString &recordId);
 	static void addStreamCount (void *sumPtr, Json *record, const StdString &recordId);
@@ -101,8 +107,12 @@ private:
 	Image *iconImage;
 	Label *nameLabel;
 	TextArea *descriptionText;
+	std::vector<IconLabelWindow *> countIcons;
 	std::vector<IconLabelWindow *> noteIcons;
+	Toggle *expandToggle;
 	Button *openButton;
+	Widget::EventCallback expandStateChangeCallback;
+	void *expandStateChangeCallbackData;
 	Widget::EventCallback openCallback;
 	void *openCallbackData;
 };
