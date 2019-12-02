@@ -63,6 +63,7 @@ MediaLibraryWindow::MediaLibraryWindow (const StdString &agentId)
 , iconImage (NULL)
 , nameLabel (NULL)
 , descriptionLabel (NULL)
+, catalogLinkIcon (NULL)
 , taskCountIcon (NULL)
 , storageIcon (NULL)
 , mediaCountIcon (NULL)
@@ -96,6 +97,14 @@ MediaLibraryWindow::MediaLibraryWindow (const StdString &agentId)
 
 	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	descriptionLabel->isVisible = false;
+
+	catalogLinkIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::StreamCatalogIcon), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	catalogLinkIcon->setPadding (0.0f, 0.0f);
+	catalogLinkIcon->setTextColor (uiconfig->linkTextColor);
+	catalogLinkIcon->setTextUnderlined (true);
+	catalogLinkIcon->setMouseHoverTooltip (uitext->getText (UiTextString::mediaServerCatalogTooltip));
+	catalogLinkIcon->setTextClickCallback (MediaLibraryWindow::catalogLinkClicked, this);
+	catalogLinkIcon->isVisible = false;
 
 	taskCountIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::TaskCountIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	taskCountIcon->setPadding (0.0f, 0.0f);
@@ -188,8 +197,16 @@ void MediaLibraryWindow::syncRecordStore () {
 	agentName.assign (interface->getCommandAgentName (record));
 	nameLabel->setText (agentName);
 	agentTaskCount = interface->getCommandNumberParam (record, "taskCount", (int) 0);
-
 	descriptionLabel->setText (interface->getCommandStringParam (record, "applicationName", ""));
+
+	htmlCatalogPath = streamserverstatus.getString ("htmlCatalogPath", "");
+	if (htmlCatalogPath.empty ()) {
+		catalogLinkIcon->isVisible = false;
+	}
+	else {
+		catalogLinkIcon->setText (Label::getTruncatedText (App::instance->agentControl.getAgentSecondaryUrl (agentId, NULL, htmlCatalogPath), UiConfiguration::CaptionFont, ((float) App::instance->windowWidth) * 0.21f, StdString ("...")));
+		catalogLinkIcon->isVisible = isExpanded;
+	}
 
 	storageIcon->setText (OsUtil::getStorageAmountDisplayString (streamserverstatus.getNumber ("freeStorage", (int64_t) 0), streamserverstatus.getNumber ("totalStorage", (int64_t) 0)));
 
@@ -293,6 +310,7 @@ void MediaLibraryWindow::setExpanded (bool expanded, bool shouldSkipStateChangeC
 		storageIcon->isVisible = true;
 		mediaCountIcon->isVisible = true;
 		streamCountIcon->isVisible = true;
+		catalogLinkIcon->isVisible = (! htmlCatalogPath.empty ());
 	}
 	else {
 		setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
@@ -303,6 +321,7 @@ void MediaLibraryWindow::setExpanded (bool expanded, bool shouldSkipStateChangeC
 		storageIcon->isVisible = false;
 		mediaCountIcon->isVisible = false;
 		streamCountIcon->isVisible = false;
+		catalogLinkIcon->isVisible = false;
 		taskImage->isVisible = false;
 		taskNameLabel->isVisible = false;
 		taskSubtitleLabel->isVisible = false;
@@ -338,6 +357,13 @@ void MediaLibraryWindow::refreshLayout () {
 	}
 	if (selectToggle->isVisible) {
 		selectToggle->flowDown (x, &y, &x2, &y2);
+	}
+
+	if (catalogLinkIcon->isVisible) {
+		x = x0;
+		y = y2 + uiconfig->marginSize;
+		x2 = 0.0f;
+		catalogLinkIcon->flowDown (x, &y, &x2, &y2);
 	}
 
 	x = x0;
@@ -424,4 +450,15 @@ void MediaLibraryWindow::expandToggleStateChanged (void *windowPtr, Widget *widg
 	if (window->expandStateChangeCallback) {
 		window->expandStateChangeCallback (window->expandStateChangeCallbackData, window);
 	}
+}
+
+void MediaLibraryWindow::catalogLinkClicked (void *windowPtr, Widget *widgetPtr) {
+	MediaLibraryWindow *window;
+
+	window = (MediaLibraryWindow *) windowPtr;
+	if (window->htmlCatalogPath.empty ()) {
+		return;
+	}
+
+	OsUtil::openUrl (App::instance->agentControl.getAgentSecondaryUrl (window->agentId, NULL, window->htmlCatalogPath));
 }

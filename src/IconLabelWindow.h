@@ -49,8 +49,14 @@ public:
 	// Set the window's text
 	void setText (const StdString &labelText);
 
+	// Set a callback that should be invoked when the window's text label is clicked
+	void setTextClickCallback (Widget::EventCallback callback, void *callbackData);
+
 	// Set the window's text color
 	void setTextColor (const Color &textColor);
+
+	// Set the window's underlined state
+	void setTextUnderlined (bool enable);
 
 	// Set the window's text font
 	void setTextFont (int fontType);
@@ -76,6 +82,9 @@ public:
 	// Set the window's progress bar option. If enabled, the window shows a progress bar with the provided progress values; negative progress values specify an indeterminate progress bar.
 	void setProgressBar (bool enable, float progressValue = -1.0f, float targetProgressValue = -1.0f);
 
+	// Callback functions
+	static void labelClicked (void *windowPtr, Widget *widgetPtr);
+
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
@@ -91,6 +100,8 @@ private:
 	Color normalTextColor;
 	Color highlightTextColor;
 	ProgressBar *progressBar;
+	Widget::EventCallback textClickCallback;
+	void *textClickCallbackData;
 };
 
 #endif

@@ -37,9 +37,12 @@
 #include "StdString.h"
 #include "App.h"
 #include "Input.h"
+#include "OsUtil.h"
 #include "Widget.h"
 #include "ProgressBar.h"
 #include "Panel.h"
+
+const int Panel::longPressDuration = 1000;
 
 Panel::Panel ()
 : Widget ()
@@ -87,6 +90,7 @@ Panel::Panel ()
 , lastMouseWheelDownCount (0)
 , lastMouseDownX (-1)
 , lastMouseDownY (-1)
+, lastMouseDownTime (0)
 , cornerCenterDx (0)
 , cornerCenterDy (0)
 , cornerCenterDw (0)
@@ -429,19 +433,19 @@ void Panel::processInput () {
 	Widget *widget, *mousewidget;
 	Widget::MouseState mousestate;
 	float x, y, enterdx, enterdy;
-	bool isshiftdown, iscontroldown;
+	bool isshiftdown, iscontroldown, isleftdown, isconsumed;
 
 	input = &(App::instance->input);
 
 	input->pollKeyPressEvents (&keyevents);
 	isshiftdown = input->isShiftDown ();
 	iscontroldown = input->isControlDown ();
+	isleftdown = (input->mouseLeftDownCount != input->mouseLeftUpCount);
 
 	if (isMouseInputStarted) {
 		if (input->mouseLeftDownCount != lastMouseLeftDownCount) {
 			mousestate.isLeftClicked = true;
 		}
-
 		if (input->mouseLeftUpCount != lastMouseLeftUpCount) {
 			mousestate.isLeftClickReleased = true;
 		}
@@ -488,10 +492,27 @@ void Panel::processInput () {
 		if (mousewidget) {
 			lastMouseDownX = x;
 			lastMouseDownY = y;
+			lastMouseDownTime = OsUtil::getTime ();
 		}
 		else {
 			lastMouseDownX = -1;
 			lastMouseDownY = -1;
+			lastMouseDownTime = 0;
+		}
+	}
+
+	if (keyEventCallback && (keyevents.size () > 0)) {
+		isconsumed = false;
+		j = keyevents.begin ();
+		jend = keyevents.end ();
+		while (j != jend) {
+			if (keyEventCallback (keyEventCallbackData, *j, isshiftdown, iscontroldown)) {
+				isconsumed = true;
+			}
+			++j;
+		}
+		if (isconsumed) {
+			keyevents.clear ();
 		}
 	}
 
@@ -505,27 +526,38 @@ void Panel::processInput () {
 		}
 
 		if (keyevents.size () > 0) {
+			isconsumed = false;
 			j = keyevents.begin ();
 			jend = keyevents.end ();
 			while (j != jend) {
 				if (widget->processKeyEvent (*j, isshiftdown, iscontroldown)) {
-					break;
+					isconsumed = true;
 				}
 				++j;
+			}
+			if (isconsumed) {
+				keyevents.clear ();
 			}
 		}
 
 		mousestate.isLeftClickEntered = false;
+		mousestate.isLongPressed = false;
 		if (widget == mousewidget) {
 			mousestate.isEntered = true;
 			mousestate.enterDeltaX = enterdx;
 			mousestate.enterDeltaY = enterdy;
 
-			if (mousestate.isLeftClickReleased && (lastMouseDownX >= 0)) {
-				if ((lastMouseDownX >= (int) widget->screenX) && (lastMouseDownX <= (int) (widget->screenX + widget->width)) && (lastMouseDownY >= (int) widget->screenY) && (lastMouseDownY <= (int) (widget->screenY + widget->height))) {
+			if (mousestate.isLeftClickReleased) {
+				if ((lastMouseDownX >= 0) && (lastMouseDownY >= 0) && (lastMouseDownX >= (int) widget->screenX) && (lastMouseDownX <= (int) (widget->screenX + widget->width)) && (lastMouseDownY >= (int) widget->screenY) && (lastMouseDownY <= (int) (widget->screenY + widget->height))) {
 					mousestate.isLeftClickEntered = true;
 					lastMouseDownX = -1;
 					lastMouseDownY = -1;
+				}
+			}
+			else if (isleftdown) {
+				if ((lastMouseDownX >= 0) && (lastMouseDownY >= 0) && (lastMouseDownTime > 0) && (lastMouseDownX >= (int) widget->screenX) && (lastMouseDownX <= (int) (widget->screenX + widget->width)) && (lastMouseDownY >= (int) widget->screenY) && (lastMouseDownY <= (int) (widget->screenY + widget->height)) && ((OsUtil::getTime () - lastMouseDownTime) >= Panel::longPressDuration)) {
+					mousestate.isLongPressed = true;
+					lastMouseDownTime = 0;
 				}
 			}
 		}

@@ -29,6 +29,7 @@
 */
 #include "Config.h"
 #include <stdlib.h>
+#include "SDL2/SDL.h"
 #include "App.h"
 #include "Result.h"
 #include "StdString.h"
@@ -40,6 +41,7 @@
 #include "TooltipWindow.h"
 #include "SettingsWindow.h"
 #include "HelpWindow.h"
+#include "ImageWindow.h"
 #include "UiStack.h"
 
 UiStack::UiStack ()
@@ -54,6 +56,7 @@ UiStack::UiStack ()
 , nextCommandType (-1)
 , nextCommandUi (NULL)
 , nextCommandMutex (NULL)
+, isUiInputSuspended (false)
 , mouseHoverClock (0)
 , isMouseHoverActive (false)
 , isMouseHoverSuspended (false)
@@ -199,10 +202,12 @@ void UiStack::update (int msElapsed) {
 			darkenPanel.destroyAndClear ();
 			settingsWindow.destroyAndClear ();
 			helpWindow.destroyAndClear ();
+			dialogWindow.destroyAndClear ();
 			resetToolbars ();
 			snackbarWindow->isVisible = false;
 			activeUi->resume ();
 			App::instance->shouldSyncRecordStore = true;
+			isUiInputSuspended = false;
 		}
 	}
 	SDL_UnlockMutex (uiMutex);
@@ -214,6 +219,7 @@ void UiStack::update (int msElapsed) {
 	darkenPanel.compact ();
 	settingsWindow.compact ();
 	helpWindow.compact ();
+	dialogWindow.compact ();
 
 	keywidget = keyFocusTarget.widget;
 	if (keywidget && (! keywidget->isKeyFocused)) {
@@ -240,8 +246,21 @@ void UiStack::update (int msElapsed) {
 		}
 	}
 
-	if (darkenPanel.widget && (! settingsWindow.widget) && (! helpWindow.widget)) {
+	if (darkenPanel.widget && (! settingsWindow.widget) && (! helpWindow.widget) && (! dialogWindow.widget)) {
 		darkenPanel.destroyAndClear ();
+	}
+
+	if (isUiInputSuspended) {
+		if ((! darkenPanel.widget) && (! settingsWindow.widget) && (! helpWindow.widget) && (! dialogWindow.widget)) {
+			ui = getActiveUi ();
+			if (ui) {
+				ui->rootPanel->isInputSuspended = false;
+				ui->release ();
+			}
+			mainToolbar->isInputSuspended = false;
+			secondaryToolbar->isInputSuspended = false;
+			isUiInputSuspended = false;
+		}
 	}
 }
 
@@ -465,6 +484,20 @@ void UiStack::showSnackbar (const StdString &messageText, const StdString &actio
 	snackbarWindow->isVisible = true;
 }
 
+bool UiStack::processKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown) {
+	if (settingsWindow.widget || helpWindow.widget || dialogWindow.widget) {
+		if (keycode == SDLK_ESCAPE) {
+			settingsWindow.destroyAndClear ();
+			helpWindow.destroyAndClear ();
+			dialogWindow.destroyAndClear ();
+			darkenPanel.destroyAndClear ();
+			return (true);
+		}
+	}
+
+	return (false);
+}
+
 void UiStack::setKeyFocusTarget (Widget *widget) {
 	Widget *target;
 
@@ -590,6 +623,23 @@ void UiStack::deactivateMouseHover () {
 	isMouseHoverActive = false;
 }
 
+void UiStack::suspendUiInput () {
+	Ui *ui;
+
+	if (isUiInputSuspended) {
+		return;
+	}
+
+	isUiInputSuspended = true;
+	ui = getActiveUi ();
+	if (ui) {
+		ui->rootPanel->isInputSuspended = true;
+		ui->release ();
+	}
+	mainToolbar->isInputSuspended = true;
+	secondaryToolbar->isInputSuspended = true;
+}
+
 void UiStack::suspendMouseHover () {
 	tooltip.destroyAndClear ();
 	mouseHoverClock = App::instance->uiConfig.mouseHoverThreshold;
@@ -690,6 +740,10 @@ void UiStack::toggleSettingsWindow () {
 	SettingsWindow *settings;
 	Panel *panel;
 
+	if (dialogWindow.widget) {
+		return;
+	}
+
 	darkenPanel.destroyAndClear ();
 	if (settingsWindow.widget) {
 		settingsWindow.destroyAndClear ();
@@ -718,12 +772,17 @@ void UiStack::toggleSettingsWindow () {
 	settings->position.assign (App::instance->rootPanel->width - settings->width, 0.0f);
 	darkenPanel.assign (panel);
 	settingsWindow.assign (settings);
+	suspendUiInput ();
 }
 
 void UiStack::toggleHelpWindow () {
 	UiConfiguration *uiconfig;
 	HelpWindow *helpwindow;
 	Panel *panel;
+
+	if (dialogWindow.widget) {
+		return;
+	}
 
 	darkenPanel.destroyAndClear ();
 	if (helpWindow.widget) {
@@ -754,4 +813,66 @@ void UiStack::toggleHelpWindow () {
 	helpwindow->position.assign (App::instance->rootPanel->width - helpwindow->width, 0.0f);
 	darkenPanel.assign (panel);
 	helpWindow.assign (helpwindow);
+	suspendUiInput ();
+}
+
+void UiStack::showDialog (Panel *dialog) {
+	UiConfiguration *uiconfig;
+	Panel *panel;
+
+	uiconfig = &(App::instance->uiConfig);
+
+	darkenPanel.destroyAndClear ();
+	dialogWindow.destroyAndClear ();
+	helpWindow.destroyAndClear ();
+	settingsWindow.destroyAndClear ();
+	mainMenu.destroyAndClear ();
+
+	panel = new Panel ();
+	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, 0.0f));
+	panel->bgColor.translate (0.0f, 0.0f, 0.0f, uiconfig->overlayWindowAlpha, uiconfig->backgroundCrossFadeDuration);
+	panel->setFixedSize (true, App::instance->rootPanel->width, App::instance->rootPanel->height);
+
+	App::instance->rootPanel->addWidget (panel);
+	App::instance->rootPanel->addWidget (dialog, (((float) App::instance->windowWidth) - dialog->width) / 2.0f, (((float) App::instance->windowHeight) - dialog->height) / 2.0f);
+	panel->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
+	dialog->zLevel = App::instance->rootPanel->maxWidgetZLevel + 2;
+	darkenPanel.assign (panel);
+	dialogWindow.assign (dialog);
+	suspendUiInput ();
+}
+
+void UiStack::showImageDialog (const StdString &imageUrl) {
+	ImageWindow *image;
+	UiConfiguration *uiconfig;
+
+	if (imageUrl.empty ()) {
+		return;
+	}
+
+	uiconfig = &(App::instance->uiConfig);
+	image = new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite)));
+	image->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
+	image->setFillBg (true, uiconfig->darkBackgroundColor);
+	image->setMouseClickCallback (UiStack::imageDialogClicked, this);
+	image->setLoadCallback (UiStack::imageDialogLoaded, this);
+	image->setLoadSprite (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
+	image->setLoadResize (true, ((float) App::instance->windowWidth) * 0.95f);
+	image->setImageUrl (imageUrl);
+	showDialog (image);
+}
+
+void UiStack::imageDialogClicked (void *uiStackPtr, Widget *widgetPtr) {
+	UiStack *uistack;
+
+	uistack = (UiStack *) uiStackPtr;
+	uistack->dialogWindow.destroyAndClear ();
+	uistack->darkenPanel.destroyAndClear ();
+}
+
+void UiStack::imageDialogLoaded (void *uiStackPtr, Widget *widgetPtr) {
+	ImageWindow *image;
+
+	image = (ImageWindow *) widgetPtr;
+	image->position.assign ((((float) App::instance->windowWidth) - image->width) / 2.0f, (((float) App::instance->windowHeight) - image->height) / 2.0f);
 }

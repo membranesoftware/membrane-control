@@ -36,6 +36,7 @@
 #include "SDL2/SDL.h"
 #include "StdString.h"
 #include "Widget.h"
+#include "Panel.h"
 #include "Toolbar.h"
 #include "SnackbarWindow.h"
 #include "WidgetHandle.h"
@@ -84,6 +85,9 @@ public:
 	// Resize all Ui items in the stack as appropriate for the current window dimensions
 	void resize ();
 
+	// Execute actions appropriate for a received keypress event and return a boolean value indicating if the event was consumed and should no longer be processed
+	bool processKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
+
 	// Show the specified message in the application's snackbar window, optionally including an action button
 	void showSnackbar (const StdString &messageText, const StdString &actionButtonText = StdString (""), Widget::EventCallback actionButtonClickCallback = NULL, void *actionButtonClickCallbackData = NULL);
 
@@ -93,8 +97,17 @@ public:
 	// Toggle the visible state of the help window
 	void toggleHelpWindow ();
 
+	// Show the provided panel as a dialog
+	void showDialog (Panel *dialog);
+
+	// Show a dialog consisting of an image window that loads the specified URL
+	void showImageDialog (const StdString &imageUrl);
+
 	// Set the widget that should be the target of keypress text edit operations
 	void setKeyFocusTarget (Widget *widget);
+
+	// Suspend input for the active UI until dialog widgets close
+	void suspendUiInput ();
 
 	// Deactivate the mouse hover widget and prevent reactivation until a new mouse hover widget is acquired
 	void suspendMouseHover ();
@@ -111,6 +124,8 @@ public:
 	static void feedbackActionClicked (void *uiStackPtr, Widget *widgetPtr);
 	static void helpActionClicked (void *uiStackPtr, Widget *widgetPtr);
 	static void exitActionClicked (void *uiStackPtr, Widget *widgetPtr);
+	static void imageDialogClicked (void *uiStackPtr, Widget *widgetPtr);
+	static void imageDialogLoaded (void *uiStackPtr, Widget *widgetPtr);
 
 private:
 	// Constants to use for stack command types
@@ -142,6 +157,8 @@ private:
 	WidgetHandle darkenPanel;
 	WidgetHandle settingsWindow;
 	WidgetHandle helpWindow;
+	WidgetHandle dialogWindow;
+	bool isUiInputSuspended;
 	int mouseHoverClock;
 	bool isMouseHoverActive;
 	bool isMouseHoverSuspended;

@@ -34,6 +34,7 @@
 #include "StdString.h"
 #include "Json.h"
 #include "SystemInterface.h"
+#include "OsUtil.h"
 #include "Agent.h"
 
 const char *Agent::AgentIdKey = "a";
@@ -87,6 +88,12 @@ StdString Agent::toString () {
 	if (! applicationName.empty ()) {
 		s.appendSprintf (" applicationName=\"%s\"", applicationName.c_str ());
 	}
+	if (! version.empty ()) {
+		s.appendSprintf (" version=\"%s\"", version.c_str ());
+	}
+	if (! platform.empty ()) {
+		s.appendSprintf (" platform=\"%s\"", platform.c_str ());
+	}
 	if (serverType >= 0) {
 		s.appendSprintf (" serverType=%i", serverType);
 	}
@@ -133,6 +140,16 @@ void Agent::readCommand (Json *command) {
 	val = interface->getCommandStringParam (command, "applicationName", "");
 	if (! val.empty ()) {
 		applicationName.assign (val);
+	}
+
+	val = interface->getCommandStringParam (command, "version", "");
+	if (! val.empty ()) {
+		version.assign (val);
+	}
+
+	val = interface->getCommandStringParam (command, "platform", "");
+	if (! val.empty ()) {
+		platform.assign (val);
 	}
 
 	val = interface->getCommandStringParam (command, "urlHostname", "");
@@ -233,6 +250,13 @@ StdString Agent::getLinkUrl () {
 	url.appendSprintf ("%s/?transport=websocket", linkPath.c_str ());
 
 	return (url);
+}
+
+StdString Agent::getApplicationNewsUrl () {
+	if (version.empty () || platform.empty ()) {
+		return (StdString (""));
+	}
+	return (App::getApplicationNewsUrl (StdString::createSprintf ("%s_%s_%s", version.c_str (), platform.c_str (), OsUtil::getEnvLanguage ("en").c_str ())));
 }
 
 StdString Agent::toPrefsJsonString () {

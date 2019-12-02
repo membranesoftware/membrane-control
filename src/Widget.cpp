@@ -71,6 +71,8 @@ Widget::Widget ()
 , mouseReleaseCallbackData (NULL)
 , mouseClickCallback (NULL)
 , mouseClickCallbackData (NULL)
+, mouseLongPressCallback (NULL)
+, mouseLongPressCallbackData (NULL)
 , keyEventCallback (NULL)
 , keyEventCallbackData (NULL)
 , updateCallback (NULL)
@@ -306,6 +308,13 @@ void Widget::processMouseState (const Widget::MouseState &mouseState) {
 				}
 			}
 		}
+
+		if (isMousePressed && mouseState.isLongPressed) {
+			if (mouseLongPressCallback) {
+				isMousePressed = false;
+				mouseLongPressCallback (mouseLongPressCallbackData, this);
+			}
+		}
 	}
 	else {
 		if (isMousePressed) {
@@ -353,6 +362,11 @@ void Widget::setMouseReleaseCallback (Widget::EventCallback fn, void *data) {
 void Widget::setMouseClickCallback (Widget::EventCallback fn, void *data) {
 	mouseClickCallback = fn;
 	mouseClickCallbackData = data;
+}
+
+void Widget::setMouseLongPressCallback (Widget::EventCallback fn, void *data) {
+	mouseLongPressCallback = fn;
+	mouseLongPressCallbackData = data;
 }
 
 void Widget::setKeyEventCallback (Widget::KeyEventCallback fn, void *data) {

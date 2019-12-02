@@ -55,7 +55,7 @@ public:
 		DeleteButtonSprite = 9,
 		HelpButtonSprite = 10,
 		PasteButtonSprite = 11,
-		InfoNewsIconSprite = 12,
+		StreamCatalogIcon = 12,
 		NetworkConnectIconSprite = 13,
 		NetworkDisconnectIconSprite = 14,
 		CheckmarkSprite = 15,

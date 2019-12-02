@@ -110,7 +110,8 @@ public:
 		bool isLeftClicked;
 		bool isLeftClickReleased;
 		bool isLeftClickEntered;
-		MouseState (): positionDeltaX (0), positionDeltaY (0), wheelUp (0), wheelDown (0), isEntered (false), enterDeltaX (0.0f), enterDeltaY (0.0f), isLeftClicked (false), isLeftClickReleased (false), isLeftClickEntered (false) { }
+		bool isLongPressed;
+		MouseState (): positionDeltaX (0), positionDeltaY (0), wheelUp (0), wheelDown (0), isEntered (false), enterDeltaX (0.0f), enterDeltaY (0.0f), isLeftClicked (false), isLeftClickReleased (false), isLeftClickEntered (false), isLongPressed (false) { }
 	};
 	// Update the widget as appropriate for the specified mouse state
 	void processMouseState (const Widget::MouseState &mouseState);
@@ -162,6 +163,9 @@ public:
 
 	// Invoke the widget's mouse click callback
 	void mouseClick ();
+
+	// Set the callback function that should be invoked on mouse long press events
+	void setMouseLongPressCallback (Widget::EventCallback fn, void *data);
 
 	// Set the callback function that should be invoked on keyboard events
 	void setKeyEventCallback (Widget::KeyEventCallback fn, void *data);
@@ -221,6 +225,8 @@ protected:
 	void *mouseReleaseCallbackData;
 	Widget::EventCallback mouseClickCallback;
 	void *mouseClickCallbackData;
+	Widget::EventCallback mouseLongPressCallback;
+	void *mouseLongPressCallbackData;
 	Widget::KeyEventCallback keyEventCallback;
 	void *keyEventCallbackData;
 	Widget::UpdateCallback updateCallback;

@@ -56,6 +56,8 @@ public:
 	StdString urlHostname;
 	int tcpPort1;
 	int tcpPort2;
+	StdString version;
+	StdString platform;
 
 	// Return a string representation of the agent
 	StdString toString ();
@@ -77,6 +79,9 @@ public:
 
 	// Return the URL that should be used for link operations targeting the agent
 	StdString getLinkUrl ();
+
+	// Return the URL that should be used for retrieving news related to the agent's application, or an empty string if no URL is available
+	StdString getApplicationNewsUrl ();
 
 private:
 	// Constants to use as object field names

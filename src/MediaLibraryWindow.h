@@ -52,6 +52,7 @@ public:
 	bool isExpanded;
 	StdString agentId;
 	StdString agentName;
+	StdString htmlCatalogPath;
 	int agentTaskCount;
 	float menuPositionX;
 	float menuPositionY;
@@ -81,6 +82,7 @@ public:
 	static void menuButtonClicked (void *windowPtr, Widget *widgetPtr);
 	static void selectToggleStateChanged (void *windowPtr, Widget *widgetPtr);
 	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
+	static void catalogLinkClicked (void *windowPtr, Widget *widgetPtr);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
@@ -93,6 +95,7 @@ private:
 	Image *iconImage;
 	Label *nameLabel;
 	Label *descriptionLabel;
+	IconLabelWindow *catalogLinkIcon;
 	IconLabelWindow *taskCountIcon;
 	IconLabelWindow *storageIcon;
 	IconLabelWindow *mediaCountIcon;

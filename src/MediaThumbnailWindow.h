@@ -62,6 +62,9 @@ public:
 	// Return a typecasted pointer to the provided widget, or NULL if the widget does not appear to be of the correct type
 	static MediaThumbnailWindow *castWidget (Widget *widget);
 
+	// Callback functions
+	static void thumbnailImageLongPressed (void *windowPtr, Widget *widgetPtr);
+
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();

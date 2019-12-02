@@ -108,6 +108,7 @@ MonitorWindow::MonitorWindow (const StdString &agentId)
 
 	screenshotImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
 	screenshotImage->setLoadCallback (MonitorWindow::screenshotImageLoaded, this);
+	screenshotImage->setMouseLongPressCallback (MonitorWindow::screenshotImageLongPressed, this);
 	screenshotImage->setLoadResize (true, ((float) App::instance->windowWidth) * MonitorWindow::screenshotImageScale);
 	screenshotImage->setFillBg (true, uiconfig->darkBackgroundColor);
 	screenshotImage->isVisible = false;
@@ -200,7 +201,7 @@ void MonitorWindow::syncRecordStore () {
 		screenshotImage->isVisible = false;
 	}
 	else {
-		screenshotImage->setLoadUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, NULL, path));
+		screenshotImage->setImageUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, NULL, path));
 		screenshotImage->isVisible = isExpanded;
 		t = serverstatus.getNumber ("screenshotTime", (int64_t) -1);
 		if ((t > 0) && (t != screenshotTime)) {
@@ -368,7 +369,7 @@ void MonitorWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallba
 		nameLabel->setFont (UiConfiguration::HeadlineFont);
 		descriptionLabel->isVisible = true;
 
-		if (screenshotImage->isLoadUrlEmpty ()) {
+		if (screenshotImage->isImageUrlEmpty ()) {
 			screenshotImage->isVisible = false;
 		}
 		else {
@@ -495,6 +496,13 @@ void MonitorWindow::screenshotImageLoaded (void *windowPtr, Widget *widgetPtr) {
 	if (window->screenshotLoadCallback) {
 		window->screenshotLoadCallback (window->screenshotLoadCallbackData, window);
 	}
+}
+
+void MonitorWindow::screenshotImageLongPressed (void *windowPtr, Widget *widgetPtr) {
+	ImageWindow *image;
+
+	image = (ImageWindow *) widgetPtr;
+	App::instance->uiStack.showImageDialog (image->imageUrl);
 }
 
 void MonitorWindow::menuButtonClicked (void *windowPtr, Widget *widgetPtr) {

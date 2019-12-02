@@ -731,7 +731,7 @@ void LinkContext::sendNextMessage () {
 		memcpy (writeBuffer + LWS_PRE, message.c_str (), message.length ());
 		result = lws_write (lws, writeBuffer + LWS_PRE, message.length (), LWS_WRITE_TEXT);
 		if (result < 0) {
-			Log::err ("Failed to write WebSocket messge; err=%i", result);
+			Log::err ("Failed to write WebSocket message; err=%i", result);
 		}
 	}
 	if (shouldrequestcallback) {

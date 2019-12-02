@@ -68,6 +68,7 @@ CameraThumbnailWindow::CameraThumbnailWindow (const StdString &agentId, const St
 
 	thumbnailImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
 	thumbnailImage->setLoadSprite (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
+	thumbnailImage->setMouseLongPressCallback (CameraThumbnailWindow::thumbnailImageLongPressed, this);
 	thumbnailImage->setLoadCallback (CameraThumbnailWindow::thumbnailImageLoaded, this);
 
 	timestampLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->inverseTextColor)));
@@ -113,7 +114,7 @@ void CameraThumbnailWindow::setLayout (int layoutType, float maxPanelWidth) {
 	thumbnailImage->setLoadResize (true, maxPanelWidth);
 	params = new Json ();
 	params->set ("imageTime", thumbnailTimestamp);
-	thumbnailImage->setLoadUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetCaptureImage, SystemInterface::Constant_Camera, params), captureImagePath));
+	thumbnailImage->setImageUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetCaptureImage, SystemInterface::Constant_Camera, params), captureImagePath));
 	thumbnailImage->reload ();
 
 	refreshLayout ();
@@ -132,7 +133,7 @@ void CameraThumbnailWindow::setThumbnailTimestamp (int64_t timestamp) {
 	thumbnailImage->setLoadSprite (NULL);
 	params = new Json ();
 	params->set ("imageTime", thumbnailTimestamp);
-	thumbnailImage->setLoadUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetCaptureImage, SystemInterface::Constant_Camera, params), captureImagePath));
+	thumbnailImage->setImageUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetCaptureImage, SystemInterface::Constant_Camera, params), captureImagePath));
 }
 
 void CameraThumbnailWindow::refreshLayout () {
@@ -206,4 +207,11 @@ void CameraThumbnailWindow::thumbnailImageLoaded (void *windowPtr, Widget *widge
 	if (window->loadCallback) {
 		window->loadCallback (window->loadCallbackData, window);
 	}
+}
+
+void CameraThumbnailWindow::thumbnailImageLongPressed (void *windowPtr, Widget *widgetPtr) {
+	ImageWindow *image;
+
+	image = (ImageWindow *) widgetPtr;
+	App::instance->uiStack.showImageDialog (image->imageUrl);
 }

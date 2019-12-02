@@ -44,6 +44,9 @@ public:
 	ImageWindow (Image *image = NULL);
 	virtual ~ImageWindow ();
 
+	// Read-only data members
+	StdString imageUrl;
+
 	// Set a callback that should be invoked after the image window's content successfully loads
 	void setLoadCallback (Widget::EventCallback callback, void *callbackData);
 
@@ -60,7 +63,7 @@ public:
 	void setLoadSprite (Sprite *sprite);
 
 	// Set a source URL that should be used to load the image window's content
-	void setLoadUrl (const StdString &loadUrl);
+	void setImageUrl (const StdString &loadUrl);
 
 	// Set the window's load resize option. If enabled, the window resizes to the specified width while preserving source aspect ratio after loading image content from a URL.
 	void setLoadResize (bool enable, float loadWidthValue);
@@ -69,7 +72,7 @@ public:
 	void setLoadResourcePath (const StdString &loadPath, bool shouldLoadNow = false);
 
 	// Return a boolean value indicating if the image window's load URL is empty
-	bool isLoadUrlEmpty ();
+	bool isImageUrlEmpty ();
 
 	// Return a boolean value indicating if the image window is loaded with content
 	bool isLoaded ();
@@ -125,7 +128,6 @@ private:
 	bool isImageResourceLoaded;
 	bool isLoadingImageResource;
 	SharedBuffer *imageResourceData;
-	StdString imageUrl;
 	bool isImageUrlLoaded;
 	bool isLoadingImageUrl;
 	bool isImageUrlLoadDisabled;

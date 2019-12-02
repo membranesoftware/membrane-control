@@ -456,6 +456,10 @@ void MainUi::resetBanners () {
 	item.messageText.assign (uitext->getText (UiTextString::mouseHoverBannerMessage));
 	item.iconType.assign (MainUi::textMessageIconType);
 	bannerList.push_back (item);
+	item = MainUi::Banner ();
+	item.messageText.assign (uitext->getText (UiTextString::imageLongPressBannerMessage));
+	item.iconType.assign (MainUi::textMessageIconType);
+	bannerList.push_back (item);
 
 	bannerClock = 1200;
 }

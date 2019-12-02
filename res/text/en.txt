@@ -63,6 +63,7 @@ removeAttachedServerDescription Membrane Control will no longer contact this ser
 removeUnattachedServerDescription Membrane Control will no longer show this server on the interface.
 attachServerTooltip Stay connected to this server
 detachServerTooltip Do not connect to this server
+updateServerTooltip Download a newer version of this server
 tasks tasks
 playlist playlist
 playlists playlists
@@ -324,11 +325,12 @@ lowVideoQualityDescription Low
 lowestVideoQualityDescription Lowest
 videoQualityDescription High-compression: less storage space consumed, slower stream creation time. Low/Lowest: grainier picture, much less storage space consumed, faster stream creation time.
 firstLaunchBannerMessage Welcome to Membrane Control. Need information to get started?
-helpKeyBannerMessage Pressing Ctrl-h opens Membrane Control's help window.
+helpKeyBannerMessage Press Ctrl-h to open Membrane Control's help window.
 freeApplicationBannerMessage Membrane Control is free to download, requires no signup or account creation, and contains no ads or in-app purchases. Tell your friends!
 membraneSoftwareBannerMessage This application is brought to you by Membrane Software, creator of free applications for the computer users of the world.
 donateBannerMessage Membrane Control is supported by donations from users like you. If you get utility and enjoyment from this application, please think about contributing money to support its development. Any amount helps!
 mouseHoverBannerMessage Buttons show description text when the mouse pointer hovers over them.
+imageLongPressBannerMessage Click and hold a thumbnail or screenshot image to zoom in on it.
 mediaAttributesTooltip Video attributes
 toolbarModeButtonTooltip Select control mode
 streamIconTooltip Playback stream available
@@ -399,3 +401,4 @@ saveCommandTooltip Save as a stored command
 commandUiHelpTitle Commands
 commandUiHelpText This interface shows recently executed commands and allows them to be stored as shortcuts.
 commandUiHelpActionText - Actions executed on other interfaces, such as Media or Web Kiosk, show up here as recent commands and can be saved for reuse.\n\n- Not every action is eligible to be stored, but many commonly used ones are. These include: Clear monitors, Show website, Play media, Run playlist
+mediaServerCatalogTooltip (Click the link to open the stream catalog in a browser)

@@ -77,6 +77,7 @@ public:
 
 	// Callback functions
 	static void viewButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void thumbnailImageLongPressed (void *windowPtr, Widget *widgetPtr);
 
 protected:
 	// Return a string that should be included as part of the toString method's output

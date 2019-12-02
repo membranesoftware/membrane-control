@@ -52,7 +52,7 @@ public:
 	bool isExpanded;
 	StdString agentId;
 	StdString agentDisplayName;
-	StdString applicationId;
+	StdString updateUrl;
 	int serverType;
 	bool isRecordLoaded;
 	bool isAgentDisabled;

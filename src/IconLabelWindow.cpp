@@ -50,6 +50,8 @@ IconLabelWindow::IconLabelWindow (Sprite *iconSprite, const StdString &iconText,
 , isRightAligned (false)
 , isTextChangeHighlightEnabled (false)
 , progressBar (NULL)
+, textClickCallback (NULL)
+, textClickCallbackData (NULL)
 {
 	UiConfiguration *uiconfig;
 
@@ -58,6 +60,8 @@ IconLabelWindow::IconLabelWindow (Sprite *iconSprite, const StdString &iconText,
 
 	normalTextColor.assign (iconTextColor);
 	label = (Label *) addWidget (new Label (iconText, iconFontType, normalTextColor));
+	label->setMouseClickCallback (IconLabelWindow::labelClicked, this);
+
 	image = (Image *) addWidget (new Image (iconSprite));
 
 	refreshLayout ();
@@ -82,12 +86,32 @@ void IconLabelWindow::setText (const StdString &text) {
 	refreshLayout ();
 }
 
+void IconLabelWindow::setTextClickCallback (Widget::EventCallback callback, void *callbackData) {
+	textClickCallback = callback;
+	textClickCallbackData = callbackData;
+}
+
+void IconLabelWindow::labelClicked (void *windowPtr, Widget *widgetPtr) {
+	IconLabelWindow *window;
+
+	window = (IconLabelWindow *) windowPtr;
+	if (window->textClickCallback) {
+		window->textClickCallback (window->textClickCallbackData, window);
+	}
+}
+
 void IconLabelWindow::setTextColor (const Color &textColor) {
 	label->textColor.assign (textColor);
 }
 
+void IconLabelWindow::setTextUnderlined (bool enable) {
+	label->setUnderlined (enable);
+	refreshLayout ();
+}
+
 void IconLabelWindow::setTextFont (int fontType) {
 	label->setFont (fontType);
+	refreshLayout ();
 }
 
 void IconLabelWindow::setTextChangeHighlight (bool enable, const Color &highlightColor) {

@@ -2102,17 +2102,14 @@ void MediaUi::stopButtonClicked (void *uiPtr, Widget *widgetPtr) {
 void MediaUi::browserPlayButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
 	MediaWindow *media;
-	Json *params;
 
 	ui = (MediaUi *) uiPtr;
 	media = MediaWindow::castWidget (ui->lastSelectedMediaWindow.widget);
-	if ((! media) || media->streamAgentId.empty () || media->streamId.empty ()) {
+	if ((! media) || media->streamAgentId.empty () || media->streamId.empty () || media->htmlPlayerPath.empty ()) {
 		return;
 	}
 
-	params = new Json ();
-	params->set ("streamId", media->streamId);
-	OsUtil::openUrl (App::instance->agentControl.getAgentSecondaryUrl (media->streamAgentId, App::instance->createCommand (SystemInterface::Command_GetDashHtml5Interface, SystemInterface::Constant_Stream, params), media->dashHtml5Path));
+	OsUtil::openUrl (StdString::createSprintf ("%s?%s", App::instance->agentControl.getAgentSecondaryUrl (media->streamAgentId, NULL, media->htmlPlayerPath).c_str (), media->streamId.c_str ()));
 }
 
 void MediaUi::configureStreamButtonClicked (void *uiPtr, Widget *widgetPtr) {
@@ -2420,6 +2417,7 @@ void MediaUi::addPlaylistItemButtonClicked (void *uiPtr, Widget *widgetPtr) {
 			}
 			startpos /= 1000.0f;
 
+			thumbnailurl.assign ("");
 			if (! media->streamThumbnailPath.empty ()) {
 				thumbnailurl = App::instance->agentControl.getAgentSecondaryUrl (media->streamAgentId, NULL, media->streamThumbnailPath);
 			}

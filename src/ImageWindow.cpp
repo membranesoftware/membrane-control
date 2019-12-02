@@ -171,7 +171,7 @@ void ImageWindow::setLoadSprite (Sprite *sprite) {
 	}
 }
 
-void ImageWindow::setLoadUrl (const StdString &loadUrl) {
+void ImageWindow::setImageUrl (const StdString &loadUrl) {
 	if (imageUrl.equals (loadUrl)) {
 		return;
 	}
@@ -233,7 +233,7 @@ void ImageWindow::setLoadResourcePath (const StdString &loadPath, bool shouldLoa
 	}
 }
 
-bool ImageWindow::isLoadUrlEmpty () {
+bool ImageWindow::isImageUrlEmpty () {
 	return (imageUrl.empty ());
 }
 

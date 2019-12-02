@@ -278,6 +278,8 @@ void ServerUi::doUpdate (int msElapsed) {
 				server->syncRecordStore ();
 				store->unlock ();
 
+				agentcontrol->checkAgentUpdates (id);
+
 				App::instance->prefsMap.find (App::ServerUiUnexpandedAgentsKey, &items);
 				pos = items.indexOf (id);
 				if (pos < 0) {
@@ -572,20 +574,21 @@ void ServerUi::serverAttachActionClicked (void *uiPtr, Widget *widgetPtr) {
 void ServerUi::serverCheckForUpdatesActionClicked (void *uiPtr, Widget *widgetPtr) {
 	ServerUi *ui;
 	ServerWindow *server;
-	StdString url;
 	int result;
 
 	ui = (ServerUi *) uiPtr;
 	server = (ServerWindow *) widgetPtr;
+	if (server->updateUrl.empty ()) {
+		return;
+	}
 
 	ui->clearPopupWidgets ();
-	url.assign (App::getUpdateUrl (server->applicationId));
-	result = OsUtil::openUrl (url);
+	result = OsUtil::openUrl (server->updateUrl);
 	if (result != Result::Success) {
 		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::openUpdateUrlError));
 	}
 	else {
-		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::launchedWebBrowser).capitalized ().c_str (), url.c_str ()));
+		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::launchedWebBrowser).capitalized ().c_str (), App::serverUrl.c_str ()));
 	}
 }
 

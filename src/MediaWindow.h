@@ -54,7 +54,7 @@ public:
 	StdString mediaPath;
 	StdString thumbnailPath;
 	StdString hlsStreamPath;
-	StdString dashHtml5Path;
+	StdString htmlPlayerPath;
 	int thumbnailCount;
 	int mediaWidth, mediaHeight;
 	float mediaDuration;
@@ -106,6 +106,7 @@ public:
 	// Callback functions
 	static void mediaImageClicked (void *windowPtr, Widget *widgetPtr);
 	static void mediaImageLoaded (void *windowPtr, Widget *widgetPtr);
+	static void mediaImageLongPressed (void *windowPtr, Widget *widgetPtr);
 	static void viewButtonClicked (void *windowPtr, Widget *widgetPtr);
 	static bool matchStreamSourceId (void *idStringPtr, Json *record);
 

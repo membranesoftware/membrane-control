@@ -154,7 +154,7 @@ ServerWindow::ServerWindow (const StdString &agentId)
 	checkForUpdatesButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::UpdateButtonSprite)));
 	checkForUpdatesButton->setMouseClickCallback (ServerWindow::checkForUpdatesButtonClicked, this);
 	checkForUpdatesButton->setImageColor (uiconfig->flatButtonTextColor);
-	checkForUpdatesButton->setMouseHoverTooltip (uitext->getText (UiTextString::checkForUpdates).capitalized ());
+	checkForUpdatesButton->setMouseHoverTooltip (uitext->getText (UiTextString::updateServerTooltip));
 	checkForUpdatesButton->isVisible = false;
 
 	adminButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::AgentAdminButtonSprite)));
@@ -253,13 +253,6 @@ void ServerWindow::syncRecordStore () {
 		isRecordLoaded = true;
 		version = interface->getCommandStringParam (record, "version", "");
 		platform = interface->getCommandStringParam (record, "platform", "");
-		if (! version.empty ()) {
-			applicationId.assign (version);
-			if (! platform.empty ()) {
-				applicationId.appendSprintf ("_%s", platform.c_str ());
-			}
-		}
-
 		agentDisplayName = interface->getCommandAgentName (record);
 		nameLabel->setText (agentDisplayName);
 		descriptionLabel->setText (interface->getCommandStringParam (record, "applicationName", ""));
@@ -268,10 +261,16 @@ void ServerWindow::syncRecordStore () {
 		taskCountIcon->setMouseHoverTooltip (uitext->getCountText (agentTaskCount, UiTextString::taskInProgress, UiTextString::tasksInProgress));
 
 		if (! interface->getCommandBooleanParam (record, "isEnabled", false)) {
-			isAgentDisabled = true;
+			if (! isAgentDisabled) {
+				isAgentDisabled = true;
+				statusTextString = -1;
+			}
 		}
 		else {
-			isAgentDisabled = false;
+			if (isAgentDisabled) {
+				isAgentDisabled = false;
+				statusTextString = -1;
+			}
 		}
 
 		statsWindow->setItem (uitext->getText (UiTextString::version).capitalized (), interface->getCommandStringParam (record, "version", ""));
@@ -338,6 +337,8 @@ void ServerWindow::syncRecordStore () {
 				break;
 			}
 		}
+
+		updateUrl = agentcontrol->getAgentUpdateUrl (agentId);
 	}
 
 	resetVisibility ();
@@ -376,7 +377,7 @@ void ServerWindow::resetVisibility () {
 		statusIcon->isVisible = true;
 		statsWindow->isVisible = isRecordLoaded;
 		taskCountIcon->isVisible = isRecordLoaded && (agentTaskCount > 0);
-		checkForUpdatesButton->isVisible = (checkForUpdatesClickCallback && isRecordLoaded && (! applicationId.empty ()));
+		checkForUpdatesButton->isVisible = (checkForUpdatesClickCallback && isRecordLoaded && (! updateUrl.empty ()));
 		adminButton->isVisible = adminClickCallback && isRecordLoaded;
 		detachButton->isVisible = detachClickCallback ? true : false;
 		removeButton->isVisible = removeClickCallback ? true : false;

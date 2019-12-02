@@ -275,7 +275,7 @@ int App::run () {
 		return (result);
 	}
 
-	network.httpUserAgent.sprintf ("membrane-control/%s_%s", BUILD_ID, PLATFORM_ID);
+	network.httpUserAgent.sprintf ("Membrane Control/%s_%s", BUILD_ID, PLATFORM_ID);
 	result = network.start (prefsMap.find (App::NetworkThreadsKey, Network::defaultRequestThreadCount));
 	if (result != Result::Success) {
 		Log::err ("Failed to acquire application network resources; err=%i", result);
@@ -481,6 +481,7 @@ void App::populateWidgets () {
 		rootPanel->retain ();
 		rootPanel->id = getUniqueId ();
 		rootPanel->setFixedSize (true, windowWidth, windowHeight);
+		rootPanel->setKeyEventCallback (App::keyEvent, NULL);
 	}
 	uiStack.populateWidgets ();
 }
@@ -795,6 +796,31 @@ void App::update (int msElapsed) {
 	}
 }
 
+bool App::keyEvent (void *ptr, SDL_Keycode keycode, bool isShiftDown, bool isControlDown) {
+	if (isControlDown) {
+		switch (keycode) {
+			case SDLK_q: {
+				App::instance->shutdown ();
+				return (true);
+			}
+			case SDLK_s: {
+				App::instance->uiStack.toggleSettingsWindow ();
+				return (true);
+			}
+			case SDLK_h: {
+				App::instance->uiStack.toggleHelpWindow ();
+				return (true);
+			}
+		}
+	}
+
+	if (App::instance->uiStack.processKeyEvent (keycode, isShiftDown, isControlDown)) {
+		return (true);
+	}
+
+	return (false);
+}
+
 int64_t App::getUniqueId () {
 	int64_t id;
 
@@ -1103,13 +1129,21 @@ StdString App::getFeedbackUrl (bool shouldIncludeVersion) {
 
 StdString App::getUpdateUrl (const StdString &applicationId) {
 	if (! applicationId.empty ()) {
-		return (StdString::createSprintf ("%supdate/%s", App::serverUrl.c_str (), applicationId.c_str ()));
+		return (StdString::createSprintf ("%supdate/%s", App::serverUrl.c_str (), applicationId.urlEncoded ().c_str ()));
 	}
 
 	return (StdString::createSprintf ("%supdate/%s_%s", App::serverUrl.c_str (), StdString (BUILD_ID).urlEncoded ().c_str (), StdString (PLATFORM_ID).urlEncoded ().c_str ()));
 }
 
-StdString App::getApplicationNewsUrl () {
+bool App::isUpdateUrl (const StdString &url) {
+	return (url.startsWith (StdString::createSprintf ("%supdate/", App::serverUrl.c_str ())));
+}
+
+StdString App::getApplicationNewsUrl (const StdString &applicationId) {
+	if (! applicationId.empty ()) {
+		return (StdString::createSprintf ("%sapplication-news/%s", App::serverUrl.c_str (), applicationId.urlEncoded ().c_str ()));
+	}
+
 	return (StdString::createSprintf ("%sapplication-news/%s_%s_%s", App::serverUrl.c_str (), StdString (BUILD_ID).urlEncoded ().c_str (), StdString (PLATFORM_ID).urlEncoded ().c_str (), OsUtil::getEnvLanguage ("en").urlEncoded ().c_str ()));
 }
 

@@ -203,22 +203,7 @@ bool Ui::keyEvent (void *uiPtr, SDL_Keycode keycode, bool isShiftDown, bool isCo
 }
 
 bool Ui::processKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown) {
-	if (isControlDown) {
-		switch (keycode) {
-			case SDLK_s: {
-				App::instance->uiStack.toggleSettingsWindow ();
-				return (true);
-			}
-			case SDLK_h: {
-				App::instance->uiStack.toggleHelpWindow ();
-				return (true);
-			}
-			case SDLK_q: {
-				App::instance->shutdown ();
-				return (true);
-			}
-		}
-	}
+	// Base class method takes no action
 
 	return (doProcessKeyEvent (keycode, isShiftDown, isControlDown));
 }
@@ -241,6 +226,7 @@ void Ui::resume () {
 	rootPanel->position.assign (0.0f, 0.0f);
 	rootPanel->setFixedSize (true, App::instance->windowWidth, App::instance->windowHeight);
 	rootPanel->resetInputState ();
+	rootPanel->isInputSuspended = false;
 	App::instance->rootPanel->addWidget (rootPanel);
 
 	setLinkConnected (true);

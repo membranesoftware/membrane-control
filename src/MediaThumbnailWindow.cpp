@@ -67,12 +67,14 @@ MediaThumbnailWindow::MediaThumbnailWindow (int thumbnailIndex, float thumbnailT
 
 	thumbnailImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
 	thumbnailImage->setLoadSprite (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
-	thumbnailImage->setLoadUrl (sourceUrl);
+	thumbnailImage->setMouseLongPressCallback (MediaThumbnailWindow::thumbnailImageLongPressed, this);
+	thumbnailImage->setImageUrl (sourceUrl);
 
 	timestampLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->inverseTextColor)));
 	timestampLabel->zLevel = 1;
 	timestampLabel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	timestampLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
+	timestampLabel->isInputSuspended = true;
 	timestampLabel->isVisible = false;
 	if (thumbnailTimestamp >= 0.0f) {
 		timestampLabel->setText (OsUtil::getDurationString ((int64_t) thumbnailTimestamp, OsUtil::HoursUnit));
@@ -168,4 +170,11 @@ void MediaThumbnailWindow::doProcessMouseState (const Widget::MouseState &mouseS
 			timestampLabel->isVisible = false;
 		}
 	}
+}
+
+void MediaThumbnailWindow::thumbnailImageLongPressed (void *windowPtr, Widget *widgetPtr) {
+	ImageWindow *image;
+
+	image = (ImageWindow *) widgetPtr;
+	App::instance->uiStack.showImageDialog (image->imageUrl);
 }

@@ -242,11 +242,17 @@ public:
 	// Return the URL that should be used for updates targeting the specified application ID, or the current application if no ID value is provided
 	static StdString getUpdateUrl (const StdString &applicationId = StdString (""));
 
-	// Return the URL that should be used for retrieving news related to the current application
-	static StdString getApplicationNewsUrl ();
+	// Return a boolean value indicating if the provided string contains an application update URL
+	static bool isUpdateUrl (const StdString &url);
+
+	// Return the URL that should be used for retrieving news related to the specified application ID, or the current application if no ID value is provided
+	static StdString getApplicationNewsUrl (const StdString &applicationId = StdString (""));
 
 	// Return the URL that should be used for the Membrane Software donation page
 	static StdString getDonateUrl ();
+
+	// Callback functions
+	static bool keyEvent (void *ptr, SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
 
 private:
 	// Create the root panel and other top-level widgets

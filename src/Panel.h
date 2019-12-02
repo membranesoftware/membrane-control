@@ -45,6 +45,8 @@ public:
 	Panel ();
 	virtual ~Panel ();
 
+	static const int longPressDuration; // ms
+
 	// Constants to use for layout types
 	enum {
 		VerticalLayout = 0,
@@ -185,6 +187,7 @@ protected:
 	int lastMouseRightUpCount, lastMouseRightDownCount;
 	int lastMouseWheelUpCount, lastMouseWheelDownCount;
 	int lastMouseDownX, lastMouseDownY;
+	int64_t lastMouseDownTime;
 	int cornerCenterDx, cornerCenterDy, cornerCenterDw, cornerCenterDh;
 	int cornerTopDx, cornerTopDy, cornerTopDw, cornerTopDh;
 	int cornerLeftDx, cornerLeftDy, cornerLeftDw, cornerLeftDh;

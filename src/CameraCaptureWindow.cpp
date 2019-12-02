@@ -85,6 +85,7 @@ CameraCaptureWindow::CameraCaptureWindow (Json *agentStatus)
 
 	thumbnailImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
 	thumbnailImage->setLoadSprite (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
+	thumbnailImage->setMouseLongPressCallback (CameraCaptureWindow::thumbnailImageLongPressed, this);
 
 	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::BodyFont, uiconfig->primaryTextColor));
 	nameLabel->isInputSuspended = true;
@@ -168,7 +169,7 @@ void CameraCaptureWindow::setLayout (int layoutType, float maxPanelWidth) {
 	h = floorf (h);
 	thumbnailImage->setWindowSize (w, h);
 	if (hasCaptureImage ()) {
-		thumbnailImage->setLoadUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetCaptureImage, SystemInterface::Constant_Camera), captureImagePath));
+		thumbnailImage->setImageUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetCaptureImage, SystemInterface::Constant_Camera), captureImagePath));
 	}
 	thumbnailImage->reload ();
 
@@ -294,4 +295,11 @@ void CameraCaptureWindow::viewButtonClicked (void *windowPtr, Widget *widgetPtr)
 	if (window->viewButtonClickCallback) {
 		window->viewButtonClickCallback (window->viewButtonClickCallbackData, window);
 	}
+}
+
+void CameraCaptureWindow::thumbnailImageLongPressed (void *windowPtr, Widget *widgetPtr) {
+	ImageWindow *image;
+
+	image = (ImageWindow *) widgetPtr;
+	App::instance->uiStack.showImageDialog (image->imageUrl);
 }

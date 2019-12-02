@@ -99,6 +99,7 @@ public:
 
 	// Callback functions
 	static void screenshotImageLoaded (void *windowPtr, Widget *widgetPtr);
+	static void screenshotImageLongPressed (void *windowPtr, Widget *widgetPtr);
 	static void menuButtonClicked (void *windowPtr, Widget *widgetPtr);
 	static void selectToggleStateChanged (void *windowPtr, Widget *widgetPtr);
 	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);

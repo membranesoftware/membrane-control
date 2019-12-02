@@ -219,7 +219,7 @@ void StreamWindow::setThumbnailIndex (int index) {
 		params = new Json ();
 		params->set ("id", streamId);
 		params->set ("thumbnailIndex", thumbnailIndex);
-		streamImage->setLoadUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetThumbnailImage, SystemInterface::Constant_Stream, params), thumbnailPath));
+		streamImage->setImageUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetThumbnailImage, SystemInterface::Constant_Stream, params), thumbnailPath));
 	}
 }
 
@@ -300,7 +300,7 @@ void StreamWindow::syncRecordStore () {
 
 	detailText->setText (StdString::createSprintf ("%ix%i  %s  %s", frameWidth, frameHeight, MediaUtil::getBitrateDisplayString (bitrate).c_str (), OsUtil::getDurationDisplayString (duration).c_str ()));
 
-	if (streamImage->isLoadUrlEmpty () && (segmentCount > 0) && (! thumbnailPath.empty ())) {
+	if (streamImage->isImageUrlEmpty () && (segmentCount > 0) && (! thumbnailPath.empty ())) {
 		setThumbnailIndex (segmentCount / 8);
 	}
 

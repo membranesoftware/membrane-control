@@ -321,7 +321,7 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 		}
 		actionWindow->addOption (uitext->getText (UiTextString::mediaScanPeriod).capitalized (), slider, uitext->getText (UiTextString::mediaScanPeriodDescription));
 	}
-	if (interface->getCommandObjectParam (&agentConfiguration, "streamServerConfiguration", &cfg)) {
+	else if (interface->getCommandObjectParam (&agentConfiguration, "streamServerConfiguration", &cfg)) {
 		if (interface->isWindowsPlatform (agentPlatform)) {
 			prompt = uitext->getText (UiTextString::streamDataPathPromptWindows);
 		}
@@ -438,8 +438,12 @@ void AgentConfigurationWindow::applyButtonClicked (void *windowPtr, Widget *widg
 		}
 		cfg->set ("scanPeriod", period);
 		agentconfig->set ("mediaServerConfiguration", cfg);
+
+		cfg = new Json ();
+		cfg->set ("dataPath", action->getStringValue (uitext->getText (UiTextString::mediaDataPath), ""));
+		agentconfig->set ("streamServerConfiguration", cfg);
 	}
-	if (interface->getCommandObjectParam (&(window->agentConfiguration), "streamServerConfiguration", NULL)) {
+	else if (interface->getCommandObjectParam (&(window->agentConfiguration), "streamServerConfiguration", NULL)) {
 		cfg = new Json ();
 		cfg->set ("dataPath", action->getStringValue (uitext->getText (UiTextString::streamDataPath), ""));
 		agentconfig->set ("streamServerConfiguration", cfg);

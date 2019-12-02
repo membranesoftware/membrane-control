@@ -147,6 +147,7 @@ void AgentControl::stop () {
 
 	SDL_LockMutex (agentMapMutex);
 	agentMap.clear ();
+	agentUpdateUrlMap.clear ();
 	SDL_UnlockMutex (agentMapMutex);
 }
 
@@ -621,6 +622,78 @@ void AgentControl::refreshAgentStatus (StringList *agentIdList, const StdString 
 		refreshAgentStatus ((*i), queueId);
 		++i;
 	}
+}
+
+void AgentControl::checkAgentUpdates (const StdString &agentId) {
+	std::map<StdString, Agent>::iterator pos;
+	StdString newsurl;
+	bool shouldrequest;
+
+	shouldrequest = false;
+	SDL_LockMutex (agentMapMutex);
+	pos = agentMap.find (agentId);
+	if (pos != agentMap.end ()) {
+		newsurl = pos->second.getApplicationNewsUrl ();
+		if ((! newsurl.empty ()) && (! agentUpdateUrlMap.exists (newsurl))) {
+			shouldrequest = true;
+			agentUpdateUrlMap.insert (newsurl, "");
+		}
+	}
+	SDL_UnlockMutex (agentMapMutex);
+
+	if (shouldrequest && (! newsurl.empty ())) {
+		App::instance->network.sendHttpGet (newsurl, AgentControl::getApplicationNewsComplete, this);
+	}
+}
+
+void AgentControl::getApplicationNewsComplete (void *agentControlPtr, const StdString &targetUrl, int statusCode, SharedBuffer *responseData) {
+	AgentControl *agentcontrol;
+	SystemInterface *interface;
+	StdString resp;
+	Json *cmd, *item;
+	StdString url;
+	int i, count;
+
+	agentcontrol = (AgentControl *) agentControlPtr;
+	interface = &(App::instance->systemInterface);
+	cmd = NULL;
+	resp.assignBuffer (responseData);
+	if (App::instance->systemInterface.parseCommand (resp, &cmd)) {
+		if (interface->getCommandId (cmd) == SystemInterface::CommandId_ApplicationNews) {
+			count = interface->getCommandArrayLength (cmd, "items");
+			for (i = 0; i < count; ++i) {
+				item = new Json ();
+				if (interface->getCommandObjectArrayItem (cmd, "items", i, item)) {
+					url = item->getString ("actionTarget", "");
+					if (App::isUpdateUrl (url)) {
+						SDL_LockMutex (agentcontrol->agentMapMutex);
+						agentcontrol->agentUpdateUrlMap.insert (targetUrl, url);
+						SDL_UnlockMutex (agentcontrol->agentMapMutex);
+						App::instance->shouldSyncRecordStore = true;
+					}
+				}
+				delete (item);
+			}
+		}
+		delete (cmd);
+	}
+}
+
+StdString AgentControl::getAgentUpdateUrl (const StdString &agentId) {
+	std::map<StdString, Agent>::iterator pos;
+	StdString newsurl, updateurl;
+
+	SDL_LockMutex (agentMapMutex);
+	pos = agentMap.find (agentId);
+	if (pos != agentMap.end ()) {
+		newsurl = pos->second.getApplicationNewsUrl ();
+		if (! newsurl.empty ()) {
+			updateurl = agentUpdateUrlMap.find (newsurl, "");
+		}
+	}
+	SDL_UnlockMutex (agentMapMutex);
+
+	return (updateurl);
 }
 
 void AgentControl::removeAgent (const StdString &agentId) {

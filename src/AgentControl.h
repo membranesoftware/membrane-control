@@ -37,6 +37,8 @@
 #include "SDL2/SDL.h"
 #include "StdString.h"
 #include "StringList.h"
+#include "HashMap.h"
+#include "SharedBuffer.h"
 #include "Json.h"
 #include "RecordStore.h"
 #include "Agent.h"
@@ -147,6 +149,12 @@ public:
 	// Invoke the GetStatus command from agents with IDs in the provided list, and update their records if successful
 	void refreshAgentStatus (StringList *agentIdList, const StdString &queueId = StdString (""));
 
+	// Execute operations as needed to check if the specified agent has a newer application available
+	void checkAgentUpdates (const StdString &agentId);
+
+	// Return the update URL for the specified agent, or an empty string if no update URL is available
+	StdString getAgentUpdateUrl (const StdString &agentId);
+
 	// Remove any previously stored records associated with the specified agent
 	void removeAgent (const StdString &agentId);
 
@@ -189,6 +197,7 @@ public:
 	static void linkClientDisconnect (void *agentControlPtr, const StdString &agentId, const StdString &errorDescription);
 	static void linkClientCommand (void *agentControlPtr, const StdString &agentId, Json *command);
 	static void invokeGetStatusComplete (void *agentControlPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
+	static void getApplicationNewsComplete (void *agentControlPtr, const StdString &targetUrl, int statusCode, SharedBuffer *responseData);
 	static void hashUpdate (void *contextPtr, unsigned char *data, int dataLength);
 	static StdString hashDigest (void *contextPtr);
 
@@ -217,6 +226,7 @@ private:
 	LinkClient linkClient;
 
 	std::map<StdString, Agent> agentMap;
+	HashMap agentUpdateUrlMap;
 	SDL_mutex *agentMapMutex;
 
 	std::map<StdString, CommandList *> commandMap;

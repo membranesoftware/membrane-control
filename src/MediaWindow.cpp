@@ -100,6 +100,7 @@ MediaWindow::MediaWindow (Json *mediaItem)
 	mediaImage->setLoadSprite (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
 	mediaImage->setMouseClickCallback (MediaWindow::mediaImageClicked, this);
 	mediaImage->setLoadCallback (MediaWindow::mediaImageLoaded, this);
+	mediaImage->setMouseLongPressCallback (MediaWindow::mediaImageLongPressed, this);
 
 	nameLabel = (Label *) addWidget (new Label (mediaName, UiConfiguration::BodyFont, uiconfig->primaryTextColor));
 	nameLabel->isInputSuspended = true;
@@ -230,7 +231,7 @@ bool MediaWindow::hasThumbnails () {
 void MediaWindow::setThumbnail (const StdString &imageUrl, int thumbnailIndex) {
 	if (! imageUrl.empty ()) {
 		playThumbnailUrl.assign (imageUrl);
-		mediaImage->setLoadUrl (playThumbnailUrl);
+		mediaImage->setImageUrl (playThumbnailUrl);
 	}
 	if (thumbnailIndex >= 0) {
 		playThumbnailIndex = thumbnailIndex;
@@ -241,7 +242,7 @@ void MediaWindow::syncRecordStore () {
 	RecordStore *store;
 	SystemInterface *interface;
 	Json *mediaitem, *agentstatus, serverstatus, *streamitem, *params;
-	StdString agentid, recordid, agentname, hlspath, dashpath;
+	StdString agentid, recordid, agentname, hlspath, htmlpath;
 
 	store = &(App::instance->agentControl.recordStore);
 	interface = &(App::instance->systemInterface);
@@ -278,7 +279,7 @@ void MediaWindow::syncRecordStore () {
 		streamAgentName.assign ("");
 		streamThumbnailPath.assign ("");
 		hlsStreamPath.assign ("");
-		dashHtml5Path.assign ("");
+		htmlPlayerPath.assign ("");
 		streamIconImage->isVisible = false;
 	}
 	else {
@@ -292,13 +293,13 @@ void MediaWindow::syncRecordStore () {
 				agentname = interface->getCommandAgentName (agentstatus);
 				if (interface->getCommandObjectParam (agentstatus, "streamServerStatus", &serverstatus)) {
 					hlspath = serverstatus.getString ("hlsStreamPath", "");
-					dashpath = serverstatus.getString ("dashHtml5Path", "");
+					htmlpath = serverstatus.getString ("htmlPlayerPath", "");
 					streamThumbnailPath = serverstatus.getString ("thumbnailPath", "");
 				}
 			}
 		}
 
-		if (recordid.empty () || agentid.empty () || agentname.empty () || hlspath.empty () || dashpath.empty ()) {
+		if (recordid.empty () || agentid.empty () || agentname.empty () || hlspath.empty () || htmlpath.empty ()) {
 			streamIconImage->isVisible = false;
 		}
 		else {
@@ -306,7 +307,7 @@ void MediaWindow::syncRecordStore () {
 			streamAgentId.assign (agentid);
 			streamAgentName.assign (agentname);
 			hlsStreamPath.assign (hlspath);
-			dashHtml5Path.assign (dashpath);
+			htmlPlayerPath.assign (htmlpath);
 			streamIconImage->isVisible = true;
 		}
 	}
@@ -318,7 +319,7 @@ void MediaWindow::syncRecordStore () {
 		createStreamUnavailableIconImage->isVisible = true;
 	}
 
-	if (hasThumbnails () && mediaImage->isLoadUrlEmpty ()) {
+	if (hasThumbnails () && mediaImage->isImageUrlEmpty ()) {
 		if (streamitem) {
 			playThumbnailIndex = interface->getCommandNumberParam (streamitem, "segmentCount", (int) 0) / 4;
 		}
@@ -326,7 +327,7 @@ void MediaWindow::syncRecordStore () {
 		params->set ("id", mediaId);
 		params->set ("thumbnailIndex", (thumbnailCount / 4));
 		playThumbnailUrl = App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetThumbnailImage, SystemInterface::Constant_Media, params), thumbnailPath);
-		mediaImage->setLoadUrl (playThumbnailUrl);
+		mediaImage->setImageUrl (playThumbnailUrl);
 	}
 
 	shouldRefreshTexture = true;
@@ -481,6 +482,13 @@ void MediaWindow::mediaImageClicked (void *windowPtr, Widget *widgetPtr) {
 	if (window->mediaImageClickCallback) {
 		window->mediaImageClickCallback (window->mediaImageClickCallbackData, window);
 	}
+}
+
+void MediaWindow::mediaImageLongPressed (void *windowPtr, Widget *widgetPtr) {
+	ImageWindow *image;
+
+	image = (ImageWindow *) widgetPtr;
+	App::instance->uiStack.showImageDialog (image->imageUrl);
 }
 
 void MediaWindow::mediaImageLoaded (void *windowPtr, Widget *widgetPtr) {
