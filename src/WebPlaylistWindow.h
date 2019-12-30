@@ -50,7 +50,7 @@
 
 class WebPlaylistWindow : public Panel {
 public:
-	WebPlaylistWindow ();
+	WebPlaylistWindow (SpriteGroup *webKioskUiSpriteGroup);
 	virtual ~WebPlaylistWindow ();
 
 	static const float windowWidthMultiplier;
@@ -58,23 +58,22 @@ public:
 
 	// Read-write data members
 	StdString itemId;
+	Widget::EventCallbackContext selectStateChangeCallback;
+	Widget::EventCallbackContext expandStateChangeCallback;
+	Widget::EventCallbackContext nameClickCallback;
+	Widget::EventCallbackContext urlListChangeCallback;
+	Widget::EventCallbackContext removeClickCallback;
+	Widget::EventCallbackContext addItemClickCallback;
+	Widget::EventCallbackContext addItemMouseEnterCallback;
+	Widget::EventCallbackContext addItemMouseExitCallback;
 
 	// Read-only data members
 	bool isSelected;
 	bool isExpanded;
 	StdString playlistName;
-
-	// Set a callback that should be invoked when the select toggle's checked state changes
-	void setSelectStateChangeCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback that should be invoked when the expand toggle's checked state changes
-	void setExpandStateChangeCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback that should be invoked when the window's name is clicked
-	void setNameClickCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback that should be invoked when the window's URL list is changed
-	void setUrlListChangeCallback (Widget::EventCallback callback, void *callbackData);
+	float addItemButtonX1;
+	float addItemButtonX2;
+	float addItemButtonY;
 
 	// Set the window's selected state, then execute any select state change callback that might be configured unless shouldSkipStateChangeCallback is true
 	void setSelected (bool selected, bool shouldSkipStateChangeCallback = false);
@@ -112,6 +111,10 @@ public:
 	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
 	static void urlListChanged (void *windowPtr, Widget *widgetPtr);
 	static StdString itemDisplayDurationSliderValueName (float sliderValue);
+	static void removeButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void addItemButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void addItemButtonMouseEntered (void *windowPtr, Widget *widgetPtr);
+	static void addItemButtonMouseExited (void *windowPtr, Widget *widgetPtr);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
@@ -138,24 +141,19 @@ private:
 	// Return the item display duration value indicated by the associated slider control, in seconds
 	int getItemDisplayDuration ();
 
+	SpriteGroup *sprites;
 	float windowWidth;
 	Image *iconImage;
 	LabelWindow *nameLabel;
 	IconLabelWindow *urlCountLabel;
 	ToggleWindow *shuffleToggle;
-	Label *itemDisplayDurationLabel;
+	Image *itemDisplayDurationIcon;
 	SliderWindow *itemDisplayDurationSlider;
 	ListView *urlListView;
 	Toggle *selectToggle;
 	Toggle *expandToggle;
-	Widget::EventCallback selectStateChangeCallback;
-	void *selectStateChangeCallbackData;
-	Widget::EventCallback expandStateChangeCallback;
-	void *expandStateChangeCallbackData;
-	Widget::EventCallback nameClickCallback;
-	void *nameClickCallbackData;
-	Widget::EventCallback urlListChangeCallback;
-	void *urlListChangeCallbackData;
+	Button *removeButton;
+	Button *addItemButton;
 };
 
 #endif

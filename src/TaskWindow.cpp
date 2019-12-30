@@ -68,7 +68,7 @@ TaskWindow::TaskWindow (const StdString &taskId)
 	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	progressBar = (ProgressBar *) addWidget (new ProgressBar (((float) App::instance->windowWidth) * 0.16f, uiconfig->progressBarHeight));
 
-	deleteButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
+	deleteButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
 	deleteButton->setMouseClickCallback (TaskWindow::deleteButtonClicked, this);
 	deleteButton->setImageColor (uiconfig->flatButtonTextColor);
 	deleteButton->isVisible = false;

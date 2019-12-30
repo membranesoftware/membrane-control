@@ -129,7 +129,7 @@ void StreamItemUi::doAddMainToolbarItems (Toolbar *toolbar) {
 
 	uitext = &(App::instance->uiText);
 
-	button = new Button (StdString (""), App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::SelectImageSizeButtonSprite));
+	button = new Button (App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::SelectImageSizeButtonSprite));
 	button->setInverseColor (true);
 	button->setMouseClickCallback (StreamItemUi::imageSizeButtonClicked, this);
 	button->setMouseHoverTooltip (uitext->getText (UiTextString::thumbnailImageSizeTooltip));

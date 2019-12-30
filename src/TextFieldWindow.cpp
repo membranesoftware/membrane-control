@@ -82,35 +82,35 @@ TextFieldWindow::TextFieldWindow (float windowWidth, const StdString &promptText
 		iconImage->setWindowSize (image->width + uiconfig->paddingSize, textField->height);
 	}
 
-	enterButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::EnterTextButtonSprite)));
+	enterButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::EnterTextButtonSprite)));
 	enterButton->zLevel = 1;
 	enterButton->setInverseColor (true);
 	enterButton->setMouseClickCallback (TextFieldWindow::enterButtonClicked, this);
 	enterButton->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldEnterTooltip));
 	enterButton->isVisible = false;
 
-	cancelButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::CancelButtonSprite)));
+	cancelButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::CancelButtonSprite)));
 	cancelButton->zLevel = 1;
 	cancelButton->setInverseColor (true);
 	cancelButton->setMouseClickCallback (TextFieldWindow::cancelButtonClicked, this);
 	cancelButton->setMouseHoverTooltip (uitext->getText (UiTextString::cancel).capitalized ());
 	cancelButton->isVisible = false;
 
-	pasteButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::PasteButtonSprite)));
+	pasteButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::PasteButtonSprite)));
 	pasteButton->zLevel = 1;
 	pasteButton->setMouseClickCallback (TextFieldWindow::pasteButtonClicked, this);
 	pasteButton->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldPasteTooltip));
 	pasteButton->isFocusDropShadowDisabled = true;
 	pasteButton->isVisible = false;
 
-	clearButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::ClearButtonSprite)));
+	clearButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::ClearButtonSprite)));
 	clearButton->zLevel = 1;
 	clearButton->setMouseClickCallback (TextFieldWindow::clearButtonClicked, this);
 	clearButton->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldClearTooltip));
 	clearButton->isFocusDropShadowDisabled = true;
 	clearButton->isVisible = false;
 
-	randomizeButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::RandomizeButtonSprite)));
+	randomizeButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::RandomizeButtonSprite)));
 	randomizeButton->zLevel = 1;
 	randomizeButton->setMouseClickCallback (TextFieldWindow::randomizeButtonClicked, this);
 	randomizeButton->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldRandomizeTooltip));

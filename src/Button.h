@@ -41,7 +41,7 @@
 
 class Button : public Panel {
 public:
-	Button (const StdString &labelText = StdString (""), Sprite *sprite = NULL, bool shouldDestroySprite = false);
+	Button (Sprite *sprite = NULL, const StdString &labelText = StdString (""));
 	virtual ~Button ();
 
 	static const float focusTextOffset;

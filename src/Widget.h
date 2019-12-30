@@ -40,9 +40,21 @@
 class Widget {
 public:
 	typedef void (*FreeFunction) (void *data);
+	typedef void (*UpdateCallback) (int msElapsed, Widget *widget);
 	typedef void (*EventCallback) (void *data, Widget *widget);
 	typedef bool (*KeyEventCallback) (void *data, SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
-	typedef void (*UpdateCallback) (int msElapsed, Widget *widget);
+	struct EventCallbackContext {
+		Widget::EventCallback callback;
+		void *callbackData;
+		EventCallbackContext (): callback (NULL), callbackData (NULL) { }
+		EventCallbackContext (Widget::EventCallback callback, void *callbackData): callback (callback), callbackData (callbackData) { }
+	};
+	struct KeyEventCallbackContext {
+		Widget::KeyEventCallback callback;
+		void *callbackData;
+		KeyEventCallbackContext (): callback (NULL), callbackData (NULL) { }
+		KeyEventCallbackContext (Widget::KeyEventCallback callback, void *callbackData): callback (callback), callbackData (callbackData) { }
+	};
 
 	Widget ();
 	virtual ~Widget ();

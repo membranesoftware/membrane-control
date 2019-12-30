@@ -50,9 +50,10 @@
 #include "Button.h"
 #include "TextArea.h"
 #include "CardView.h"
+#include "MediaUi.h"
 #include "MediaWindow.h"
 
-MediaWindow::MediaWindow (Json *mediaItem)
+MediaWindow::MediaWindow (Json *mediaItem, SpriteGroup *mediaUiSpriteGroup)
 : Panel ()
 , thumbnailCount (0)
 , mediaWidth (0)
@@ -61,24 +62,22 @@ MediaWindow::MediaWindow (Json *mediaItem)
 , mediaFrameRate (0.0f)
 , mediaSize (0)
 , mediaBitrate (0)
+, isCreateStreamAvailable (true)
+, streamSize (0)
 , playThumbnailIndex (0)
 , displayTimestamp (-1.0f)
 , isSelected (false)
+, sprites (mediaUiSpriteGroup)
 , mediaImage (NULL)
 , nameLabel (NULL)
 , detailText (NULL)
 , mouseoverLabel (NULL)
 , detailNameLabel (NULL)
 , viewButton (NULL)
+, browserPlayButton (NULL)
 , timestampLabel (NULL)
 , streamIconImage (NULL)
 , createStreamUnavailableIconImage (NULL)
-, mediaImageClickCallback (NULL)
-, mediaImageClickCallbackData (NULL)
-, viewButtonClickCallback (NULL)
-, viewButtonClickCallbackData (NULL)
-, selectStateChangeCallback (NULL)
-, selectStateChangeCallbackData (NULL)
 {
 	SystemInterface *interface;
 	UiConfiguration *uiconfig;
@@ -126,13 +125,22 @@ MediaWindow::MediaWindow (Json *mediaItem)
 	detailNameLabel->isInputSuspended = true;
 	detailNameLabel->isVisible = false;
 
-	viewButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::ImageButtonSprite)));
-	viewButton->zLevel = 3;
+	viewButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::ImageButtonSprite)));
+	viewButton->zLevel = 4;
 	viewButton->isTextureTargetDrawEnabled = false;
 	viewButton->setImageColor (uiconfig->flatButtonTextColor);
 	viewButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
 	viewButton->setMouseHoverTooltip (uitext->getText (UiTextString::viewTimelineImagesTooltip));
 	viewButton->setMouseClickCallback (MediaWindow::viewButtonClicked, this);
+
+	browserPlayButton = (Button *) addWidget (new Button (sprites->getSprite (MediaUi::BrowserPlayButtonSprite)));
+	browserPlayButton->zLevel = 4;
+	browserPlayButton->isTextureTargetDrawEnabled = false;
+	browserPlayButton->setImageColor (uiconfig->flatButtonTextColor);
+	browserPlayButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
+	browserPlayButton->setMouseHoverTooltip (uitext->getText (UiTextString::mediaUiBrowserPlayTooltip));
+	browserPlayButton->setMouseClickCallback (MediaWindow::browserPlayButtonClicked, this);
+	browserPlayButton->isVisible = false;
 
 	timestampLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->primaryTextColor)));
 	timestampLabel->zLevel = 2;
@@ -188,21 +196,6 @@ void MediaWindow::setDisplayTimestamp (float timestamp) {
 	refreshLayout ();
 }
 
-void MediaWindow::setMediaImageClickCallback (Widget::EventCallback callback, void *callbackData) {
-	mediaImageClickCallback = callback;
-	mediaImageClickCallbackData = callbackData;
-}
-
-void MediaWindow::setSelectStateChangeCallback (Widget::EventCallback callback, void *callbackData) {
-	selectStateChangeCallback = callback;
-	selectStateChangeCallbackData = callbackData;
-}
-
-void MediaWindow::setViewButtonClickCallback (Widget::EventCallback callback, void *callbackData) {
-	viewButtonClickCallback = callback;
-	viewButtonClickCallbackData = callbackData;
-}
-
 void MediaWindow::setSelected (bool selected, bool shouldSkipStateChangeCallback) {
 	UiConfiguration *uiconfig;
 
@@ -218,8 +211,8 @@ void MediaWindow::setSelected (bool selected, bool shouldSkipStateChangeCallback
 		setBorder (false);
 	}
 	refreshLayout ();
-	if (selectStateChangeCallback && (! shouldSkipStateChangeCallback)) {
-		selectStateChangeCallback (selectStateChangeCallbackData, this);
+	if (selectStateChangeCallback.callback && (! shouldSkipStateChangeCallback)) {
+		selectStateChangeCallback.callback (selectStateChangeCallback.callbackData, this);
 	}
 	shouldRefreshTexture = true;
 }
@@ -276,11 +269,13 @@ void MediaWindow::syncRecordStore () {
 	if (! streamitem) {
 		streamAgentId.assign ("");
 		streamId.assign ("");
+		streamSize = 0;
 		streamAgentName.assign ("");
 		streamThumbnailPath.assign ("");
 		hlsStreamPath.assign ("");
 		htmlPlayerPath.assign ("");
 		streamIconImage->isVisible = false;
+		browserPlayButton->isVisible = false;
 	}
 	else {
 		recordid = interface->getCommandRecordId (streamitem);
@@ -301,6 +296,7 @@ void MediaWindow::syncRecordStore () {
 
 		if (recordid.empty () || agentid.empty () || agentname.empty () || hlspath.empty () || htmlpath.empty ()) {
 			streamIconImage->isVisible = false;
+			browserPlayButton->isVisible = false;
 		}
 		else {
 			streamId.assign (recordid);
@@ -308,11 +304,14 @@ void MediaWindow::syncRecordStore () {
 			streamAgentName.assign (agentname);
 			hlsStreamPath.assign (hlspath);
 			htmlPlayerPath.assign (htmlpath);
+			streamSize = interface->getCommandNumberParam (streamitem, "size", (int64_t) 0);
 			streamIconImage->isVisible = true;
+			browserPlayButton->isVisible = true;
 		}
 	}
 
-	if (interface->getCommandBooleanParam (mediaitem, "isCreateStreamAvailable", true)) {
+	isCreateStreamAvailable = interface->getCommandBooleanParam (mediaitem, "isCreateStreamAvailable", true);
+	if (isCreateStreamAvailable) {
 		createStreamUnavailableIconImage->isVisible = false;
 	}
 	else {
@@ -377,7 +376,8 @@ void MediaWindow::refreshLayout () {
 			mouseoverLabel->position.assign (0.0f, 0.0f);
 
 			setFixedSize (true, mediaImage->width, mediaImage->height);
-			viewButton->position.assign (mediaImage->position.x + mediaImage->width - viewButton->width - uiconfig->dropShadowWidth, mediaImage->position.y, mediaImage->height - viewButton->height);
+			viewButton->position.assign (mediaImage->position.x + mediaImage->width - viewButton->width - uiconfig->dropShadowWidth, mediaImage->position.y + mediaImage->height - viewButton->height);
+			browserPlayButton->position.assign (mediaImage->position.x, mediaImage->position.y + mediaImage->height - browserPlayButton->height);
 			break;
 		}
 		case CardView::MediumDetail: {
@@ -399,7 +399,8 @@ void MediaWindow::refreshLayout () {
 				x += streamIconImage->width;
 			}
 
-			viewButton->position.assign (mediaImage->position.x + mediaImage->width - viewButton->width - uiconfig->dropShadowWidth, mediaImage->position.y, mediaImage->height - viewButton->height);
+			viewButton->position.assign (mediaImage->position.x + mediaImage->width - viewButton->width - uiconfig->dropShadowWidth, mediaImage->position.y + mediaImage->height - viewButton->height);
+			browserPlayButton->position.assign (mediaImage->position.x, mediaImage->position.y + mediaImage->height - browserPlayButton->height);
 
 			resetSize ();
 			setFixedSize (true, mediaImage->width, maxWidgetY + uiconfig->paddingSize);
@@ -424,7 +425,8 @@ void MediaWindow::refreshLayout () {
 			detailText->position.assign (x, mediaImage->position.y + mediaImage->height - detailText->height);
 			detailText->isVisible = true;
 			setFixedSize (true, mediaImage->width, mediaImage->height);
-			viewButton->position.assign (mediaImage->position.x + mediaImage->width - viewButton->width - uiconfig->dropShadowWidth, mediaImage->position.y, mediaImage->height - viewButton->height);
+			viewButton->position.assign (mediaImage->position.x + mediaImage->width - viewButton->width - uiconfig->dropShadowWidth, mediaImage->position.y + mediaImage->height - viewButton->height);
+			browserPlayButton->position.assign (mediaImage->position.x, mediaImage->position.y + mediaImage->height - browserPlayButton->height);
 			break;
 		}
 	}
@@ -479,8 +481,8 @@ void MediaWindow::mediaImageClicked (void *windowPtr, Widget *widgetPtr) {
 	MediaWindow *window;
 
 	window = (MediaWindow *) windowPtr;
-	if (window->mediaImageClickCallback) {
-		window->mediaImageClickCallback (window->mediaImageClickCallbackData, window);
+	if (window->mediaImageClickCallback.callback) {
+		window->mediaImageClickCallback.callback (window->mediaImageClickCallback.callbackData, window);
 	}
 }
 
@@ -502,7 +504,16 @@ void MediaWindow::viewButtonClicked (void *windowPtr, Widget *widgetPtr) {
 	MediaWindow *window;
 
 	window = (MediaWindow *) windowPtr;
-	if (window->viewButtonClickCallback) {
-		window->viewButtonClickCallback (window->viewButtonClickCallbackData, window);
+	if (window->viewButtonClickCallback.callback) {
+		window->viewButtonClickCallback.callback (window->viewButtonClickCallback.callbackData, window);
+	}
+}
+
+void MediaWindow::browserPlayButtonClicked (void *windowPtr, Widget *widgetPtr) {
+	MediaWindow *window;
+
+	window = (MediaWindow *) windowPtr;
+	if (window->browserPlayButtonClickCallback.callback) {
+		window->browserPlayButtonClickCallback.callback (window->browserPlayButtonClickCallback.callbackData, window);
 	}
 }

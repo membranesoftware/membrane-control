@@ -31,7 +31,7 @@
 #include "Config.h"
 #include "SystemInterface.h"
 
-const char *SystemInterface::version = "19-stable-47c17398";
+const char *SystemInterface::version = "20-stable-4ad21c56";
 const char *SystemInterface::Command_AgentConfiguration = "AgentConfiguration";
 const char *SystemInterface::Command_AgentContact = "AgentContact";
 const char *SystemInterface::Command_AgentStatus = "AgentStatus";
@@ -75,6 +75,7 @@ const char *SystemInterface::Command_MediaDisplayIntentState = "MediaDisplayInte
 const char *SystemInterface::Command_MediaItem = "MediaItem";
 const char *SystemInterface::Command_MediaServerStatus = "MediaServerStatus";
 const char *SystemInterface::Command_MonitorServerStatus = "MonitorServerStatus";
+const char *SystemInterface::Command_PauseMedia = "PauseMedia";
 const char *SystemInterface::Command_PlayCacheStream = "PlayCacheStream";
 const char *SystemInterface::Command_PlayMedia = "PlayMedia";
 const char *SystemInterface::Command_ReadTasks = "ReadTasks";
@@ -161,6 +162,7 @@ void SystemInterface::populate () {
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("MediaItem"), SystemInterface::Command (16, StdString ("MediaItem"), StdString ("MediaItem"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("MediaServerStatus"), SystemInterface::Command (9, StdString ("MediaServerStatus"), StdString ("MediaServerStatus"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("MonitorServerStatus"), SystemInterface::Command (12, StdString ("MonitorServerStatus"), StdString ("MonitorServerStatus"))));
+  commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("PauseMedia"), SystemInterface::Command (98, StdString ("PauseMedia"), StdString ("EmptyObject"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("PlayCacheStream"), SystemInterface::Command (57, StdString ("PlayCacheStream"), StdString ("PlayCacheStream"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("PlayMedia"), SystemInterface::Command (30, StdString ("PlayMedia"), StdString ("PlayMedia"))));
   commandMap.insert (std::pair<StdString, SystemInterface::Command> (StdString ("ReadTasks"), SystemInterface::Command (6, StdString ("ReadTasks"), StdString ("EmptyObject"))));
@@ -545,8 +547,8 @@ void SystemInterface::getParams_CreateWebDisplayIntent (std::list<SystemInterfac
   destList->push_back (SystemInterface::Param (StdString ("displayName"), StdString ("string"), StdString (""), 3));
   destList->push_back (SystemInterface::Param (StdString ("urls"), StdString ("array"), StdString ("string"), 3));
   destList->push_back (SystemInterface::Param (StdString ("isShuffle"), StdString ("boolean"), StdString (""), 1));
-  destList->push_back (SystemInterface::Param (StdString ("minItemDisplayDuration"), StdString ("number"), StdString (""), 17));
-  destList->push_back (SystemInterface::Param (StdString ("maxItemDisplayDuration"), StdString ("number"), StdString (""), 17));
+  destList->push_back (SystemInterface::Param (StdString ("minItemDisplayDuration"), StdString ("number"), StdString (""), 9));
+  destList->push_back (SystemInterface::Param (StdString ("maxItemDisplayDuration"), StdString ("number"), StdString (""), 9));
 }
 
 void SystemInterface::getParams_EmptyObject (std::list<SystemInterface::Param> *destList) {
@@ -723,6 +725,7 @@ void SystemInterface::getParams_MonitorServerStatus (std::list<SystemInterface::
   destList->push_back (SystemInterface::Param (StdString ("screenshotPath"), StdString ("string"), StdString (""), 65));
   destList->push_back (SystemInterface::Param (StdString ("screenshotTime"), StdString ("number"), StdString (""), 17));
   destList->push_back (SystemInterface::Param (StdString ("isPlaying"), StdString ("boolean"), StdString (""), 1));
+  destList->push_back (SystemInterface::Param (StdString ("isPlayPaused"), StdString ("boolean"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("mediaName"), StdString ("string"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("isShowingUrl"), StdString ("boolean"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("showUrl"), StdString ("string"), StdString (""), 1));
@@ -898,8 +901,8 @@ void SystemInterface::getParams_WebDisplayIntentState (std::list<SystemInterface
   destList->push_back (SystemInterface::Param (StdString ("urlChoices"), StdString ("array"), StdString ("number"), 3));
   destList->push_back (SystemInterface::Param (StdString ("agentMap"), StdString ("object"), StdString (""), 0));
   destList->push_back (SystemInterface::Param (StdString ("isShuffle"), StdString ("boolean"), StdString (""), 1));
-  destList->push_back (SystemInterface::Param (StdString ("minItemDisplayDuration"), StdString ("number"), StdString (""), 17));
-  destList->push_back (SystemInterface::Param (StdString ("maxItemDisplayDuration"), StdString ("number"), StdString (""), 17));
+  destList->push_back (SystemInterface::Param (StdString ("minItemDisplayDuration"), StdString ("number"), StdString (""), 9));
+  destList->push_back (SystemInterface::Param (StdString ("maxItemDisplayDuration"), StdString ("number"), StdString (""), 9));
 }
 
 void SystemInterface::populateDefaultFields_AgentConfiguration (Json *destObject) {
@@ -2128,6 +2131,8 @@ void SystemInterface::hashFields_MonitorServerStatus (Json *commandParams, Syste
   if (! s.empty ()) {
     hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
   }
+  s.sprintf ("%s", commandParams->getBoolean ("isPlayPaused", false) ? "true" : "false");
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
   s.sprintf ("%s", commandParams->getBoolean ("isPlaying", false) ? "true" : "false");
   hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
   s.sprintf ("%s", commandParams->getBoolean ("isShowingUrl", false) ? "true" : "false");

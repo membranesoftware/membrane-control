@@ -47,6 +47,15 @@ public:
 
 	// Return a string containing the name of the specified frame size, or an empty string if no such name was found.
 	static StdString getFrameSizeName (int width, int height);
+
+	// Return a string containing a description of the specified stream profile constant, or an empty string if no such name was found
+	static StdString getStreamProfileDescription (int streamProfile);
+
+	// Return the stream profile constant matching the provided description text, or SystemInterface::Constant_DefaultStreamProfile if no matching constant was found
+	static int getStreamProfile (const StdString &description);
+
+	// Return the estimated stream data size for the specified media size and profile, in bytes
+	static int64_t getStreamSize (int64_t mediaSize, int streamProfile);
 };
 
 #endif

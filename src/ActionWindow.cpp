@@ -51,15 +51,12 @@
 
 ActionWindow::ActionWindow ()
 : Panel ()
-, isOptionDataValid (false)
+, isOptionDataValid (true)
 , isConfirmed (false)
 , isInverseColor (false)
-, closeCallback (NULL)
-, closeCallbackData (NULL)
-, optionChangeCallback (NULL)
-, optionChangeCallbackData (NULL)
 , titleLabel (NULL)
 , descriptionText (NULL)
+, footerPanel (NULL)
 , confirmButton (NULL)
 , cancelButton (NULL)
 {
@@ -74,20 +71,25 @@ ActionWindow::ActionWindow ()
 	setFillBg (true, uiconfig->lightBackgroundColor);
 
 	titleLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::TitleFont, uiconfig->primaryTextColor));
+	titleLabel->isInputSuspended = true;
 	titleLabel->isVisible = false;
 
 	descriptionText = (TextArea *) addWidget (new TextArea (UiConfiguration::CaptionFont, uiconfig->primaryTextColor, 0, uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth));
+	descriptionText->isInputSuspended = true;
 	descriptionText->isVisible = false;
 
-	confirmButton = (Button *) addWidget (new Button (uitext->getText (UiTextString::ok).uppercased ()));
+	confirmButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::OkButtonSprite)));
 	confirmButton->setMouseClickCallback (ActionWindow::confirmButtonClicked, this);
 	confirmButton->setTextColor (uiconfig->raisedButtonTextColor);
 	confirmButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
+	confirmButtonTooltipText.assign (uitext->getText (UiTextString::confirm).capitalized ());
+	confirmButton->setMouseHoverTooltip (confirmButtonTooltipText);
 
-	cancelButton = (Button *) addWidget (new Button (uitext->getText (UiTextString::cancel).uppercased ()));
+	cancelButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::CancelButtonSprite)));
 	cancelButton->setMouseClickCallback (ActionWindow::cancelButtonClicked, this);
 	cancelButton->setTextColor (uiconfig->raisedButtonTextColor);
 	cancelButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
+	cancelButton->setMouseHoverTooltip (uitext->getText (UiTextString::cancel).capitalized ());
 
 	refreshLayout ();
 }
@@ -136,9 +138,17 @@ void ActionWindow::setDescriptionText (const StdString &text) {
 	refreshLayout ();
 }
 
-void ActionWindow::setConfirmButtonText (const StdString &text) {
-	confirmButton->setText (text);
-	refreshLayout ();
+void ActionWindow::setConfirmTooltipText (const StdString &text) {
+	UiText *uitext;
+
+	uitext = &(App::instance->uiText);
+	confirmButtonTooltipText.assign (text);
+	if (isOptionDataValid) {
+		confirmButton->setMouseHoverTooltip (confirmButtonTooltipText);
+	}
+	else {
+		confirmButton->setMouseHoverTooltip (StdString::createSprintf ("%s %s", confirmButtonTooltipText.c_str (), uitext->getText (UiTextString::actionWindowInvalidDataTooltip).c_str ()));
+	}
 }
 
 void ActionWindow::setInverseColor (bool inverse) {
@@ -209,14 +219,13 @@ void ActionWindow::setInverseColor (bool inverse) {
 	}
 }
 
-void ActionWindow::setOptionChangeCallback (Widget::EventCallback callback, void *callbackData) {
-	optionChangeCallback = callback;
-	optionChangeCallbackData = callbackData;
-}
-
-void ActionWindow::setCloseCallback (Widget::EventCallback callback, void *callbackData) {
-	closeCallback = callback;
-	closeCallbackData = callbackData;
+void ActionWindow::setFooterPanel (Panel *panel) {
+	if (footerPanel) {
+		footerPanel->isDestroyed = true;
+	}
+	footerPanel = panel;
+	addWidget (footerPanel);
+	refreshLayout ();
 }
 
 void ActionWindow::addOption (const StdString &optionName, ComboBox *comboBox, const StdString &descriptionText) {
@@ -244,7 +253,7 @@ void ActionWindow::addOption (const StdString &optionName, Toggle *toggle, const
 }
 
 void ActionWindow::addOption (const StdString &optionName, SliderWindow *slider, const StdString &descriptionText) {
-	slider->setValueChangeCallback (ActionWindow::optionValueChanged, this);
+	slider->valueChangeCallback = Widget::EventCallbackContext (ActionWindow::optionValueChanged, this);
 	slider->setInverseColor (isInverseColor);
 	doAddOption (ActionWindow::SliderItem, optionName, slider, descriptionText);
 }
@@ -496,11 +505,17 @@ void ActionWindow::refreshLayout () {
 
 	x = x0;
 	x2 = 0.0f;
+	if (footerPanel) {
+		footerPanel->flowRight (&x, y, &x2, &y2);
+	}
 	if (cancelButton->isVisible) {
 		cancelButton->flowRight (&x, y, &x2, &y2);
 	}
 	if (confirmButton->isVisible) {
 		confirmButton->flowRight (&x, y, &x2, &y2);
+	}
+	if (footerPanel) {
+		footerPanel->centerVertical (y, y2);
 	}
 
 	resetSize ();
@@ -519,8 +534,8 @@ void ActionWindow::confirmButtonClicked (void *windowPtr, Widget *widgetPtr) {
 
 	window = (ActionWindow *) windowPtr;
 	window->isConfirmed = true;
-	if (window->closeCallback) {
-		window->closeCallback (window->closeCallbackData, window);
+	if (window->closeCallback.callback) {
+		window->closeCallback.callback (window->closeCallback.callbackData, window);
 	}
 	window->isDestroyed = true;
 }
@@ -530,8 +545,8 @@ void ActionWindow::cancelButtonClicked (void *windowPtr, Widget *widgetPtr) {
 
 	window = (ActionWindow *) windowPtr;
 	window->isConfirmed = false;
-	if (window->closeCallback) {
-		window->closeCallback (window->closeCallbackData, window);
+	if (window->closeCallback.callback) {
+		window->closeCallback.callback (window->closeCallback.callbackData, window);
 	}
 	window->isDestroyed = true;
 }
@@ -541,8 +556,8 @@ void ActionWindow::optionValueChanged (void *windowPtr, Widget *widgetPtr) {
 
 	window = (ActionWindow *) windowPtr;
 	window->verifyOptions ();
-	if (window->optionChangeCallback) {
-		window->optionChangeCallback (window->optionChangeCallbackData, window);
+	if (window->optionChangeCallback.callback) {
+		window->optionChangeCallback.callback (window->optionChangeCallback.callbackData, window);
 	}
 }
 
@@ -593,11 +608,13 @@ void ActionWindow::setOptionDisabled (const StdString &optionName, bool disable)
 
 void ActionWindow::verifyOptions () {
 	UiConfiguration *uiconfig;
+	UiText *uitext;
 	std::list<ActionWindow::Item>::iterator i, end;
 	StdString s;
 	bool windowvalid, optionvalid;
 
 	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 	windowvalid = true;
 	i = itemList.begin ();
 	end = itemList.end ();
@@ -655,8 +672,10 @@ void ActionWindow::verifyOptions () {
 	isOptionDataValid = windowvalid;
 	if (isOptionDataValid) {
 		confirmButton->setDisabled (false);
+		confirmButton->setMouseHoverTooltip (confirmButtonTooltipText);
 	}
 	else {
 		confirmButton->setDisabled (true);
+		confirmButton->setMouseHoverTooltip (StdString::createSprintf ("%s %s", confirmButtonTooltipText.c_str (), uitext->getText (UiTextString::actionWindowInvalidDataTooltip).c_str ()));
 	}
 }

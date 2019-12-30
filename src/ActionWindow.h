@@ -53,6 +53,10 @@ public:
 	ActionWindow ();
 	virtual ~ActionWindow ();
 
+	// Read-write data members
+	Widget::EventCallbackContext optionChangeCallback;
+	Widget::EventCallbackContext closeCallback;
+
 	// Read-only data members
 	bool isOptionDataValid;
 	bool isConfirmed;
@@ -70,14 +74,11 @@ public:
 	// Set the window's description text (empty by default)
 	void setDescriptionText (const StdString &text);
 
-	// Set the text that should be shown on the window's confirm button (defaults to "OK")
-	void setConfirmButtonText (const StdString &text);
+	// Set the tooltip text that should be shown on the window's confirm button (defaults to "Confirm")
+	void setConfirmTooltipText (const StdString &text);
 
-	// Set a function that should be invoked when an option on the action window changes value
-	void setOptionChangeCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a function that should be invoked when the action window is closed
-	void setCloseCallback (Widget::EventCallback callback, void *callbackData);
+	// Add the provided panel to the window as a footer element
+	void setFooterPanel (Panel *panel);
 
 	// Add the provided widget to the window as an option item
 	void addOption (const StdString &optionName, ComboBox *comboBox, const StdString &descriptionText = StdString (""));
@@ -150,14 +151,12 @@ private:
 	// Check the validity of all option values and reset isOptionDataValid
 	void verifyOptions ();
 
-	Widget::EventCallback closeCallback;
-	void *closeCallbackData;
-	Widget::EventCallback optionChangeCallback;
-	void *optionChangeCallbackData;
 	std::list<ActionWindow::Item> itemList;
 	Label *titleLabel;
 	TextArea *descriptionText;
+	Panel *footerPanel;
 	Button *confirmButton;
+	StdString confirmButtonTooltipText;
 	Button *cancelButton;
 };
 

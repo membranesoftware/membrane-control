@@ -59,7 +59,11 @@ public:
 		StreamButtonSprite = 8,
 		WritePlaylistButtonSprite = 9,
 		StopButtonSprite = 10,
-		SortButtonSprite = 11
+		SortButtonSprite = 11,
+		StartPositionIconSprite = 12,
+		DurationIconSprite = 13,
+		ShuffleIconSprite = 14,
+		PauseButtonSprite = 15
 	};
 
 	// Constants to use for card view row numbers
@@ -79,8 +83,7 @@ public:
 	enum {
 		MonitorMode = 0,
 		StreamMode = 1,
-		PlaylistMode = 2,
-		ModeCount = 3
+		ModeCount = 2
 	};
 
 	// Constants to use as state values in findMediaStreamsMap
@@ -133,6 +136,7 @@ public:
 	static void countExpandedPlaylists (void *intPtr, Widget *widgetPtr);
 	static void mediaWindowImageClicked (void *uiPtr, Widget *widgetPtr);
 	static void mediaWindowViewButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void mediaWindowBrowserPlayButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void mediaWindowSelectStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void searchFieldEdited (void *uiPtr, Widget *widgetPtr);
 	static void searchButtonClicked (void *uiPtr, Widget *widgetPtr);
@@ -151,25 +155,32 @@ public:
 	static void modeButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void monitorModeActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void streamModeActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void playlistModeActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr);
 	static void commandButtonMouseExited (void *uiPtr, Widget *widgetPtr);
 	static void playButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void writePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void pauseButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void stopButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void browserPlayButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void configureStreamButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void configureStreamActionClosed (void *uiPtr, Widget *widgetPtr);
+	static void configureStreamOptionChanged (void *uiPtr, Widget *widgetPtr);
 	static void configureMediaStreamComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
 	static void cacheStreamButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void cacheStreamActionClosed (void *uiPtr, Widget *widgetPtr);
 	static void deleteStreamButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void addPlaylistItemButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void deleteStreamActionClosed (void *uiPtr, Widget *widgetPtr);
+	static void selectAllButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void selectMediaWindow (void *uiPtr, Widget *widgetPtr);
 	static void createPlaylistButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void deletePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void playlistSelectStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void playlistItemsChanged (void *uiPtr, Widget *widgetPtr);
 	static void playlistRenameActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void playlistNameEdited (void *uiPtr, Widget *widgetPtr);
+	static void playlistRemoveActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void removePlaylistActionClosed (void *uiPtr, Widget *widgetPtr);
+	static void playlistAddItemActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void playlistAddItemMouseEntered (void *uiPtr, Widget *widgetPtr);
+	static void playlistAddItemMouseExited (void *uiPtr, Widget *widgetPtr);
 	static void appendPlaylistJson (void *stringListPtr, Widget *widgetPtr);
 
 protected:
@@ -232,11 +243,17 @@ private:
 	// Set the control mode for the secondary toolbar, optionally forcing the reset even if the requested mode matches the mode already active
 	void setToolbarMode (int mode, bool forceReset = false);
 
-	// Return a string containing the set of selected monitor agent names, appropriate for use in a command popup and truncated to fit within the specified maximum width, or an empty string if no monitor agents are selected
-	StdString getSelectedMonitorNames (float maxWidth);
+	// Return a string containing the set of selected monitor agent names, appropriate for use in a command popup, or an empty string if no monitor agents are selected
+	StdString getSelectedMonitorNames ();
 
-	// Return a string containing the set of selected media item names, appropriate for use in a command popup and truncated to fit within the specified maximum width, or an empty string if no media items are selected
-	StdString getSelectedMediaNames (float maxWidth, bool isStreamRequired = false);
+	// Return a string containing the set of selected media item names, appropriate for use in a command popup, or an empty string if no media items are selected
+	StdString getSelectedMediaNames (bool isStreamRequired = false, bool isCreateStreamRequired = false);
+
+	// Set selected state for all media items
+	void selectAllMedia ();
+
+	// Clear selected state from all media items
+	void unselectAllMedia ();
 
 	// Return a newly created StreamPlaylistWindow widget, suitable for use as a card view item
 	StreamPlaylistWindow *createStreamPlaylistWindow ();
@@ -247,20 +264,31 @@ private:
 	// Reset checked states for row expand toggles, as appropriate for item expand state
 	void resetExpandToggles ();
 
+	// Return the total stream data size for all selected media items
+	int64_t getSelectedStreamSize ();
+
+	// Return the number of selected media items that have an available playback stream
+	int getSelectedStreamCount ();
+
+	// Return the number of selected media items that are available for stream creation
+	int getSelectedCreateStreamCount ();
+
+	// Return the estimated total storage size required for streams of all selected media items at the specified profile, in bytes
+	int64_t getSelectedCreateStreamSize (int profile);
+
 	static const int pageSize;
+	static const float truncateWidthMultiplier;
 
 	int toolbarMode;
 	CardView *cardView;
 	Button *playButton;
 	Button *writePlaylistButton;
+	Button *pauseButton;
 	Button *stopButton;
-	Button *browserPlayButton;
 	Button *configureStreamButton;
 	Button *cacheStreamButton;
 	Button *deleteStreamButton;
-	Button *addPlaylistItemButton;
-	Button *createPlaylistButton;
-	Button *deletePlaylistButton;
+	Button *selectAllButton;
 	WidgetHandle searchField;
 	WidgetHandle emptyStateWindow;
 	WidgetHandle commandPopup;
@@ -269,6 +297,7 @@ private:
 	WidgetHandle selectedPlaylistWindow;
 	WidgetHandle expandAgentsToggle;
 	WidgetHandle expandPlaylistsToggle;
+	WidgetHandle configureStreamSizeIcon;
 	int cardDetail;
 	int emptyStateType;
 	bool isShowingMediaWithoutStreams;

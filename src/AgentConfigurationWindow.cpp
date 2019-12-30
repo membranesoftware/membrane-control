@@ -85,10 +85,11 @@ AgentConfigurationWindow::AgentConfigurationWindow (const StdString &agentId)
 	expandToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::expand).capitalized (), uitext->getText (UiTextString::minimize).capitalized ());
 	expandToggle->isVisible = false;
 
-	applyButton = (Button *) addWidget (new Button (uitext->getText (UiTextString::apply).uppercased ()));
+	applyButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::OkButtonSprite)));
 	applyButton->setMouseClickCallback (AgentConfigurationWindow::applyButtonClicked, this);
 	applyButton->setTextColor (uiconfig->raisedButtonTextColor);
 	applyButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
+	applyButton->setMouseHoverTooltip (uitext->getText (UiTextString::apply).capitalized ());
 	applyButton->isVisible = false;
 
 	refreshLayout ();
@@ -267,7 +268,7 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 	actionWindow->setPadding (0.0f, 0.0f);
 	actionWindow->setFillBg (false);
 	actionWindow->setButtonsVisible (false);
-	actionWindow->setOptionChangeCallback (AgentConfigurationWindow::actionOptionChanged, this);
+	actionWindow->optionChangeCallback = Widget::EventCallbackContext (AgentConfigurationWindow::actionOptionChanged, this);
 
 	toggle = new Toggle ();
 	toggle->setChecked (interface->getCommandBooleanParam (&agentConfiguration, "isEnabled", false));
@@ -337,6 +338,7 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 
 	if (! actionWindow->isOptionDataValid) {
 		applyButton->setDisabled (true);
+		applyButton->setMouseHoverTooltip (StdString::createSprintf ("%s %s", uitext->getText (UiTextString::apply).capitalized ().c_str (), uitext->getText (UiTextString::actionWindowInvalidDataTooltip).c_str ()));
 	}
 
 	expandToggle->isVisible = true;
@@ -392,15 +394,19 @@ void AgentConfigurationWindow::expandToggleStateChanged (void *windowPtr, Widget
 void AgentConfigurationWindow::actionOptionChanged (void *windowPtr, Widget *widgetPtr) {
 	AgentConfigurationWindow *window;
 	ActionWindow *action;
+	UiText *uitext;
 
 	window = (AgentConfigurationWindow *) windowPtr;
 	action = (ActionWindow *) widgetPtr;
+	uitext = &(App::instance->uiText);
 
 	if (! action->isOptionDataValid) {
 		window->applyButton->setDisabled (true);
+		window->applyButton->setMouseHoverTooltip (StdString::createSprintf ("%s %s", uitext->getText (UiTextString::apply).capitalized ().c_str (), uitext->getText (UiTextString::actionWindowInvalidDataTooltip).c_str ()));
 	}
 	else {
 		window->applyButton->setDisabled (false);
+		window->applyButton->setMouseHoverTooltip (uitext->getText (UiTextString::apply).capitalized ());
 	}
 }
 

@@ -180,7 +180,7 @@ UiLaunchWindow::UiLaunchWindow (int uiType, SpriteGroup *mainUiSpriteGroup)
 	descriptionText->setText (text);
 	descriptionText->isVisible = false;
 
-	openButton = (Button *) addWidget (new Button (StdString (""), sprites->getSprite (MainUi::OpenButtonSprite)));
+	openButton = (Button *) addWidget (new Button (sprites->getSprite (MainUi::OpenButtonSprite)));
 	openButton->zLevel = 1;
 	openButton->setMouseClickCallback (UiLaunchWindow::openButtonClicked, this);
 	openButton->setImageColor (uiconfig->flatButtonTextColor);

@@ -72,7 +72,7 @@ HelpWindow::HelpWindow (float windowWidth, float windowHeight)
 	titleLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::help).capitalized (), UiConfiguration::TitleFont, uiconfig->primaryTextColor)));
 	titleLabel->setPadding (0.0f, 0.0f);
 
-	closeButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::ExitButtonSprite)));
+	closeButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::ExitButtonSprite)));
 	closeButton->zLevel = 1;
 	closeButton->setMouseClickCallback (HelpWindow::closeButtonClicked, this);
 	closeButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);

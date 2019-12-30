@@ -83,6 +83,7 @@ public:
   static const char *Command_MediaItem;
   static const char *Command_MediaServerStatus;
   static const char *Command_MonitorServerStatus;
+  static const char *Command_PauseMedia;
   static const char *Command_PlayCacheStream;
   static const char *Command_PlayMedia;
   static const char *Command_ReadTasks;
@@ -154,6 +155,7 @@ public:
   static const int CommandId_MediaItem = 16;
   static const int CommandId_MediaServerStatus = 9;
   static const int CommandId_MonitorServerStatus = 12;
+  static const int CommandId_PauseMedia = 98;
   static const int CommandId_PlayCacheStream = 57;
   static const int CommandId_PlayMedia = 30;
   static const int CommandId_ReadTasks = 6;

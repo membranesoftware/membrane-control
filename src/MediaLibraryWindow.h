@@ -38,17 +38,22 @@
 #include "Label.h"
 #include "Button.h"
 #include "Toggle.h"
-#include "ProgressBar.h"
 #include "IconLabelWindow.h"
+#include "AgentTaskWindow.h"
 #include "Panel.h"
 
 class MediaLibraryWindow : public Panel {
 public:
+	static const float textTruncateScale; // portion of total window width, from 0.0f to 1.0f
+
 	MediaLibraryWindow (const StdString &agentId);
 	virtual ~MediaLibraryWindow ();
 
+	// Read-write data members
+	Widget::EventCallbackContext menuClickCallback;
+	Widget::EventCallbackContext expandStateChangeCallback;
+
 	// Read-only data members
-	bool isSelected;
 	bool isExpanded;
 	StdString agentId;
 	StdString agentName;
@@ -56,15 +61,6 @@ public:
 	int agentTaskCount;
 	float menuPositionX;
 	float menuPositionY;
-
-	// Set a callback function that should be invoked when the window's menu button is pressed
-	void setMenuClickCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback that should be invoked when the select toggle's checked state changes
-	void setSelectStateChangeCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback that should be invoked when the expand toggle's checked state changes
-	void setExpandStateChangeCallback (Widget::EventCallback callback, void *callbackData);
 
 	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
 	void syncRecordStore ();
@@ -80,7 +76,6 @@ public:
 
 	// Callback functions
 	static void menuButtonClicked (void *windowPtr, Widget *widgetPtr);
-	static void selectToggleStateChanged (void *windowPtr, Widget *widgetPtr);
 	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
 	static void catalogLinkClicked (void *windowPtr, Widget *widgetPtr);
 
@@ -100,19 +95,9 @@ private:
 	IconLabelWindow *storageIcon;
 	IconLabelWindow *mediaCountIcon;
 	IconLabelWindow *streamCountIcon;
-	Image *taskImage;
-	Label *taskNameLabel;
-	Label *taskSubtitleLabel;
-	ProgressBar *taskProgressBar;
 	Button *menuButton;
-	Toggle *selectToggle;
 	Toggle *expandToggle;
-	Widget::EventCallback menuClickCallback;
-	void *menuClickCallbackData;
-	Widget::EventCallback selectStateChangeCallback;
-	void *selectStateChangeCallbackData;
-	Widget::EventCallback expandStateChangeCallback;
-	void *expandStateChangeCallbackData;
+	AgentTaskWindow *agentTaskWindow;
 };
 
 #endif

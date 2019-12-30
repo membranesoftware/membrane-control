@@ -151,25 +151,25 @@ ServerWindow::ServerWindow (const StdString &agentId)
 	expandToggle->setStateChangeCallback (ServerWindow::expandToggleStateChanged, this);
 	expandToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::expand).capitalized (), uitext->getText (UiTextString::minimize).capitalized ());
 
-	checkForUpdatesButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::UpdateButtonSprite)));
+	checkForUpdatesButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::UpdateButtonSprite)));
 	checkForUpdatesButton->setMouseClickCallback (ServerWindow::checkForUpdatesButtonClicked, this);
 	checkForUpdatesButton->setImageColor (uiconfig->flatButtonTextColor);
 	checkForUpdatesButton->setMouseHoverTooltip (uitext->getText (UiTextString::updateServerTooltip));
 	checkForUpdatesButton->isVisible = false;
 
-	adminButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::AgentAdminButtonSprite)));
+	adminButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::AgentAdminButtonSprite)));
 	adminButton->setMouseClickCallback (ServerWindow::adminButtonClicked, this);
 	adminButton->setImageColor (uiconfig->flatButtonTextColor);
 	adminButton->setMouseHoverTooltip (uitext->getText (UiTextString::openAdminConsole).capitalized ());
 	adminButton->isVisible = false;
 
-	detachButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::DetachServerButtonSprite)));
+	detachButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::DetachServerButtonSprite)));
 	detachButton->setMouseClickCallback (ServerWindow::detachButtonClicked, this);
 	detachButton->setImageColor (uiconfig->flatButtonTextColor);
 	detachButton->setMouseHoverTooltip (uitext->getText (UiTextString::detachServerTooltip));
 	detachButton->isVisible = false;
 
-	removeButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
+	removeButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
 	removeButton->setMouseClickCallback (ServerWindow::removeButtonClicked, this);
 	removeButton->setImageColor (uiconfig->flatButtonTextColor);
 	removeButton->setMouseHoverTooltip (uitext->getText (UiTextString::removeServer).capitalized ());

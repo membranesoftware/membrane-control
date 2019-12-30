@@ -93,7 +93,7 @@ UiConfiguration::UiConfiguration ()
 , selectionBorderAlpha (0.72f)
 , sliderThumbSize (16.0f)
 , sliderTrackWidth (200.0f)
-, sliderTrackHeight (8.0f)
+, sliderTrackHeight (6.0f)
 , textAreaShortLineLength (30)
 , textAreaMediumLineLength (60)
 , textAreaLongLineLength (75)
@@ -229,6 +229,7 @@ void UiConfiguration::resetScale () {
 			marginSize = 6.0f;
 			cornerRadius = 3;
 			sliderTrackWidth = 100.0f;
+			sliderTrackHeight = 4.0f;
 			timelineMarkerWidth = 12.0f;
 			fontBaseSizes[UiConfiguration::CaptionFont] = 8;
 			fontBaseSizes[UiConfiguration::BodyFont] = 10;
@@ -242,6 +243,7 @@ void UiConfiguration::resetScale () {
 			marginSize = 12.0f;
 			cornerRadius = 6;
 			sliderTrackWidth = 130.0f;
+			sliderTrackHeight = 4.0f;
 			timelineMarkerWidth = 16.0f;
 			fontBaseSizes[UiConfiguration::CaptionFont] = 8;
 			fontBaseSizes[UiConfiguration::BodyFont] = 10;
@@ -255,6 +257,7 @@ void UiConfiguration::resetScale () {
 			marginSize = 16.0f;
 			cornerRadius = 8;
 			sliderTrackWidth = 180.0f;
+			sliderTrackHeight = 5.0f;
 			timelineMarkerWidth = 16.0f;
 			fontBaseSizes[UiConfiguration::CaptionFont] = 10;
 			fontBaseSizes[UiConfiguration::BodyFont] = 12;
@@ -268,6 +271,7 @@ void UiConfiguration::resetScale () {
 			marginSize = 16.0f;
 			cornerRadius = 8;
 			sliderTrackWidth = 240.0f;
+			sliderTrackHeight = 5.0f;
 			timelineMarkerWidth = 20.0f;
 			fontBaseSizes[UiConfiguration::CaptionFont] = 10;
 			fontBaseSizes[UiConfiguration::BodyFont] = 12;
@@ -281,6 +285,7 @@ void UiConfiguration::resetScale () {
 			marginSize = 20.0f;
 			cornerRadius = 10;
 			sliderTrackWidth = 300.0f;
+			sliderTrackHeight = 6.0f;
 			timelineMarkerWidth = 20.0f;
 			fontBaseSizes[UiConfiguration::CaptionFont] = 10;
 			fontBaseSizes[UiConfiguration::BodyFont] = 12;
@@ -294,6 +299,7 @@ void UiConfiguration::resetScale () {
 			marginSize = 16.0f;
 			cornerRadius = 8;
 			sliderTrackWidth = 200.0f;
+			sliderTrackHeight = 6.0f;
 			timelineMarkerWidth = 16.0f;
 			fontBaseSizes[UiConfiguration::CaptionFont] = 10;
 			fontBaseSizes[UiConfiguration::BodyFont] = 12;

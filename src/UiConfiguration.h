@@ -89,7 +89,7 @@ public:
 		ConfigurationIconSprite = 43,
 		LargeLoadingIconSprite = 44,
 		ImageButtonSprite = 45,
-		ActivityStateIconSprite = 46,
+		InactiveStateIconSprite = 46,
 		StorageIconSprite = 47,
 		SmallStreamIconSprite = 48,
 		TaskCountIconSprite = 49,
@@ -122,7 +122,9 @@ public:
 		SmallCommandIconSprite = 76,
 		SmallServerIconSprite = 77,
 		ExpandAllLessButtonSprite = 78,
-		ExpandAllMoreButtonSprite = 79
+		ExpandAllMoreButtonSprite = 79,
+		ActiveStateIconSprite = 80,
+		PauseIconSprite = 81
 	};
 
 	// Constants to use for font types
@@ -137,8 +139,6 @@ public:
 
 	// Constants to use for sprite frame indexes
 	enum {
-		InactiveStateIconFrame = 0,
-		ActiveStateIconFrame = 1,
 		WhiteButtonFrame = 0,
 		WhiteLargeButtonFrame = 1,
 		BlackButtonFrame = 2,

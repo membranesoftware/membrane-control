@@ -35,6 +35,7 @@
 #include "StdString.h"
 #include "Json.h"
 #include "Widget.h"
+#include "SpriteGroup.h"
 #include "Label.h"
 #include "LabelWindow.h"
 #include "ImageWindow.h"
@@ -44,8 +45,14 @@
 
 class MediaWindow : public Panel {
 public:
-	MediaWindow (Json *mediaItem);
+	MediaWindow (Json *mediaItem, SpriteGroup *mediaUiSprites);
 	virtual ~MediaWindow ();
+
+	// Read-write data members
+	Widget::EventCallbackContext mediaImageClickCallback;
+	Widget::EventCallbackContext viewButtonClickCallback;
+	Widget::EventCallbackContext browserPlayButtonClickCallback;
+	Widget::EventCallbackContext selectStateChangeCallback;
 
 	// Read-only data members
 	StdString mediaId;
@@ -61,7 +68,9 @@ public:
 	float mediaFrameRate;
 	int64_t mediaSize;
 	int64_t mediaBitrate;
+	bool isCreateStreamAvailable;
 	StdString streamId;
+	int64_t streamSize;
 	StdString streamAgentId;
 	StdString streamAgentName;
 	StdString streamThumbnailPath;
@@ -72,15 +81,6 @@ public:
 
 	// Set the layout type that should be used to arrange the panel's widgets, as specified by a CardView detail constant
 	void setLayout (int layoutType, float maxPanelWidth);
-
-	// Set a callback that should be invoked when the media image is clicked
-	void setMediaImageClickCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback that should be invoked when the window's select state changes
-	void setSelectStateChangeCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback that should be invoked when the view button is clicked
-	void setViewButtonClickCallback (Widget::EventCallback callback, void *callbackData);
 
 	// Set the timestamp that should be shown for the media item, with a negative value specifying that no timestamp should be shown
 	void setDisplayTimestamp (float timestamp);
@@ -108,6 +108,7 @@ public:
 	static void mediaImageLoaded (void *windowPtr, Widget *widgetPtr);
 	static void mediaImageLongPressed (void *windowPtr, Widget *widgetPtr);
 	static void viewButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void browserPlayButtonClicked (void *windowPtr, Widget *widgetPtr);
 	static bool matchStreamSourceId (void *idStringPtr, Json *record);
 
 protected:
@@ -121,21 +122,17 @@ protected:
 	void refreshLayout ();
 
 private:
+	SpriteGroup *sprites;
 	ImageWindow *mediaImage;
 	Label *nameLabel;
 	TextArea *detailText;
 	LabelWindow *mouseoverLabel;
 	LabelWindow *detailNameLabel;
 	Button *viewButton;
+	Button *browserPlayButton;
 	LabelWindow *timestampLabel;
 	ImageWindow *streamIconImage;
 	ImageWindow *createStreamUnavailableIconImage;
-	Widget::EventCallback mediaImageClickCallback;
-	void *mediaImageClickCallbackData;
-	Widget::EventCallback viewButtonClickCallback;
-	void *viewButtonClickCallbackData;
-	Widget::EventCallback selectStateChangeCallback;
-	void *selectStateChangeCallbackData;
 };
 
 #endif

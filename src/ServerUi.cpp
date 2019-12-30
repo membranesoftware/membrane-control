@@ -111,9 +111,9 @@ int ServerUi::doLoad () {
 	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 
 	panel = new Panel ();
-	panel->setFillBg (true, uiconfig->mediumBackgroundColor);
+	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
 	toggle = (Toggle *) panel->addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandAllLessButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandAllMoreButtonSprite)));
-	toggle->setImageColor (uiconfig->flatButtonTextColor);
+	toggle->setInverseColor (true);
 	toggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::minimizeAll).capitalized (), uitext->getText (UiTextString::expandAll).capitalized ());
 	toggle->setStateChangeCallback (ServerUi::expandServersToggleStateChanged, this);
 	expandServersToggle.assign (toggle);
@@ -142,7 +142,7 @@ void ServerUi::doUnload () {
 void ServerUi::doAddMainToolbarItems (Toolbar *toolbar) {
 	Button *button;
 
-	button = new Button (StdString (""), App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::ReloadButtonSprite));
+	button = new Button (App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::ReloadButtonSprite));
 	button->setInverseColor (true);
 	button->setMouseClickCallback (ServerUi::reloadButtonClicked, this);
 	button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::reloadTooltip));
@@ -156,7 +156,7 @@ void ServerUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
 
 	uiconfig = &(App::instance->uiConfig);
 
-	button = new Button (StdString (""), sprites.getSprite (ServerUi::BroadcastButtonSprite));
+	button = new Button (sprites.getSprite (ServerUi::BroadcastButtonSprite));
 	button->setInverseColor (true);
 	button->shortcutKey = SDLK_F2;
 	button->setMouseClickCallback (ServerUi::broadcastButtonClicked, this);
@@ -648,8 +648,8 @@ void ServerUi::serverRemoveActionClicked (void *uiPtr, Widget *widgetPtr) {
 		action->setTitleText (((ServerAttachWindow *) widgetPtr)->agentDisplayName);
 		action->setDescriptionText (uitext->getText (UiTextString::removeUnattachedServerDescription));
 	}
-	action->setConfirmButtonText (uitext->getText (UiTextString::removeServer).uppercased ());
-	action->setCloseCallback (ServerUi::serverRemoveActionClosed, ui);
+	action->setConfirmTooltipText (uitext->getText (UiTextString::removeServer).capitalized ());
+	action->closeCallback = Widget::EventCallbackContext (ServerUi::serverRemoveActionClosed, ui);
 
 	x = widgetPtr->screenX + widgetPtr->width;
 	if ((x + action->width) >= (float) App::instance->windowWidth) {
@@ -712,7 +712,7 @@ void ServerUi::adminSecretAddButtonClicked (void *uiPtr, Widget *widgetPtr) {
 
 	action = target->createAddActionWindow ();
 	action->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
-	action->setCloseCallback (ServerUi::adminSecretAddActionClosed, ui);
+	action->closeCallback = Widget::EventCallbackContext (ServerUi::adminSecretAddActionClosed, ui);
 
 	App::instance->rootPanel->addWidget (action);
 	ui->actionWidget.assign (action);

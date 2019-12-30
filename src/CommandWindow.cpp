@@ -95,19 +95,19 @@ CommandWindow::CommandWindow (int64_t storeId, SpriteGroup *commandUiSpriteGroup
 	parameterIcon->setMouseHoverTooltip (uitext->getText (UiTextString::commandDetails).capitalized ());
 	parameterIcon->isVisible = false;
 
-	saveButton = (Button *) addWidget (new Button (StdString (""), sprites->getSprite (CommandUi::SaveCommandButtonSprite)));
+	saveButton = (Button *) addWidget (new Button (sprites->getSprite (CommandUi::SaveCommandButtonSprite)));
 	saveButton->setMouseClickCallback (CommandWindow::saveButtonClicked, this);
 	saveButton->setImageColor (uiconfig->flatButtonTextColor);
 	saveButton->setMouseHoverTooltip (uitext->getText (UiTextString::saveCommandTooltip));
 	saveButton->isVisible = false;
 
-	executeButton = (Button *) addWidget (new Button (StdString (""), sprites->getSprite (CommandUi::ExecuteCommandButtonSprite)));
+	executeButton = (Button *) addWidget (new Button (sprites->getSprite (CommandUi::ExecuteCommandButtonSprite)));
 	executeButton->setMouseClickCallback (CommandWindow::executeButtonClicked, this);
 	executeButton->setImageColor (uiconfig->flatButtonTextColor);
 	executeButton->setMouseHoverTooltip (uitext->getText (UiTextString::executeCommand).capitalized ());
 	executeButton->isVisible = false;
 
-	deleteButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
+	deleteButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
 	deleteButton->setMouseClickCallback (CommandWindow::deleteButtonClicked, this);
 	deleteButton->setImageColor (uiconfig->flatButtonTextColor);
 	deleteButton->setMouseHoverTooltip (uitext->getText (UiTextString::deleteCommand).capitalized ());

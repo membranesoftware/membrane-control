@@ -27,7 +27,7 @@
 * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 * POSSIBILITY OF SUCH DAMAGE.
 */
-// Panel that holds a Toggle widget and a label for identification
+// Panel that holds a Toggle widget and a label or image
 
 #ifndef TOGGLE_WINDOW_H
 #define TOGGLE_WINDOW_H
@@ -35,18 +35,27 @@
 #include "StdString.h"
 #include "Toggle.h"
 #include "Label.h"
+#include "Image.h"
+#include "Sprite.h"
 #include "Panel.h"
 
 class ToggleWindow : public Panel {
 public:
-	ToggleWindow (Toggle *toggle, const StdString &labelText);
+	ToggleWindow (Toggle *toggle);
 	virtual ~ToggleWindow ();
 
 	// Read-only data members
 	bool isChecked;
+	bool isRightAligned;
 
-	// Set the toggle's checked state
-	void setChecked (bool checked);
+	// Set the toggle to show a text label
+	void setText (const StdString &text);
+
+	// Set the toggle to show an icon image
+	void setIcon (Sprite *iconSprite);
+
+	// Set the window's right-aligned option. If enabled, the window places the toggle on the right side instead of the left side.
+	void setRightAligned (bool enable);
 
 	// Set the draw color for the toggle's button images
 	void setImageColor (const Color &imageColor);
@@ -54,8 +63,8 @@ public:
 	// Set a callback that should be invoked when the toggle button's checked state changes
 	void setStateChangeCallback (Widget::EventCallback callback, void *callbackData);
 
-	// Set the amount of size padding that should be applied to the window
-	void setPadding (float widthPadding, float heightPadding);
+	// Set the toggle's checked state
+	void setChecked (bool checked);
 
 	// Callback functions
 	static void mouseEntered (void *windowPtr, Widget *widgetPtr);
@@ -75,6 +84,7 @@ protected:
 private:
 	Toggle *toggle;
 	Label *label;
+	Image *iconImage;
 	Widget::EventCallback stateChangeCallback;
 	void *stateChangeCallbackData;
 };

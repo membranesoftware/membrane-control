@@ -27,7 +27,7 @@
 * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 * POSSIBILITY OF SUCH DAMAGE.
 */
-// UI for control of the Membrane Web Kiosk application
+// UI for showing browser URLs on monitors
 
 #ifndef WEB_KIOSK_UI_H
 #define WEB_KIOSK_UI_H
@@ -51,10 +51,12 @@ public:
 		ClearDisplayButtonSprite = 1,
 		BrowseUrlButtonSprite = 2,
 		ShowUrlButtonSprite = 3,
-		AddPlaylistButtonSprite = 4,
+		CreatePlaylistButtonSprite = 4,
 		PlaylistIconSprite = 5,
 		AddUrlButtonSprite = 6,
-		WritePlaylistButtonSprite = 7
+		WritePlaylistButtonSprite = 7,
+		ShuffleIconSprite = 8,
+		SpeedIconSprite = 9
 	};
 
 	// Constants to use for card view row numbers
@@ -65,13 +67,6 @@ public:
 		PlaylistToggleRow = 3,
 		UnexpandedPlaylistRow = 4,
 		ExpandedPlaylistRow = 5
-	};
-
-	// Constants to use for toolbar modes
-	enum {
-		MonitorMode = 0,
-		PlaylistMode = 1,
-		ModeCount = 2
 	};
 
 	WebKioskUi ();
@@ -104,19 +99,18 @@ public:
 	static void expandPlaylistsToggleStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void appendPlaylistId (void *stringListPtr, Widget *widgetPtr);
 	static void countExpandedPlaylists (void *intPtr, Widget *widgetPtr);
-	static void modeButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void monitorModeActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void playlistModeActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void addUrlButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void browseUrlButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void showUrlButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void addPlaylistButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void deletePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void addPlaylistUrl (void *urlStringPtr, Widget *widgetPtr);
+	static void createPlaylistButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void writePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void playlistNameClicked (void *uiPtr, Widget *widgetPtr);
 	static void playlistNameEdited (void *uiPtr, Widget *widgetPtr);
 	static void playlistUrlListChanged (void *uiPtr, Widget *widgetPtr);
+	static void playlistRemoveActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void removePlaylistActionClosed (void *uiPtr, Widget *widgetPtr);
+	static void playlistAddItemActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void playlistAddItemMouseEntered (void *uiPtr, Widget *widgetPtr);
+	static void playlistAddItemMouseExited (void *uiPtr, Widget *widgetPtr);
 	static void clearDisplayButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr);
 	static void commandButtonMouseExited (void *uiPtr, Widget *widgetPtr);
@@ -158,16 +152,10 @@ protected:
 	// Reload subclass-specific interface resources as needed to account for a new application window size
 	void doResize ();
 
-	// Execute subclass-specific actions appropriate for a received keypress event and return a boolean value indicating if the event was consumed and should no longer be processed
-	bool doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
-
 	// Execute subclass-specific operations to sync state with records present in the application's RecordStore object, which has been locked prior to invocation
 	void doSyncRecordStore ();
 
 private:
-	// Set the control mode for the secondary toolbar, optionally forcing the reset even if the requested mode matches the mode already active
-	void setToolbarMode (int mode, bool forceReset = false);
-
 	// Reset checked states for row expand toggles, as appropriate for item expand state
 	void resetExpandToggles ();
 
@@ -180,19 +168,15 @@ private:
 	// Return a string containing the set of selected agent names, appropriate for use in a command popup and truncated to fit within the specified maximum width, or an empty string if no agents are selected
 	StdString getSelectedAgentNames (float maxWidth);
 
-	int toolbarMode;
 	int agentCount;
 	HashMap selectedAgentMap;
 	StdString selectedPlaylistId;
 	CardView *cardView;
 	TextFieldWindow *addressField;
-	Button *addUrlButton;
 	Button *browseUrlButton;
 	Button *showUrlButton;
-	Button *addPlaylistButton;
 	Button *writePlaylistButton;
 	Button *clearDisplayButton;
-	Button *deletePlaylistButton;
 	WidgetHandle commandPopup;
 	WidgetHandle commandPopupSource;
 	WidgetHandle expandAgentsToggle;

@@ -95,6 +95,7 @@ protected:
 private:
 	Label *label;
 	Image *image;
+	Sprite *iconSprite;
 	bool isRightAligned;
 	bool isTextChangeHighlightEnabled;
 	Color normalTextColor;

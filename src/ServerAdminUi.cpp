@@ -119,7 +119,7 @@ void ServerAdminUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
 	UiText *uitext;
 
 	uitext = &(App::instance->uiText);
-	lockButton = new Button (StdString (""), sprites.getSprite (ServerAdminUi::LockButtonSprite));
+	lockButton = new Button (sprites.getSprite (ServerAdminUi::LockButtonSprite));
 	lockButton->setInverseColor (true);
 	lockButton->setMouseClickCallback (ServerAdminUi::lockButtonClicked, this);
 	lockButton->setMouseHoverTooltip (uitext->getText (UiTextString::serverAdminUiLockTooltip), Widget::LeftAlignment);
@@ -264,7 +264,7 @@ void ServerAdminUi::adminSecretAddButtonClicked (void *uiPtr, Widget *widgetPtr)
 
 	action = target->createAddActionWindow ();
 	action->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
-	action->setCloseCallback (ServerAdminUi::adminSecretAddActionClosed, ui);
+	action->closeCallback = Widget::EventCallbackContext (ServerAdminUi::adminSecretAddActionClosed, ui);
 
 	App::instance->rootPanel->addWidget (action);
 	ui->actionWidget.assign (action);
@@ -320,8 +320,8 @@ void ServerAdminUi::lockButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	action->setInverseColor (true);
 	action->setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
 	action->setTitleText (uitext->getText (UiTextString::setAdminPassword).capitalized ());
-	action->setConfirmButtonText (uitext->getText (UiTextString::apply).uppercased ());
-	action->setCloseCallback (ServerAdminUi::setAdminPasswordActionClosed, ui);
+	action->setConfirmTooltipText (uitext->getText (UiTextString::apply).capitalized ());
+	action->closeCallback = Widget::EventCallbackContext (ServerAdminUi::setAdminPasswordActionClosed, ui);
 
 	App::instance->agentControl.getAdminSecretNames (&items);
 	combobox = new ComboBox ();

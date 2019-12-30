@@ -63,6 +63,7 @@ StreamWindow::StreamWindow (Json *streamItem)
 , duration (0)
 , frameRate (0.0f)
 , bitrate (0)
+, streamSize (0)
 , streamImage (NULL)
 , nameLabel (NULL)
 , detailText (NULL)
@@ -70,10 +71,7 @@ StreamWindow::StreamWindow (Json *streamItem)
 , detailNameLabel (NULL)
 , timestampLabel (NULL)
 , viewButton (NULL)
-, streamImageClickCallback (NULL)
-, streamImageClickCallbackData (NULL)
-, viewButtonClickCallback (NULL)
-, viewButtonClickCallbackData (NULL)
+, removeButton (NULL)
 {
 	SystemInterface *interface;
 	UiConfiguration *uiconfig;
@@ -92,10 +90,12 @@ StreamWindow::StreamWindow (Json *streamItem)
 	frameHeight = interface->getCommandNumberParam (streamItem, "height", (int) 0);
 	frameRate = interface->getCommandNumberParam (streamItem, "frameRate", (float) 0.0f);
 	bitrate = interface->getCommandNumberParam (streamItem, "bitrate", (int64_t) 0);
+	streamSize = interface->getCommandNumberParam (streamItem, "size", (int64_t) 0);
 
 	streamImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
 	streamImage->setLoadSprite (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
 	streamImage->setMouseClickCallback (StreamWindow::streamImageClicked, this);
+	streamImage->setMouseLongPressCallback (StreamWindow::streamImageLongPressed, this);
 	streamImage->setLoadCallback (StreamWindow::streamImageLoaded, this);
 
 	nameLabel = (Label *) addWidget (new Label (streamName, UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
@@ -128,13 +128,21 @@ StreamWindow::StreamWindow (Json *streamItem)
 	timestampLabel->isInputSuspended = true;
 	timestampLabel->isVisible = false;
 
-	viewButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::ImageButtonSprite)));
-	viewButton->zLevel = 3;
+	viewButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::ImageButtonSprite)));
+	viewButton->zLevel = 4;
 	viewButton->isTextureTargetDrawEnabled = false;
 	viewButton->setImageColor (uiconfig->flatButtonTextColor);
 	viewButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
 	viewButton->setMouseHoverTooltip (uitext->getText (UiTextString::viewTimelineImagesTooltip));
 	viewButton->setMouseClickCallback (StreamWindow::viewButtonClicked, this);
+
+	removeButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
+	removeButton->zLevel = 4;
+	removeButton->isTextureTargetDrawEnabled = false;
+	removeButton->setImageColor (uiconfig->flatButtonTextColor);
+	removeButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
+	removeButton->setMouseHoverTooltip (uitext->getText (UiTextString::removeStream).capitalized ());
+	removeButton->setMouseClickCallback (StreamWindow::removeButtonClicked, this);
 }
 
 StreamWindow::~StreamWindow () {
@@ -195,16 +203,6 @@ void StreamWindow::setLayout (int layoutType, float maxPanelWidth) {
 	}
 
 	refreshLayout ();
-}
-
-void StreamWindow::setStreamImageClickCallback (Widget::EventCallback callback, void *callbackData) {
-	streamImageClickCallback = callback;
-	streamImageClickCallbackData = callbackData;
-}
-
-void StreamWindow::setViewButtonClickCallback (Widget::EventCallback callback, void *callbackData) {
-	viewButtonClickCallback = callback;
-	viewButtonClickCallbackData = callbackData;
 }
 
 void StreamWindow::setThumbnailIndex (int index) {
@@ -320,7 +318,8 @@ void StreamWindow::refreshLayout () {
 		case CardView::LowDetail: {
 			mouseoverLabel->position.assign (0.0f, streamImage->height - mouseoverLabel->height);
 			setFixedSize (true, streamImage->width, streamImage->height);
-			viewButton->position.assign (streamImage->position.x + streamImage->width - viewButton->width - uiconfig->dropShadowWidth, streamImage->position.y, streamImage->height - viewButton->height);
+			viewButton->position.assign (streamImage->position.x + streamImage->width - viewButton->width - uiconfig->dropShadowWidth, streamImage->position.y + streamImage->height - viewButton->height);
+			removeButton->position.assign (streamImage->position.x, streamImage->position.y + streamImage->height - removeButton->height);
 			break;
 		}
 		case CardView::MediumDetail: {
@@ -328,7 +327,8 @@ void StreamWindow::refreshLayout () {
 			y += streamImage->height + uiconfig->marginSize;
 			nameLabel->position.assign (x, y);
 
-			viewButton->position.assign (streamImage->position.x + streamImage->width - viewButton->width - uiconfig->dropShadowWidth, streamImage->position.y, streamImage->height - viewButton->height);
+			viewButton->position.assign (streamImage->position.x + streamImage->width - viewButton->width - uiconfig->dropShadowWidth, streamImage->position.y + streamImage->height - viewButton->height);
+			removeButton->position.assign (streamImage->position.x, streamImage->position.y + streamImage->height - removeButton->height);
 
 			resetSize ();
 			setFixedSize (true, streamImage->width, maxWidgetY + uiconfig->paddingSize);
@@ -338,7 +338,8 @@ void StreamWindow::refreshLayout () {
 			detailNameLabel->position.assign (x, y);
 			detailText->position.assign (streamImage->position.x, streamImage->position.y + streamImage->height - detailText->height);
 
-			viewButton->position.assign (streamImage->position.x + streamImage->width - viewButton->width - uiconfig->dropShadowWidth, streamImage->position.y, streamImage->height - viewButton->height);
+			viewButton->position.assign (streamImage->position.x + streamImage->width - viewButton->width - uiconfig->dropShadowWidth, streamImage->position.y + streamImage->height - viewButton->height);
+			removeButton->position.assign (streamImage->position.x, streamImage->position.y + streamImage->height - removeButton->height);
 
 			resetSize ();
 			setFixedSize (true, streamImage->width, maxWidgetY);
@@ -355,9 +356,16 @@ void StreamWindow::streamImageClicked (void *windowPtr, Widget *widgetPtr) {
 	StreamWindow *window;
 
 	window = (StreamWindow *) windowPtr;
-	if (window->streamImageClickCallback) {
-		window->streamImageClickCallback (window->streamImageClickCallbackData, window);
+	if (window->streamImageClickCallback.callback) {
+		window->streamImageClickCallback.callback (window->streamImageClickCallback.callbackData, window);
 	}
+}
+
+void StreamWindow::streamImageLongPressed (void *windowPtr, Widget *widgetPtr) {
+	ImageWindow *image;
+
+	image = (ImageWindow *) widgetPtr;
+	App::instance->uiStack.showImageDialog (image->imageUrl);
 }
 
 void StreamWindow::streamImageLoaded (void *windowPtr, Widget *widgetPtr) {
@@ -371,7 +379,16 @@ void StreamWindow::viewButtonClicked (void *windowPtr, Widget *widgetPtr) {
 	StreamWindow *window;
 
 	window = (StreamWindow *) windowPtr;
-	if (window->viewButtonClickCallback) {
-		window->viewButtonClickCallback (window->viewButtonClickCallbackData, window);
+	if (window->viewButtonClickCallback.callback) {
+		window->viewButtonClickCallback.callback (window->viewButtonClickCallback.callbackData, window);
+	}
+}
+
+void StreamWindow::removeButtonClicked (void *windowPtr, Widget *widgetPtr) {
+	StreamWindow *window;
+
+	window = (StreamWindow *) windowPtr;
+	if (window->removeButtonClickCallback.callback) {
+		window->removeButtonClickCallback.callback (window->removeButtonClickCallback.callbackData, window);
 	}
 }

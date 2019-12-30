@@ -77,7 +77,7 @@ ListView::ListView (float viewWidth, int minItemHeight, int itemFontType, const 
 		emptyStateLabel->isVisible = false;
 	}
 
-	deleteButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
+	deleteButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
 	deleteButton->setMouseClickCallback (ListView::deleteButtonClicked, this);
 	deleteButton->zLevel = 2;
 	deleteButton->setImageColor (uiconfig->flatButtonTextColor);

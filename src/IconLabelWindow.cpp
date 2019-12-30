@@ -47,6 +47,7 @@ IconLabelWindow::IconLabelWindow (Sprite *iconSprite, const StdString &iconText,
 : Panel ()
 , label (NULL)
 , image (NULL)
+, iconSprite (iconSprite)
 , isRightAligned (false)
 , isTextChangeHighlightEnabled (false)
 , progressBar (NULL)
@@ -129,7 +130,11 @@ void IconLabelWindow::setRightAligned (bool enable) {
 	refreshLayout ();
 }
 
-void IconLabelWindow::setIconSprite (Sprite *iconSprite) {
+void IconLabelWindow::setIconSprite (Sprite *sprite) {
+	if (iconSprite == sprite) {
+		return;
+	}
+	iconSprite = sprite;
 	if (image) {
 		image->isDestroyed = true;
 	}

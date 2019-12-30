@@ -58,13 +58,12 @@ MonitorWindow::MonitorWindow (const StdString &agentId)
 : Panel ()
 , isSelected (false)
 , isExpanded (false)
+, isSelectEnabled (false)
 , isScreenshotDisplayEnabled (false)
 , isStorageDisplayEnabled (false)
 , agentId (agentId)
 , agentTaskCount (0)
 , screenshotTime (0)
-, menuPositionX (0.0f)
-, menuPositionY (0.0f)
 , iconImage (NULL)
 , nameLabel (NULL)
 , descriptionLabel (NULL)
@@ -73,22 +72,10 @@ MonitorWindow::MonitorWindow (const StdString &agentId)
 , taskCountIcon (NULL)
 , storageIcon (NULL)
 , streamCountIcon (NULL)
-, menuButton (NULL)
 , selectToggle (NULL)
 , expandToggle (NULL)
-, cacheButton (NULL)
-, menuClickCallback (NULL)
-, menuClickCallbackData (NULL)
-, selectStateChangeCallback (NULL)
-, selectStateChangeCallbackData (NULL)
-, expandStateChangeCallback (NULL)
-, expandStateChangeCallbackData (NULL)
-, screenshotLoadCallback (NULL)
-, screenshotLoadCallbackData (NULL)
-, cacheButtonClickCallback (NULL)
-, cacheButtonMouseEnterCallback (NULL)
-, cacheButtonMouseExitCallback (NULL)
-, cacheButtonCallbackData (NULL)
+, actionButton (NULL)
+, agentTaskWindow (NULL)
 {
 	UiConfiguration *uiconfig;
 	UiText *uitext;
@@ -113,7 +100,7 @@ MonitorWindow::MonitorWindow (const StdString &agentId)
 	screenshotImage->setFillBg (true, uiconfig->darkBackgroundColor);
 	screenshotImage->isVisible = false;
 
-	statusIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::ActivityStateIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	statusIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::InactiveStateIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	statusIcon->setPadding (0.0f, 0.0f);
 	statusIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
 	statusIcon->setMouseHoverTooltip (uitext->getText (UiTextString::monitorActivityIconTooltip));
@@ -135,12 +122,6 @@ MonitorWindow::MonitorWindow (const StdString &agentId)
 	streamCountIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
 	streamCountIcon->isVisible = false;
 
-	menuButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::MainMenuButtonSprite)));
-	menuButton->setMouseClickCallback (MonitorWindow::menuButtonClicked, this);
-	menuButton->setImageColor (uiconfig->flatButtonTextColor);
-	menuButton->setMouseHoverTooltip (uitext->getText (UiTextString::moreActionsTooltip));
-	menuButton->isVisible = false;
-
 	selectToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::StarOutlineButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::StarButtonSprite)));
 	selectToggle->setImageColor (uiconfig->flatButtonTextColor);
 	selectToggle->setStateChangeCallback (MonitorWindow::selectToggleStateChanged, this);
@@ -151,6 +132,8 @@ MonitorWindow::MonitorWindow (const StdString &agentId)
 	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
 	expandToggle->setStateChangeCallback (MonitorWindow::expandToggleStateChanged, this);
 	expandToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::expand).capitalized (), uitext->getText (UiTextString::minimize).capitalized ());
+
+	agentTaskWindow = (AgentTaskWindow *) addWidget (new AgentTaskWindow (agentId));
 
 	refreshLayout ();
 }
@@ -174,6 +157,7 @@ MonitorWindow *MonitorWindow::castWidget (Widget *widget) {
 void MonitorWindow::syncRecordStore () {
 	RecordStore *store;
 	SystemInterface *interface;
+	UiConfiguration *uiconfig;
 	UiText *uitext;
 	Json *record, serverstatus;
 	StdString path, displayname, intentname, text;
@@ -190,6 +174,7 @@ void MonitorWindow::syncRecordStore () {
 		return;
 	}
 
+	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 	agentName.assign (interface->getCommandAgentName (record));
 	nameLabel->setText (agentName);
@@ -247,21 +232,35 @@ void MonitorWindow::syncRecordStore () {
 		}
 	}
 	if (text.empty ()) {
-		statusIcon->setIconImageFrame (UiConfiguration::InactiveStateIconFrame);
+		statusIcon->setIconSprite (uiconfig->coreSprites.getSprite (UiConfiguration::InactiveStateIconSprite));
 		statusIcon->setText (uitext->getText (UiTextString::inactive).capitalized ());
 	}
 	else {
-		statusIcon->setIconImageFrame (UiConfiguration::ActiveStateIconFrame);
+		if (serverstatus.getBoolean ("isPlayPaused", false)) {
+			statusIcon->setIconSprite (uiconfig->coreSprites.getSprite (UiConfiguration::PauseIconSprite));
+		}
+		else {
+			statusIcon->setIconSprite (uiconfig->coreSprites.getSprite (UiConfiguration::ActiveStateIconSprite));
+		}
 		statusIcon->setText (text);
 	}
 
 	taskCountIcon->setText (StdString::createSprintf ("%i", agentTaskCount));
 	taskCountIcon->setMouseHoverTooltip (uitext->getCountText (agentTaskCount, UiTextString::taskInProgress, UiTextString::tasksInProgress));
+
+	agentTaskWindow->syncRecordStore ();
 	if ((agentTaskCount > 0) && isExpanded) {
 		taskCountIcon->isVisible = true;
+		if (! agentTaskWindow->isTaskRunning) {
+			agentTaskWindow->isVisible = false;
+		}
+		else {
+			agentTaskWindow->isVisible = true;
+		}
 	}
 	else {
 		taskCountIcon->isVisible = false;
+		agentTaskWindow->isVisible = false;
 	}
 
 	storageIcon->setText (OsUtil::getStorageAmountDisplayString (serverstatus.getNumber ("freeStorage", (int64_t) 0), serverstatus.getNumber ("totalStorage", (int64_t) 0)));
@@ -270,33 +269,22 @@ void MonitorWindow::syncRecordStore () {
 	streamCountIcon->setText (StdString::createSprintf ("%i", count));
 	streamCountIcon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::cachedStream, UiTextString::cachedStreams));
 
-	if (menuClickCallback) {
-		menuButton->isVisible = true;
-	}
-
 	refreshLayout ();
 	Panel::syncRecordStore ();
 }
 
-void MonitorWindow::setMenuClickCallback (Widget::EventCallback callback, void *callbackData) {
-	menuClickCallback = callback;
-	menuClickCallbackData = callbackData;
-}
-
-void MonitorWindow::setSelectStateChangeCallback (Widget::EventCallback callback, void *callbackData) {
-	selectStateChangeCallback = callback;
-	selectStateChangeCallbackData = callbackData;
-	selectToggle->isVisible = selectStateChangeCallback ? true : false;
-}
-
-void MonitorWindow::setExpandStateChangeCallback (Widget::EventCallback callback, void *callbackData) {
-	expandStateChangeCallback = callback;
-	expandStateChangeCallbackData = callbackData;
-}
-
-void MonitorWindow::setScreenshotLoadCallback (Widget::EventCallback callback, void *callbackData) {
-	screenshotLoadCallback = callback;
-	screenshotLoadCallbackData = callbackData;
+void MonitorWindow::setSelectEnabled (bool enable) {
+	if (isSelectEnabled == enable) {
+		return;
+	}
+	isSelectEnabled = enable;
+	if (isSelectEnabled) {
+		selectToggle->isVisible = true;
+	}
+	else {
+		selectToggle->isVisible = false;
+	}
+	refreshLayout ();
 }
 
 void MonitorWindow::setScreenshotDisplayEnabled (bool enable) {
@@ -380,9 +368,16 @@ void MonitorWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallba
 
 		if (agentTaskCount > 0) {
 			taskCountIcon->isVisible = true;
+			if (! agentTaskWindow->isTaskRunning) {
+				agentTaskWindow->isVisible = false;
+			}
+			else {
+				agentTaskWindow->isVisible = true;
+			}
 		}
 		else {
 			taskCountIcon->isVisible = false;
+			agentTaskWindow->isVisible = false;
 		}
 
 		if (isStorageDisplayEnabled) {
@@ -394,8 +389,8 @@ void MonitorWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallba
 			streamCountIcon->isVisible = false;
 		}
 
-		if (cacheButton) {
-			cacheButton->isVisible = true;
+		if (actionButton) {
+			actionButton->isVisible = true;
 		}
 	}
 	else {
@@ -406,10 +401,11 @@ void MonitorWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallba
 		screenshotImage->isVisible = false;
 		statusIcon->isVisible = false;
 		taskCountIcon->isVisible = false;
+		agentTaskWindow->isVisible = false;
 		storageIcon->isVisible = false;
 		streamCountIcon->isVisible = false;
-		if (cacheButton) {
-			cacheButton->isVisible = false;
+		if (actionButton) {
+			actionButton->isVisible = false;
 		}
 	}
 
@@ -437,9 +433,6 @@ void MonitorWindow::refreshLayout () {
 	x = x2 + uiconfig->marginSize;
 	y = y0;
 	expandToggle->flowRight (&x, y, &x2, &y2);
-	if (menuButton->isVisible) {
-		menuButton->flowRight (&x, y, &x2, &y2);
-	}
 	if (selectToggle->isVisible) {
 		selectToggle->flowRight (&x, y, &x2, &y2);
 	}
@@ -466,25 +459,26 @@ void MonitorWindow::refreshLayout () {
 	if (taskCountIcon->isVisible) {
 		taskCountIcon->flowRight (&x, y, &x2, &y2);
 	}
-	if (cacheButton && cacheButton->isVisible) {
-		cacheButton->flowRight (&x, y, &x2, &y2);
+	if (agentTaskWindow->isVisible) {
+		x = x0;
+		y = y2 + uiconfig->marginSize;
+		x2 = 0.0f;
+		agentTaskWindow->flowDown (x, &y, &x2, &y2);
+	}
+	if (actionButton && actionButton->isVisible) {
+		actionButton->flowRight (&x, y, &x2, &y2);
 	}
 
 	resetSize ();
 
 	x = width - widthPadding;
-	if (cacheButton && cacheButton->isVisible) {
-		cacheButton->flowLeft (&x);
+	if (actionButton && actionButton->isVisible) {
+		actionButton->flowLeft (&x);
 	}
 
 	x = width - widthPadding;
 	if (selectToggle->isVisible) {
 		selectToggle->flowLeft (&x);
-	}
-	if (menuButton->isVisible) {
-		menuButton->flowLeft (&x);
-		menuPositionX = menuButton->position.x;
-		menuPositionY = menuButton->position.y + menuButton->height;
 	}
 	expandToggle->flowLeft (&x);
 }
@@ -493,8 +487,8 @@ void MonitorWindow::screenshotImageLoaded (void *windowPtr, Widget *widgetPtr) {
 	MonitorWindow *window;
 
 	window = (MonitorWindow *) windowPtr;
-	if (window->screenshotLoadCallback) {
-		window->screenshotLoadCallback (window->screenshotLoadCallbackData, window);
+	if (window->screenshotLoadCallback.callback) {
+		window->screenshotLoadCallback.callback (window->screenshotLoadCallback.callbackData, window);
 	}
 }
 
@@ -503,15 +497,6 @@ void MonitorWindow::screenshotImageLongPressed (void *windowPtr, Widget *widgetP
 
 	image = (ImageWindow *) widgetPtr;
 	App::instance->uiStack.showImageDialog (image->imageUrl);
-}
-
-void MonitorWindow::menuButtonClicked (void *windowPtr, Widget *widgetPtr) {
-	MonitorWindow *window;
-
-	window = (MonitorWindow *) windowPtr;
-	if (window->menuClickCallback) {
-		window->menuClickCallback (window->menuClickCallbackData, window);
-	}
 }
 
 void MonitorWindow::selectToggleStateChanged (void *windowPtr, Widget *widgetPtr) {
@@ -530,8 +515,8 @@ void MonitorWindow::selectToggleStateChanged (void *windowPtr, Widget *widgetPtr
 	else {
 		window->setCornerRadius (uiconfig->cornerRadius);
 	}
-	if (window->selectStateChangeCallback) {
-		window->selectStateChangeCallback (window->selectStateChangeCallbackData, window);
+	if (window->selectStateChangeCallback.callback) {
+		window->selectStateChangeCallback.callback (window->selectStateChangeCallback.callbackData, window);
 	}
 }
 
@@ -542,70 +527,41 @@ void MonitorWindow::expandToggleStateChanged (void *windowPtr, Widget *widgetPtr
 	window = (MonitorWindow *) windowPtr;
 	toggle = (Toggle *) widgetPtr;
 	window->setExpanded (toggle->isChecked, true);
-	if (window->expandStateChangeCallback) {
-		window->expandStateChangeCallback (window->expandStateChangeCallbackData, window);
+	if (window->expandStateChangeCallback.callback) {
+		window->expandStateChangeCallback.callback (window->expandStateChangeCallback.callbackData, window);
 	}
 }
 
-void MonitorWindow::addCacheButton (Sprite *sprite, Widget::EventCallback clickCallback, Widget::EventCallback mouseEnterCallback, Widget::EventCallback mouseExitCallback, void *callbackData) {
+void MonitorWindow::addActionButton (Sprite *sprite, Widget::EventCallback clickCallback, void *clickCallbackData, const StdString &tooltipText) {
 	UiConfiguration *uiconfig;
 
 	uiconfig = &(App::instance->uiConfig);
 
-	if (cacheButton) {
-		cacheButton->isDestroyed = true;
+	if (actionButton) {
+		actionButton->isDestroyed = true;
 	}
-	cacheButtonClickCallback = clickCallback;
-	cacheButtonMouseEnterCallback = mouseEnterCallback;
-	cacheButtonMouseExitCallback = mouseExitCallback;
-	cacheButtonCallbackData = callbackData;
-	cacheButton = (Button *) addWidget (new Button (StdString (""), sprite));
-	cacheButton->setImageColor (uiconfig->flatButtonTextColor);
-	cacheButton->setMouseClickCallback (MonitorWindow::cacheButtonClicked, this);
-	cacheButton->setMouseEnterCallback (MonitorWindow::cacheButtonMouseEntered, this);
-	cacheButton->setMouseExitCallback (MonitorWindow::cacheButtonMouseExited, this);
-	cacheButton->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::viewMonitorCacheTooltip));
+	actionButton = (Button *) addWidget (new Button (sprite));
+	actionButton->setImageColor (uiconfig->flatButtonTextColor);
+	actionButton->setMouseClickCallback (MonitorWindow::actionButtonClicked, this);
+	if (! tooltipText.empty ()) {
+		actionButton->setMouseHoverTooltip (tooltipText);
+	}
+	actionClickCallback = Widget::EventCallbackContext (clickCallback, clickCallbackData);
 
 	if (isExpanded) {
-		cacheButton->isVisible = true;
+		actionButton->isVisible = true;
 	}
 	else {
-		cacheButton->isVisible = false;
+		actionButton->isVisible = false;
 	}
 	refreshLayout ();
 }
 
-void MonitorWindow::cacheButtonClicked (void *windowPtr, Widget *widgetPtr) {
+void MonitorWindow::actionButtonClicked (void *windowPtr, Widget *widgetPtr) {
 	MonitorWindow *window;
 
 	window = (MonitorWindow *) windowPtr;
-	if (window->cacheButtonClickCallback) {
-		window->cacheButtonClickCallback (window->cacheButtonCallbackData, window);
-	}
-}
-
-void MonitorWindow::cacheButtonMouseEntered (void *windowPtr, Widget *widgetPtr) {
-	MonitorWindow *window;
-	Button *button;
-
-	window = (MonitorWindow *) windowPtr;
-	button = (Button *) widgetPtr;
-	Button::mouseEntered (button, button);
-
-	if (window->cacheButtonMouseEnterCallback) {
-		window->cacheButtonMouseEnterCallback (window->cacheButtonCallbackData, window);
-	}
-}
-
-void MonitorWindow::cacheButtonMouseExited (void *windowPtr, Widget *widgetPtr) {
-	MonitorWindow *window;
-	Button *button;
-
-	window = (MonitorWindow *) windowPtr;
-	button = (Button *) widgetPtr;
-	Button::mouseExited (button, button);
-
-	if (window->cacheButtonMouseExitCallback) {
-		window->cacheButtonMouseExitCallback (window->cacheButtonCallbackData, window);
+	if (window->actionClickCallback.callback) {
+		window->actionClickCallback.callback (window->actionClickCallback.callbackData, window);
 	}
 }

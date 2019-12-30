@@ -27,15 +27,17 @@
 * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 * POSSIBILITY OF SUCH DAMAGE.
 */
-// Panel that holds a Slider widget and related text elements
+// Panel that holds a Slider widget and related elements
 
 #ifndef SLIDER_WINDOW_H
 #define SLIDER_WINDOW_H
 
 #include "StdString.h"
+#include "Sprite.h"
 #include "Color.h"
 #include "Slider.h"
 #include "Label.h"
+#include "Image.h"
 #include "Panel.h"
 
 class SliderWindow : public Panel {
@@ -44,6 +46,9 @@ public:
 	virtual ~SliderWindow ();
 
 	typedef StdString (*ValueNameFunction) (float sliderValue);
+
+	// Read-write data members
+	Widget::EventCallbackContext valueChangeCallback;
 
 	// Read-only data members
 	bool isDisabled;
@@ -60,8 +65,8 @@ public:
 	// Set the amount of size padding that should be applied to the window
 	void setPadding (float widthPadding, float heightPadding);
 
-	// Set a callback function that should be invoked when the slider's value changes
-	void setValueChangeCallback (Widget::EventCallback callback, void *callbackData);
+	// Set the window to show an icon image using the provided sprite
+	void setIcon (Sprite *iconSprite);
 
 	// Set a function that should be invoked to convert the slider's numeric value to a name string
 	void setValueNameFunction (SliderWindow::ValueNameFunction fn);
@@ -88,9 +93,8 @@ protected:
 
 private:
 	Slider *slider;
+	Image *iconImage;
 	Label *valueLabel;
 	SliderWindow::ValueNameFunction valueNameFunction;
-	Widget::EventCallback valueChangeCallback;
-	void *valueChangeCallbackData;
 };
 #endif

@@ -40,6 +40,7 @@
 #include "Button.h"
 #include "Toggle.h"
 #include "IconLabelWindow.h"
+#include "AgentTaskWindow.h"
 #include "Panel.h"
 
 class MonitorWindow : public Panel {
@@ -49,29 +50,25 @@ public:
 	MonitorWindow (const StdString &agentId);
 	virtual ~MonitorWindow ();
 
+	// Read-write data members
+	Widget::EventCallbackContext selectStateChangeCallback;
+	Widget::EventCallbackContext expandStateChangeCallback;
+	Widget::EventCallbackContext screenshotLoadCallback;
+	Widget::EventCallbackContext actionClickCallback;
+
 	// Read-only data members
 	bool isSelected;
 	bool isExpanded;
+	bool isSelectEnabled;
 	bool isScreenshotDisplayEnabled;
 	bool isStorageDisplayEnabled;
 	StdString agentId;
 	StdString agentName;
 	int agentTaskCount;
 	int64_t screenshotTime;
-	float menuPositionX;
-	float menuPositionY;
 
-	// Set a callback function that should be invoked when the window's menu button is pressed
-	void setMenuClickCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback that should be invoked when the select toggle's checked state changes
-	void setSelectStateChangeCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback that should be invoked when the expand toggle's checked state changes
-	void setExpandStateChangeCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback that should be invoked when the screenshot image loads
-	void setScreenshotLoadCallback (Widget::EventCallback callback, void *callbackData);
+	// Set the enable state of the window's select toggle
+	void setSelectEnabled (bool enable);
 
 	// Set the enable state of the window's screenshot image
 	void setScreenshotDisplayEnabled (bool enable);
@@ -79,8 +76,8 @@ public:
 	// Set the enable state of the window's storage display elements
 	void setStorageDisplayEnabled (bool enable);
 
-	// Add a cache button to the window, assigning it the provided sprite and callbacks
-	void addCacheButton (Sprite *sprite, Widget::EventCallback clickCallback = NULL, Widget::EventCallback mouseEnterCallback = NULL, Widget::EventCallback mouseExitCallback = NULL, void *callbackData = NULL);
+	// Add an action button to the window
+	void addActionButton (Sprite *sprite, Widget::EventCallback clickCallback = NULL, void *clickCallbackData = NULL, const StdString &tooltipText = StdString (""));
 
 	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
 	void syncRecordStore ();
@@ -100,12 +97,9 @@ public:
 	// Callback functions
 	static void screenshotImageLoaded (void *windowPtr, Widget *widgetPtr);
 	static void screenshotImageLongPressed (void *windowPtr, Widget *widgetPtr);
-	static void menuButtonClicked (void *windowPtr, Widget *widgetPtr);
 	static void selectToggleStateChanged (void *windowPtr, Widget *widgetPtr);
 	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
-	static void cacheButtonClicked (void *windowPtr, Widget *widgetPtr);
-	static void cacheButtonMouseEntered (void *windowPtr, Widget *widgetPtr);
-	static void cacheButtonMouseExited (void *windowPtr, Widget *widgetPtr);
+	static void actionButtonClicked (void *windowPtr, Widget *widgetPtr);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
@@ -123,22 +117,10 @@ private:
 	IconLabelWindow *taskCountIcon;
 	IconLabelWindow *storageIcon;
 	IconLabelWindow *streamCountIcon;
-	Button *menuButton;
 	Toggle *selectToggle;
 	Toggle *expandToggle;
-	Button *cacheButton;
-	Widget::EventCallback menuClickCallback;
-	void *menuClickCallbackData;
-	Widget::EventCallback selectStateChangeCallback;
-	void *selectStateChangeCallbackData;
-	Widget::EventCallback expandStateChangeCallback;
-	void *expandStateChangeCallbackData;
-	Widget::EventCallback screenshotLoadCallback;
-	void *screenshotLoadCallbackData;
-	Widget::EventCallback cacheButtonClickCallback;
-	Widget::EventCallback cacheButtonMouseEnterCallback;
-	Widget::EventCallback cacheButtonMouseExitCallback;
-	void *cacheButtonCallbackData;
+	Button *actionButton;
+	AgentTaskWindow *agentTaskWindow;
 };
 
 #endif

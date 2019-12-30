@@ -143,9 +143,9 @@ int CameraUi::doLoad () {
 	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 
 	panel = new Panel ();
-	panel->setFillBg (true, uiconfig->mediumBackgroundColor);
+	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
 	toggle = (Toggle *) panel->addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandAllLessButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandAllMoreButtonSprite)));
-	toggle->setImageColor (uiconfig->flatButtonTextColor);
+	toggle->setInverseColor (true);
 	toggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::minimizeAll).capitalized (), uitext->getText (UiTextString::expandAll).capitalized ());
 	toggle->setStateChangeCallback (CameraUi::expandAgentsToggleStateChanged, this);
 	expandAgentsToggle.assign (toggle);
@@ -170,13 +170,13 @@ void CameraUi::doUnload () {
 void CameraUi::doAddMainToolbarItems (Toolbar *toolbar) {
 	Button *button;
 
-	button = new Button (StdString (""), App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::SelectImageSizeButtonSprite));
+	button = new Button (App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::SelectImageSizeButtonSprite));
 	button->setInverseColor (true);
 	button->setMouseClickCallback (CameraUi::imageSizeButtonClicked, this);
 	button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::thumbnailImageSizeTooltip));
 	toolbar->addRightItem (button);
 
-	button = new Button (StdString (""), App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::ReloadButtonSprite));
+	button = new Button (App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::ReloadButtonSprite));
 	button->setInverseColor (true);
 	button->setMouseClickCallback (CameraUi::reloadButtonClicked, this);
 	button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::reloadTooltip));
@@ -192,7 +192,7 @@ void CameraUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 
-	button = new Button (StdString (""), sprites.getSprite (CameraUi::ConfigureTimelapseButtonSprite));
+	button = new Button (sprites.getSprite (CameraUi::ConfigureTimelapseButtonSprite));
 	button->setInverseColor (true);
 	button->setMouseClickCallback (CameraUi::configureTimelapseButtonClicked, this);
 	button->setMouseEnterCallback (CameraUi::commandButtonMouseEntered, this);
@@ -211,7 +211,7 @@ void CameraUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
 	}
 	autoReloadToggle.assign (toggle);
 
-	button = new Button (StdString (""), sprites.getSprite (CameraUi::ClearTimelapseButtonSprite));
+	button = new Button (sprites.getSprite (CameraUi::ClearTimelapseButtonSprite));
 	button->setInverseColor (true);
 	button->setMouseClickCallback (CameraUi::clearTimelapseButtonClicked, this);
 	button->setMouseEnterCallback (CameraUi::commandButtonMouseEntered, this);
@@ -800,8 +800,8 @@ void CameraUi::configureTimelapseButtonClicked (void *uiPtr, Widget *widgetPtr) 
 	action->setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
 	action->setInverseColor (true);
 	action->setTitleText (uitext->getText (UiTextString::setTimelapse).capitalized ());
-	action->setOptionChangeCallback (CameraUi::configureTimelapseActionOptionChanged, ui);
-	action->setCloseCallback (CameraUi::configureTimelapseActionClosed, ui);
+	action->optionChangeCallback = Widget::EventCallbackContext (CameraUi::configureTimelapseActionOptionChanged, ui);
+	action->closeCallback = Widget::EventCallbackContext (CameraUi::configureTimelapseActionClosed, ui);
 
 	toggle = new Toggle ();
 	toggle->setChecked (enabled);

@@ -82,7 +82,7 @@ ServerContactWindow::ServerContactWindow (const StdString &displayName, const St
 	progressBar->zLevel = 1;
 	progressBar->setIndeterminate (true);
 
-	deleteButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
+	deleteButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
 	deleteButton->setMouseClickCallback (ServerContactWindow::deleteButtonClicked, this);
 	deleteButton->setMouseHoverTooltip (uitext->getText (UiTextString::remove).capitalized ());
 	deleteButton->setImageColor (uiconfig->flatButtonTextColor);

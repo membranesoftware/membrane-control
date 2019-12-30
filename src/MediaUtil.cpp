@@ -30,7 +30,10 @@
 #include "Config.h"
 #include <stdlib.h>
 #include <math.h>
+#include "App.h"
 #include "StdString.h"
+#include "UiText.h"
+#include "SystemInterface.h"
 #include "MediaUtil.h"
 
 const float MediaUtil::aspectRatioMatchEpsilon = 0.1f;
@@ -136,4 +139,63 @@ StdString MediaUtil::getFrameSizeName (int width, int height) {
 		return (StdString ("QQVGA"));
 	}
 	return (StdString (""));
+}
+
+StdString MediaUtil::getStreamProfileDescription (int streamProfile) {
+	UiText *uitext;
+
+	uitext = &(App::instance->uiText);
+	switch (streamProfile) {
+		case SystemInterface::Constant_DefaultStreamProfile: {
+			return (uitext->getText (UiTextString::normalVideoQualityDescription));
+		}
+		case SystemInterface::Constant_CompressedStreamProfile: {
+			return (uitext->getText (UiTextString::compressedVideoQualityDescription));
+		}
+		case SystemInterface::Constant_LowQualityStreamProfile: {
+			return (uitext->getText (UiTextString::lowVideoQualityDescription));
+		}
+		case SystemInterface::Constant_LowestQualityStreamProfile: {
+			return (uitext->getText (UiTextString::lowestVideoQualityDescription));
+		}
+	}
+
+	return (StdString (""));
+}
+
+int MediaUtil::getStreamProfile (const StdString &description) {
+	UiText *uitext;
+
+	uitext = &(App::instance->uiText);
+	if (description.equals (uitext->getText (UiTextString::compressedVideoQualityDescription))) {
+		return (SystemInterface::Constant_CompressedStreamProfile);
+	}
+	if (description.equals (uitext->getText (UiTextString::lowVideoQualityDescription))) {
+		return (SystemInterface::Constant_LowQualityStreamProfile);
+	}
+	if (description.equals (uitext->getText (UiTextString::lowestVideoQualityDescription))) {
+		return (SystemInterface::Constant_LowestQualityStreamProfile);
+	}
+
+	return (SystemInterface::Constant_DefaultStreamProfile);
+}
+
+int64_t MediaUtil::getStreamSize (int64_t mediaSize, int streamProfile) {
+	if (mediaSize <= 0) {
+		return (0);
+	}
+
+	switch (streamProfile) {
+		case SystemInterface::Constant_CompressedStreamProfile: {
+			return (mediaSize);
+		}
+		case SystemInterface::Constant_LowQualityStreamProfile: {
+			return (mediaSize);
+		}
+		case SystemInterface::Constant_LowestQualityStreamProfile: {
+			return (mediaSize / 2);
+		}
+	}
+
+	return (mediaSize * 2);
 }

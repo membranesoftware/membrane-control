@@ -48,6 +48,11 @@ public:
 	StreamWindow (Json *streamItem);
 	virtual ~StreamWindow ();
 
+	// Read-write data members
+	Widget::EventCallbackContext streamImageClickCallback;
+	Widget::EventCallbackContext viewButtonClickCallback;
+	Widget::EventCallbackContext removeButtonClickCallback;
+
 	// Read-only data members
 	StdString streamId;
 	StdString agentId;
@@ -64,15 +69,10 @@ public:
 	int64_t duration;
 	float frameRate;
 	int64_t bitrate;
+	int64_t streamSize;
 
 	// Set the layout type that should be used to arrange the panel's widgets, as specified by a CardView detail constant
 	void setLayout (int layoutType, float maxPanelWidth);
-
-	// Set a callback that should be invoked when the stream image is clicked
-	void setStreamImageClickCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback that should be invoked when the view button is clicked
-	void setViewButtonClickCallback (Widget::EventCallback callback, void *callbackData);
 
 	// Set the index that should be used to load the window's thumbnail image
 	void setThumbnailIndex (int index);
@@ -94,8 +94,10 @@ public:
 
 	// Callback functions
 	static void streamImageClicked (void *windowPtr, Widget *widgetPtr);
+	static void streamImageLongPressed (void *windowPtr, Widget *widgetPtr);
 	static void streamImageLoaded (void *windowPtr, Widget *widgetPtr);
 	static void viewButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void removeButtonClicked (void *windowPtr, Widget *widgetPtr);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
@@ -115,10 +117,7 @@ private:
 	LabelWindow *detailNameLabel;
 	LabelWindow *timestampLabel;
 	Button *viewButton;
-	Widget::EventCallback streamImageClickCallback;
-	void *streamImageClickCallbackData;
-	Widget::EventCallback viewButtonClickCallback;
-	void *viewButtonClickCallbackData;
+	Button *removeButton;
 };
 
 #endif

@@ -271,7 +271,7 @@ void UiStack::resetToolbars () {
 	mainToolbar->clearRightItems ();
 	secondaryToolbar->clearAll ();
 
-	button = new Button (StdString (""), App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::MainMenuButtonSprite));
+	button = new Button (App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::MainMenuButtonSprite));
 	button->setInverseColor (true);
 	button->setMouseClickCallback (UiStack::mainMenuButtonClicked, this);
 	button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::mainMenuTooltip));
@@ -282,7 +282,7 @@ void UiStack::resetToolbars () {
 	}
 
 	if (uiList.size () > 1) {
-		button = new Button (StdString (""), App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::BackButtonSprite));
+		button = new Button (App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::BackButtonSprite));
 		button->setInverseColor (true);
 		button->setMouseClickCallback (UiStack::backButtonClicked, this);
 		button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::uiBackTooltip));

@@ -95,7 +95,6 @@ public:
 	static const char *WebKioskUiSelectedAgentsKey;
 	static const char *WebKioskUiExpandedAgentsKey;
 	static const char *WebKioskUiPlaylistsKey;
-	static const char *WebKioskUiToolbarModeKey;
 	static const char *MainUiExpandedUiTypesKey;
 	static const char *MainUiApplicationNewsItemsKey;
 	static const char *MediaUiImageSizeKey;
@@ -110,6 +109,9 @@ public:
 	static const char *MediaItemUiImageSizeKey;
 	static const char *StreamItemUiImageSizeKey;
 	static const char *MonitorCacheUiImageSizeKey;
+	static const char *MonitorCacheUiExpandedAgentKey;
+	static const char *MonitorCacheUiStartPositionKey;
+	static const char *MonitorCacheUiPlayDurationKey;
 	static const char *CameraUiSelectedAgentsKey;
 	static const char *CameraUiExpandedAgentsKey;
 	static const char *CameraUiImageSizeKey;

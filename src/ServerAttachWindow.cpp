@@ -75,13 +75,13 @@ ServerAttachWindow::ServerAttachWindow (const StdString &agentId)
 	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::BodyFont, uiconfig->primaryTextColor));
 	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 
-	attachButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::AttachServerButtonSprite)));
+	attachButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::AttachServerButtonSprite)));
 	attachButton->setMouseClickCallback (ServerAttachWindow::attachButtonClicked, this);
 	attachButton->setImageColor (uiconfig->flatButtonTextColor);
 	attachButton->setMouseHoverTooltip (uitext->getText (UiTextString::attachServerTooltip));
 	attachButton->isVisible = false;
 
-	removeButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
+	removeButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
 	removeButton->setMouseClickCallback (ServerAttachWindow::removeButtonClicked, this);
 	removeButton->setImageColor (uiconfig->flatButtonTextColor);
 	removeButton->setMouseHoverTooltip (uitext->getText (UiTextString::removeServer).capitalized ());

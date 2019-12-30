@@ -54,6 +54,7 @@ public:
 	float streamFrameRate;
 	int64_t streamSize;
 	int64_t streamBitrate;
+	int streamProfile;
 
 	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
 	void syncRecordStore ();

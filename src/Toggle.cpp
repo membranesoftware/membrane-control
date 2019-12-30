@@ -66,12 +66,12 @@ Toggle::Toggle (Sprite *uncheckedButtonSprite, Sprite *checkedButtonSprite)
 
 	uiconfig = &(App::instance->uiConfig);
 	if (uncheckedButtonSprite && checkedButtonSprite) {
-		uncheckedButton = (Button *) addWidget (new Button (StdString (""), uncheckedButtonSprite));
-		checkedButton = (Button *) addWidget (new Button (StdString (""), checkedButtonSprite));
+		uncheckedButton = (Button *) addWidget (new Button (uncheckedButtonSprite));
+		checkedButton = (Button *) addWidget (new Button (checkedButtonSprite));
 	}
 	else {
-		uncheckedButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::ToggleCheckboxOutlineSprite)));
-		checkedButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::ToggleCheckboxSprite)));
+		uncheckedButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::ToggleCheckboxOutlineSprite)));
+		checkedButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::ToggleCheckboxSprite)));
 	}
 	uncheckedButton->isInputSuspended = true;
 	checkedButton->isInputSuspended = true;

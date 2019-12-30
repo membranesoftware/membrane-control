@@ -47,7 +47,7 @@
 
 const float Button::focusTextOffset = 2.0f;
 
-Button::Button (const StdString &labelText, Sprite *sprite, bool shouldDestroySprite)
+Button::Button (Sprite *sprite, const StdString &labelText)
 : Panel ()
 , shortcutKey (SDLK_UNKNOWN)
 , isFocusDropShadowDisabled (false)
@@ -73,7 +73,7 @@ Button::Button (const StdString &labelText, Sprite *sprite, bool shouldDestroySp
 		label = (Label *) addWidget (new Label (labelText, UiConfiguration::ButtonFont, normalTextColor));
 	}
 	if (sprite) {
-		image = (Image *) addWidget (new Image (sprite, UiConfiguration::WhiteButtonFrame, shouldDestroySprite));
+		image = (Image *) addWidget (new Image (sprite, UiConfiguration::WhiteButtonFrame));
 		image->drawAlpha = uiconfig->activeFocusedIconAlpha;
 		maxImageWidth = image->maxSpriteWidth;
 		maxImageHeight = image->maxSpriteHeight;

@@ -86,7 +86,7 @@ CameraWindow::CameraWindow (const StdString &agentId, SpriteGroup *cameraUiSprit
 	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	descriptionLabel->isVisible = false;
 
-	statusIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::ActivityStateIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	statusIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::InactiveStateIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	statusIcon->setPadding (0.0f, 0.0f);
 	statusIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
 	statusIcon->setMouseHoverTooltip (uitext->getText (UiTextString::cameraActivityIconTooltip));
@@ -205,12 +205,14 @@ void CameraWindow::refreshLayout () {
 void CameraWindow::syncRecordStore () {
 	RecordStore *store;
 	SystemInterface *interface;
+	UiConfiguration *uiconfig;
 	UiText *uitext;
 	Json *record, serverstatus;
 	int captureperiod;
 
 	store = &(App::instance->agentControl.recordStore);
 	interface = &(App::instance->systemInterface);
+	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 	record = store->findRecord (agentId, SystemInterface::CommandId_AgentStatus);
 	if (! record) {
@@ -237,14 +239,14 @@ void CameraWindow::syncRecordStore () {
 	}
 
 	if (! isCapturing) {
-		statusIcon->setIconImageFrame (UiConfiguration::InactiveStateIconFrame);
+		statusIcon->setIconSprite (uiconfig->coreSprites.getSprite (UiConfiguration::InactiveStateIconSprite));
 		statusIcon->setText (uitext->getText (UiTextString::inactive).capitalized ());
 		imageQualityIcon->isVisible = false;
 		capturePeriodIcon->isVisible = false;
 	}
 	else {
+		statusIcon->setIconSprite (uiconfig->coreSprites.getSprite (UiConfiguration::ActiveStateIconSprite));
 		statusIcon->setText (uitext->getText (UiTextString::active).capitalized ());
-		statusIcon->setIconImageFrame (UiConfiguration::ActiveStateIconFrame);
 		imageQualityIcon->isVisible = isExpanded;
 		capturePeriodIcon->isVisible = isExpanded;
 	}

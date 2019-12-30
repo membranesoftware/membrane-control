@@ -34,6 +34,8 @@
 #include "StdString.h"
 #include "App.h"
 #include "Resource.h"
+#include "OsUtil.h"
+#include "MediaUtil.h"
 #include "SpriteGroup.h"
 #include "AgentControl.h"
 #include "Button.h"
@@ -52,6 +54,7 @@
 #include "IconCardWindow.h"
 #include "MediaThumbnailWindow.h"
 #include "ActionWindow.h"
+#include "IconLabelWindow.h"
 #include "MediaDetailWindow.h"
 #include "MediaItemUi.h"
 
@@ -63,6 +66,7 @@ MediaItemUi::MediaItemUi (const StdString &mediaId, const StdString &mediaName)
 , frameWidth (0)
 , frameHeight (0)
 , thumbnailCount (0)
+, mediaSize (0)
 , isRecordSynced (false)
 , cardView (NULL)
 , cardDetail (-1)
@@ -121,6 +125,8 @@ int MediaItemUi::doLoad () {
 
 void MediaItemUi::doUnload () {
 	streamServerAgentMap.clear ();
+	timelineWindow.clear ();
+	configureStreamSizeIcon.clear ();
 }
 
 void MediaItemUi::doAddMainToolbarItems (Toolbar *toolbar) {
@@ -129,7 +135,7 @@ void MediaItemUi::doAddMainToolbarItems (Toolbar *toolbar) {
 
 	uitext = &(App::instance->uiText);
 
-	button = new Button (StdString (""), App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::SelectImageSizeButtonSprite));
+	button = new Button (App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::SelectImageSizeButtonSprite));
 	button->setInverseColor (true);
 	button->setMouseClickCallback (MediaItemUi::imageSizeButtonClicked, this);
 	button->setMouseHoverTooltip (uitext->getText (UiTextString::thumbnailImageSizeTooltip));
@@ -148,7 +154,7 @@ void MediaItemUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
 	toolbar->addLeftItem (timeline);
 	timelineWindow.assign (timeline);
 
-	button = new Button (StdString (""), sprites.getSprite (MediaItemUi::ConfigureStreamButtonSprite));
+	button = new Button (sprites.getSprite (MediaItemUi::ConfigureStreamButtonSprite));
 	button->setInverseColor (true);
 	button->setMouseClickCallback (MediaItemUi::configureStreamButtonClicked, this);
 	button->setMouseHoverTooltip (uitext->getText (UiTextString::mediaItemUiConfigureStreamTooltip), Widget::LeftAlignment);
@@ -169,6 +175,10 @@ void MediaItemUi::doResume () {
 
 void MediaItemUi::doPause () {
 
+}
+
+void MediaItemUi::doUpdate (int msElapsed) {
+	configureStreamSizeIcon.compact ();
 }
 
 void MediaItemUi::doResize () {
@@ -230,6 +240,7 @@ void MediaItemUi::syncMediaItem () {
 	duration = interface->getCommandNumberParam (mediaitem, "duration", (int64_t) 0);
 	frameWidth = interface->getCommandNumberParam (mediaitem, "width", (int) 0);
 	frameHeight = interface->getCommandNumberParam (mediaitem, "height", (int) 0);
+	mediaSize = interface->getCommandNumberParam (mediaitem, "size", (int64_t) 0);
 	isCreateStreamAvailable = interface->getCommandBooleanParam (mediaitem, "isCreateStreamAvailable", true);
 
 	if ((thumbnailCount > 0) && (frameWidth > 0) && (frameHeight > 0) && (! thumbnailPath.empty ())) {
@@ -361,6 +372,8 @@ void MediaItemUi::configureStreamButtonClicked (void *uiPtr, Widget *widgetPtr) 
 	ActionWindow *action;
 	Widget *target;
 	ComboBox *combobox;
+	IconLabelWindow *icon;
+	int profile;
 
 	ui = (MediaItemUi *) uiPtr;
 	action = ActionWindow::castWidget (ui->actionWidget.widget);
@@ -387,25 +400,33 @@ void MediaItemUi::configureStreamButtonClicked (void *uiPtr, Widget *widgetPtr) 
 
 	if (ui->isCreateStreamAvailable) {
 		action->setTitleText (uitext->getText (UiTextString::configureStream).capitalized ());
-		action->setConfirmButtonText (uitext->getText (UiTextString::apply).uppercased ());
-		action->setCloseCallback (MediaItemUi::configureStreamActionClosed, ui);
+		action->setConfirmTooltipText (uitext->getText (UiTextString::apply).capitalized ());
+		action->optionChangeCallback = Widget::EventCallbackContext (MediaItemUi::configureStreamOptionChanged, ui);
+		action->closeCallback = Widget::EventCallbackContext (MediaItemUi::configureStreamActionClosed, ui);
 
 	// TODO: Allow selection of a stream server (currently restricted to the server holding the source media item)
 	//	action->addComboBoxOption (uitext->getText (UiTextString::streamServer).capitalized (), &(ui->streamServerAgentMap));
 
 		combobox = new ComboBox ();
-		combobox->addItem (uitext->getText (UiTextString::normalVideoQualityDescription));
-		combobox->addItem (uitext->getText (UiTextString::highVideoQualityDescription));
-		combobox->addItem (uitext->getText (UiTextString::lowVideoQualityDescription));
-		combobox->addItem (uitext->getText (UiTextString::lowestVideoQualityDescription));
-		combobox->setValue (App::instance->prefsMap.find (App::MediaItemUiVideoQualityKey, uitext->getText (UiTextString::normalVideoQualityDescription)));
+		combobox->addItem (MediaUtil::getStreamProfileDescription (SystemInterface::Constant_DefaultStreamProfile));
+		combobox->addItem (MediaUtil::getStreamProfileDescription (SystemInterface::Constant_CompressedStreamProfile));
+		combobox->addItem (MediaUtil::getStreamProfileDescription (SystemInterface::Constant_LowQualityStreamProfile));
+		combobox->addItem (MediaUtil::getStreamProfileDescription (SystemInterface::Constant_LowestQualityStreamProfile));
+		profile = App::instance->prefsMap.find (App::MediaItemUiVideoQualityKey, SystemInterface::Constant_DefaultStreamProfile);
+		combobox->setValue (MediaUtil::getStreamProfileDescription (profile));
 		action->addOption (uitext->getText (UiTextString::videoQuality).capitalized (), combobox, uitext->getText (UiTextString::videoQualityDescription));
+
+		icon = new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::StorageIconSprite), OsUtil::getByteCountDisplayString (MediaUtil::getStreamSize (ui->mediaSize, profile)), UiConfiguration::CaptionFont, uiconfig->primaryTextColor);
+		icon->setFillBg (true, uiconfig->lightBackgroundColor);
+		icon->setMouseHoverTooltip (uitext->getText (UiTextString::configureStreamByteCountTooltip));
+		ui->configureStreamSizeIcon.assign (icon);
+		action->setFooterPanel (icon);
 	}
 	else {
 		action->setTitleText (uitext->getText (UiTextString::removeMedia).capitalized ());
 		action->setDescriptionText (uitext->getText (UiTextString::removeMediaActionText));
-		action->setConfirmButtonText (uitext->getText (UiTextString::remove).uppercased ());
-		action->setCloseCallback (MediaItemUi::removeMediaActionClosed, ui);
+		action->setConfirmTooltipText (uitext->getText (UiTextString::remove).uppercased ());
+		action->closeCallback = Widget::EventCallbackContext (MediaItemUi::removeMediaActionClosed, ui);
 	}
 
 	action->position.assign (widgetPtr->screenX + widgetPtr->width - action->width, widgetPtr->screenY - action->height);
@@ -413,11 +434,27 @@ void MediaItemUi::configureStreamButtonClicked (void *uiPtr, Widget *widgetPtr) 
 	ui->actionTarget.assign (widgetPtr);
 }
 
+void MediaItemUi::configureStreamOptionChanged (void *uiPtr, Widget *widgetPtr) {
+	MediaItemUi *ui;
+	ActionWindow *action;
+	UiText *uitext;
+	IconLabelWindow *icon;
+
+	ui = (MediaItemUi *) uiPtr;
+	action = (ActionWindow *) widgetPtr;
+	uitext = &(App::instance->uiText);
+	icon = (IconLabelWindow *) ui->configureStreamSizeIcon.widget;
+	if (! icon) {
+		return;
+	}
+	icon->setText (OsUtil::getByteCountDisplayString (MediaUtil::getStreamSize (ui->mediaSize, MediaUtil::getStreamProfile (action->getStringValue (uitext->getText (UiTextString::videoQuality).capitalized (), "")))));
+	action->refresh ();
+}
+
 void MediaItemUi::configureStreamActionClosed (void *uiPtr, Widget *widgetPtr) {
 	MediaItemUi *ui;
 	ActionWindow *action;
 	UiText *uitext;
-	StdString quality;
 	Json *params;
 	int result, profile;
 
@@ -425,19 +462,12 @@ void MediaItemUi::configureStreamActionClosed (void *uiPtr, Widget *widgetPtr) {
 	action = (ActionWindow *) widgetPtr;
 	uitext = &(App::instance->uiText);
 	if (action->isConfirmed && (! ui->agentId.empty ())) {
-		quality = action->getStringValue (uitext->getText (UiTextString::videoQuality).capitalized (), "");
-		if (! quality.empty ()) {
-			App::instance->prefsMap.insert (App::MediaItemUiVideoQualityKey, quality);
+		profile = MediaUtil::getStreamProfile (action->getStringValue (uitext->getText (UiTextString::videoQuality).capitalized (), ""));
+		if (profile != SystemInterface::Constant_DefaultStreamProfile) {
+			App::instance->prefsMap.insert (App::MediaItemUiVideoQualityKey, profile);
 		}
-		profile = SystemInterface::Constant_DefaultStreamProfile;
-		if (quality.equals (uitext->getText (UiTextString::highVideoQualityDescription))) {
-			profile = SystemInterface::Constant_CompressedStreamProfile;
-		}
-		else if (quality.equals (uitext->getText (UiTextString::lowVideoQualityDescription))) {
-			profile = SystemInterface::Constant_LowQualityStreamProfile;
-		}
-		else if (quality.equals (uitext->getText (UiTextString::lowestVideoQualityDescription))) {
-			profile = SystemInterface::Constant_LowestQualityStreamProfile;
+		else {
+			App::instance->prefsMap.remove (App::MediaItemUiVideoQualityKey);
 		}
 
 		params = new Json ();
@@ -466,22 +496,12 @@ void MediaItemUi::configureMediaStreamComplete (void *uiPtr, int invokeResult, c
 	MediaItemUi *ui;
 	UiText *uitext;
 	SystemInterface *interface;
-	StdString recordid, agentname, text;
+	StdString agentname, text;
 
 	ui = (MediaItemUi *) uiPtr;
 	uitext = &(App::instance->uiText);
 	interface = &(App::instance->systemInterface);
 	if (responseCommand && (interface->getCommandId (responseCommand) == SystemInterface::CommandId_CommandResult) && interface->getCommandBooleanParam (responseCommand, "success", false)) {
-		recordid = interface->getCommandStringParam (responseCommand, "taskId", "");
-		// TODO: Watch the task for events
-/*
-		if (! recordid.empty ()) {
-			params = new Json ();
-			params->set ("recordId", recordid);
-			App::instance->agentControl.writeLinkCommand (App::instance->createCommandJson (SystemInterface::Command_WatchEvents, SystemInterface::Constant_Link, params));
-		}
-*/
-
 		agentname = App::instance->agentControl.getAgentDisplayName (agentId);
 		if (! agentname.empty ()) {
 			text.appendSprintf ("%s: ", agentname.c_str ());

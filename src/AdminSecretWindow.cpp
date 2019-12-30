@@ -85,7 +85,7 @@ AdminSecretWindow::AdminSecretWindow ()
 	itemListView->setItemDeleteCallback (AdminSecretWindow::listItemDeleted, this);
 	itemListView->isVisible = false;
 
-	addButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::AddButtonSprite)));
+	addButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::AddButtonSprite)));
 	addButton->setImageColor (uiconfig->flatButtonTextColor);
 	addButton->setMouseClickCallback (AdminSecretWindow::addButtonClicked, this);
 	addButton->setMouseHoverTooltip (uitext->getText (UiTextString::addAdminPasswordTooltip));

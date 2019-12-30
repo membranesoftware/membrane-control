@@ -30,6 +30,7 @@ O=ActionWindow.o \
 	Agent.o \
 	AgentConfigurationWindow.o \
 	AgentControl.o \
+	AgentTaskWindow.o \
 	App.o \
 	BannerWindow.o \
 	Buffer.o \

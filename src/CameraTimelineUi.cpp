@@ -123,7 +123,7 @@ void CameraTimelineUi::doUnload () {
 void CameraTimelineUi::doAddMainToolbarItems (Toolbar *toolbar) {
 	Button *button;
 
-	button = new Button (StdString (""), App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::SelectImageSizeButtonSprite));
+	button = new Button (App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::SelectImageSizeButtonSprite));
 	button->setInverseColor (true);
 	button->setMouseClickCallback (CameraTimelineUi::imageSizeButtonClicked, this);
 	button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::thumbnailImageSizeTooltip));

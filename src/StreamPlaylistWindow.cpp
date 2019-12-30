@@ -51,16 +51,14 @@
 #include "IconLabelWindow.h"
 #include "SystemInterface.h"
 #include "UiConfiguration.h"
+#include "MediaUi.h"
 #include "StreamPlaylistWindow.h"
 
 const float StreamPlaylistWindow::windowWidthMultiplier = 0.45f;
 const char *StreamPlaylistWindow::PlaylistNameKey = "a";
 const char *StreamPlaylistWindow::IsSelectedKey = "b";
 const char *StreamPlaylistWindow::IsExpandedKey = "c";
-const char *StreamPlaylistWindow::StartPositionMinKey = "d";
-const char *StreamPlaylistWindow::StartPositionMaxKey = "e";
-const char *StreamPlaylistWindow::PlayDurationMinKey = "f";
-const char *StreamPlaylistWindow::PlayDurationMaxKey = "g";
+const char *StreamPlaylistWindow::PlayDurationKey = "f";
 const char *StreamPlaylistWindow::ItemListKey = "h";
 const char *StreamPlaylistWindow::IsShuffleKey = "i";
 const char *StreamPlaylistWindow::StreamUrlKey = "j";
@@ -70,10 +68,14 @@ const char *StreamPlaylistWindow::StartPositionKey = "m";
 const char *StreamPlaylistWindow::ThumbnailUrlKey = "n";
 const char *StreamPlaylistWindow::ThumbnailIndexKey = "o";
 
-StreamPlaylistWindow::StreamPlaylistWindow ()
+StreamPlaylistWindow::StreamPlaylistWindow (SpriteGroup *mediaUiSpriteGroup)
 : Panel ()
 , isSelected (false)
 , isExpanded (false)
+, addItemButtonX1 (0.0f)
+, addItemButtonX2 (0.0f)
+, addItemButtonY (0.0f)
+, sprites (mediaUiSpriteGroup)
 , windowWidth (0.0f)
 , iconImage (NULL)
 , nameLabel (NULL)
@@ -81,26 +83,16 @@ StreamPlaylistWindow::StreamPlaylistWindow ()
 , selectToggle (NULL)
 , expandToggle (NULL)
 , shuffleToggle (NULL)
-, startPositionMinSlider (NULL)
-, startPositionMaxSlider (NULL)
-, startPositionValueLabel (NULL)
-, startPositionLabel (NULL)
-, playDurationMinSlider (NULL)
-, playDurationMaxSlider (NULL)
-, playDurationValueLabel (NULL)
-, playDurationLabel (NULL)
+, startPositionSlider (NULL)
+, playDurationSlider (NULL)
 , itemListView (NULL)
-, selectStateChangeCallback (NULL)
-, selectStateChangeCallbackData (NULL)
-, expandStateChangeCallback (NULL)
-, expandStateChangeCallbackData (NULL)
-, renameClickCallback (NULL)
-, renameClickCallbackData (NULL)
-, listChangeCallback (NULL)
-, listChangeCallbackData (NULL)
+, removeButton (NULL)
+, addItemButton (NULL)
 {
 	UiConfiguration *uiconfig;
 	UiText *uitext;
+	Slider *slider;
+	int i;
 
 	classId = ClassId::StreamPlaylistWindow;
 	uiconfig = &(App::instance->uiConfig);
@@ -135,60 +127,47 @@ StreamPlaylistWindow::StreamPlaylistWindow ()
 	itemListView->setListChangeCallback (StreamPlaylistWindow::itemListChanged, this);
 	itemListView->isVisible = false;
 
-	shuffleToggle = (ToggleWindow *) addWidget (new ToggleWindow (new Toggle (), uitext->getText (UiTextString::shuffle).capitalized ()));
-	shuffleToggle->setPadding (0.0f, 0.0f);
+	shuffleToggle = (ToggleWindow *) addWidget (new ToggleWindow (new Toggle ()));
+	shuffleToggle->setIcon (sprites->getSprite (MediaUi::ShuffleIconSprite));
+	shuffleToggle->setRightAligned (true);
 	shuffleToggle->setImageColor (uiconfig->flatButtonTextColor);
 	shuffleToggle->setMouseHoverTooltip (uitext->getText (UiTextString::shuffleTooltip));
 	shuffleToggle->isVisible = false;
 
-	startPositionValueLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString ("WWWW - WWWW"), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor)));
-	startPositionValueLabel->setWindowWidth (startPositionValueLabel->width);
-	startPositionValueLabel->zLevel = 1;
-	startPositionValueLabel->isVisible = false;
+	slider = new Slider (0.0f, (float) (StreamPlaylistWindow::StartPositionCount - 1));
+	for (i = 0; i < StreamPlaylistWindow::StartPositionCount; ++i) {
+		slider->addSnapValue ((float) i);
+	}
+	startPositionSlider = (SliderWindow *) addWidget (new SliderWindow (slider));
+	startPositionSlider->setIcon (sprites->getSprite (MediaUi::StartPositionIconSprite));
+	startPositionSlider->setMouseHoverTooltip (uitext->getText (UiTextString::startPosition).capitalized ());
+	startPositionSlider->setValueNameFunction (StreamPlaylistWindow::startPositionSliderValueName);
+	startPositionSlider->setValue (StreamPlaylistWindow::ZeroStartPosition, true);
+	startPositionSlider->isVisible = false;
 
-	startPositionLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::startPosition).capitalized (), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
-	startPositionLabel->zLevel = 1;
-	startPositionLabel->isVisible = false;
+	slider = new Slider (0.0f, (float) (StreamPlaylistWindow::PlayDurationCount - 1));
+	for (i = 0; i < StreamPlaylistWindow::PlayDurationCount; ++i) {
+		slider->addSnapValue ((float) i);
+	}
+	playDurationSlider = (SliderWindow *) addWidget (new SliderWindow (slider));
+	playDurationSlider->setIcon (sprites->getSprite (MediaUi::DurationIconSprite));
+	playDurationSlider->setMouseHoverTooltip (uitext->getText (UiTextString::playDuration).capitalized ());
+	playDurationSlider->setValueNameFunction (StreamPlaylistWindow::playDurationSliderValueName);
+	playDurationSlider->setValue (StreamPlaylistWindow::MediumPlayDuration, true);
+	playDurationSlider->isVisible = false;
 
-	startPositionMinSlider = (Slider *) addWidget (new Slider ());
-	startPositionMinSlider->setValueHoverCallback (StreamPlaylistWindow::startPositionSliderValueHovered, this);
-	startPositionMinSlider->setValueChangeCallback (StreamPlaylistWindow::startPositionSliderValueChanged, this);
-	startPositionMinSlider->setTrackWidthScale (0.6f);
-	startPositionMinSlider->isVisible = false;
+	removeButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
+	removeButton->setMouseClickCallback (StreamPlaylistWindow::removeButtonClicked, this);
+	removeButton->setImageColor (uiconfig->flatButtonTextColor);
+	removeButton->setMouseHoverTooltip (uitext->getText (UiTextString::deletePlaylist).capitalized ());
+	removeButton->isVisible = false;
 
-	startPositionMaxSlider = (Slider *) addWidget (new Slider ());
-	startPositionMaxSlider->setValueHoverCallback (StreamPlaylistWindow::startPositionSliderValueHovered, this);
-	startPositionMaxSlider->setValueChangeCallback (StreamPlaylistWindow::startPositionSliderValueChanged, this);
-	startPositionMaxSlider->setTrackWidthScale (0.6f);
-	startPositionMaxSlider->isVisible = false;
-
-	playDurationValueLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString ("WWWW - WWWW"), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor)));
-	playDurationValueLabel->setWindowWidth (playDurationValueLabel->width);
-	playDurationValueLabel->zLevel = 1;
-	playDurationValueLabel->isVisible = false;
-
-	playDurationLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::playDuration).capitalized (), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
-	playDurationLabel->zLevel = 1;
-	playDurationLabel->isVisible = false;
-
-	playDurationMinSlider = (Slider *) addWidget (new Slider (15.0f, 10800.0f));
-	playDurationMinSlider->setValueHoverCallback (StreamPlaylistWindow::playDurationSliderValueHovered, this);
-	playDurationMinSlider->setValueChangeCallback (StreamPlaylistWindow::playDurationSliderValueChanged, this);
-	playDurationMinSlider->setTrackWidthScale (0.6f);
-	playDurationMinSlider->isVisible = false;
-
-	playDurationMaxSlider = (Slider *) addWidget (new Slider (15.0f, 10800.0f));
-	playDurationMaxSlider->setValueHoverCallback (StreamPlaylistWindow::playDurationSliderValueHovered, this);
-	playDurationMaxSlider->setValueChangeCallback (StreamPlaylistWindow::playDurationSliderValueChanged, this);
-	playDurationMaxSlider->setTrackWidthScale (0.6f);
-	playDurationMaxSlider->isVisible = false;
-
-	startPositionMinSlider->setValue (0.0f, true);
-	startPositionMaxSlider->setValue (0.0f, true);
-	playDurationMinSlider->setValue (60.0f, true);
-	playDurationMaxSlider->setValue (300.0f, true);
-	startPositionValueLabel->setText (StdString::createSprintf ("%i%%", (int) startPositionMinSlider->value));
-	playDurationValueLabel->setText (StdString::createSprintf ("%s - %s", OsUtil::getDurationDisplayString ((int64_t) playDurationMinSlider->value * 1000).c_str (), OsUtil::getDurationDisplayString ((int64_t) playDurationMaxSlider->value * 1000).c_str ()));
+	addItemButton = (Button *) addWidget (new Button (sprites->getSprite (MediaUi::AddPlaylistItemButtonSprite)));
+	addItemButton->setMouseClickCallback (StreamPlaylistWindow::addItemButtonClicked, this);
+	addItemButton->setMouseEnterCallback (StreamPlaylistWindow::addItemButtonMouseEntered, this);
+	addItemButton->setMouseExitCallback (StreamPlaylistWindow::addItemButtonMouseExited, this);
+	addItemButton->setImageColor (uiconfig->flatButtonTextColor);
+	addItemButton->isVisible = false;
 
 	refreshLayout ();
 }
@@ -207,26 +186,6 @@ bool StreamPlaylistWindow::isWidgetType (Widget *widget) {
 
 StreamPlaylistWindow *StreamPlaylistWindow::castWidget (Widget *widget) {
 	return (StreamPlaylistWindow::isWidgetType (widget) ? (StreamPlaylistWindow *) widget : NULL);
-}
-
-void StreamPlaylistWindow::setSelectStateChangeCallback (Widget::EventCallback callback, void *callbackData) {
-	selectStateChangeCallback = callback;
-	selectStateChangeCallbackData = callbackData;
-}
-
-void StreamPlaylistWindow::setExpandStateChangeCallback (Widget::EventCallback callback, void *callbackData) {
-	expandStateChangeCallback = callback;
-	expandStateChangeCallbackData = callbackData;
-}
-
-void StreamPlaylistWindow::setRenameClickCallback (Widget::EventCallback callback, void *callbackData) {
-	renameClickCallback = callback;
-	renameClickCallbackData = callbackData;
-}
-
-void StreamPlaylistWindow::setListChangeCallback (Widget::EventCallback callback, void *callbackData) {
-	listChangeCallback = callback;
-	listChangeCallbackData = callbackData;
 }
 
 void StreamPlaylistWindow::setPlaylistName (const StdString &name) {
@@ -274,14 +233,10 @@ void StreamPlaylistWindow::setExpanded (bool expanded, bool shouldSkipStateChang
 		itemCountLabel->setTextFont (UiConfiguration::HeadlineFont);
 		itemListView->isVisible = true;
 		shuffleToggle->isVisible = true;
-		startPositionMinSlider->isVisible = true;
-		startPositionMaxSlider->isVisible = true;
-		startPositionValueLabel->isVisible = true;
-		startPositionLabel->isVisible = true;
-		playDurationMinSlider->isVisible = true;
-		playDurationMaxSlider->isVisible = true;
-		playDurationValueLabel->isVisible = true;
-		playDurationLabel->isVisible = true;
+		startPositionSlider->isVisible = true;
+		playDurationSlider->isVisible = true;
+		removeButton->isVisible = true;
+		addItemButton->isVisible = true;
 	}
 	else {
 		setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
@@ -290,14 +245,10 @@ void StreamPlaylistWindow::setExpanded (bool expanded, bool shouldSkipStateChang
 		itemCountLabel->setTextFont (UiConfiguration::BodyFont);
 		itemListView->isVisible = false;
 		shuffleToggle->isVisible = false;
-		startPositionMinSlider->isVisible = false;
-		startPositionMaxSlider->isVisible = false;
-		startPositionValueLabel->isVisible = false;
-		startPositionLabel->isVisible = false;
-		playDurationMinSlider->isVisible = false;
-		playDurationMaxSlider->isVisible = false;
-		playDurationValueLabel->isVisible = false;
-		playDurationLabel->isVisible = false;
+		startPositionSlider->isVisible = false;
+		playDurationSlider->isVisible = false;
+		removeButton->isVisible = false;
+		addItemButton->isVisible = false;
 	}
 	refreshLayout ();
 	resetNameLabel ();
@@ -352,36 +303,25 @@ void StreamPlaylistWindow::refreshLayout () {
 		x2 = 0.0f;
 		y = y2;
 		y0 = y;
-		startPositionValueLabel->flowRight (&x, y, &x2, &y2);
-		startPositionMinSlider->flowRight (&x, y, &x2, &y2);
-		startPositionMaxSlider->flowRight (&x, y, &x2, &y2);
-		startPositionLabel->flowRight (&x, y, &x2, &y2);
-
-		startPositionValueLabel->centerVertical (y0, y2);
-		startPositionMinSlider->centerVertical (y0, y2);
-		startPositionMaxSlider->centerVertical (y0, y2);
-		startPositionLabel->centerVertical (y0, y2);
-
-		x = x0;
-		x2 = 0.0f;
-		y = y2;
-		y0 = y;
-		playDurationValueLabel->flowRight (&x, y, &x2, &y2);
-		playDurationMinSlider->flowRight (&x, y, &x2, &y2);
-		playDurationMaxSlider->flowRight (&x, y, &x2, &y2);
-		playDurationLabel->flowRight (&x, y, &x2, &y2);
-
-		playDurationValueLabel->centerVertical (y0, y2);
-		playDurationMinSlider->centerVertical (y0, y2);
-		playDurationMaxSlider->centerVertical (y0, y2);
-		playDurationLabel->centerVertical (y0, y2);
+		startPositionSlider->flowRight (&x, y, &x2, &y2);
+		playDurationSlider->flowRight (&x, y, &x2, &y2);
 
 		x = x0;
 		x2 = 0.0f;
 		y = y2;
 		y0 = y;
 		itemListView->flowRight (&x, y, &x2, &y2);
+
+		y = y2 + uiconfig->marginSize;
+		x = x0;
+		x2 = 0.0f;
+		removeButton->flowRight (&x, y, &x2, &y2);
+		addItemButton->flowRight (&x, y, &x2, &y2);
 		setFixedSize (true, windowWidth, y2 + heightPadding);
+
+		x = width - widthPadding;
+		addItemButton->flowLeft (&x);
+		removeButton->flowLeft (&x);
 	}
 	else {
 		setFixedSize (false);
@@ -391,6 +331,9 @@ void StreamPlaylistWindow::refreshLayout () {
 	x = width - widthPadding;
 	selectToggle->flowLeft (&x);
 	expandToggle->flowLeft (&x);
+	addItemButtonX1 = addItemButton->position.x;
+	addItemButtonX2 = addItemButton->position.x + addItemButton->width;
+	addItemButtonY = addItemButton->position.y;
 }
 
 void StreamPlaylistWindow::resetNameLabel () {
@@ -416,8 +359,8 @@ void StreamPlaylistWindow::nameLabelClicked (void *windowPtr, Widget *widgetPtr)
 	StreamPlaylistWindow *window;
 
 	window = (StreamPlaylistWindow *) windowPtr;
-	if (window->renameClickCallback) {
-		window->renameClickCallback (window->renameClickCallbackData, window);
+	if (window->renameClickCallback.callback) {
+		window->renameClickCallback.callback (window->renameClickCallback.callbackData, window);
 	}
 }
 
@@ -437,9 +380,56 @@ void StreamPlaylistWindow::selectToggleStateChanged (void *windowPtr, Widget *wi
 	else {
 		window->setCornerRadius (uiconfig->cornerRadius);
 	}
-	if (window->selectStateChangeCallback) {
-		window->selectStateChangeCallback (window->selectStateChangeCallbackData, window);
+	if (window->selectStateChangeCallback.callback) {
+		window->selectStateChangeCallback.callback (window->selectStateChangeCallback.callbackData, window);
 	}
+}
+
+StdString StreamPlaylistWindow::startPositionSliderValueName (float sliderValue) {
+	switch ((int) sliderValue) {
+		case StreamPlaylistWindow::ZeroStartPosition: {
+			return (App::instance->uiText.getText (UiTextString::streamPlaylistZeroStartPositionDescription));
+		}
+		case StreamPlaylistWindow::NearBeginningStartPosition: {
+			return (App::instance->uiText.getText (UiTextString::streamPlaylistNearBeginningStartPositionDescription));
+		}
+		case StreamPlaylistWindow::MiddleStartPosition: {
+			return (App::instance->uiText.getText (UiTextString::streamPlaylistMiddleStartPositionDescription));
+		}
+		case StreamPlaylistWindow::NearEndStartPosition: {
+			return (App::instance->uiText.getText (UiTextString::streamPlaylistNearEndPositionDescription));
+		}
+		case StreamPlaylistWindow::FullRangeStartPosition: {
+			return (App::instance->uiText.getText (UiTextString::streamPlaylistFullRangePositionDescription));
+		}
+	}
+
+	return (StdString (""));
+}
+
+StdString StreamPlaylistWindow::playDurationSliderValueName (float sliderValue) {
+	switch ((int) sliderValue) {
+		case StreamPlaylistWindow::VeryShortPlayDuration: {
+			return (App::instance->uiText.getText (UiTextString::streamPlaylistVeryShortPlayDurationDescription));
+		}
+		case StreamPlaylistWindow::ShortPlayDuration: {
+			return (App::instance->uiText.getText (UiTextString::streamPlaylistShortPlayDurationDescription));
+		}
+		case StreamPlaylistWindow::MediumPlayDuration: {
+			return (App::instance->uiText.getText (UiTextString::streamPlaylistMediumPlayDurationDescription));
+		}
+		case StreamPlaylistWindow::LongPlayDuration: {
+			return (App::instance->uiText.getText (UiTextString::streamPlaylistLongPlayDurationDescription));
+		}
+		case StreamPlaylistWindow::VeryLongPlayDuration: {
+			return (App::instance->uiText.getText (UiTextString::streamPlaylistVeryLongPlayDurationDescription));
+		}
+		case StreamPlaylistWindow::FullPlayDuration: {
+			return (App::instance->uiText.getText (UiTextString::streamPlaylistFullPlayDurationDescription));
+		}
+	}
+
+	return (StdString (""));
 }
 
 void StreamPlaylistWindow::expandToggleStateChanged (void *windowPtr, Widget *widgetPtr) {
@@ -449,8 +439,8 @@ void StreamPlaylistWindow::expandToggleStateChanged (void *windowPtr, Widget *wi
 	window = (StreamPlaylistWindow *) windowPtr;
 	toggle = (Toggle *) widgetPtr;
 	window->setExpanded (toggle->isChecked, true);
-	if (window->expandStateChangeCallback) {
-		window->expandStateChangeCallback (window->expandStateChangeCallbackData, window);
+	if (window->expandStateChangeCallback.callback) {
+		window->expandStateChangeCallback.callback (window->expandStateChangeCallback.callbackData, window);
 	}
 }
 
@@ -465,8 +455,8 @@ void StreamPlaylistWindow::itemListChanged (void *windowPtr, Widget *widgetPtr) 
 	window->itemCountLabel->setText (StdString::createSprintf ("%i", count));
 	window->itemCountLabel->tooltipText.assign (uitext->getCountText (count, UiTextString::streamPlaylistItem, UiTextString::streamPlaylistItems));
 	window->refreshLayout ();
-	if (window->listChangeCallback) {
-		window->listChangeCallback (window->listChangeCallbackData, window);
+	if (window->listChangeCallback.callback) {
+		window->listChangeCallback.callback (window->listChangeCallback.callbackData, window);
 	}
 }
 
@@ -491,132 +481,46 @@ void StreamPlaylistWindow::freeItem (void *itemPtr) {
 	delete ((StreamPlaylistWindow::Item *) itemPtr);
 }
 
-void StreamPlaylistWindow::startPositionSliderValueHovered (void *windowPtr, Widget *widgetPtr) {
+void StreamPlaylistWindow::removeButtonClicked (void *windowPtr, Widget *widgetPtr) {
 	StreamPlaylistWindow *window;
-	UiConfiguration *uiconfig;
-	float min, max;
 
 	window = (StreamPlaylistWindow *) windowPtr;
-	uiconfig = &(App::instance->uiConfig);
-
-	if (window->startPositionMinSlider->isHovering || window->startPositionMaxSlider->isHovering) {
-		window->startPositionValueLabel->translateTextColor (uiconfig->raisedButtonTextColor, uiconfig->shortColorTranslateDuration);
-		if (window->startPositionMinSlider->isHovering) {
-			min = window->startPositionMinSlider->hoverValue;
-		}
-		else {
-			min = window->startPositionMinSlider->value;
-		}
-		if (window->startPositionMaxSlider->isHovering) {
-			max = window->startPositionMaxSlider->hoverValue;
-		}
-		else {
-			max = window->startPositionMaxSlider->value;
-		}
-		if (max < min) {
-			max = min;
-		}
+	if (window->removeClickCallback.callback) {
+		window->removeClickCallback.callback (window->removeClickCallback.callbackData, window);
 	}
-	else {
-		window->startPositionValueLabel->translateTextColor (uiconfig->lightPrimaryTextColor, uiconfig->shortColorTranslateDuration);
-		min = window->startPositionMinSlider->value;
-		max = window->startPositionMaxSlider->value;
-	}
-
-	min *= 99.0f;
-	max *= 99.0f;
-	if ((int) min == (int) max) {
-		window->startPositionValueLabel->setText (StdString::createSprintf ("%i%%", (int) min));
-	}
-	else {
-		window->startPositionValueLabel->setText (StdString::createSprintf ("%i - %i%%", (int) min, (int) max));
-	}
-	window->refresh ();
 }
 
-void StreamPlaylistWindow::startPositionSliderValueChanged (void *windowPtr, Widget *widgetPtr) {
+void StreamPlaylistWindow::addItemButtonClicked (void *windowPtr, Widget *widgetPtr) {
 	StreamPlaylistWindow *window;
-	float min, max;
 
 	window = (StreamPlaylistWindow *) windowPtr;
-	if (window->startPositionMaxSlider->value < window->startPositionMinSlider->value) {
-		window->startPositionMaxSlider->setValue (window->startPositionMinSlider->value, true);
+	if (window->addItemClickCallback.callback) {
+		window->addItemClickCallback.callback (window->addItemClickCallback.callbackData, window);
 	}
-	min = window->startPositionMinSlider->value;
-	max = window->startPositionMaxSlider->value;
-	min *= 99.0f;
-	max *= 99.0f;
-	if ((int) min == (int) max) {
-		window->startPositionValueLabel->setText (StdString::createSprintf ("%i%%", (int) min));
-	}
-	else {
-		window->startPositionValueLabel->setText (StdString::createSprintf ("%i - %i%%", (int) min, (int) max));
-	}
-	window->refresh ();
 }
 
-void StreamPlaylistWindow::playDurationSliderValueHovered (void *windowPtr, Widget *widgetPtr) {
+void StreamPlaylistWindow::addItemButtonMouseEntered (void *windowPtr, Widget *widgetPtr) {
 	StreamPlaylistWindow *window;
-	UiConfiguration *uiconfig;
-	float min, max;
+	Button *button;
 
 	window = (StreamPlaylistWindow *) windowPtr;
-	uiconfig = &(App::instance->uiConfig);
-
-	if (window->playDurationMinSlider->isHovering || window->playDurationMaxSlider->isHovering) {
-		window->playDurationValueLabel->translateTextColor (uiconfig->raisedButtonTextColor, uiconfig->shortColorTranslateDuration);
-		if (window->playDurationMinSlider->isHovering) {
-			min = window->playDurationMinSlider->hoverValue;
-		}
-		else {
-			min = window->playDurationMinSlider->value;
-		}
-		if (window->playDurationMaxSlider->isHovering) {
-			max = window->playDurationMaxSlider->hoverValue;
-		}
-		else {
-			max = window->playDurationMaxSlider->value;
-		}
-		if (max < min) {
-			max = min;
-		}
+	button = (Button *) widgetPtr;
+	Button::mouseEntered (button, button);
+	if (window->addItemMouseEnterCallback.callback) {
+		window->addItemMouseEnterCallback.callback (window->addItemMouseEnterCallback.callbackData, window);
 	}
-	else {
-		window->playDurationValueLabel->translateTextColor (uiconfig->lightPrimaryTextColor, uiconfig->shortColorTranslateDuration);
-		min = window->playDurationMinSlider->value;
-		max = window->playDurationMaxSlider->value;
-	}
-
-	min *= 1000.0f;
-	max *= 1000.0f;
-	if ((int64_t) min == (int64_t) max) {
-		window->playDurationValueLabel->setText (StdString::createSprintf ("%s", OsUtil::getDurationDisplayString ((int64_t) min).c_str ()));
-	}
-	else {
-		window->playDurationValueLabel->setText (StdString::createSprintf ("%s - %s", OsUtil::getDurationDisplayString ((int64_t) min).c_str (), OsUtil::getDurationDisplayString ((int64_t) max).c_str ()));
-	}
-	window->refresh ();
 }
 
-void StreamPlaylistWindow::playDurationSliderValueChanged (void *windowPtr, Widget *widgetPtr) {
+void StreamPlaylistWindow::addItemButtonMouseExited (void *windowPtr, Widget *widgetPtr) {
 	StreamPlaylistWindow *window;
-	float min, max;
+	Button *button;
 
 	window = (StreamPlaylistWindow *) windowPtr;
-	if (window->playDurationMaxSlider->value < window->playDurationMinSlider->value) {
-		window->playDurationMaxSlider->setValue (window->playDurationMinSlider->value, true);
+	button = (Button *) widgetPtr;
+	Button::mouseExited (button, button);
+	if (window->addItemMouseExitCallback.callback) {
+		window->addItemMouseExitCallback.callback (window->addItemMouseExitCallback.callbackData, window);
 	}
-	min = window->playDurationMinSlider->value;
-	max = window->playDurationMaxSlider->value;
-	min *= 1000.0f;
-	max *= 1000.0f;
-	if ((int64_t) min == (int64_t) max) {
-		window->playDurationValueLabel->setText (StdString::createSprintf ("%s", OsUtil::getDurationDisplayString ((int64_t) min).c_str ()));
-	}
-	else {
-		window->playDurationValueLabel->setText (StdString::createSprintf ("%s - %s", OsUtil::getDurationDisplayString ((int64_t) min).c_str (), OsUtil::getDurationDisplayString ((int64_t) max).c_str ()));
-	}
-	window->refresh ();
 }
 
 Json *StreamPlaylistWindow::getState () {
@@ -630,10 +534,8 @@ Json *StreamPlaylistWindow::getState () {
 	obj->set (StreamPlaylistWindow::IsSelectedKey, isSelected);
 	obj->set (StreamPlaylistWindow::IsExpandedKey, isExpanded);
 	obj->set (StreamPlaylistWindow::IsShuffleKey, shuffleToggle->isChecked);
-	obj->set (StreamPlaylistWindow::StartPositionMinKey, startPositionMinSlider->value);
-	obj->set (StreamPlaylistWindow::StartPositionMaxKey, startPositionMaxSlider->value);
-	obj->set (StreamPlaylistWindow::PlayDurationMinKey, playDurationMinSlider->value);
-	obj->set (StreamPlaylistWindow::PlayDurationMaxKey, playDurationMaxSlider->value);
+	obj->set (StreamPlaylistWindow::StartPositionKey, (int) startPositionSlider->value);
+	obj->set (StreamPlaylistWindow::PlayDurationKey, (int) playDurationSlider->value);
 
 	count = itemListView->getItemCount ();
 	for (i = 0; i < count; ++i) {
@@ -668,10 +570,8 @@ void StreamPlaylistWindow::setState (Json *stateObject) {
 	}
 
 	shuffleToggle->setChecked (stateObject->getBoolean (StreamPlaylistWindow::IsShuffleKey, false));
-	startPositionMinSlider->setValue (stateObject->getNumber (StreamPlaylistWindow::StartPositionMinKey, 60.0f));
-	startPositionMaxSlider->setValue (stateObject->getNumber (StreamPlaylistWindow::StartPositionMaxKey, 300.0f));
-	playDurationMinSlider->setValue (stateObject->getNumber (StreamPlaylistWindow::PlayDurationMinKey, 60.0f));
-	playDurationMaxSlider->setValue (stateObject->getNumber (StreamPlaylistWindow::PlayDurationMaxKey, 300.0f));
+	startPositionSlider->setValue ((float) stateObject->getNumber (StreamPlaylistWindow::StartPositionKey, StreamPlaylistWindow::ZeroStartPosition));
+	playDurationSlider->setValue ((float) stateObject->getNumber (StreamPlaylistWindow::PlayDurationKey, StreamPlaylistWindow::MediumPlayDuration));
 
 	count = stateObject->getArrayLength (StreamPlaylistWindow::ItemListKey);
 	for (i = 0; i < count; ++i) {
@@ -725,10 +625,80 @@ Json *StreamPlaylistWindow::getCreateCommand () {
 	}
 	obj->set ("items", &items);
 	obj->set ("isShuffle", shuffleToggle->isChecked);
-	obj->set ("minStartPositionDelta", (int) (startPositionMinSlider->value * 99.0f));
-	obj->set ("maxStartPositionDelta", (int) (startPositionMaxSlider->value * 99.0f));
-	obj->set ("minItemDisplayDuration", (int) playDurationMinSlider->value);
-	obj->set ("maxItemDisplayDuration", (int) playDurationMaxSlider->value);
+	StreamPlaylistWindow::setStartPositionDelta ((int) startPositionSlider->value, obj);
+	StreamPlaylistWindow::setItemDisplayDuration ((int) playDurationSlider->value, obj);
 
 	return (App::instance->createCommand (SystemInterface::Command_CreateMediaDisplayIntent, SystemInterface::Constant_Monitor, obj));
+}
+
+void StreamPlaylistWindow::setStartPositionDelta (int startPosition, Json *createMediaDisplayIntentParams) {
+	int min, max;
+
+	min = 0;
+	max = 0;
+	switch (startPosition) {
+		case StreamPlaylistWindow::NearBeginningStartPosition: {
+			min = 10;
+			max = 20;
+			break;
+		}
+		case StreamPlaylistWindow::MiddleStartPosition: {
+			min = 35;
+			max = 60;
+			break;
+		}
+		case StreamPlaylistWindow::NearEndStartPosition: {
+			min = 75;
+			max = 90;
+			break;
+		}
+		case StreamPlaylistWindow::FullRangeStartPosition: {
+			min = 0;
+			max = 99;
+			break;
+		}
+	}
+	createMediaDisplayIntentParams->set ("minStartPositionDelta", min);
+	createMediaDisplayIntentParams->set ("maxStartPositionDelta", max);
+}
+
+void StreamPlaylistWindow::setItemDisplayDuration (int playDuration, Json *createMediaDisplayIntentParams) {
+	int min, max;
+
+	min = 15;
+	max = 10800;
+	switch (playDuration) {
+		case StreamPlaylistWindow::VeryShortPlayDuration: {
+			min = 15;
+			max = 45;
+			break;
+		}
+		case StreamPlaylistWindow::ShortPlayDuration: {
+			min = 60;
+			max = 180;
+			break;
+		}
+		case StreamPlaylistWindow::MediumPlayDuration: {
+			min = 300;
+			max = 900;
+			break;
+		}
+		case StreamPlaylistWindow::LongPlayDuration: {
+			min = 1800;
+			max = 3600;
+			break;
+		}
+		case StreamPlaylistWindow::VeryLongPlayDuration: {
+			min = 7200;
+			max = 14400;
+			break;
+		}
+		case StreamPlaylistWindow::FullPlayDuration: {
+			min = 0;
+			max = 0;
+			break;
+		}
+	}
+	createMediaDisplayIntentParams->set ("minItemDisplayDuration", min);
+	createMediaDisplayIntentParams->set ("maxItemDisplayDuration", max);
 }

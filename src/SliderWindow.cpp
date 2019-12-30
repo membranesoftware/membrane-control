@@ -34,6 +34,7 @@
 #include "StdString.h"
 #include "App.h"
 #include "Widget.h"
+#include "Sprite.h"
 #include "Panel.h"
 #include "Label.h"
 #include "UiConfiguration.h"
@@ -47,10 +48,9 @@ SliderWindow::SliderWindow (Slider *slider)
 , value (0.0f)
 , isHovering (false)
 , slider (slider)
+, iconImage (NULL)
 , valueLabel (NULL)
 , valueNameFunction (NULL)
-, valueChangeCallback (NULL)
-, valueChangeCallbackData (NULL)
 {
 	UiConfiguration *uiconfig;
 
@@ -98,18 +98,34 @@ void SliderWindow::setPadding (float widthPadding, float heightPadding) {
 	refreshLayout ();
 }
 
+void SliderWindow::setIcon (Sprite *iconSprite) {
+	if (iconImage) {
+		iconImage->isDestroyed = true;
+	}
+	iconImage = (Image *) addWidget (new Image (iconSprite));
+	iconImage->isInputSuspended = true;
+	refreshLayout ();
+}
+
 void SliderWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	Color color;
-	float x, y;
+	float x, y, x2, y2;
 
 	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
-	valueLabel->position.assign (x, y);
-	y += valueLabel->maxLineHeight;
-	slider->position.assign (x, y);
+	x2 = 0.0f;
+	y2 = 0.0f;
+	if (iconImage) {
+		iconImage->flowRight (&x, y, &x2, &y2);
+	}
+	valueLabel->flowRight (&x, y, &x2, &y2);
+	slider->position.assign (valueLabel->position.x, y + valueLabel->maxLineHeight + (uiconfig->marginSize / 2.0f));
 	resetSize ();
+	if (iconImage) {
+		iconImage->centerVertical (0.0f, height);
+	}
 
 	if (isDisabled) {
 		color.assign (isInverseColor ? uiconfig->darkInverseTextColor : uiconfig->lightPrimaryTextColor);
@@ -118,11 +134,6 @@ void SliderWindow::refreshLayout () {
 		color.assign (isInverseColor ? uiconfig->darkBackgroundColor : uiconfig->lightPrimaryColor);
 	}
 	valueLabel->textColor.translate (color, uiconfig->shortColorTranslateDuration);
-}
-
-void SliderWindow::setValueChangeCallback (Widget::EventCallback callback, void *callbackData) {
-	valueChangeCallback = callback;
-	valueChangeCallbackData = callbackData;
 }
 
 void SliderWindow::setValueNameFunction (SliderWindow::ValueNameFunction fn) {
@@ -162,8 +173,8 @@ void SliderWindow::sliderValueChanged (void *windowPtr, Widget *widgetPtr) {
 		window->valueLabel->setText (StdString::createSprintf ("%.2f", slider->value));
 	}
 
-	if (window->valueChangeCallback) {
-		window->valueChangeCallback (window->valueChangeCallbackData, window);
+	if (window->valueChangeCallback.callback) {
+		window->valueChangeCallback.callback (window->valueChangeCallback.callbackData, window);
 	}
 	window->refreshLayout ();
 }

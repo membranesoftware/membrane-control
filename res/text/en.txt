@@ -43,8 +43,8 @@ webKiosk web kiosk
 webKiosks web kiosks
 createPlaylist create playlist
 runPlaylist run playlist
-addPlaylistItem add playlist item
 deletePlaylist delete playlist
+addPlaylistItems add playlist items
 playAll play all
 cache cache
 shuffle shuffle
@@ -54,6 +54,7 @@ display display
 displayName display name
 online online
 offline offline
+complete complete
 contacting contacting
 monitors monitors
 server server
@@ -80,6 +81,8 @@ fastest fastest
 never never
 play play
 stop stop
+pause pause
+resume resume
 enabled enabled
 disabled disabled
 learnMore learn more
@@ -98,7 +101,6 @@ fileSize file size
 duration duration
 frameRate frame rate
 playStreams play streams
-playInBrowser play in browser
 manageStreams manage streams
 managePlaylists manage playlists
 configureStream configure stream
@@ -208,16 +210,16 @@ mediaUiNoStreamableMediaSelectedPrompt (Select a media file with an available st
 mediaUiNoMonitorSelectedPrompt (Select a monitor)
 mediaUiNoPlaylistSelectedPrompt (Select a playlist)
 mediaUiEmptyPlaylistSelectedPrompt (Select a playlist containing at least one item)
-mediaUiAddPlaylistItemTooltip <F3> Add all selected videos to the selected playlist
-mediaUiCreatePlaylistTooltip <F2> Create a new playlist
+mediaUiCreatePlaylistTooltip Create a new playlist
 mediaUiWritePlaylistTooltip <F3> Play the selected playlist on all selected monitors
 mediaUiPlayTooltip <F4> Play the selected video on all selected monitors
-mediaUiStopTooltip <F2> Clear all selected monitors
-mediaUiBrowserPlayTooltip <F1> Launch a browser window playing the selected video
+mediaUiStopTooltip <F1> Clear all selected monitors
+mediaUiPauseTooltip <F2> Pause or resume playback on all selected monitors
+mediaUiBrowserPlayTooltip Launch a browser window playing this video
 mediaUiConfigureStreamTooltip Prepare playback streams for all selected videos
 mediaUiAddCacheStreamTooltip Transfer all selected streams to the cache of all selected monitors
 mediaUiDeleteStreamTooltip Delete playback streams for all selected videos
-mediaUiDeletePlaylistTooltip Delete the selected playlist
+mediaUiSelectAllTooltip Select / unselect all videos
 mediaItemUiHelpTitle Media file
 mediaItemUiHelpText This interface shows thumbnail images from a media file's timeline.
 mediaItemUiConfigureStreamTooltip Prepare a playback stream for this video
@@ -242,28 +244,29 @@ invokeGetStatusAddressParseError The provided server address doesn't use the cor
 internalError An unexpected internal error prevented this operation from succeeding. Our apologies.
 serverContactError Unable to contact the remote server. Check if network connections are available and try again.
 invokeClearDisplayMessage Command sent: <Clear>
+invokePauseMediaMessage Command sent: <Pause / resume>
 invokeCreateWebPlaylistMessage Command sent: <Run website playlist>
 invokeShowWebUrlMessage Command sent: <Show website>
 webKioskUiHelpTitle Web kiosk
 webKioskUiHelpText This interface commands Membrane Monitor applications to behave as web kiosks. Select servers or playlists using the star icons in their upper right corners, then use the bottom toolbar to execute commands.
 webKioskUiHelpAction1Text No Membrane Monitor applications are connected. To find one, return to the main menu and open the "Servers" interface.
 webKioskUiHelpAction2Text - Create and edit playlists capable of running on monitors to show a set of sites.\n\n- Enter a website address and add it to a playlist, launch a web browser to view it, or command a web kiosk to display it.\n\n- Write a playlist to one or more monitors, causing them to cycle through the listed sites with an optional shuffle.
-webKioskUiAddUrlTooltip <F3> Add this website to the selected playlist
 webKioskUiBrowseUrlTooltip Launch a browser viewing this website
 webKioskUiShowUrlTooltip <F3> Show this website on all selected monitors
-webKioskUiAddPlaylistTooltip <F2> Create a new website playlist
+webKioskUiAddPlaylistTooltip Create a new website playlist
 webKioskUiClearDisplayTooltip <F1> Clear all selected monitors
 webKioskUiWritePlaylistTooltip <F2> Run the selected playlist on all selected monitors
-webKioskUiDeletePlaylistTooltip Delete the selected playlist
 webKioskUiNoAgentSelectedPrompt (Select a web kiosk)
 webKioskUiNoPlaylistSelectedPrompt (Select a playlist)
 webKioskUiEmptyPlaylistSelectedPrompt (Select a playlist containing at least one item)
 webKioskUiNoAddressEnteredPrompt (Enter a website address)
 websiteAddedMessage Website added to playlist
 webPlaylistCreatedMessage Created playlist
-shuffleTooltip If enabled: Show items from the list in randomized order
+webPlaylistSpeedTooltip Length of time to show each item
+shuffleTooltip Shuffle playback order
 clickRenameTooltip (Click to rename)
 hyperlinkTooltip Open this site using the system's web browser
+actionWindowInvalidDataTooltip (items in red need changes)
 serverAdminUiEmptyTaskListTitle No tasks
 serverAdminUiEmptyTaskListText Jobs from the server's task queue appear in this list.
 serverAdminUiHelpTitle Server console
@@ -277,7 +280,8 @@ emptyStreamPlaylistText (Items in this list are played on monitors)
 invokeCreateCacheStreamMessage Command sent: <Transfer stream to cache>
 invokeConfigureMediaStreamMessage Command sent: <Configure media stream>
 streamPlaylistCreatedMessage Created playlist
-streamItemAddedMessage Added video stream to playlist
+streamItemAddedMessage Added playlist item
+streamItemsAddedMessage Added playlist items
 invokePlayMediaMessage Command sent: <Play video stream>
 invokeCreateStreamPlaylistMessage Command sent: <Run playlist>
 invokeRemoveStreamMessage Command sent: <Delete stream>
@@ -293,10 +297,11 @@ monitorCacheUiHelpAction2Text Click a video stream's thumbnail to select it. Vie
 monitorCacheUiEmptyStreamStatusTitle No video streams in cache
 monitorCacheUiEmptyStreamStatusText Streams from Membrane Monitor's cache appear in this list.
 monitorCacheUiNoStreamSelectedPrompt (Select a video stream)
-monitorCacheUiPlayTooltip <F3> Play the selected stream
-monitorCacheUiWritePlaylistTooltip <F2> Play all cache streams on loop
+monitorCacheUiNoStreamAvailablePrompt (No video streams in cache)
+monitorCacheUiPlayTooltip <F4> Play the selected stream
+monitorCacheUiPauseTooltip <F2> Pause or resume playback
+monitorCacheUiWritePlaylistTooltip <F3> Play all cache streams on loop
 monitorCacheUiStopTooltip <F1> Clear the monitor
-monitorCacheUiDeleteTooltip Remove the selected stream
 monitorCacheUiWritePlaylistMessage Command sent: <Loop cache videos>
 viewTimelineImagesTooltip View timeline images
 monitorActivityIconTooltip Status of the monitor's screen
@@ -308,7 +313,19 @@ tasksInProgress tasks in progress
 removeMedia remove media
 removeStream remove stream
 deleteStream delete stream
+deleteStreamTitle Remove selected streams?
+deleteStreamDescription Playback of these videos will no longer be available.
+deleteStreamByteCountTooltip Total storage used by these streams
+deleteStreamItemCountTooltip stream to remove
+deleteStreamItemsCountTooltip streams to remove
 cacheStream cache stream
+cacheStreams cache streams
+cacheStreamsDescription Copy streams to selected monitors, allowing them to be played when the media library is not available.
+cacheStreamItemCountTooltip stream to copy
+cacheStreamItemsCountTooltip streams to copy
+cacheStreamByteCountTooltip Total size of streams to copy
+cacheStreamDeleteDescription Delete video stream? Playback will no longer be available.
+cacheStreamDeleteByteCountTooltip Stream size
 mediaStreaming media streaming
 serversHelpTitle Connecting to servers with Membrane Control
 membraneSoftwareOverviewHelpTitle Membrane Software overview
@@ -320,7 +337,7 @@ adminPasswordNamePrompt (Enter a name)
 adminPasswordPrompt (Enter a password)
 emptyAdminSecretListText (No passwords stored)
 normalVideoQualityDescription Normal
-highVideoQualityDescription High-compression
+compressedVideoQualityDescription High-compression
 lowVideoQualityDescription Low
 lowestVideoQualityDescription Lowest
 videoQualityDescription High-compression: less storage space consumed, slower stream creation time. Low/Lowest: grainier picture, much less storage space consumed, faster stream creation time.
@@ -402,3 +419,20 @@ commandUiHelpTitle Commands
 commandUiHelpText This interface shows recently executed commands and allows them to be stored as shortcuts.
 commandUiHelpActionText - Actions executed on other interfaces, such as Media or Web Kiosk, show up here as recent commands and can be saved for reuse.\n\n- Not every action is eligible to be stored, but many commonly used ones are. These include: Clear monitors, Show website, Play media, Run playlist
 mediaServerCatalogTooltip (Click the link to open the stream catalog in a browser)
+removePlaylistDescription Delete this playlist?
+monitorSelected monitor selected
+monitorsSelected monitors selected
+configureStreamByteCountTooltip Estimated storage required for streams
+configureStreamItemCountTooltip stream to create
+configureStreamItemsCountTooltip streams to create
+streamPlaylistZeroStartPositionDescription 00:00:00
+streamPlaylistNearBeginningStartPositionDescription Near beginning
+streamPlaylistMiddleStartPositionDescription Near middle
+streamPlaylistNearEndPositionDescription Near end
+streamPlaylistFullRangePositionDescription Anywhere
+streamPlaylistVeryShortPlayDurationDescription 15s-45s
+streamPlaylistShortPlayDurationDescription 1m-3m
+streamPlaylistMediumPlayDurationDescription 5m-15m
+streamPlaylistLongPlayDurationDescription 30m-60m
+streamPlaylistVeryLongPlayDurationDescription 2h-4h
+streamPlaylistFullPlayDurationDescription Until end

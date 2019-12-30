@@ -48,7 +48,8 @@ public:
 		BreadcrumbIconSprite = 0,
 		PlayButtonSprite = 1,
 		StopButtonSprite = 2,
-		WritePlaylistButtonSprite = 3
+		WritePlaylistButtonSprite = 3,
+		PauseButtonSprite = 4
 	};
 
 	// Constants to use for card view row numbers
@@ -81,17 +82,22 @@ public:
 	static void largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void reloadButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void processStreamItem (void *uiPtr, Json *record, const StdString &recordId);
+	static void monitorScreenshotLoaded (void *uiPtr, Widget *widgetPtr);
+	static void monitorExpandStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void streamWindowImageClicked (void *uiPtr, Widget *widgetPtr);
 	static void streamWindowViewButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void streamWindowRemoveButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void streamWindowRemoveActionClosed (void *uiPtr, Widget *widgetPtr);
 	static void streamItemUiThumbnailClicked (void *uiPtr, Widget *widgetPtr);
 	static void unselectStreamWindow (void *uiPtr, Widget *widgetPtr);
 	static void commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr);
 	static void commandButtonMouseExited (void *uiPtr, Widget *widgetPtr);
 	static void stopButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void pauseButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void playButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void writePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void playAllButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void playAllActionClosed (void *uiPtr, Widget *widgetPtr);
 	static void appendPlaylistItem (void *jsonListPtr, Widget *widgetPtr);
-	static void deleteButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void removeStreamComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
 
 protected:
@@ -138,14 +144,11 @@ private:
 	// Set the interface's selected StreamWindow item
 	void setSelectedStream (StreamWindow *streamWindow);
 
-	// Send a RemoveMediaStream command to a remote agent, as specified by the currently held action widget
-	void invokeRemoveMediaStream ();
-
 	CardView *cardView;
 	Button *stopButton;
+	Button *pauseButton;
 	Button *playButton;
-	Button *writePlaylistButton;
-	Button *deleteButton;
+	Button *playAllButton;
 	WidgetHandle emptyStreamWindow;
 	WidgetHandle selectedStreamWindow;
 	WidgetHandle commandPopup;

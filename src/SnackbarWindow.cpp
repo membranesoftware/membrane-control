@@ -66,7 +66,7 @@ SnackbarWindow::SnackbarWindow (float maxWidth)
 	messageLabel = (Label *) backgroundPanel->addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->inverseTextColor));
 	messageLabel->zLevel = 1;
 
-	actionButton = (Button *) backgroundPanel->addWidget (new Button (StdString ("")));
+	actionButton = (Button *) backgroundPanel->addWidget (new Button ());
 	actionButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
 	actionButton->setTextColor (uiconfig->raisedButtonTextColor);
 	actionButton->zLevel = 2;

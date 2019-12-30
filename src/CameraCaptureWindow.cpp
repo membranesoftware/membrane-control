@@ -123,7 +123,7 @@ CameraCaptureWindow::CameraCaptureWindow (Json *agentStatus)
 	detailNameLabel->isInputSuspended = true;
 	detailNameLabel->isVisible = false;
 
-	viewButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::ImageButtonSprite)));
+	viewButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::ImageButtonSprite)));
 	viewButton->zLevel = 3;
 	viewButton->isTextureTargetDrawEnabled = false;
 	viewButton->setImageColor (uiconfig->flatButtonTextColor);

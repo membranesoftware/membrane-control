@@ -58,6 +58,7 @@ StreamDetailWindow::StreamDetailWindow (const StdString &recordId, SpriteGroup *
 , streamFrameRate (0.0f)
 , streamSize (0)
 , streamBitrate (0)
+, streamProfile (-1)
 , sprites (streamItemUiSpriteGroup)
 , iconImage (NULL)
 , nameLabel (NULL)
@@ -133,6 +134,7 @@ void StreamDetailWindow::syncRecordStore () {
 	streamDuration = interface->getCommandNumberParam (record, "duration", (float) 0.0f);
 	streamFrameRate = interface->getCommandNumberParam (record, "frameRate", (float) 0.0f);
 	streamBitrate = interface->getCommandNumberParam (record, "bitrate", (int64_t) 0);
+	streamProfile = interface->getCommandNumberParam (record, "profile", (int) -1);
 
 	streamName.assign (interface->getCommandStringParam (record, "name", ""));
 	nameLabel->setText (streamName);
@@ -167,7 +169,12 @@ void StreamDetailWindow::syncRecordStore () {
 		attributes.push_back (MediaUtil::getBitrateDisplayString (streamBitrate));
 	}
 
-	attributesIcon->setText (attributes.join (", "));
+	text.assign ("");
+	if (streamProfile >= 0) {
+		text.appendSprintf ("[%s] ", MediaUtil::getStreamProfileDescription (streamProfile).c_str ());
+	}
+	text.append (attributes.join (", "));
+	attributesIcon->setText (text);
 
 	if (streamSize > 0) {
 		fileSizeIcon->setText (StdString::createSprintf ("%lli (%s)", (long long int) streamSize, OsUtil::getByteCountDisplayString (streamSize).c_str ()));

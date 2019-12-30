@@ -70,6 +70,7 @@ public:
 	int frameHeight;
 	StdString thumbnailPath;
 	int thumbnailCount;
+	int64_t mediaSize;
 
 	// Set a callback that should be invoked when the UI's remove media function has been executed
 	void setRemoveMediaCallback (Widget::EventCallback callback, void *callbackData);
@@ -85,6 +86,7 @@ public:
 	static void thumbnailMouseEntered (void *uiPtr, Widget *widgetPtr);
 	static void thumbnailMouseExited (void *uiPtr, Widget *widgetPtr);
 	static void configureStreamButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void configureStreamOptionChanged (void *uiPtr, Widget *widgetPtr);
 	static void configureStreamActionClosed (void *uiPtr, Widget *widgetPtr);
 	static void configureMediaStreamComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
 	static void removeMediaActionClosed (void *uiPtr, Widget *widgetPtr);
@@ -118,6 +120,9 @@ protected:
 	// Update subclass-specific interface state as appropriate when the Ui becomes inactive
 	void doPause ();
 
+	// Update subclass-specific interface state as appropriate for an elapsed millisecond time period
+	void doUpdate (int msElapsed);
+
 	// Reload subclass-specific interface resources as needed to account for a new application window size
 	void doResize ();
 
@@ -132,6 +137,7 @@ private:
 	CardView *cardView;
 	int cardDetail;
 	WidgetHandle timelineWindow;
+	WidgetHandle configureStreamSizeIcon;
 	HashMap streamServerAgentMap;
 	bool isCreateStreamAvailable;
 	Widget::EventCallback removeMediaCallback;

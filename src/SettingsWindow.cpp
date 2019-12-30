@@ -75,7 +75,7 @@ SettingsWindow::SettingsWindow (float windowWidth, float windowHeight)
 	titleLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::settings).capitalized (), UiConfiguration::TitleFont, uiconfig->primaryTextColor)));
 	titleLabel->setPadding (0.0f, 0.0f);
 
-	closeButton = (Button *) addWidget (new Button (StdString (""), uiconfig->coreSprites.getSprite (UiConfiguration::ExitButtonSprite)));
+	closeButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::ExitButtonSprite)));
 	closeButton->zLevel = 1;
 	closeButton->setMouseClickCallback (SettingsWindow::closeButtonClicked, this);
 	closeButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
@@ -103,7 +103,7 @@ SettingsWindow::SettingsWindow (float windowWidth, float windowHeight)
 		slider->setValue (1.0f, true);
 	}
 	windowSizeSlider = (SliderWindow *) addWidget (new SliderWindow (slider));
-	windowSizeSlider->setValueChangeCallback (SettingsWindow::windowSizeSliderChanged, this);
+	windowSizeSlider->valueChangeCallback = Widget::EventCallbackContext (SettingsWindow::windowSizeSliderChanged, this);
 	windowSizeSlider->setValueNameFunction (SettingsWindow::windowSizeSliderValueName);
 
 	textSizeLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::textSize).capitalized (), UiConfiguration::TitleFont, uiconfig->primaryTextColor));
@@ -130,18 +130,18 @@ SettingsWindow::SettingsWindow (float windowWidth, float windowHeight)
 		slider->setValue (1.0f);
 	}
 	textSizeSlider = (SliderWindow *) addWidget (new SliderWindow (slider));
-	textSizeSlider->setValueChangeCallback (SettingsWindow::textSizeSliderChanged, this);
+	textSizeSlider->valueChangeCallback = Widget::EventCallbackContext (SettingsWindow::textSizeSliderChanged, this);
 	textSizeSlider->setValueNameFunction (SettingsWindow::textSizeSliderValueName);
 
-	showClockToggle = (ToggleWindow *) addWidget (new ToggleWindow (new Toggle (), uitext->getText (UiTextString::showClock).capitalized ()));
-	showClockToggle->setPadding (0.0f, 0.0f);
+	showClockToggle = (ToggleWindow *) addWidget (new ToggleWindow (new Toggle ()));
+	showClockToggle->setText (uitext->getText (UiTextString::showClock).capitalized ());
 	showClockToggle->setImageColor (uiconfig->flatButtonTextColor);
 	showClockToggle->setChecked (App::instance->prefsMap.find (App::ShowClockKey, false));
 	showClockToggle->setStateChangeCallback (SettingsWindow::showClockToggleStateChanged, this);
 
 	if (App::instance->isTextureRenderEnabled) {
-		showInterfaceAnimationsToggle = (ToggleWindow *) addWidget (new ToggleWindow (new Toggle (), uitext->getText (UiTextString::showInterfaceAnimations).capitalized ()));
-		showInterfaceAnimationsToggle->setPadding (0.0f, 0.0f);
+		showInterfaceAnimationsToggle = (ToggleWindow *) addWidget (new ToggleWindow (new Toggle ()));
+		showInterfaceAnimationsToggle->setText (uitext->getText (UiTextString::showInterfaceAnimations).capitalized ());
 		showInterfaceAnimationsToggle->setImageColor (uiconfig->flatButtonTextColor);
 		showInterfaceAnimationsToggle->setChecked (App::instance->isInterfaceAnimationEnabled);
 		showInterfaceAnimationsToggle->setStateChangeCallback (SettingsWindow::showInterfaceAnimationsToggleStateChanged, this);
@@ -209,11 +209,11 @@ void SettingsWindow::refreshLayout () {
 	y += textSizeSlider->height + uiconfig->marginSize;
 
 	showClockToggle->position.assign (x, y);
-	y += showClockToggle->height + uiconfig->marginSize;
+	y += showClockToggle->height;
 
 	if (showInterfaceAnimationsToggle) {
 		showInterfaceAnimationsToggle->position.assign (x, y);
-		y += showInterfaceAnimationsToggle->height + uiconfig->marginSize;
+		y += showInterfaceAnimationsToggle->height;
 	}
 }
 

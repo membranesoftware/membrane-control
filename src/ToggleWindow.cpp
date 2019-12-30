@@ -33,33 +33,27 @@
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
+#include "Sprite.h"
 #include "Widget.h"
 #include "Panel.h"
 #include "Label.h"
+#include "Image.h"
 #include "Toggle.h"
 #include "ToggleWindow.h"
 
-ToggleWindow::ToggleWindow (Toggle *toggle, const StdString &labelText)
+ToggleWindow::ToggleWindow (Toggle *toggle)
 : Panel ()
 , isChecked (false)
+, isRightAligned (false)
 , toggle (toggle)
 , label (NULL)
+, iconImage (NULL)
 , stateChangeCallback (NULL)
 , stateChangeCallbackData (NULL)
 {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::instance->uiConfig);
-	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-
 	addWidget (toggle);
 	toggle->isInputSuspended = true;
 	toggle->setStateChangeCallback (ToggleWindow::toggleStateChanged, this);
-
-	if (! labelText.empty ()) {
-		label = (Label *) addWidget (new Label (labelText, UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
-		label->isInputSuspended = true;
-	}
 
 	setMouseEnterCallback (ToggleWindow::mouseEntered, this);
 	setMouseExitCallback (ToggleWindow::mouseExited, this);
@@ -78,9 +72,52 @@ StdString ToggleWindow::toStringDetail () {
 	return (StdString::createSprintf (" ToggleWindow text=\"%s\"", label ? label->text.c_str () : ""));
 }
 
-void ToggleWindow::setPadding (float widthPadding, float heightPadding) {
-	Panel::setPadding (widthPadding, heightPadding);
+void ToggleWindow::setText (const StdString &text) {
+	UiConfiguration *uiconfig;
+
+	uiconfig = &(App::instance->uiConfig);
+	if (! label) {
+		label = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
+		label->isInputSuspended = true;
+	}
+	label->setText (text);
+
+	if (iconImage) {
+		iconImage->isDestroyed = true;
+		iconImage = NULL;
+	}
 	refreshLayout ();
+}
+
+void ToggleWindow::setIcon (Sprite *iconSprite) {
+	if (iconImage) {
+		iconImage->isDestroyed = true;
+	}
+	iconImage = (Image *) addWidget (new Image (iconSprite));
+	iconImage->isInputSuspended = true;
+
+	if (label) {
+		label->isDestroyed = true;
+		label = NULL;
+	}
+	refreshLayout ();
+}
+
+void ToggleWindow::setRightAligned (bool enable) {
+	if (enable == isRightAligned) {
+		return;
+	}
+	isRightAligned = enable;
+	refreshLayout ();
+}
+
+void ToggleWindow::setImageColor (const Color &imageColor) {
+	toggle->setImageColor (imageColor);
+}
+
+void ToggleWindow::setStateChangeCallback (Widget::EventCallback callback, void *callbackData) {
+	stateChangeCallback = callback;
+	stateChangeCallbackData = callbackData;
 }
 
 void ToggleWindow::refreshLayout () {
@@ -88,22 +125,38 @@ void ToggleWindow::refreshLayout () {
 	float x, y;
 
 	uiconfig = &(App::instance->uiConfig);
-	x = widthPadding;
-	y = heightPadding;
-	toggle->position.assign (x, y);
-	x += toggle->width;
+	x = 0.0f;
+	y = 0.0f;
+
+	if (isRightAligned) {
+		if (label || iconImage) {
+			x += uiconfig->paddingSize;
+		}
+	}
+	else {
+		toggle->flowRight (&x, y);
+	}
 	if (label) {
-		x += (uiconfig->marginSize / 2.0f);
-		label->position.assign (x, y);
-		x += label->width + uiconfig->marginSize;
+		label->flowRight (&x, y);
+	}
+	if (iconImage) {
+		iconImage->flowRight (&x, y);
+	}
+	if (isRightAligned) {
+		toggle->flowRight (&x, y);
 	}
 
 	resetSize ();
 	if (label) {
-		label->position.assignY ((height / 2.0f) - (label->height / 2.0f));
+		label->centerVertical (0.0f, height);
 	}
-	toggle->position.assignY ((height / 2.0f) - (toggle->height / 2.0f));
-	resetSize ();
+	if (iconImage) {
+		iconImage->centerVertical (0.0f, height);
+	}
+	toggle->centerVertical (0.0f, height);
+	if ((! isRightAligned) && (label || iconImage)) {
+		width += uiconfig->paddingSize;
+	}
 }
 
 void ToggleWindow::mouseEntered (void *windowPtr, Widget *widgetPtr) {
@@ -143,15 +196,6 @@ void ToggleWindow::mouseClicked (void *windowPtr, Widget *widgetPtr) {
 
 void ToggleWindow::setChecked (bool checked) {
 	toggle->setChecked (checked);
-}
-
-void ToggleWindow::setImageColor (const Color &imageColor) {
-	toggle->setImageColor (imageColor);
-}
-
-void ToggleWindow::setStateChangeCallback (Widget::EventCallback callback, void *callbackData) {
-	stateChangeCallback = callback;
-	stateChangeCallbackData = callbackData;
 }
 
 void ToggleWindow::toggleStateChanged (void *windowPtr, Widget *widgetPtr) {

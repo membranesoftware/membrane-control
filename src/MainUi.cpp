@@ -141,7 +141,7 @@ void MainUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
 
 	uitext = &(App::instance->uiText);
 
-	button = new Button (StdString (""), sprites.getSprite (MainUi::NextItemButtonSprite));
+	button = new Button (sprites.getSprite (MainUi::NextItemButtonSprite));
 	button->setInverseColor (true);
 	button->setMouseClickCallback (MainUi::nextBannerButtonClicked, this);
 	button->setMouseHoverTooltip (uitext->getText (UiTextString::mainUiNextBannerTooltip));
@@ -338,7 +338,7 @@ void MainUi::showNextBanner () {
 		if (pos != bannerActionCallbackMap.end ()) {
 			callback = pos->second;
 			if (callback) {
-				button = new Button (activeBanner.actionText.uppercased ());
+				button = new Button (NULL, activeBanner.actionText.uppercased ());
 				button->setRaised (true, uiconfig->raisedButtonBackgroundColor);
 				button->setTextColor (uiconfig->raisedButtonTextColor);
 				button->setMouseClickCallback (callback, this);

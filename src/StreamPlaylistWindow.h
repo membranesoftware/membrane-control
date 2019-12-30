@@ -34,6 +34,7 @@
 
 #include "StdString.h"
 #include "Json.h"
+#include "SpriteGroup.h"
 #include "Image.h"
 #include "Label.h"
 #include "LabelWindow.h"
@@ -47,30 +48,48 @@
 
 class StreamPlaylistWindow : public Panel {
 public:
-	StreamPlaylistWindow ();
+	StreamPlaylistWindow (SpriteGroup *mediaUiSpriteGroup);
 	virtual ~StreamPlaylistWindow ();
 
 	static const float windowWidthMultiplier;
 
+	// Constants to use for slider options
+	enum {
+		ZeroStartPosition = 0,
+		NearBeginningStartPosition = 1,
+		MiddleStartPosition = 2,
+		NearEndStartPosition = 3,
+		FullRangeStartPosition = 4,
+		StartPositionCount = 5
+	};
+	enum {
+		VeryShortPlayDuration = 0,
+		ShortPlayDuration = 1,
+		MediumPlayDuration = 2,
+		LongPlayDuration = 3,
+		VeryLongPlayDuration = 4,
+		FullPlayDuration = 5,
+		PlayDurationCount = 6
+	};
+
 	// Read-write data members
 	StdString itemId;
+	Widget::EventCallbackContext selectStateChangeCallback;
+	Widget::EventCallbackContext expandStateChangeCallback;
+	Widget::EventCallbackContext renameClickCallback;
+	Widget::EventCallbackContext listChangeCallback;
+	Widget::EventCallbackContext removeClickCallback;
+	Widget::EventCallbackContext addItemClickCallback;
+	Widget::EventCallbackContext addItemMouseEnterCallback;
+	Widget::EventCallbackContext addItemMouseExitCallback;
 
 	// Read-only data members
 	bool isSelected;
 	bool isExpanded;
 	StdString playlistName;
-
-	// Set a callback that should be invoked when the select toggle's checked state changes
-	void setSelectStateChangeCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback that should be invoked when the expand toggle's checked state changes
-	void setExpandStateChangeCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback that should be invoked when the window's rename action is clicked
-	void setRenameClickCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback that should be invoked when the window's list content changes
-	void setListChangeCallback (Widget::EventCallback callback, void *callbackData);
+	float addItemButtonX1;
+	float addItemButtonX2;
+	float addItemButtonY;
 
 	// Set the playlist name shown by the window
 	void setPlaylistName (const StdString &name);
@@ -102,16 +121,24 @@ public:
 	// Return a typecasted pointer to the provided widget, or NULL if the widget does not appear to be of the correct type
 	static StreamPlaylistWindow *castWidget (Widget *widget);
 
+	// Set minStartPositionDelta and maxStartPositionDelta fields in the provided params object
+	static void setStartPositionDelta (int startPosition, Json *createMediaDisplayIntentParams);
+
+	// Set minItemDisplayDuration and maxItemDisplayDuration fields in the provided params object
+	static void setItemDisplayDuration (int playDuration, Json *createMediaDisplayIntentParams);
+
 	// Callback functions
 	static void freeItem (void *itemPtr);
 	static void nameLabelClicked (void *windowPtr, Widget *widgetPtr);
 	static void selectToggleStateChanged (void *windowPtr, Widget *widgetPtr);
 	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
 	static void itemListChanged (void *windowPtr, Widget *widgetPtr);
-	static void startPositionSliderValueHovered (void *windowPtr, Widget *widgetPtr);
-	static void startPositionSliderValueChanged (void *windowPtr, Widget *widgetPtr);
-	static void playDurationSliderValueHovered (void *windowPtr, Widget *widgetPtr);
-	static void playDurationSliderValueChanged (void *windowPtr, Widget *widgetPtr);
+	static void removeButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void addItemButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void addItemButtonMouseEntered (void *windowPtr, Widget *widgetPtr);
+	static void addItemButtonMouseExited (void *windowPtr, Widget *widgetPtr);
+	static StdString startPositionSliderValueName (float sliderValue);
+	static StdString playDurationSliderValueName (float sliderValue);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
@@ -128,10 +155,7 @@ private:
 	static const char *PlaylistNameKey;
 	static const char *IsSelectedKey;
 	static const char *IsExpandedKey;
-	static const char *StartPositionMinKey;
-	static const char *StartPositionMaxKey;
-	static const char *PlayDurationMinKey;
-	static const char *PlayDurationMaxKey;
+	static const char *PlayDurationKey;
 	static const char *ItemListKey;
 	static const char *IsShuffleKey;
 	static const char *StreamUrlKey;
@@ -154,6 +178,7 @@ private:
 	// Reset the text shown by the name label, truncating it as needed to fit in its available space
 	void resetNameLabel ();
 
+	SpriteGroup *sprites;
 	float windowWidth;
 	Image *iconImage;
 	LabelWindow *nameLabel;
@@ -161,23 +186,11 @@ private:
 	Toggle *selectToggle;
 	Toggle *expandToggle;
 	ToggleWindow *shuffleToggle;
-	Slider *startPositionMinSlider;
-	Slider *startPositionMaxSlider;
-	LabelWindow *startPositionValueLabel;
-	Label *startPositionLabel;
-	Slider *playDurationMinSlider;
-	Slider *playDurationMaxSlider;
-	LabelWindow *playDurationValueLabel;
-	Label *playDurationLabel;
+	SliderWindow *startPositionSlider;
+	SliderWindow *playDurationSlider;
 	ListView *itemListView;
-	Widget::EventCallback selectStateChangeCallback;
-	void *selectStateChangeCallbackData;
-	Widget::EventCallback expandStateChangeCallback;
-	void *expandStateChangeCallbackData;
-	Widget::EventCallback renameClickCallback;
-	void *renameClickCallbackData;
-	Widget::EventCallback listChangeCallback;
-	void *listChangeCallbackData;
+	Button *removeButton;
+	Button *addItemButton;
 };
 
 #endif
