@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -657,6 +657,7 @@ void WebKioskUi::createPlaylistButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	playlist->animateNewCard ();
 	ui->cardView->scrollToItem (id);
 	ui->clearPopupWidgets ();
+	ui->resetExpandToggles ();
 	App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s: %s", App::instance->uiText.getText (UiTextString::webPlaylistCreatedMessage).c_str (), name.c_str ()));
 }
 
@@ -704,9 +705,10 @@ void WebKioskUi::playlistNameClicked (void *uiPtr, Widget *widgetPtr) {
 	ui->actionWidget.assign (action);
 	ui->actionTarget.assign (playlist);
 	action->setValue (playlist->playlistName);
-	action->setEditCallback (WebKioskUi::playlistNameEdited, ui);
+	action->valueEditCallback = Widget::EventCallbackContext (WebKioskUi::playlistNameEdited, ui);
 	action->setFillBg (true, uiconfig->lightPrimaryColor);
 	action->setButtonsEnabled (true, true, true, true);
+	action->shouldSkipTextClearCallbacks = true;
 	action->assignKeyFocus ();
 	action->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
 	action->position.assign (playlist->screenX + uiconfig->marginSize, playlist->screenY);
@@ -838,9 +840,10 @@ void WebKioskUi::removePlaylistActionClosed (void *uiPtr, Widget *widgetPtr) {
 		return;
 	}
 
-	playlist = WebPlaylistWindow::castWidget (ui->cardView->getItem (ui->selectedPlaylistId));
+	playlist = WebPlaylistWindow::castWidget (ui->actionTarget.widget);
 	if (playlist) {
 		ui->cardView->removeItem (playlist->itemId);
+		ui->resetExpandToggles ();
 	}
 }
 

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -40,6 +40,10 @@ public:
 	TextField (float fieldWidth, const StdString &promptText = StdString (""));
 	~TextField ();
 
+	// Read-write data members
+	Widget::EventCallbackContext valueChangeCallback;
+	Widget::EventCallbackContext valueEditCallback;
+
 	// Read-only data members
 	float fieldWidth;
 	bool isDisabled;
@@ -62,11 +66,8 @@ public:
 	// Return the text field's value
 	StdString getValue ();
 
-	// Clear the text field's value
-	void clearValue ();
-
-	// Set the text field's value and invoke any configured change callback unless shouldSkipChangeCallback is true
-	void setValue (const StdString &valueText, bool shouldSkipChangeCallback = false);
+	// Set the text field's value and invoke any configured change and edit callbacks unless shouldSkipChangeCallback or shouldSkipEditCallback are true
+	void setValue (const StdString &valueText, bool shouldSkipChangeCallback = false, bool shouldSkipEditCallback = false);
 
 	// Read a string from the clipboard and append it to the text field's value
 	void appendClipboardText ();
@@ -76,9 +77,6 @@ public:
 
 	// Set the text field's width by specifying a line length in characters
 	void setLineWidth (int lineLength);
-
-	// Set a callback that should be invoked when the field's value changes
-	void setValueChangeCallback (Widget::EventCallback callback, void *callbackData);
 
 	// Set the widget's key focus mode, indicating whether it should handle keypress events with edit focus
 	virtual void setKeyFocus (bool enable);
@@ -100,8 +98,6 @@ private:
 	// Set the field's focused state
 	void setFocused (bool enable);
 
-	Widget::EventCallback valueChangeCallback;
-	void *valueChangeCallbackData;
 	Label *promptLabel;
 	Label *valueLabel;
 	Panel *cursorPanel;

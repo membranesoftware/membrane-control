@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -31,7 +31,7 @@
 #include "Config.h"
 #include "SystemInterface.h"
 
-const char *SystemInterface::version = "20-stable-4ad21c56";
+const char *SystemInterface::version = "21-stable-4fb0b83b";
 const char *SystemInterface::Command_AgentConfiguration = "AgentConfiguration";
 const char *SystemInterface::Command_AgentContact = "AgentContact";
 const char *SystemInterface::Command_AgentStatus = "AgentStatus";
@@ -727,6 +727,7 @@ void SystemInterface::getParams_MonitorServerStatus (std::list<SystemInterface::
   destList->push_back (SystemInterface::Param (StdString ("isPlaying"), StdString ("boolean"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("isPlayPaused"), StdString ("boolean"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("mediaName"), StdString ("string"), StdString (""), 1));
+  destList->push_back (SystemInterface::Param (StdString ("isShowUrlAvailable"), StdString ("boolean"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("isShowingUrl"), StdString ("boolean"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("showUrl"), StdString ("string"), StdString (""), 1));
   destList->push_back (SystemInterface::Param (StdString ("intentName"), StdString ("string"), StdString (""), 1));
@@ -2134,6 +2135,8 @@ void SystemInterface::hashFields_MonitorServerStatus (Json *commandParams, Syste
   s.sprintf ("%s", commandParams->getBoolean ("isPlayPaused", false) ? "true" : "false");
   hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
   s.sprintf ("%s", commandParams->getBoolean ("isPlaying", false) ? "true" : "false");
+  hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
+  s.sprintf ("%s", commandParams->getBoolean ("isShowUrlAvailable", false) ? "true" : "false");
   hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());
   s.sprintf ("%s", commandParams->getBoolean ("isShowingUrl", false) ? "true" : "false");
   hashUpdateFn (hashContextPtr, (unsigned char *) s.c_str (), s.length ());

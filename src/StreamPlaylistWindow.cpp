@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -142,7 +142,7 @@ StreamPlaylistWindow::StreamPlaylistWindow (SpriteGroup *mediaUiSpriteGroup)
 	startPositionSlider->setIcon (sprites->getSprite (MediaUi::StartPositionIconSprite));
 	startPositionSlider->setMouseHoverTooltip (uitext->getText (UiTextString::startPosition).capitalized ());
 	startPositionSlider->setValueNameFunction (StreamPlaylistWindow::startPositionSliderValueName);
-	startPositionSlider->setValue (StreamPlaylistWindow::ZeroStartPosition, true);
+	startPositionSlider->setValue (StreamPlaylistWindow::ZeroStartPosition);
 	startPositionSlider->isVisible = false;
 
 	slider = new Slider (0.0f, (float) (StreamPlaylistWindow::PlayDurationCount - 1));
@@ -153,7 +153,7 @@ StreamPlaylistWindow::StreamPlaylistWindow (SpriteGroup *mediaUiSpriteGroup)
 	playDurationSlider->setIcon (sprites->getSprite (MediaUi::DurationIconSprite));
 	playDurationSlider->setMouseHoverTooltip (uitext->getText (UiTextString::playDuration).capitalized ());
 	playDurationSlider->setValueNameFunction (StreamPlaylistWindow::playDurationSliderValueName);
-	playDurationSlider->setValue (StreamPlaylistWindow::MediumPlayDuration, true);
+	playDurationSlider->setValue (StreamPlaylistWindow::MediumPlayDuration);
 	playDurationSlider->isVisible = false;
 
 	removeButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));

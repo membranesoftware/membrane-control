@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -44,16 +44,17 @@
 #include "TextField.h"
 #include "TextFieldWindow.h"
 
+const int TextFieldWindow::randomizeStringLength = 16;
+
 TextFieldWindow::TextFieldWindow (float windowWidth, const StdString &promptText, Sprite *iconSprite)
 : Panel ()
+, shouldSkipTextClearCallbacks (false)
 , isDisabled (false)
 , isInverseColor (false)
 , isObscured (false)
 , isFixedHeight (false)
 , windowWidth (windowWidth)
 , windowHeight (0.0f)
-, editCallback (NULL)
-, editCallbackData (NULL)
 , textField (NULL)
 , enterButton (NULL)
 , cancelButton (NULL)
@@ -74,7 +75,8 @@ TextFieldWindow::TextFieldWindow (float windowWidth, const StdString &promptText
 	setPadding (uiconfig->paddingSize, uiconfig->paddingSize / 2.0f);
 
 	textField = (TextField *) addWidget (new TextField (windowWidth - uiconfig->marginSize - uiconfig->paddingSize, promptText));
-	textField->setValueChangeCallback (TextFieldWindow::textFieldValueChanged, this);
+	textField->valueChangeCallback = Widget::EventCallbackContext (TextFieldWindow::textFieldValueChanged, this);
+	textField->valueEditCallback = Widget::EventCallbackContext (TextFieldWindow::textFieldValueEdited, this);
 	if (iconSprite) {
 		image = new Image (iconSprite);
 		iconImage = (ImageWindow *) addWidget (new ImageWindow (image));
@@ -236,11 +238,6 @@ void TextFieldWindow::setWindowHeight (float fixedHeight) {
 	refreshLayout ();
 }
 
-void TextFieldWindow::setEditCallback (Widget::EventCallback callback, void *callbackData) {
-	editCallback = callback;
-	editCallbackData = callbackData;
-}
-
 void TextFieldWindow::setButtonsEnabled (bool enableEnterButton, bool enableCancelButton, bool enablePasteButton, bool enableClearButton, bool enableRandomizeButton) {
 	enterButton->isVisible = enableEnterButton;
 	cancelButton->isVisible = enableCancelButton;
@@ -363,8 +360,17 @@ void TextFieldWindow::textFieldValueChanged (void *windowPtr, Widget *widgetPtr)
 	TextFieldWindow *window;
 
 	window = (TextFieldWindow *) windowPtr;
-	if (window->editCallback) {
-		window->editCallback (window->editCallbackData, window);
+	if (window->valueChangeCallback.callback) {
+		window->valueChangeCallback.callback (window->valueChangeCallback.callbackData, window);
+	}
+}
+
+void TextFieldWindow::textFieldValueEdited (void *windowPtr, Widget *widgetPtr) {
+	TextFieldWindow *window;
+
+	window = (TextFieldWindow *) windowPtr;
+	if (window->valueEditCallback.callback) {
+		window->valueEditCallback.callback (window->valueEditCallback.callbackData, window);
 	}
 }
 
@@ -373,9 +379,6 @@ void TextFieldWindow::enterButtonClicked (void *windowPtr, Widget *widgetPtr) {
 
 	window = (TextFieldWindow *) windowPtr;
 	window->textField->setKeyFocus (false);
-	if (window->editCallback) {
-		window->editCallback (window->editCallbackData, window);
-	}
 }
 
 void TextFieldWindow::cancelButtonClicked (void *windowPtr, Widget *widgetPtr) {
@@ -399,15 +402,14 @@ void TextFieldWindow::clearButtonClicked (void *windowPtr, Widget *widgetPtr) {
 
 	window = (TextFieldWindow *) windowPtr;
 	App::instance->uiStack.setKeyFocusTarget (window->textField);
-	window->textField->clearValue ();
+	window->textField->setValue (StdString (""), window->shouldSkipTextClearCallbacks, window->shouldSkipTextClearCallbacks);
 }
 
-static const int RANDOMIZE_STRING_LENGTH = 16;
 void TextFieldWindow::randomizeButtonClicked (void *windowPtr, Widget *widgetPtr) {
 	TextFieldWindow *window;
 
 	window = (TextFieldWindow *) windowPtr;
-	window->textField->setValue (App::instance->getRandomString (RANDOMIZE_STRING_LENGTH));
+	window->textField->setValue (App::instance->getRandomString (TextFieldWindow::randomizeStringLength));
 }
 
 void TextFieldWindow::visibilityToggleStateChanged (void *windowPtr, Widget *widgetPtr) {

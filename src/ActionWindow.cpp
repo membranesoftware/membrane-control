@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -235,13 +235,15 @@ void ActionWindow::addOption (const StdString &optionName, ComboBox *comboBox, c
 }
 
 void ActionWindow::addOption (const StdString &optionName, TextField *textField, const StdString &descriptionText) {
-	textField->setValueChangeCallback (ActionWindow::optionValueChanged, this);
+	textField->valueChangeCallback = Widget::EventCallbackContext (ActionWindow::optionValueChanged, this);
+	textField->valueEditCallback = Widget::EventCallbackContext (ActionWindow::optionValueChanged, this);
 	textField->setInverseColor (isInverseColor);
 	doAddOption (ActionWindow::TextFieldItem, optionName, textField, descriptionText);
 }
 
 void ActionWindow::addOption (const StdString &optionName, TextFieldWindow *textFieldWindow, const StdString &descriptionText) {
-	textFieldWindow->setEditCallback (ActionWindow::optionValueChanged, this);
+	textFieldWindow->valueChangeCallback = Widget::EventCallbackContext (ActionWindow::optionValueChanged, this);
+	textFieldWindow->valueEditCallback = Widget::EventCallbackContext (ActionWindow::optionValueChanged, this);
 	textFieldWindow->setInverseColor (isInverseColor);
 	doAddOption (ActionWindow::TextFieldWindowItem, optionName, textFieldWindow, descriptionText);
 }

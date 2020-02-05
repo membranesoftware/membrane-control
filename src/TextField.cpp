@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -49,8 +49,6 @@ TextField::TextField (float fieldWidth, const StdString &promptText)
 , isInverseColor (false)
 , isPromptErrorColor (false)
 , isObscured (false)
-, valueChangeCallback (NULL)
-, valueChangeCallbackData (NULL)
 , promptLabel (NULL)
 , valueLabel (NULL)
 , cursorPanel (NULL)
@@ -212,20 +210,18 @@ StdString TextField::getValue () {
 	return (valueLabel->text);
 }
 
-void TextField::clearValue () {
-	valueLabel->setText (StdString (""));
-	refreshLayout ();
-}
-
-void TextField::setValue (const StdString &valueText, bool shouldSkipChangeCallback) {
+void TextField::setValue (const StdString &valueText, bool shouldSkipChangeCallback, bool shouldSkipEditCallback) {
 	if (valueText.equals (valueLabel->text)) {
 		return;
 	}
 
 	valueLabel->setText (valueText);
 	refreshLayout ();
-	if (valueChangeCallback && (! shouldSkipChangeCallback)) {
-		valueChangeCallback (valueChangeCallbackData, this);
+	if ((! shouldSkipChangeCallback) && valueChangeCallback.callback) {
+		valueChangeCallback.callback (valueChangeCallback.callbackData, this);
+	}
+	if ((! shouldSkipEditCallback) && valueEditCallback.callback) {
+		valueEditCallback.callback (valueEditCallback.callbackData, this);
 	}
 }
 
@@ -239,7 +235,7 @@ void TextField::appendClipboardText () {
 			val = valueLabel->text;
 			val.append (text);
 			SDL_free (text);
-			setValue (val, isKeyFocused);
+			setValue (val, false, isKeyFocused);
 		}
 	}
 }
@@ -252,11 +248,6 @@ void TextField::setFieldWidth (float widthValue) {
 void TextField::setLineWidth (int lineLength) {
 	fieldWidth = valueLabel->maxGlyphWidth * (float) lineLength;
 	setFixedSize (true, fieldWidth, valueLabel->maxLineHeight + (heightPadding * 2.0f));
-}
-
-void TextField::setValueChangeCallback (Widget::EventCallback callback, void *callbackData) {
-	valueChangeCallback = callback;
-	valueChangeCallbackData = callbackData;
 }
 
 void TextField::refreshLayout () {
@@ -357,7 +348,7 @@ bool TextField::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool i
 		len = val.length ();
 		if (len > 0) {
 			val.erase (len - 1, 1);
-			setValue (val, true);
+			setValue (val, false, true);
 		}
 		return (true);
 	}
@@ -368,7 +359,7 @@ bool TextField::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool i
 	}
 
 	if (keycode == SDLK_ESCAPE) {
-		setValue (lastValue, true);
+		setValue (lastValue, false, true);
 		setKeyFocus (false);
 		return (true);
 	}
@@ -383,7 +374,7 @@ bool TextField::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool i
 		if (c > 0) {
 			val = valueLabel->text;
 			val.append (1, c);
-			setValue (val, true);
+			setValue (val, false, true);
 			return (true);
 		}
 	}
@@ -444,8 +435,8 @@ void TextField::setKeyFocus (bool enable) {
 	else {
 		isKeyFocused = false;
 		if (! lastValue.equals (valueLabel->text)) {
-			if (valueChangeCallback) {
-				valueChangeCallback (valueChangeCallbackData, this);
+			if (valueEditCallback.callback) {
+				valueEditCallback.callback (valueEditCallback.callbackData, this);
 			}
 		}
 	}

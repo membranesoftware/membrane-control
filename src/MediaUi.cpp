@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -241,7 +241,7 @@ void MediaUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
 	textfield = new TextFieldWindow (App::instance->windowWidth * 0.37f, uitext->getText (UiTextString::enterSearchKeyPrompt));
 	textfield->setPadding (uiconfig->paddingSize, 0.0f);
 	textfield->setButtonsEnabled (false, false, true, true);
-	textfield->setEditCallback (MediaUi::searchFieldEdited, this);
+	textfield->valueEditCallback = Widget::EventCallbackContext (MediaUi::searchFieldEdited, this);
 	toolbar->addLeftItem (textfield);
 	searchField.assign (textfield);
 
@@ -1574,9 +1574,10 @@ void MediaUi::playlistRenameActionClicked (void *uiPtr, Widget *widgetPtr) {
 	ui->actionWidget.assign (textfield);
 	ui->actionTarget.assign (target);
 	textfield->setValue (target->playlistName);
-	textfield->setEditCallback (MediaUi::playlistNameEdited, ui);
+	textfield->valueEditCallback = Widget::EventCallbackContext (MediaUi::playlistNameEdited, ui);
 	textfield->setFillBg (true, uiconfig->lightPrimaryColor);
 	textfield->setButtonsEnabled (true, true, true, true);
+	textfield->shouldSkipTextClearCallbacks = true;
 	textfield->assignKeyFocus ();
 	textfield->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
 	textfield->position.assign (target->screenX + uiconfig->marginSize, target->screenY);
@@ -1669,6 +1670,7 @@ void MediaUi::removePlaylistActionClosed (void *uiPtr, Widget *widgetPtr) {
 	}
 
 	ui->cardView->removeItem (playlist->itemId);
+	ui->resetExpandToggles ();
 }
 
 void MediaUi::playlistAddItemActionClicked (void *uiPtr, Widget *widgetPtr) {
@@ -2688,6 +2690,7 @@ void MediaUi::createPlaylistButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	ui->cardView->addItem (playlist, id, MediaUi::ExpandedPlaylistRow);
 	playlist->animateNewCard ();
 	playlist->setSelected (true);
+	ui->resetExpandToggles ();
 	App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s: %s", App::instance->uiText.getText (UiTextString::streamPlaylistCreatedMessage).c_str (), playlist->playlistName.c_str ()));
 }
 

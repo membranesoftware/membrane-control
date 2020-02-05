@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -165,9 +165,10 @@ void CommandUi::commandNameClicked (void *uiPtr, Widget *widgetPtr) {
 	ui->actionWidget.assign (action);
 	ui->actionTarget.assign (command);
 	action->setValue (command->commandName);
-	action->setEditCallback (CommandUi::commandNameEdited, ui);
+	action->valueEditCallback = Widget::EventCallbackContext (CommandUi::commandNameEdited, ui);
 	action->setFillBg (true, uiconfig->lightPrimaryColor);
 	action->setButtonsEnabled (true, true, true, true);
+	action->shouldSkipTextClearCallbacks = true;
 	action->assignKeyFocus ();
 	action->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
 	action->position.assignBounded (command->screenX + uiconfig->marginSize, command->screenY, uiconfig->marginSize, uiconfig->marginSize, (float) App::instance->windowWidth - action->width - uiconfig->marginSize, (float) App::instance->windowHeight - action->height - uiconfig->marginSize - App::instance->uiStack.bottomBarHeight);

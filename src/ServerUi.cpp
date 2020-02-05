@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -417,7 +417,8 @@ void ServerUi::addressToggleStateChanged (void *uiPtr, Widget *widgetPtr) {
 		textfield->setWindowHeight (toolbar->height);
 		textfield->setButtonsEnabled (true, false, true, true);
 		textfield->setFillBg (true, uiconfig->lightPrimaryColor);
-		textfield->setEditCallback (ServerUi::addressTextFieldEdited, ui);
+		textfield->valueEditCallback = Widget::EventCallbackContext (ServerUi::addressTextFieldEdited, ui);
+		textfield->shouldSkipTextClearCallbacks = true;
 		textfield->assignKeyFocus ();
 		toggle->setFillBg (true, uiconfig->mediumPrimaryColor);
 

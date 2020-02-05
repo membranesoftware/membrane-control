@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -41,8 +41,15 @@
 
 class TextFieldWindow : public Panel {
 public:
+	static const int randomizeStringLength;
+
 	TextFieldWindow (float windowWidth, const StdString &promptText = StdString (""), Sprite *iconSprite = NULL);
 	virtual ~TextFieldWindow ();
+
+	// Read-write data members
+	Widget::EventCallbackContext valueChangeCallback;
+	Widget::EventCallbackContext valueEditCallback;
+	bool shouldSkipTextClearCallbacks;
 
 	// Read-only data members
 	bool isDisabled;
@@ -67,9 +74,6 @@ public:
 	// Set the window to use a fixed height of the specified value, replacing default window behavior that computes height as needed to contain its elements
 	void setWindowHeight (float fixedHeight);
 
-	// Set a callback that should be invoked when the window's text field completes an edit
-	void setEditCallback (Widget::EventCallback callback, void *callbackData);
-
 	// Set the enable state for the window's utility buttons
 	void setButtonsEnabled (bool enableEnterButton = false, bool enableCancelButton = false, bool enablePasteButton = false, bool enableClearButton = false, bool enableRandomizeButton = false);
 
@@ -90,6 +94,7 @@ public:
 
 	// Callback functions
 	static void textFieldValueChanged (void *windowPtr, Widget *widgetPtr);
+	static void textFieldValueEdited (void *windowPtr, Widget *widgetPtr);
 	static void enterButtonClicked (void *windowPtr, Widget *widgetPtr);
 	static void cancelButtonClicked (void *windowPtr, Widget *widgetPtr);
 	static void pasteButtonClicked (void *windowPtr, Widget *widgetPtr);
@@ -108,8 +113,6 @@ private:
 	bool isFixedHeight;
 	float windowWidth;
 	float windowHeight;
-	Widget::EventCallback editCallback;
-	void *editCallbackData;
 	TextField *textField;
 	Button *enterButton;
 	Button *cancelButton;

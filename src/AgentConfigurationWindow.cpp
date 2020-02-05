@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -36,6 +36,8 @@
 #include "App.h"
 #include "UiText.h"
 #include "OsUtil.h"
+#include "Json.h"
+#include "SystemInterface.h"
 #include "Sprite.h"
 #include "SpriteGroup.h"
 #include "Widget.h"
@@ -50,8 +52,7 @@
 #include "Slider.h"
 #include "SliderWindow.h"
 #include "Image.h"
-#include "Json.h"
-#include "SystemInterface.h"
+#include "TextFieldWindow.h"
 #include "AgentConfigurationWindow.h"
 
 const int AgentConfigurationWindow::mediaScanPeriods[] = { 0, 24 * 3600, 4 * 3600, 3600, 900, 60 };
@@ -245,7 +246,7 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 	SystemInterface *interface;
 	UiConfiguration *uiconfig;
 	UiText *uitext;
-	TextField *textfield;
+	TextFieldWindow *textfield;
 	Toggle *toggle;
 	SliderWindow *slider;
 	Json cfg;
@@ -274,7 +275,9 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 	toggle->setChecked (interface->getCommandBooleanParam (&agentConfiguration, "isEnabled", false));
 	actionWindow->addOption (uitext->getText (UiTextString::enabled).capitalized (), toggle, uitext->getText (UiTextString::agentEnabledDescription));
 
-	textfield = new TextField (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, uitext->getText (UiTextString::agentDisplayNamePrompt));
+	textfield = new TextFieldWindow (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, uitext->getText (UiTextString::agentDisplayNamePrompt));
+	textfield->setPadding (uiconfig->paddingSize, 0.0f);
+	textfield->setButtonsEnabled (false, false, true, true, false);
 	textfield->setPromptErrorColor (true);
 	textfield->setValue (interface->getCommandStringParam (&agentConfiguration, "displayName", ""));
 	actionWindow->addOption (uitext->getText (UiTextString::displayName).capitalized (), textfield, uitext->getText (UiTextString::agentDisplayNameDescription));
@@ -287,7 +290,9 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 		else {
 			prompt = uitext->getText (UiTextString::sourceMediaPathPrompt);
 		}
-		textfield = new TextField (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, prompt);
+		textfield = new TextFieldWindow (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, prompt);
+		textfield->setPadding (uiconfig->paddingSize, 0.0f);
+		textfield->setButtonsEnabled (false, false, true, true, false);
 		textfield->setPromptErrorColor (true);
 		textfield->setValue (cfg.getString ("mediaPath", ""));
 		actionWindow->addOption (uitext->getText (UiTextString::sourceMediaPath).capitalized (), textfield, uitext->getText (UiTextString::sourceMediaPathDescription));
@@ -299,7 +304,9 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 		else {
 			prompt = uitext->getText (UiTextString::mediaDataPathPrompt);
 		}
-		textfield = new TextField (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, prompt);
+		textfield = new TextFieldWindow (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, prompt);
+		textfield->setPadding (uiconfig->paddingSize, 0.0f);
+		textfield->setButtonsEnabled (false, false, true, true, false);
 		textfield->setPromptErrorColor (true);
 		textfield->setValue (cfg.getString ("dataPath", ""));
 		actionWindow->addOption (uitext->getText (UiTextString::mediaDataPath).capitalized (), textfield, uitext->getText (UiTextString::mediaDataPathDescription));
@@ -329,7 +336,9 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 		else {
 			prompt = uitext->getText (UiTextString::streamDataPathPrompt);
 		}
-		textfield = new TextField (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, prompt);
+		textfield = new TextFieldWindow (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, prompt);
+		textfield->setPadding (uiconfig->paddingSize, 0.0f);
+		textfield->setButtonsEnabled (false, false, true, true, false);
 		textfield->setPromptErrorColor (true);
 		textfield->setValue (cfg.getString ("dataPath", ""));
 		actionWindow->addOption (uitext->getText (UiTextString::streamDataPath).capitalized (), textfield, uitext->getText (UiTextString::streamDataPathDescription));
@@ -423,7 +432,7 @@ void AgentConfigurationWindow::applyButtonClicked (void *windowPtr, Widget *widg
 	uitext = &(App::instance->uiText);
 	action = window->actionWindow;
 
-	if (window->isWaiting) {
+	if (window->isWaiting || (! action->isOptionDataValid)) {
 		return;
 	}
 
