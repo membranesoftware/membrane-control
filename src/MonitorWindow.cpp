@@ -52,7 +52,7 @@
 #include "IconLabelWindow.h"
 #include "MonitorWindow.h"
 
-const float MonitorWindow::screenshotImageScale = 0.27f;
+const float MonitorWindow::ScreenshotImageScale = 0.27f;
 
 MonitorWindow::MonitorWindow (const StdString &agentId)
 : Panel ()
@@ -67,6 +67,7 @@ MonitorWindow::MonitorWindow (const StdString &agentId)
 , iconImage (NULL)
 , nameLabel (NULL)
 , descriptionLabel (NULL)
+, dividerPanel (NULL)
 , screenshotImage (NULL)
 , statusIcon (NULL)
 , taskCountIcon (NULL)
@@ -93,17 +94,23 @@ MonitorWindow::MonitorWindow (const StdString &agentId)
 	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	descriptionLabel->isVisible = false;
 
+	dividerPanel = (Panel *) addWidget (new Panel ());
+	dividerPanel->setFillBg (true, uiconfig->dividerColor);
+	dividerPanel->setFixedSize (true, 1.0f, uiconfig->headlineDividerLineWidth);
+	dividerPanel->isPanelSizeClipEnabled = true;
+	dividerPanel->isVisible = false;
+
 	screenshotImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
-	screenshotImage->setLoadCallback (MonitorWindow::screenshotImageLoaded, this);
-	screenshotImage->setMouseLongPressCallback (MonitorWindow::screenshotImageLongPressed, this);
-	screenshotImage->setLoadResize (true, ((float) App::instance->windowWidth) * MonitorWindow::screenshotImageScale);
+	screenshotImage->loadCallback = Widget::EventCallbackContext (MonitorWindow::screenshotImageLoaded, this);
+	screenshotImage->mouseLongPressCallback = Widget::EventCallbackContext (MonitorWindow::screenshotImageLongPressed, this);
+	screenshotImage->setLoadResize (true, ((float) App::instance->windowWidth) * MonitorWindow::ScreenshotImageScale);
 	screenshotImage->setFillBg (true, uiconfig->darkBackgroundColor);
 	screenshotImage->isVisible = false;
 
 	statusIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::InactiveStateIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	statusIcon->setPadding (0.0f, 0.0f);
 	statusIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
-	statusIcon->setMouseHoverTooltip (uitext->getText (UiTextString::monitorActivityIconTooltip));
+	statusIcon->setMouseHoverTooltip (uitext->getText (UiTextString::MonitorActivityIconTooltip));
 	statusIcon->isVisible = false;
 
 	taskCountIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::TaskCountIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
@@ -114,7 +121,7 @@ MonitorWindow::MonitorWindow (const StdString &agentId)
 	storageIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::StorageIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	storageIcon->setPadding (0.0f, 0.0f);
 	storageIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
-	storageIcon->setMouseHoverTooltip (uitext->getText (UiTextString::storageTooltip));
+	storageIcon->setMouseHoverTooltip (uitext->getText (UiTextString::StorageTooltip));
 	storageIcon->isVisible = false;
 
 	streamCountIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
@@ -123,15 +130,15 @@ MonitorWindow::MonitorWindow (const StdString &agentId)
 	streamCountIcon->isVisible = false;
 
 	selectToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::StarOutlineButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::StarButtonSprite)));
+	selectToggle->stateChangeCallback = Widget::EventCallbackContext (MonitorWindow::selectToggleStateChanged, this);
 	selectToggle->setImageColor (uiconfig->flatButtonTextColor);
-	selectToggle->setStateChangeCallback (MonitorWindow::selectToggleStateChanged, this);
-	selectToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::unselectedToggleTooltip), uitext->getText (UiTextString::selectedToggleTooltip));
+	selectToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::UnselectedToggleTooltip), uitext->getText (UiTextString::SelectedToggleTooltip));
 	selectToggle->isVisible = false;
 
 	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
+	expandToggle->stateChangeCallback = Widget::EventCallbackContext (MonitorWindow::expandToggleStateChanged, this);
 	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
-	expandToggle->setStateChangeCallback (MonitorWindow::expandToggleStateChanged, this);
-	expandToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::expand).capitalized (), uitext->getText (UiTextString::minimize).capitalized ());
+	expandToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::Expand).capitalized (), uitext->getText (UiTextString::Minimize).capitalized ());
 
 	agentTaskWindow = (AgentTaskWindow *) addWidget (new AgentTaskWindow (agentId));
 
@@ -160,9 +167,9 @@ void MonitorWindow::syncRecordStore () {
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 	Json *record, serverstatus;
-	StdString path, displayname, intentname, text;
+	StdString path, displaytarget, intentname, text;
 	int64_t t;
-	int intentlen, displaylen, count;
+	int intentlen, displaystate, displaylen, count;
 
 	store = &(App::instance->agentControl.recordStore);
 	interface = &(App::instance->systemInterface);
@@ -200,40 +207,43 @@ void MonitorWindow::syncRecordStore () {
 	intentlen = 24;
 	displaylen = 32;
 	intentname = serverstatus.getString ("intentName", "");
-	if (serverstatus.getBoolean ("isPlaying", false)) {
-		displayname = serverstatus.getString ("mediaName", "");
-		if (! displayname.empty ()) {
-			if (intentname.empty ()) {
-				text.assign (uitext->getText (UiTextString::playing).capitalized ());
-				displaylen += 8;
-			}
-			else {
-				text.sprintf ("[%s]", intentname.truncated (intentlen).c_str ());
-			}
-			text.appendSprintf (" %s", displayname.truncated (displaylen).c_str ());
-		}
+	if (! intentname.empty ()) {
+		text.appendSprintf ("[%s]", intentname.truncated (intentlen).c_str ());
+		displaylen += 8;
 	}
-	else if (serverstatus.getBoolean ("isShowingUrl", false)) {
-		displayname = serverstatus.getString ("showUrl", "");
-		if (! displayname.empty ()) {
-			if (intentname.empty ()) {
-				text.assign (uitext->getText (UiTextString::showing).capitalized ());
-				displaylen += 8;
+
+	displaytarget = serverstatus.getString ("displayTarget", "");
+	if (! displaytarget.empty ()) {
+		if (text.empty ()) {
+			displaystate = serverstatus.getNumber ("displayState", SystemInterface::Constant_DefaultDisplayState);
+			switch (displaystate) {
+				case SystemInterface::Constant_ShowUrlDisplayState: {
+					text.assign (uitext->getText (UiTextString::Showing).capitalized ());
+					break;
+				}
+				case SystemInterface::Constant_PlayMediaDisplayState: {
+					text.assign (uitext->getText (UiTextString::Playing).capitalized ());
+					break;
+				}
+				case SystemInterface::Constant_ShowImageDisplayState: {
+					text.assign (uitext->getText (UiTextString::ShowingImage).capitalized ());
+					text.append (":");
+					break;
+				}
+				case SystemInterface::Constant_PlayCameraStreamDisplayState: {
+					text.assign (uitext->getText (UiTextString::PlayingLiveCamera).capitalized ());
+					text.append (":");
+					break;
+				}
 			}
-			else {
-				text.sprintf ("[%s]", intentname.truncated (intentlen).c_str ());
-			}
-			text.appendSprintf (" %s", displayname.truncated (displaylen).c_str ());
 		}
+		text.append (" ");
+		text.append (displaytarget.truncated (displaylen));
 	}
-	if (text.empty ()) {
-		if (! intentname.empty ()) {
-			text.sprintf ("[%s]", intentname.truncated (intentlen).c_str ());
-		}
-	}
+
 	if (text.empty ()) {
 		statusIcon->setIconSprite (uiconfig->coreSprites.getSprite (UiConfiguration::InactiveStateIconSprite));
-		statusIcon->setText (uitext->getText (UiTextString::inactive).capitalized ());
+		statusIcon->setText (uitext->getText (UiTextString::Inactive).capitalized ());
 	}
 	else {
 		if (serverstatus.getBoolean ("isPlayPaused", false)) {
@@ -246,7 +256,7 @@ void MonitorWindow::syncRecordStore () {
 	}
 
 	taskCountIcon->setText (StdString::createSprintf ("%i", agentTaskCount));
-	taskCountIcon->setMouseHoverTooltip (uitext->getCountText (agentTaskCount, UiTextString::taskInProgress, UiTextString::tasksInProgress));
+	taskCountIcon->setMouseHoverTooltip (uitext->getCountText (agentTaskCount, UiTextString::TaskInProgress, UiTextString::TasksInProgress));
 
 	agentTaskWindow->syncRecordStore ();
 	if ((agentTaskCount > 0) && isExpanded) {
@@ -267,7 +277,7 @@ void MonitorWindow::syncRecordStore () {
 
 	count = serverstatus.getNumber ("streamCount", (int) 0);
 	streamCountIcon->setText (StdString::createSprintf ("%i", count));
-	streamCountIcon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::cachedStream, UiTextString::cachedStreams));
+	streamCountIcon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::CachedStream, UiTextString::CachedStreams));
 
 	refreshLayout ();
 	Panel::syncRecordStore ();
@@ -356,6 +366,7 @@ void MonitorWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallba
 		expandToggle->setChecked (true, shouldSkipStateChangeCallback);
 		nameLabel->setFont (UiConfiguration::HeadlineFont);
 		descriptionLabel->isVisible = true;
+		dividerPanel->isVisible = true;
 
 		if (screenshotImage->isImageUrlEmpty ()) {
 			screenshotImage->isVisible = false;
@@ -398,6 +409,7 @@ void MonitorWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallba
 		expandToggle->setChecked (false, shouldSkipStateChangeCallback);
 		nameLabel->setFont (UiConfiguration::BodyFont);
 		descriptionLabel->isVisible = false;
+		dividerPanel->isVisible = false;
 		screenshotImage->isVisible = false;
 		statusIcon->isVisible = false;
 		taskCountIcon->isVisible = false;
@@ -436,10 +448,14 @@ void MonitorWindow::refreshLayout () {
 	if (selectToggle->isVisible) {
 		selectToggle->flowRight (&x, y, &x2, &y2);
 	}
+
+	x = x0;
+	y = y2 + uiconfig->marginSize;
+	x2 = 0.0f;
+	if (dividerPanel->isVisible) {
+		dividerPanel->flowDown (0.0f, &y, &x2, &y2);
+	}
 	if (statusIcon->isVisible) {
-		x = x0;
-		y = y2 + uiconfig->marginSize;
-		x2 = 0.0f;
 		statusIcon->flowDown (x, &y, &x2, &y2);
 	}
 
@@ -470,6 +486,10 @@ void MonitorWindow::refreshLayout () {
 	}
 
 	resetSize ();
+
+	if (dividerPanel->isVisible) {
+		dividerPanel->setFixedSize (true, width, uiconfig->headlineDividerLineWidth);
+	}
 
 	x = width - widthPadding;
 	if (actionButton && actionButton->isVisible) {
@@ -532,7 +552,7 @@ void MonitorWindow::expandToggleStateChanged (void *windowPtr, Widget *widgetPtr
 	}
 }
 
-void MonitorWindow::addActionButton (Sprite *sprite, Widget::EventCallback clickCallback, void *clickCallbackData, const StdString &tooltipText) {
+void MonitorWindow::addActionButton (Sprite *sprite, const StdString &tooltipText, Widget::EventCallbackContext clickCallback) {
 	UiConfiguration *uiconfig;
 
 	uiconfig = &(App::instance->uiConfig);
@@ -541,12 +561,12 @@ void MonitorWindow::addActionButton (Sprite *sprite, Widget::EventCallback click
 		actionButton->isDestroyed = true;
 	}
 	actionButton = (Button *) addWidget (new Button (sprite));
+	actionButton->mouseClickCallback = Widget::EventCallbackContext (MonitorWindow::actionButtonClicked, this);
 	actionButton->setImageColor (uiconfig->flatButtonTextColor);
-	actionButton->setMouseClickCallback (MonitorWindow::actionButtonClicked, this);
 	if (! tooltipText.empty ()) {
 		actionButton->setMouseHoverTooltip (tooltipText);
 	}
-	actionClickCallback = Widget::EventCallbackContext (clickCallback, clickCallbackData);
+	actionClickCallback = clickCallback;
 
 	if (isExpanded) {
 		actionButton->isVisible = true;

@@ -36,7 +36,6 @@
 #include "StringList.h"
 #include "Json.h"
 #include "WidgetHandle.h"
-#include "CardView.h"
 #include "Toolbar.h"
 #include "AdminSecretWindow.h"
 #include "HelpWindow.h"
@@ -44,7 +43,7 @@
 
 class ServerUi : public Ui {
 public:
-	// Constants to use for sprite indexes
+	// Sprite indexes
 	enum {
 		BreadcrumbIconSprite = 0,
 		AddressButtonSprite = 1,
@@ -53,45 +52,23 @@ public:
 		ConfigureServerButtonSprite = 4
 	};
 
-	// Constants to use for card view row numbers
+	// Card view row numbers
 	enum {
 		AttachedServerToggleRow = 0,
 		UnexpandedAttachedServerRow = 1,
 		ExpandedAttachedServerRow = 2,
 		UnattachedServerRow = 3,
-		ActionRow = 4
+		ServerPasswordsRow = 4
 	};
+
+	// Prefs keys
+	static const char *UnexpandedAgentsKey;
 
 	ServerUi ();
 	~ServerUi ();
 
 	// Set fields in the provided HelpWindow widget as appropriate for the UI's help content
 	void setHelpWindowContent (HelpWindow *helpWindow);
-
-	// Callback functions
-	static void appendUnexpandedAgentId (void *stringListPtr, Widget *widgetPtr);
-	static void reloadButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void reloadAgent (void *uiPtr, Widget *widgetPtr);
-	static void findDeletedWindows (void *uiPtr, Widget *widgetPtr);
-	static void serverContactWindowStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void broadcastButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void addressToggleStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void addressTextFieldEdited (void *uiPtr, Widget *widgetPtr);
-	static void addressSnackbarHelpClicked (void *uiPtr, Widget *widgetPtr);
-	static void serverExpandStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void expandServersToggleStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void appendAgentId (void *stringListPtr, Widget *widgetPtr);
-	static void countExpandedServers (void *intPtr, Widget *widgetPtr);
-	static void serverStatusChanged (void *uiPtr, Widget *widgetPtr);
-	static void serverAttachActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void serverCheckForUpdatesActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void serverAdminActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void serverDetachActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void serverRemoveActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void serverRemoveActionClosed (void *uiPtr, Widget *widgetPtr);
-	static void adminSecretAddButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void adminSecretAddActionClosed (void *uiPtr, Widget *widgetPtr);
-	static void adminSecretExpandStateChanged (void *uiPtr, Widget *widgetPtr);
 
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
@@ -112,14 +89,12 @@ protected:
 	// Update subclass-specific interface state as appropriate when the Ui becomes active
 	void doResume ();
 
-	// Execute subclass-specific operations to refresh the interface's layout as appropriate for the current set of UiConfiguration values
-	void doRefresh ();
-
 	// Update subclass-specific interface state as appropriate when the Ui becomes inactive
 	void doPause ();
 
 	// Update subclass-specific interface state as appropriate for an elapsed millisecond time period
 	void doUpdate (int msElapsed);
+	static void doUpdate_findDeletedWindows (void *uiPtr, Widget *widgetPtr);
 
 	// Reload subclass-specific interface resources as needed to account for a new application window size
 	void doResize ();
@@ -134,10 +109,29 @@ protected:
 	void doSyncRecordStore ();
 
 private:
+	// Callback functions
+	static void reloadButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void serverContactWindowStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void broadcastButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void addressToggleStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void addressTextFieldEdited (void *uiPtr, Widget *widgetPtr);
+	static void addressSnackbarHelpClicked (void *uiPtr, Widget *widgetPtr);
+	static void serverExpandStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void expandServersToggleStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void serverStatusChanged (void *uiPtr, Widget *widgetPtr);
+	static void serverAttachActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void serverCheckForUpdatesActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void serverAdminActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void serverDetachActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void serverRemoveActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void serverRemoveActionClosed (void *uiPtr, Widget *widgetPtr);
+	static void adminSecretAddButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void adminSecretAddActionClosed (void *uiPtr, Widget *widgetPtr);
+	static void adminSecretExpandStateChanged (void *uiPtr, Widget *widgetPtr);
+
 	// Reset checked states for row expand toggles, as appropriate for item expand state
 	void resetExpandToggles ();
 
-	CardView *cardView;
 	AdminSecretWindow *adminSecretWindow;
 	WidgetHandle addressToggle;
 	WidgetHandle addressTextFieldWindow;

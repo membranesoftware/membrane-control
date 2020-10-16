@@ -63,8 +63,10 @@ TooltipWindow::~TooltipWindow () {
 
 }
 
-void TooltipWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
+bool TooltipWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 	if (mouseState.isLeftClicked) {
 		isDestroyed = true;
 	}
+
+	return (false);
 }

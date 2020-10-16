@@ -179,11 +179,6 @@ void UiStack::update (int msElapsed) {
 	Ui *ui;
 	Widget *keywidget, *mousewidget;
 
-#if ENABLE_TEST_KEYS
-	if (App::instance->isUiPaused) {
-		return;
-	}
-#endif
 	SDL_LockMutex (uiMutex);
 	if (! uiList.empty ()) {
 		ui = uiList.back ();
@@ -272,9 +267,9 @@ void UiStack::resetToolbars () {
 	secondaryToolbar->clearAll ();
 
 	button = new Button (App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::MainMenuButtonSprite));
+	button->mouseClickCallback = Widget::EventCallbackContext (UiStack::mainMenuButtonClicked, this);
 	button->setInverseColor (true);
-	button->setMouseClickCallback (UiStack::mainMenuButtonClicked, this);
-	button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::mainMenuTooltip));
+	button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::MainMenuTooltip));
 	mainToolbar->addRightItem (button);
 	if (activeUi) {
 		activeUi->addMainToolbarItems (mainToolbar);
@@ -283,9 +278,9 @@ void UiStack::resetToolbars () {
 
 	if (uiList.size () > 1) {
 		button = new Button (App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::BackButtonSprite));
+		button->mouseClickCallback = Widget::EventCallbackContext (UiStack::backButtonClicked, this);
 		button->setInverseColor (true);
-		button->setMouseClickCallback (UiStack::backButtonClicked, this);
-		button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::uiBackTooltip));
+		button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::UiBackTooltip));
 		mainToolbar->addRightItem (button);
 	}
 
@@ -457,13 +452,13 @@ void UiStack::resize () {
 	secondaryToolbar->position.assign (0.0f, App::instance->windowHeight - secondaryToolbar->height);
 }
 
-void UiStack::showSnackbar (const StdString &messageText, const StdString &actionButtonText, Widget::EventCallback actionButtonClickCallback, void *actionButtonClickCallbackData) {
+void UiStack::showSnackbar (const StdString &messageText, const StdString &actionButtonText, Widget::EventCallbackContext actionButtonClickCallback) {
 	float y;
 
 	snackbarWindow->setMaxWidth (App::instance->windowWidth - (App::instance->uiConfig.paddingSize * 2.0f) - rightBarWidth);
 	snackbarWindow->setMessageText (messageText);
-	if ((! actionButtonText.empty ()) && actionButtonClickCallback) {
-		snackbarWindow->setActionButtonEnabled (true, actionButtonText, actionButtonClickCallback, actionButtonClickCallbackData);
+	if ((! actionButtonText.empty ()) && actionButtonClickCallback.callback) {
+		snackbarWindow->setActionButtonEnabled (true, actionButtonText, actionButtonClickCallback);
 	}
 	else {
 		snackbarWindow->setActionButtonEnabled (false);
@@ -671,12 +666,12 @@ void UiStack::mainMenuButtonClicked (void *uiStackPtr, Widget *widgetPtr) {
 	menu = (Menu *) App::instance->rootPanel->addWidget (new Menu ());
 	menu->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
 	menu->isClickDestroyEnabled = true;
-	menu->addItem (uitext->getText (UiTextString::settings).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::SettingsButtonSprite), UiStack::settingsActionClicked, uistack);
-	menu->addItem (uitext->getText (UiTextString::about).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::AboutButtonSprite), UiStack::aboutActionClicked, uistack);
-	menu->addItem (uitext->getText (UiTextString::checkForUpdates).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::UpdateButtonSprite), UiStack::updateActionClicked, uistack);
-	menu->addItem (uitext->getText (UiTextString::sendFeedback).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::FeedbackButtonSprite), UiStack::feedbackActionClicked, uistack);
-	menu->addItem (uitext->getText (UiTextString::help).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::HelpButtonSprite), UiStack::helpActionClicked, uistack);
-	menu->addItem (uitext->getText (UiTextString::exit).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::ExitButtonSprite), UiStack::exitActionClicked, uistack);
+	menu->addItem (uitext->getText (UiTextString::Settings).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::SettingsGearButtonSprite), UiStack::settingsActionClicked, uistack);
+	menu->addItem (uitext->getText (UiTextString::About).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::AboutButtonSprite), UiStack::aboutActionClicked, uistack);
+	menu->addItem (uitext->getText (UiTextString::CheckForUpdates).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::UpdateButtonSprite), UiStack::updateActionClicked, uistack);
+	menu->addItem (uitext->getText (UiTextString::SendFeedback).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::FeedbackButtonSprite), UiStack::feedbackActionClicked, uistack);
+	menu->addItem (uitext->getText (UiTextString::Help).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::HelpButtonSprite), UiStack::helpActionClicked, uistack);
+	menu->addItem (uitext->getText (UiTextString::Exit).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::ExitButtonSprite), UiStack::exitActionClicked, uistack);
 	menu->position.assign (widgetPtr->position.x + widgetPtr->width - menu->width, widgetPtr->position.y + widgetPtr->height);
 	uistack->mainMenu.assign (menu);
 }
@@ -696,10 +691,10 @@ void UiStack::aboutActionClicked (void *uiStackPtr, Widget *widgetPtr) {
 	url.assign (App::getHelpUrl ("about-membrane-control"));
 	result = OsUtil::openUrl (url);
 	if (result != Result::Success) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::openAboutUrlError));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::OpenAboutUrlError));
 	}
 	else {
-		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::launchedWebBrowser).capitalized ().c_str (), url.c_str ()));
+		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::LaunchedWebBrowser).capitalized ().c_str (), url.c_str ()));
 	}
 }
 
@@ -708,10 +703,10 @@ void UiStack::updateActionClicked (void *uiStackPtr, Widget *widgetPtr) {
 
 	result = OsUtil::openUrl (App::getUpdateUrl ());
 	if (result != Result::Success) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::openFeedbackUrlError));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::OpenFeedbackUrlError));
 	}
 	else {
-		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::launchedWebBrowser).capitalized ().c_str (), App::serverUrl.c_str ()));
+		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::LaunchedWebBrowser).capitalized ().c_str (), App::ServerUrl.c_str ()));
 	}
 }
 
@@ -720,10 +715,10 @@ void UiStack::feedbackActionClicked (void *uiStackPtr, Widget *widgetPtr) {
 
 	result = OsUtil::openUrl (App::getFeedbackUrl (true));
 	if (result != Result::Success) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::openFeedbackUrlError));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::OpenFeedbackUrlError));
 	}
 	else {
-		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::launchedWebBrowser).capitalized ().c_str (), App::getFeedbackUrl ().c_str ()));
+		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::LaunchedWebBrowser).capitalized ().c_str (), App::getFeedbackUrl ().c_str ()));
 	}
 }
 
@@ -852,10 +847,10 @@ void UiStack::showImageDialog (const StdString &imageUrl) {
 
 	uiconfig = &(App::instance->uiConfig);
 	image = new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite)));
+	image->loadCallback = Widget::EventCallbackContext (UiStack::imageDialogLoaded, this);
+	image->mouseClickCallback = Widget::EventCallbackContext (UiStack::imageDialogClicked, this);
 	image->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	image->setFillBg (true, uiconfig->darkBackgroundColor);
-	image->setMouseClickCallback (UiStack::imageDialogClicked, this);
-	image->setLoadCallback (UiStack::imageDialogLoaded, this);
 	image->setLoadSprite (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
 	image->setLoadResize (true, ((float) App::instance->windowWidth) * 0.95f);
 	image->setImageUrl (imageUrl);

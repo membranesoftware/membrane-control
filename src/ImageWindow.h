@@ -44,11 +44,14 @@ public:
 	ImageWindow (Image *image = NULL);
 	virtual ~ImageWindow ();
 
+	static const float UrlImageShowAreaMultiplier;
+
+	// Read-write data members
+	Widget::EventCallbackContext loadCallback;
+
 	// Read-only data members
 	StdString imageUrl;
-
-	// Set a callback that should be invoked after the image window's content successfully loads
-	void setLoadCallback (Widget::EventCallback callback, void *callbackData);
+	float imageLoadSourceWidth, imageLoadSourceHeight;
 
 	// Set the amount of size padding that should be applied to the window
 	void setPadding (float widthPadding, float heightPadding);
@@ -62,14 +65,14 @@ public:
 	// Set a sprite that should be shown while image content loading is in progress
 	void setLoadSprite (Sprite *sprite);
 
-	// Set a source URL that should be used to load the image window's content
-	void setImageUrl (const StdString &loadUrl);
-
 	// Set the window's load resize option. If enabled, the window resizes to the specified width while preserving source aspect ratio after loading image content from a URL.
 	void setLoadResize (bool enable, float loadWidthValue);
 
-	// Set a path that should be used to load the image window's content from application resources. If shouldLoadNow is true, load the image resource immediately. Otherwise, queue a task to load the resource on the next render cycle.
-	void setLoadResourcePath (const StdString &loadPath, bool shouldLoadNow = false);
+	// Set a source URL that should be used to load the image window's content
+	void setImageUrl (const StdString &loadUrl);
+
+	// Set a path that should be used to load the image window's content from file data. If isExternalPath is true, read data from a filesystem path instead of application resources. If shouldLoadNow is true, load the image resource immediately. Otherwise, queue a task to load the resource on the next render cycle.
+	void setImageFilePath (const StdString &filePath, bool isExternalPath = false, bool shouldLoadNow = false);
 
 	// Return a boolean value indicating if the image window's load URL is empty
 	bool isImageUrlEmpty ();
@@ -89,11 +92,6 @@ public:
 	// Set the draw scale factor for the window's image
 	void setScale (float scale);
 
-	// Callback functions
-	static void getImageComplete (void *windowPtr, const StdString &targetUrl, int statusCode, SharedBuffer *responseData);
-	static void createResourceDataTexture (void *windowPtr);
-	static void createResourcePathTexture (void *windowPtr);
-
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
@@ -105,6 +103,11 @@ protected:
 	void refreshLayout ();
 
 private:
+	// Callback functions
+	static void getImageComplete (void *windowPtr, const StdString &targetUrl, int statusCode, SharedBuffer *responseData);
+	static void createUrlDataTexture (void *windowPtr);
+	static void createFileTexture (void *windowPtr);
+
 	// Execute operations to load content using the value stored in imageUrl
 	void requestImage ();
 
@@ -124,16 +127,16 @@ private:
 	bool isLoadResizeEnabled;
 	float loadWidth;
 	Sprite *loadSprite;
-	StdString imageResourcePath;
-	bool isImageResourceLoaded;
-	bool isLoadingImageResource;
-	SharedBuffer *imageResourceData;
+	StdString imageFilePath;
+	bool isImageFileExternal;
+	bool isImageFileLoaded;
+	bool isLoadingImageFile;
+	SharedBuffer *imageUrlData;
 	bool isImageUrlLoaded;
 	bool isLoadingImageUrl;
 	bool isImageUrlLoadDisabled;
+	StdString nextImageUrl;
 	bool shouldInvokeLoadCallback;
-	Widget::EventCallback loadCallback;
-	void *loadCallbackData;
 };
 
 #endif

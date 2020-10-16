@@ -198,7 +198,6 @@ void CommandList::endInvoke (int invokeResult, Json *responseCommand) {
 			if (responseCommand) {
 				agentid = App::instance->systemInterface.getCommandAgentId (responseCommand);
 			}
-
 			ctx->callback (ctx->callbackData, invokeResult, ctx->hostname, ctx->tcpPort, agentid, ctx->command, responseCommand);
 		}
 		freeContext (ctx);
@@ -385,6 +384,9 @@ void CommandList::endAuthorize (int invokeResult, Json *responseCommand) {
 	}
 	SDL_UnlockMutex (mutex);
 
+	if (ctx && (! token.empty ())) {
+		App::instance->agentControl.setHostAuthorization (ctx->hostname, ctx->tcpPort, ctx->authorizeSecretIndex, token);
+	}
 	if (shouldinvoke) {
 		App::instance->network.sendHttpPost (url, postdata, CommandList::invokeComplete, this);
 	}

@@ -42,9 +42,11 @@
 #include "Widget.h"
 #include "Color.h"
 #include "Panel.h"
+#include "Label.h"
 #include "StatsWindow.h"
-#include "IconLabelWindow.h"
 #include "ServerAttachWindow.h"
+
+const float ServerAttachWindow::NameTruncateScale = 0.21f;
 
 ServerAttachWindow::ServerAttachWindow (const StdString &agentId)
 : Panel ()
@@ -56,10 +58,6 @@ ServerAttachWindow::ServerAttachWindow (const StdString &agentId)
 , statsWindow (NULL)
 , attachButton (NULL)
 , removeButton (NULL)
-, attachClickCallback (NULL)
-, attachClickCallbackData (NULL)
-, removeClickCallback (NULL)
-, removeClickCallbackData (NULL)
 {
 	UiConfiguration *uiconfig;
 	UiText *uitext;
@@ -76,20 +74,18 @@ ServerAttachWindow::ServerAttachWindow (const StdString &agentId)
 	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 
 	attachButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::AttachServerButtonSprite)));
-	attachButton->setMouseClickCallback (ServerAttachWindow::attachButtonClicked, this);
+	attachButton->mouseClickCallback = Widget::EventCallbackContext (ServerAttachWindow::attachButtonClicked, this);
 	attachButton->setImageColor (uiconfig->flatButtonTextColor);
-	attachButton->setMouseHoverTooltip (uitext->getText (UiTextString::attachServerTooltip));
-	attachButton->isVisible = false;
+	attachButton->setMouseHoverTooltip (uitext->getText (UiTextString::AttachServerTooltip));
 
 	removeButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
-	removeButton->setMouseClickCallback (ServerAttachWindow::removeButtonClicked, this);
+	removeButton->mouseClickCallback = Widget::EventCallbackContext (ServerAttachWindow::removeButtonClicked, this);
 	removeButton->setImageColor (uiconfig->flatButtonTextColor);
-	removeButton->setMouseHoverTooltip (uitext->getText (UiTextString::removeServer).capitalized ());
-	removeButton->isVisible = false;
+	removeButton->setMouseHoverTooltip (uitext->getText (UiTextString::RemoveServer).capitalized ());
 
 	statsWindow = (StatsWindow *) addWidget (new StatsWindow ());
 	statsWindow->setPadding (uiconfig->paddingSize, 0.0f);
-	statsWindow->setItem (uitext->getText (UiTextString::address).capitalized (), StdString (""));
+	statsWindow->setItem (uitext->getText (UiTextString::Address).capitalized (), StdString (""));
 }
 
 ServerAttachWindow::~ServerAttachWindow () {
@@ -108,18 +104,8 @@ ServerAttachWindow *ServerAttachWindow::castWidget (Widget *widget) {
 	return (ServerAttachWindow::isWidgetType (widget) ? (ServerAttachWindow *) widget : NULL);
 }
 
-void ServerAttachWindow::setAttachClickCallback (Widget::EventCallback callback, void *callbackData) {
-	attachClickCallback = callback;
-	attachClickCallbackData = callbackData;
-	attachButton->isVisible = attachClickCallback ? true : false;
-	refreshLayout ();
-}
-
-void ServerAttachWindow::setRemoveClickCallback (Widget::EventCallback callback, void *callbackData) {
-	removeClickCallback = callback;
-	removeClickCallbackData = callbackData;
-	removeButton->isVisible = removeClickCallback ? true : false;
-	refreshLayout ();
+Widget::Rectangle ServerAttachWindow::getRemoveButtonScreenRect () {
+	return (removeButton->getScreenRect ());
 }
 
 void ServerAttachWindow::refreshAgentData () {
@@ -133,9 +119,9 @@ void ServerAttachWindow::refreshAgentData () {
 	uitext = &(App::instance->uiText);
 
 	agentDisplayName = agentcontrol->getAgentDisplayName (agentId);
-	nameLabel->setText (agentDisplayName);
+	nameLabel->setText (Label::getTruncatedText (agentDisplayName, UiConfiguration::BodyFont, (float) App::instance->windowWidth * ServerAttachWindow::NameTruncateScale, Label::DotTruncateSuffix));
 	descriptionLabel->setText (agentcontrol->getAgentApplicationName (agentId));
-	statsWindow->setItem (uitext->getText (UiTextString::address).capitalized (), agentcontrol->getAgentHostAddress (agentId));
+	statsWindow->setItem (uitext->getText (UiTextString::Address).capitalized (), agentcontrol->getAgentHostAddress (agentId));
 
 	type = agentcontrol->getAgentServerType (agentId);
 	if (type != serverType) {
@@ -187,30 +173,22 @@ void ServerAttachWindow::refreshLayout () {
 
 	x = x0;
 	y = y2 + uiconfig->marginSize;
-	if (attachButton->isVisible) {
-		attachButton->flowRight (&x, y);
-	}
-	if (removeButton->isVisible) {
-		removeButton->flowRight (&x, y);
-	}
+	attachButton->flowRight (&x, y);
+	removeButton->flowRight (&x, y);
 
 	resetSize ();
 
 	x = width - widthPadding;
-	if (removeButton->isVisible) {
-		removeButton->flowLeft (&x);
-	}
-	if (attachButton->isVisible) {
-		attachButton->flowLeft (&x);
-	}
+	removeButton->flowLeft (&x);
+	attachButton->flowLeft (&x);
 }
 
 void ServerAttachWindow::attachButtonClicked (void *windowPtr, Widget *widgetPtr) {
 	ServerAttachWindow *window;
 
 	window = (ServerAttachWindow *) windowPtr;
-	if (window->attachClickCallback) {
-		window->attachClickCallback (window->attachClickCallbackData, window);
+	if (window->attachClickCallback.callback) {
+		window->attachClickCallback.callback (window->attachClickCallback.callbackData, window);
 	}
 }
 
@@ -218,7 +196,7 @@ void ServerAttachWindow::removeButtonClicked (void *windowPtr, Widget *widgetPtr
 	ServerAttachWindow *window;
 
 	window = (ServerAttachWindow *) windowPtr;
-	if (window->removeClickCallback) {
-		window->removeClickCallback (window->removeClickCallbackData, window);
+	if (window->removeClickCallback.callback) {
+		window->removeClickCallback.callback (window->removeClickCallback.callbackData, window);
 	}
 }

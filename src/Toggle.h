@@ -47,6 +47,7 @@ public:
 	virtual ~Toggle ();
 
 	// Read-write data members
+	Widget::EventCallbackContext stateChangeCallback;
 	SDL_Keycode shortcutKey;
 	bool isFocusDropShadowDisabled;
 
@@ -66,9 +67,6 @@ public:
 
 	// Set the draw color for the toggle's button images
 	void setImageColor (const Color &imageColor);
-
-	// Set a callback that should be invoked when the toggle button's checked state changes
-	void setStateChangeCallback (Widget::EventCallback callback, void *callbackData);
 
 	// Set mouse hover tooltips that should apply to the toggle based on its checked state
 	void setStateMouseHoverTooltips (const StdString &uncheckedTooltip, const StdString &checkedTooltip, int alignment = Widget::BottomAlignment);
@@ -99,8 +97,6 @@ protected:
 private:
 	Button *uncheckedButton;
 	Button *checkedButton;
-	Widget::EventCallback stateChangeCallback;
-	void *stateChangeCallbackData;
 };
 
 #endif

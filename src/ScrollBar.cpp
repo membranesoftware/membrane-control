@@ -56,8 +56,6 @@ ScrollBar::ScrollBar (float maxScrollTrackLength)
 , arrowPanel (NULL)
 , upArrowImage (NULL)
 , downArrowImage (NULL)
-, positionChangeCallback (NULL)
-, positionChangeCallbackData (NULL)
 , isFollowingMouse (false)
 {
 	UiConfiguration *uiconfig;
@@ -117,14 +115,9 @@ void ScrollBar::setPosition (float positionValue, bool shouldSkipCallback) {
 
 	scrollPosition = pos;
 	refreshLayout ();
-	if (positionChangeCallback && (! shouldSkipCallback)) {
-		positionChangeCallback (positionChangeCallbackData, this);
+	if (positionChangeCallback.callback && (! shouldSkipCallback)) {
+		positionChangeCallback.callback (positionChangeCallback.callbackData, this);
 	}
-}
-
-void ScrollBar::setPositionChangeCallback (Widget::EventCallback callback, void *callbackData) {
-	positionChangeCallback = callback;
-	positionChangeCallbackData = callbackData;
 }
 
 void ScrollBar::setScrollBounds (float scrollViewHeight, float scrollAreaHeight) {
@@ -215,7 +208,7 @@ void ScrollBar::doUpdate (int msElapsed) {
 	}
 }
 
-void ScrollBar::doProcessMouseState (const Widget::MouseState &mouseState) {
+bool ScrollBar::doProcessMouseState (const Widget::MouseState &mouseState) {
 	Input *input;
 	UiConfiguration *uiconfig;
 	float val, dy;
@@ -245,11 +238,13 @@ void ScrollBar::doProcessMouseState (const Widget::MouseState &mouseState) {
 	}
 
 	if (mouseState.isEntered || isFollowingMouse) {
-		arrowPanel->bgColor.translate (uiconfig->lightPrimaryColor, uiconfig->shortColorTranslateDuration);
-	}
-	else {
 		arrowPanel->bgColor.translate (uiconfig->mediumPrimaryColor, uiconfig->shortColorTranslateDuration);
 	}
+	else {
+		arrowPanel->bgColor.translate (uiconfig->lightPrimaryColor, uiconfig->shortColorTranslateDuration);
+	}
+
+	return (false);
 }
 
 void ScrollBar::doRefresh () {

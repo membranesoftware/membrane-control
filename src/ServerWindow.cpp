@@ -54,6 +54,9 @@
 #include "IconLabelWindow.h"
 #include "ServerWindow.h"
 
+const float ServerWindow::ExpandedNameTruncateScale = 0.24f;
+const float ServerWindow::UnexpandedNameTruncateScale = 0.10f;
+
 ServerWindow::ServerWindow (const StdString &agentId)
 : Panel ()
 , isExpanded (false)
@@ -65,8 +68,10 @@ ServerWindow::ServerWindow (const StdString &agentId)
 , iconImage (NULL)
 , nameLabel (NULL)
 , descriptionLabel (NULL)
+, dividerPanel (NULL)
 , statusIcon (NULL)
 , unexpandedStatusIcon (NULL)
+, authorizeIcon (NULL)
 , storageIcon (NULL)
 , streamCountIcon (NULL)
 , taskCountIcon (NULL)
@@ -76,18 +81,6 @@ ServerWindow::ServerWindow (const StdString &agentId)
 , adminButton (NULL)
 , detachButton (NULL)
 , removeButton (NULL)
-, expandStateChangeCallback (NULL)
-, expandStateChangeCallbackData (NULL)
-, statusChangeCallback (NULL)
-, statusChangeCallbackData (NULL)
-, checkForUpdatesClickCallback (NULL)
-, checkForUpdatesClickCallbackData (NULL)
-, adminClickCallback (NULL)
-, adminClickCallbackData (NULL)
-, detachClickCallback (NULL)
-, detachClickCallbackData (NULL)
-, removeClickCallback (NULL)
-, removeClickCallbackData (NULL)
 , statusSpriteType (-1)
 , statusTextString (-1)
 {
@@ -107,20 +100,30 @@ ServerWindow::ServerWindow (const StdString &agentId)
 	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	descriptionLabel->isVisible = false;
 
+	dividerPanel = (Panel *) addWidget (new Panel ());
+	dividerPanel->setFillBg (true, uiconfig->dividerColor);
+	dividerPanel->setFixedSize (true, 1.0f, uiconfig->headlineDividerLineWidth);
+	dividerPanel->isPanelSizeClipEnabled = true;
+	dividerPanel->isVisible = false;
+
 	statusIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::ConnectionWaitingStateIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	statusIcon->setPadding (0.0f, 0.0f);
 	statusIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
 	statusIcon->setIconImageColor (Color (0.0f, 0.0f, 0.0f));
-	statusIcon->setMouseHoverTooltip (uitext->getText (UiTextString::monitorActivityIconTooltip));
+	statusIcon->setMouseHoverTooltip (uitext->getText (UiTextString::MonitorActivityIconTooltip));
 	statusIcon->isVisible = false;
 
 	unexpandedStatusIcon = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::ConnectionWaitingStateIconSprite)));
 	unexpandedStatusIcon->isVisible = false;
 
+	authorizeIcon = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::SmallKeyIconSprite)));
+	authorizeIcon->setMouseHoverTooltip (uitext->getText (UiTextString::AuthorizeIconTooltip));
+	authorizeIcon->isVisible = false;
+
 	storageIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::StorageIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	storageIcon->setPadding (0.0f, 0.0f);
 	storageIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
-	storageIcon->setMouseHoverTooltip (uitext->getText (UiTextString::storageTooltip));
+	storageIcon->setMouseHoverTooltip (uitext->getText (UiTextString::StorageTooltip));
 	storageIcon->isVisible = false;
 
 	mediaCountIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallMediaIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
@@ -140,39 +143,39 @@ ServerWindow::ServerWindow (const StdString &agentId)
 
 	statsWindow = (StatsWindow *) addWidget (new StatsWindow ());
 	statsWindow->setPadding (uiconfig->paddingSize, 0.0f);
-	statsWindow->setItem (uitext->getText (UiTextString::uptime).capitalized (), StdString (""));
-	statsWindow->setItem (uitext->getText (UiTextString::version).capitalized (), StdString (""));
-	statsWindow->setItem (uitext->getText (UiTextString::address).capitalized (), StdString (""));
-	statsWindow->setItem (uitext->getText (UiTextString::platform).capitalized (), StdString (""));
+	statsWindow->setItem (uitext->getText (UiTextString::Uptime).capitalized (), StdString (""));
+	statsWindow->setItem (uitext->getText (UiTextString::Version).capitalized (), StdString (""));
+	statsWindow->setItem (uitext->getText (UiTextString::Address).capitalized (), StdString (""));
+	statsWindow->setItem (uitext->getText (UiTextString::Platform).capitalized (), StdString (""));
 	statsWindow->isVisible = false;
 
 	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
+	expandToggle->stateChangeCallback = Widget::EventCallbackContext (ServerWindow::expandToggleStateChanged, this);
 	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
-	expandToggle->setStateChangeCallback (ServerWindow::expandToggleStateChanged, this);
-	expandToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::expand).capitalized (), uitext->getText (UiTextString::minimize).capitalized ());
+	expandToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::Expand).capitalized (), uitext->getText (UiTextString::Minimize).capitalized ());
 
 	checkForUpdatesButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::UpdateButtonSprite)));
-	checkForUpdatesButton->setMouseClickCallback (ServerWindow::checkForUpdatesButtonClicked, this);
+	checkForUpdatesButton->mouseClickCallback = Widget::EventCallbackContext (ServerWindow::checkForUpdatesButtonClicked, this);
 	checkForUpdatesButton->setImageColor (uiconfig->flatButtonTextColor);
-	checkForUpdatesButton->setMouseHoverTooltip (uitext->getText (UiTextString::updateServerTooltip));
+	checkForUpdatesButton->setMouseHoverTooltip (uitext->getText (UiTextString::UpdateServerTooltip));
 	checkForUpdatesButton->isVisible = false;
 
-	adminButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::AgentAdminButtonSprite)));
-	adminButton->setMouseClickCallback (ServerWindow::adminButtonClicked, this);
+	adminButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::SettingsBoxButtonSprite)));
+	adminButton->mouseClickCallback = Widget::EventCallbackContext (ServerWindow::adminButtonClicked, this);
 	adminButton->setImageColor (uiconfig->flatButtonTextColor);
-	adminButton->setMouseHoverTooltip (uitext->getText (UiTextString::openAdminConsole).capitalized ());
+	adminButton->setMouseHoverTooltip (uitext->getText (UiTextString::OpenAdminConsole).capitalized ());
 	adminButton->isVisible = false;
 
 	detachButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::DetachServerButtonSprite)));
-	detachButton->setMouseClickCallback (ServerWindow::detachButtonClicked, this);
+	detachButton->mouseClickCallback = Widget::EventCallbackContext (ServerWindow::detachButtonClicked, this);
 	detachButton->setImageColor (uiconfig->flatButtonTextColor);
-	detachButton->setMouseHoverTooltip (uitext->getText (UiTextString::detachServerTooltip));
+	detachButton->setMouseHoverTooltip (uitext->getText (UiTextString::DetachServerTooltip));
 	detachButton->isVisible = false;
 
 	removeButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
-	removeButton->setMouseClickCallback (ServerWindow::removeButtonClicked, this);
+	removeButton->mouseClickCallback = Widget::EventCallbackContext (ServerWindow::removeButtonClicked, this);
 	removeButton->setImageColor (uiconfig->flatButtonTextColor);
-	removeButton->setMouseHoverTooltip (uitext->getText (UiTextString::removeServer).capitalized ());
+	removeButton->setMouseHoverTooltip (uitext->getText (UiTextString::RemoveServer).capitalized ());
 	removeButton->isVisible = false;
 
 	refreshLayout ();
@@ -194,34 +197,8 @@ ServerWindow *ServerWindow::castWidget (Widget *widget) {
 	return (ServerWindow::isWidgetType (widget) ? (ServerWindow *) widget : NULL);
 }
 
-void ServerWindow::setExpandStateChangeCallback (Widget::EventCallback callback, void *callbackData) {
-	expandStateChangeCallback = callback;
-	expandStateChangeCallbackData = callbackData;
-}
-
-void ServerWindow::setStatusChangeCallback (Widget::EventCallback callback, void *callbackData) {
-	statusChangeCallback = callback;
-	statusChangeCallbackData = callbackData;
-}
-
-void ServerWindow::setCheckForUpdatesClickCallback (Widget::EventCallback callback, void *callbackData) {
-	checkForUpdatesClickCallback = callback;
-	checkForUpdatesClickCallbackData = callbackData;
-}
-
-void ServerWindow::setAdminClickCallback (Widget::EventCallback callback, void *callbackData) {
-	adminClickCallback = callback;
-	adminClickCallbackData = callbackData;
-}
-
-void ServerWindow::setDetachClickCallback (Widget::EventCallback callback, void *callbackData) {
-	detachClickCallback = callback;
-	detachClickCallbackData = callbackData;
-}
-
-void ServerWindow::setRemoveClickCallback (Widget::EventCallback callback, void *callbackData) {
-	removeClickCallback = callback;
-	removeClickCallbackData = callbackData;
+Widget::Rectangle ServerWindow::getRemoveButtonScreenRect () {
+	return (removeButton->getScreenRect ());
 }
 
 void ServerWindow::syncRecordStore () {
@@ -240,13 +217,12 @@ void ServerWindow::syncRecordStore () {
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 
-	statsWindow->setItem (uitext->getText (UiTextString::address).capitalized (), agentcontrol->getAgentHostAddress (agentId));
+	statsWindow->setItem (uitext->getText (UiTextString::Address).capitalized (), agentcontrol->getAgentHostAddress (agentId));
 	record = store->findRecord (agentId, SystemInterface::CommandId_AgentStatus);
 	if (! record) {
 		isRecordLoaded = false;
 		isAgentDisabled = false;
 		agentDisplayName = agentcontrol->getAgentDisplayName (agentId);
-		nameLabel->setText (agentDisplayName);
 		descriptionLabel->setText (agentcontrol->getAgentApplicationName (agentId));
 	}
 	else {
@@ -254,11 +230,10 @@ void ServerWindow::syncRecordStore () {
 		version = interface->getCommandStringParam (record, "version", "");
 		platform = interface->getCommandStringParam (record, "platform", "");
 		agentDisplayName = interface->getCommandAgentName (record);
-		nameLabel->setText (agentDisplayName);
 		descriptionLabel->setText (interface->getCommandStringParam (record, "applicationName", ""));
 		agentTaskCount = interface->getCommandNumberParam (record, "taskCount", (int) 0);
 		taskCountIcon->setText (StdString::createSprintf ("%i", agentTaskCount));
-		taskCountIcon->setMouseHoverTooltip (uitext->getCountText (agentTaskCount, UiTextString::taskInProgress, UiTextString::tasksInProgress));
+		taskCountIcon->setMouseHoverTooltip (uitext->getCountText (agentTaskCount, UiTextString::TaskInProgress, UiTextString::TasksInProgress));
 
 		if (! interface->getCommandBooleanParam (record, "isEnabled", false)) {
 			if (! isAgentDisabled) {
@@ -273,9 +248,9 @@ void ServerWindow::syncRecordStore () {
 			}
 		}
 
-		statsWindow->setItem (uitext->getText (UiTextString::version).capitalized (), interface->getCommandStringParam (record, "version", ""));
-		statsWindow->setItem (uitext->getText (UiTextString::platform).capitalized (), interface->getCommandStringParam (record, "platform", ""));
-		statsWindow->setItem (uitext->getText (UiTextString::uptime).capitalized (), interface->getCommandStringParam (record, "uptime", ""));
+		statsWindow->setItem (uitext->getText (UiTextString::Version).capitalized (), interface->getCommandStringParam (record, "version", ""));
+		statsWindow->setItem (uitext->getText (UiTextString::Platform).capitalized (), interface->getCommandStringParam (record, "platform", ""));
+		statsWindow->setItem (uitext->getText (UiTextString::Uptime).capitalized (), interface->getCommandStringParam (record, "uptime", ""));
 	}
 
 	type = agentcontrol->getAgentServerType (agentId);
@@ -310,7 +285,7 @@ void ServerWindow::syncRecordStore () {
 
 					count = serverstatus.getNumber ("streamCount", (int) 0);
 					streamCountIcon->setText (StdString::createSprintf ("%i", count));
-					streamCountIcon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::cachedStream, UiTextString::cachedStreams));
+					streamCountIcon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::CachedStream, UiTextString::CachedStreams));
 				}
 				break;
 			}
@@ -318,7 +293,7 @@ void ServerWindow::syncRecordStore () {
 				if (interface->getCommandObjectParam (record, "mediaServerStatus", &serverstatus)) {
 					count = serverstatus.getNumber ("mediaCount", (int) 0);
 					mediaCountIcon->setText (StdString::createSprintf ("%i", count));
-					mediaCountIcon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::mediaFile, UiTextString::mediaFiles));
+					mediaCountIcon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::MediaFile, UiTextString::MediaFiles));
 				}
 
 				if (interface->getCommandObjectParam (record, "streamServerStatus", &serverstatus)) {
@@ -326,7 +301,7 @@ void ServerWindow::syncRecordStore () {
 
 					count = serverstatus.getNumber ("streamCount", (int) 0);
 					streamCountIcon->setText (StdString::createSprintf ("%i", count));
-					streamCountIcon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::videoStream, UiTextString::videoStreams));
+					streamCountIcon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::VideoStream, UiTextString::VideoStreams));
 				}
 				break;
 			}
@@ -343,6 +318,7 @@ void ServerWindow::syncRecordStore () {
 
 	resetVisibility ();
 	refreshLayout ();
+	resetNameLabel ();
 	Panel::syncRecordStore ();
 }
 
@@ -368,19 +344,21 @@ void ServerWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallbac
 
 	resetVisibility ();
 	refreshLayout ();
+	resetNameLabel ();
 }
 
 void ServerWindow::resetVisibility () {
 	if (isExpanded) {
 		unexpandedStatusIcon->isVisible = false;
 		descriptionLabel->isVisible = true;
+		dividerPanel->isVisible = true;
 		statusIcon->isVisible = true;
 		statsWindow->isVisible = isRecordLoaded;
 		taskCountIcon->isVisible = isRecordLoaded && (agentTaskCount > 0);
-		checkForUpdatesButton->isVisible = (checkForUpdatesClickCallback && isRecordLoaded && (! updateUrl.empty ()));
-		adminButton->isVisible = adminClickCallback && isRecordLoaded;
-		detachButton->isVisible = detachClickCallback ? true : false;
-		removeButton->isVisible = removeClickCallback ? true : false;
+		checkForUpdatesButton->isVisible = (checkForUpdatesClickCallback.callback && isRecordLoaded && (! updateUrl.empty ()));
+		adminButton->isVisible = adminClickCallback.callback && isRecordLoaded;
+		detachButton->isVisible = detachClickCallback.callback ? true : false;
+		removeButton->isVisible = removeClickCallback.callback ? true : false;
 
 		switch (serverType) {
 			case SystemInterface::Constant_Monitor: {
@@ -412,6 +390,7 @@ void ServerWindow::resetVisibility () {
 	else {
 		unexpandedStatusIcon->isVisible = true;
 		descriptionLabel->isVisible = false;
+		dividerPanel->isVisible = false;
 		statusIcon->isVisible = false;
 		statsWindow->isVisible = false;
 		storageIcon->isVisible = false;
@@ -423,6 +402,23 @@ void ServerWindow::resetVisibility () {
 		detachButton->isVisible = false;
 		removeButton->isVisible = false;
 	}
+
+	authorizeIcon->isVisible = App::instance->agentControl.isAgentAuthorized (agentId);
+}
+
+void ServerWindow::resetNameLabel () {
+	float w;
+
+	w = App::instance->windowWidth;
+	if (isExpanded) {
+		w *= ServerWindow::ExpandedNameTruncateScale;
+		nameLabel->setText (Label::getTruncatedText (agentDisplayName, UiConfiguration::HeadlineFont, w, Label::DotTruncateSuffix));
+	}
+	else {
+		w *= ServerWindow::UnexpandedNameTruncateScale;
+		nameLabel->setText (Label::getTruncatedText (agentDisplayName, UiConfiguration::BodyFont, w, Label::DotTruncateSuffix));
+	}
+	refreshLayout ();
 }
 
 void ServerWindow::refreshLayout () {
@@ -439,16 +435,24 @@ void ServerWindow::refreshLayout () {
 
 	iconImage->flowRight (&x, y, &x2, &y2);
 	nameLabel->flowDown (x, &y, &x2, &y2);
-	descriptionLabel->flowRight (&x, y, &x2, &y2);
+	if (descriptionLabel->isVisible) {
+		descriptionLabel->flowRight (&x, y, &x2, &y2);
+	}
+
+	x = nameLabel->position.x;
+	y = nameLabel->position.y + nameLabel->height + (uiconfig->marginSize / 2.0f);
+	if (unexpandedStatusIcon->isVisible) {
+		unexpandedStatusIcon->flowRight (&x, y, &x2, &y2);
+	}
+	if ((! isExpanded) && authorizeIcon->isVisible) {
+		authorizeIcon->flowRight (&x, y, &x2, &y2);
+	}
 
 	x = x2 + uiconfig->marginSize;
 	y = y0;
-	expandToggle->flowRight (&x, y, &x2, &y2);
-
-	if (unexpandedStatusIcon->isVisible) {
-		x = nameLabel->position.x;
-		y = nameLabel->position.y + nameLabel->height + (uiconfig->marginSize / 2.0f);
-		unexpandedStatusIcon->position.assign (x, y);
+	expandToggle->flowDown (x, &y, &x2, &y2);
+	if (dividerPanel->isVisible) {
+		dividerPanel->flowDown (0.0f, &y, &x2, &y2);
 	}
 
 	x0 += uiconfig->marginSize;
@@ -474,6 +478,9 @@ void ServerWindow::refreshLayout () {
 	if (statusIcon->isVisible) {
 		statusIcon->flowRight (&x, y, &x2, &y2);
 	}
+	if (isExpanded && authorizeIcon->isVisible) {
+		authorizeIcon->position.assign (x0, y2 + uiconfig->marginSize);
+	}
 	if (statsWindow->isVisible) {
 		statsWindow->flowDown (x, &y, &x2, &y2);
 	}
@@ -494,6 +501,10 @@ void ServerWindow::refreshLayout () {
 		adminButton->flowRight (&x, y, &x2, &y2);
 	}
 	resetSize ();
+
+	if (dividerPanel->isVisible) {
+		dividerPanel->setFixedSize (true, width, uiconfig->headlineDividerLineWidth);
+	}
 
 	x = width - widthPadding;
 	expandToggle->flowLeft (&x);
@@ -524,33 +535,33 @@ void ServerWindow::doUpdate (int msElapsed) {
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 
-	if (statusTextString == UiTextString::contacting) {
+	if (statusTextString == UiTextString::Contacting) {
 		if (! agentcontrol->isAgentContacting (agentId)) {
 			statusTextString = -1;
 		}
 	}
 	if (statusTextString < 0) {
 		if (agentcontrol->isAgentContacting (agentId)) {
-			setStatusIcons (UiConfiguration::ConnectionWaitingStateIconSprite, UiTextString::contacting, uiconfig->primaryTextColor);
+			setStatusIcons (UiConfiguration::ConnectionWaitingStateIconSprite, UiTextString::Contacting, uiconfig->primaryTextColor);
 		}
 		else if (agentcontrol->isAgentUnauthorized (agentId)) {
-			setStatusIcons (UiConfiguration::ConnectionFailedStateIconSprite, UiTextString::passwordLocked, uiconfig->errorTextColor);
-			statsWindow->setItem (uitext->getText (UiTextString::uptime).capitalized (), StdString (""));
+			setStatusIcons (UiConfiguration::ConnectionFailedStateIconSprite, UiTextString::PasswordLocked, uiconfig->errorTextColor);
+			statsWindow->setItem (uitext->getText (UiTextString::Uptime).capitalized (), StdString (""));
 		}
 		else if (isAgentDisabled) {
-			setStatusIcons (UiConfiguration::ServerDisabledStateIconSprite, UiTextString::disabled, uiconfig->errorTextColor);
+			setStatusIcons (UiConfiguration::ServerDisabledStateIconSprite, UiTextString::Disabled, uiconfig->errorTextColor);
 		}
 		else if (! agentcontrol->isAgentContacted (agentId)) {
-			setStatusIcons (UiConfiguration::ConnectionFailedStateIconSprite, UiTextString::offline, uiconfig->errorTextColor);
-			statsWindow->setItem (uitext->getText (UiTextString::uptime).capitalized (), StdString (""));
+			setStatusIcons (UiConfiguration::ConnectionFailedStateIconSprite, UiTextString::Offline, uiconfig->errorTextColor);
+			statsWindow->setItem (uitext->getText (UiTextString::Uptime).capitalized (), StdString (""));
 		}
 		else {
-			setStatusIcons (UiConfiguration::ConnectedStateIconSprite, UiTextString::online, uiconfig->statusOkTextColor);
+			setStatusIcons (UiConfiguration::ConnectedStateIconSprite, UiTextString::Online, uiconfig->statusOkTextColor);
 		}
 	}
 	else {
 		if (agentcontrol->isAgentContacting (agentId)) {
-			setStatusIcons (UiConfiguration::ConnectionWaitingStateIconSprite, UiTextString::contacting, uiconfig->primaryTextColor);
+			setStatusIcons (UiConfiguration::ConnectionWaitingStateIconSprite, UiTextString::Contacting, uiconfig->primaryTextColor);
 		}
 	}
 
@@ -574,19 +585,19 @@ void ServerWindow::setStatusIcons (int spriteType, int textString, const Color &
 	statusIcon->setIconImageColor (Color (0.0f, 0.0f, 0.0f));
 	statusIcon->setText (text);
 	statusIcon->setTextColor (color);
-	statusIcon->setMouseHoverTooltip (StdString::createSprintf ("%s: %s", uitext->getText (UiTextString::status).capitalized ().c_str (), text.c_str ()));
+	statusIcon->setMouseHoverTooltip (StdString::createSprintf ("%s: %s", uitext->getText (UiTextString::Status).capitalized ().c_str (), text.c_str ()));
 
 	unexpandedStatusIcon->isDestroyed = true;
 	unexpandedStatusIcon = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (spriteType)));
 	unexpandedStatusIcon->setDrawColor (true, color);
-	unexpandedStatusIcon->setMouseHoverTooltip (StdString::createSprintf ("%s: %s", uitext->getText (UiTextString::status).capitalized ().c_str (), text.c_str ()));
+	unexpandedStatusIcon->setMouseHoverTooltip (StdString::createSprintf ("%s: %s", uitext->getText (UiTextString::Status).capitalized ().c_str (), text.c_str ()));
 
 	statusSpriteType = spriteType;
 	statusTextString = textString;
 	statusColor.assign (color);
 
-	if (statusChangeCallback) {
-		statusChangeCallback (statusChangeCallbackData, this);
+	if (statusChangeCallback.callback) {
+		statusChangeCallback.callback (statusChangeCallback.callbackData, this);
 	}
 }
 
@@ -597,8 +608,8 @@ void ServerWindow::expandToggleStateChanged (void *windowPtr, Widget *widgetPtr)
 	window = (ServerWindow *) windowPtr;
 	toggle = (Toggle *) widgetPtr;
 	window->setExpanded (toggle->isChecked, true);
-	if (window->expandStateChangeCallback) {
-		window->expandStateChangeCallback (window->expandStateChangeCallbackData, window);
+	if (window->expandStateChangeCallback.callback) {
+		window->expandStateChangeCallback.callback (window->expandStateChangeCallback.callbackData, window);
 	}
 }
 
@@ -606,8 +617,8 @@ void ServerWindow::checkForUpdatesButtonClicked (void *windowPtr, Widget *widget
 	ServerWindow *window;
 
 	window = (ServerWindow *) windowPtr;
-	if (window->checkForUpdatesClickCallback) {
-		window->checkForUpdatesClickCallback (window->checkForUpdatesClickCallbackData, window);
+	if (window->checkForUpdatesClickCallback.callback) {
+		window->checkForUpdatesClickCallback.callback (window->checkForUpdatesClickCallback.callbackData, window);
 	}
 }
 
@@ -615,8 +626,8 @@ void ServerWindow::adminButtonClicked (void *windowPtr, Widget *widgetPtr) {
 	ServerWindow *window;
 
 	window = (ServerWindow *) windowPtr;
-	if (window->adminClickCallback) {
-		window->adminClickCallback (window->adminClickCallbackData, window);
+	if (window->adminClickCallback.callback) {
+		window->adminClickCallback.callback (window->adminClickCallback.callbackData, window);
 	}
 }
 
@@ -624,8 +635,8 @@ void ServerWindow::detachButtonClicked (void *windowPtr, Widget *widgetPtr) {
 	ServerWindow *window;
 
 	window = (ServerWindow *) windowPtr;
-	if (window->detachClickCallback) {
-		window->detachClickCallback (window->detachClickCallbackData, window);
+	if (window->detachClickCallback.callback) {
+		window->detachClickCallback.callback (window->detachClickCallback.callbackData, window);
 	}
 }
 
@@ -633,7 +644,7 @@ void ServerWindow::removeButtonClicked (void *windowPtr, Widget *widgetPtr) {
 	ServerWindow *window;
 
 	window = (ServerWindow *) windowPtr;
-	if (window->removeClickCallback) {
-		window->removeClickCallback (window->removeClickCallbackData, window);
+	if (window->removeClickCallback.callback) {
+		window->removeClickCallback.callback (window->removeClickCallback.callbackData, window);
 	}
 }

@@ -44,7 +44,7 @@
 #include "TextField.h"
 #include "TextFieldWindow.h"
 
-const int TextFieldWindow::randomizeStringLength = 16;
+const int TextFieldWindow::RandomizeStringLength = 16;
 
 TextFieldWindow::TextFieldWindow (float windowWidth, const StdString &promptText, Sprite *iconSprite)
 : Panel ()
@@ -87,35 +87,35 @@ TextFieldWindow::TextFieldWindow (float windowWidth, const StdString &promptText
 	enterButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::EnterTextButtonSprite)));
 	enterButton->zLevel = 1;
 	enterButton->setInverseColor (true);
-	enterButton->setMouseClickCallback (TextFieldWindow::enterButtonClicked, this);
-	enterButton->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldEnterTooltip));
+	enterButton->mouseClickCallback = Widget::EventCallbackContext (TextFieldWindow::enterButtonClicked, this);
+	enterButton->setMouseHoverTooltip (uitext->getText (UiTextString::TextFieldEnterTooltip));
 	enterButton->isVisible = false;
 
 	cancelButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::CancelButtonSprite)));
 	cancelButton->zLevel = 1;
 	cancelButton->setInverseColor (true);
-	cancelButton->setMouseClickCallback (TextFieldWindow::cancelButtonClicked, this);
-	cancelButton->setMouseHoverTooltip (uitext->getText (UiTextString::cancel).capitalized ());
+	cancelButton->mouseClickCallback = Widget::EventCallbackContext (TextFieldWindow::cancelButtonClicked, this);
+	cancelButton->setMouseHoverTooltip (uitext->getText (UiTextString::Cancel).capitalized ());
 	cancelButton->isVisible = false;
 
 	pasteButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::PasteButtonSprite)));
 	pasteButton->zLevel = 1;
-	pasteButton->setMouseClickCallback (TextFieldWindow::pasteButtonClicked, this);
-	pasteButton->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldPasteTooltip));
+	pasteButton->mouseClickCallback = Widget::EventCallbackContext (TextFieldWindow::pasteButtonClicked, this);
+	pasteButton->setMouseHoverTooltip (uitext->getText (UiTextString::TextFieldPasteTooltip));
 	pasteButton->isFocusDropShadowDisabled = true;
 	pasteButton->isVisible = false;
 
 	clearButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::ClearButtonSprite)));
 	clearButton->zLevel = 1;
-	clearButton->setMouseClickCallback (TextFieldWindow::clearButtonClicked, this);
-	clearButton->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldClearTooltip));
+	clearButton->mouseClickCallback = Widget::EventCallbackContext (TextFieldWindow::clearButtonClicked, this);
+	clearButton->setMouseHoverTooltip (uitext->getText (UiTextString::TextFieldClearTooltip));
 	clearButton->isFocusDropShadowDisabled = true;
 	clearButton->isVisible = false;
 
 	randomizeButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::RandomizeButtonSprite)));
 	randomizeButton->zLevel = 1;
-	randomizeButton->setMouseClickCallback (TextFieldWindow::randomizeButtonClicked, this);
-	randomizeButton->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldRandomizeTooltip));
+	randomizeButton->mouseClickCallback = Widget::EventCallbackContext (TextFieldWindow::randomizeButtonClicked, this);
+	randomizeButton->setMouseHoverTooltip (uitext->getText (UiTextString::TextFieldRandomizeTooltip));
 	randomizeButton->isFocusDropShadowDisabled = true;
 	randomizeButton->isVisible = false;
 
@@ -196,9 +196,9 @@ void TextFieldWindow::setObscured (bool enable) {
 	if (isObscured) {
 		textField->setObscured (true);
 		visibilityToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::VisibilityOffButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::VisibilityOnButtonSprite)));
+		visibilityToggle->stateChangeCallback = Widget::EventCallbackContext (TextFieldWindow::visibilityToggleStateChanged, this);
 		visibilityToggle->setInverseColor (isInverseColor);
-		visibilityToggle->setStateChangeCallback (TextFieldWindow::visibilityToggleStateChanged, this);
-		visibilityToggle->setMouseHoverTooltip (uitext->getText (UiTextString::textFieldVisibilityToggleTooltip));
+		visibilityToggle->setMouseHoverTooltip (uitext->getText (UiTextString::TextFieldVisibilityToggleTooltip));
 		visibilityToggle->zLevel = 1;
 	}
 	else {
@@ -214,8 +214,8 @@ StdString TextFieldWindow::getValue () {
 	return (textField->getValue ());
 }
 
-void TextFieldWindow::setValue (const StdString &valueText) {
-	textField->setValue (valueText);
+void TextFieldWindow::setValue (const StdString &valueText, bool shouldSkipChangeCallback, bool shouldSkipEditCallback) {
+	textField->setValue (valueText, shouldSkipChangeCallback, shouldSkipEditCallback);
 	cancelValue.assign (valueText);
 }
 
@@ -379,6 +379,9 @@ void TextFieldWindow::enterButtonClicked (void *windowPtr, Widget *widgetPtr) {
 
 	window = (TextFieldWindow *) windowPtr;
 	window->textField->setKeyFocus (false);
+	if (window->enterButtonClickCallback.callback) {
+		window->enterButtonClickCallback.callback (window->enterButtonClickCallback.callbackData, window);
+	}
 }
 
 void TextFieldWindow::cancelButtonClicked (void *windowPtr, Widget *widgetPtr) {
@@ -409,7 +412,7 @@ void TextFieldWindow::randomizeButtonClicked (void *windowPtr, Widget *widgetPtr
 	TextFieldWindow *window;
 
 	window = (TextFieldWindow *) windowPtr;
-	window->textField->setValue (App::instance->getRandomString (TextFieldWindow::randomizeStringLength));
+	window->textField->setValue (App::instance->getRandomString (TextFieldWindow::RandomizeStringLength));
 }
 
 void TextFieldWindow::visibilityToggleStateChanged (void *windowPtr, Widget *widgetPtr) {

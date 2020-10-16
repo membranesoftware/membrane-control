@@ -45,11 +45,11 @@
 #include "SystemInterface.h"
 #include "LinkClient.h"
 
-const int LinkClient::defaultPingInterval = 25000; // milliseconds
-const int LinkClient::reconnectPeriod = 7000; // milliseconds
-const int LinkClient::maxCommandSize = (256 * 1024); // bytes
+const int LinkClient::DefaultPingInterval = 25000; // milliseconds
+const int LinkClient::ReconnectPeriod = 7000; // milliseconds
+const int LinkClient::MaxCommandSize = (256 * 1024); // bytes
 
-static const struct lws_extension libwebsocketExts[] = {
+static const struct lws_extension LibwebsocketExts[] = {
 	{
 		"permessage-deflate",
 		lws_extension_callback_pm_deflate,
@@ -63,7 +63,7 @@ static const struct lws_extension libwebsocketExts[] = {
 	{ NULL, NULL, NULL }
 };
 
-static const struct lws_protocols libwebsocketProtocols[] = {
+static const struct lws_protocols LibwebsocketProtocols[] = {
 	{
 		"ws",
 		LinkClient::protocolCallback,
@@ -217,7 +217,7 @@ void LinkClient::update (int msElapsed) {
 				i->second->callbackData = callbackData;
 				i->second->connectCallback = connectCallback;
 				i->second->commandCallback = commandCallback;
-				i->second->reconnectClock = LinkClient::reconnectPeriod;
+				i->second->reconnectClock = LinkClient::ReconnectPeriod;
 			}
 
 			if (ctx->disconnectCallback) {
@@ -282,11 +282,11 @@ void LinkClient::updateActiveContext (LinkContext *ctx, int msElapsed) {
 	if (! ctx->context) {
 		memset (&contextinfo, 0, sizeof contextinfo);
 		contextinfo.port = CONTEXT_PORT_NO_LISTEN;
-		contextinfo.protocols = libwebsocketProtocols;
+		contextinfo.protocols = LibwebsocketProtocols;
 		contextinfo.gid = -1;
 		contextinfo.uid = -1;
 		contextinfo.ws_ping_pong_interval = 0;
-		contextinfo.extensions = libwebsocketExts;
+		contextinfo.extensions = LibwebsocketExts;
 		contextinfo.user = ctx;
 		if (App::instance->isHttpsEnabled) {
 			contextinfo.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
@@ -622,7 +622,7 @@ void LinkContext::receiveData (char *data, int dataLength) {
 			}
 			else {
 				sessionId = json->getString ("sid", "");
-				pingInterval = json->getNumber ("pingInterval", LinkClient::defaultPingInterval);
+				pingInterval = json->getNumber ("pingInterval", LinkClient::DefaultPingInterval);
 				if (pingInterval <= 0) {
 					nextPingTime = 0;
 				}
@@ -773,7 +773,7 @@ void LinkContext::processCommandMessage (char *data, int dataLength) {
 		if (commandBuffer.empty ()) {
 			commandBuffer.add ((uint8_t *) data, dataLength);
 		}
-		if (commandBuffer.length > LinkClient::maxCommandSize) {
+		if (commandBuffer.length > LinkClient::MaxCommandSize) {
 			commandBuffer.reset ();
 		}
 		return;
@@ -785,7 +785,7 @@ void LinkContext::processCommandMessage (char *data, int dataLength) {
 		if (commandBuffer.empty ()) {
 			commandBuffer.add ((uint8_t *) data, dataLength);
 		}
-		if (commandBuffer.length > LinkClient::maxCommandSize) {
+		if (commandBuffer.length > LinkClient::MaxCommandSize) {
 			commandBuffer.reset ();
 		}
 		return;

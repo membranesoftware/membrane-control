@@ -87,11 +87,21 @@ public:
 	void addOption (const StdString &optionName, Toggle *toggle, const StdString &descriptionText = StdString (""));
 	void addOption (const StdString &optionName, SliderWindow *slider, const StdString &descriptionText = StdString (""));
 
+	// Set description text for the named option
+	void setOptionDescriptionText (const StdString &optionName, const StdString &descriptionText);
+
 	// Set the named option to evaluate as invalid if its value is an empty string
 	void setOptionNotEmptyString (const StdString &optionName);
 
 	// Set the disabled state for the named option
 	void setOptionDisabled (const StdString &optionName, bool disable);
+
+	// Set the value of the named option
+	void setOptionValue (const StdString &optionName, const char *optionValue, bool shouldSkipChangeCallback = false);
+	void setOptionValue (const StdString &optionName, const StdString &optionValue, bool shouldSkipChangeCallback = false);
+	void setOptionValue (const StdString &optionName, int optionValue, bool shouldSkipChangeCallback = false);
+	void setOptionValue (const StdString &optionName, float optionValue, bool shouldSkipChangeCallback = false);
+	void setOptionValue (const StdString &optionName, bool optionValue, bool shouldSkipChangeCallback = false);
 
 	// Return the string value of the named option, or the specified default value if no such option was found
 	StdString getStringValue (const StdString &optionName, const StdString &defaultValue);
@@ -110,11 +120,6 @@ public:
 	// Return a typecasted pointer to the provided widget, or NULL if the widget does not appear to be of the correct type
 	static ActionWindow *castWidget (Widget *widget);
 
-	// Callback functions
-	static void confirmButtonClicked (void *windowPtr, Widget *widgetPtr);
-	static void cancelButtonClicked (void *windowPtr, Widget *widgetPtr);
-	static void optionValueChanged (void *windowPtr, Widget *widgetPtr);
-
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
@@ -123,7 +128,12 @@ protected:
 	void refreshLayout ();
 
 private:
-	// Constants to use for item types
+	// Callback functions
+	static void confirmButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void cancelButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void optionValueChanged (void *windowPtr, Widget *widgetPtr);
+
+	// Item types
 	enum {
 		ComboBoxItem = 1,
 		TextFieldItem = 2,

@@ -45,21 +45,20 @@ ToggleWindow::ToggleWindow (Toggle *toggle)
 : Panel ()
 , isChecked (false)
 , isRightAligned (false)
+, isInverseColor (false)
 , toggle (toggle)
 , label (NULL)
 , iconImage (NULL)
-, stateChangeCallback (NULL)
-, stateChangeCallbackData (NULL)
 {
 	addWidget (toggle);
 	toggle->isInputSuspended = true;
-	toggle->setStateChangeCallback (ToggleWindow::toggleStateChanged, this);
+	toggle->stateChangeCallback = Widget::EventCallbackContext (ToggleWindow::toggleStateChanged, this);
 
-	setMouseEnterCallback (ToggleWindow::mouseEntered, this);
-	setMouseExitCallback (ToggleWindow::mouseExited, this);
-	setMousePressCallback (ToggleWindow::mousePressed, this);
-	setMouseReleaseCallback (ToggleWindow::mouseReleased, this);
-	setMouseClickCallback (ToggleWindow::mouseClicked, this);
+	mouseEnterCallback = Widget::EventCallbackContext (ToggleWindow::mouseEntered, this);
+	mouseExitCallback = Widget::EventCallbackContext (ToggleWindow::mouseExited, this);
+	mousePressCallback = Widget::EventCallbackContext (ToggleWindow::mousePressed, this);
+	mouseReleaseCallback = Widget::EventCallbackContext (ToggleWindow::mouseReleased, this);
+	mouseClickCallback = Widget::EventCallbackContext (ToggleWindow::mouseClicked, this);
 
 	refreshLayout ();
 }
@@ -69,7 +68,7 @@ ToggleWindow::~ToggleWindow () {
 }
 
 StdString ToggleWindow::toStringDetail () {
-	return (StdString::createSprintf (" ToggleWindow text=\"%s\"", label ? label->text.c_str () : ""));
+	return (StdString::createSprintf (" ToggleWindow checked=%s text=\"%s\"", BOOL_STRING (isChecked), label ? label->text.c_str () : ""));
 }
 
 void ToggleWindow::setText (const StdString &text) {
@@ -81,6 +80,7 @@ void ToggleWindow::setText (const StdString &text) {
 		label->isInputSuspended = true;
 	}
 	label->setText (text);
+	label->textColor.assign (isInverseColor ? uiconfig->inverseTextColor : uiconfig->primaryTextColor);
 
 	if (iconImage) {
 		iconImage->isDestroyed = true;
@@ -111,13 +111,36 @@ void ToggleWindow::setRightAligned (bool enable) {
 	refreshLayout ();
 }
 
-void ToggleWindow::setImageColor (const Color &imageColor) {
-	toggle->setImageColor (imageColor);
+void ToggleWindow::setInverseColor (bool inverse) {
+	UiConfiguration *uiconfig;
+
+	uiconfig = &(App::instance->uiConfig);
+	if (isInverseColor == inverse) {
+		return;
+	}
+
+	isInverseColor = inverse;
+	toggle->setInverseColor (isInverseColor);
+	if (isInverseColor) {
+		if (isFilledBg) {
+			setFillBg (true, uiconfig->lightPrimaryColor);
+		}
+		if (label) {
+			label->textColor.assign (uiconfig->inverseTextColor);
+		}
+	}
+	else {
+		if (isFilledBg) {
+			setFillBg (true, uiconfig->lightBackgroundColor);
+		}
+		if (label) {
+			label->textColor.assign (uiconfig->primaryTextColor);
+		}
+	}
 }
 
-void ToggleWindow::setStateChangeCallback (Widget::EventCallback callback, void *callbackData) {
-	stateChangeCallback = callback;
-	stateChangeCallbackData = callbackData;
+void ToggleWindow::setImageColor (const Color &imageColor) {
+	toggle->setImageColor (imageColor);
 }
 
 void ToggleWindow::refreshLayout () {
@@ -137,6 +160,7 @@ void ToggleWindow::refreshLayout () {
 		toggle->flowRight (&x, y);
 	}
 	if (label) {
+		x -= (uiconfig->marginSize / 2.0f);
 		label->flowRight (&x, y);
 	}
 	if (iconImage) {
@@ -194,8 +218,9 @@ void ToggleWindow::mouseClicked (void *windowPtr, Widget *widgetPtr) {
 	window->toggle->mouseClick ();
 }
 
-void ToggleWindow::setChecked (bool checked) {
-	toggle->setChecked (checked);
+void ToggleWindow::setChecked (bool checked, bool shouldSkipChangeCallback) {
+	toggle->setChecked (checked, shouldSkipChangeCallback);
+	isChecked = toggle->isChecked;
 }
 
 void ToggleWindow::toggleStateChanged (void *windowPtr, Widget *widgetPtr) {
@@ -205,7 +230,7 @@ void ToggleWindow::toggleStateChanged (void *windowPtr, Widget *widgetPtr) {
 	window = (ToggleWindow *) windowPtr;
 	toggle = (Toggle *) widgetPtr;
 	window->isChecked = toggle->isChecked;
-	if (window->stateChangeCallback) {
-		window->stateChangeCallback (window->stateChangeCallbackData, window);
+	if (window->stateChangeCallback.callback) {
+		window->stateChangeCallback.callback (window->stateChangeCallback.callbackData, window);
 	}
 }

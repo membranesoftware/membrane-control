@@ -50,6 +50,8 @@ public:
 	bool isInverseColor;
 	bool isPromptErrorColor;
 	bool isObscured;
+	bool isOvertype;
+	int cursorPosition;
 
 	// Set the text field's disabled state, appropriate for use when the field becomes unavailable for interaction
 	void setDisabled (bool disabled);
@@ -62,6 +64,9 @@ public:
 
 	// Set the text field's obscured state. If enabled, the text field renders using spacer characters to conceal its value.
 	void setObscured (bool enable);
+
+	// Set the text field's overtype state. If enabled, text field edits overwrite characters at the cursor position instead of inserting.
+	void setOvertype (bool enable);
 
 	// Return the text field's value
 	StdString getValue ();
@@ -85,8 +90,8 @@ protected:
 	// Execute operations to update object state as appropriate for an elapsed millisecond time period
 	virtual void doUpdate (int msElapsed);
 
-	// Execute operations appropriate when the widget receives new mouse state
-	virtual void doProcessMouseState (const Widget::MouseState &mouseState);
+	// Execute operations appropriate when the widget receives new mouse state and return a boolean value indicating if mouse wheel events were consumed and should no longer be processed
+	virtual bool doProcessMouseState (const Widget::MouseState &mouseState);
 
 	// Update the widget as appropriate for a received keypress event and return a boolean value indicating if the event was consumed and should no longer be processed
 	virtual bool doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
@@ -97,6 +102,9 @@ protected:
 private:
 	// Set the field's focused state
 	void setFocused (bool enable);
+
+	// Reset cursorPosition if it falls outside the valid range for the current text field value
+	void clipCursorPosition ();
 
 	Label *promptLabel;
 	Label *valueLabel;

@@ -37,7 +37,6 @@
 #include "StdString.h"
 #include "HashMap.h"
 #include "Json.h"
-#include "CardView.h"
 #include "Button.h"
 #include "WidgetHandle.h"
 #include "StreamPlaylistWindow.h"
@@ -46,7 +45,7 @@
 
 class MediaUi : public Ui {
 public:
-	// Constants to use for sprite indexes
+	// Sprite indexes
 	enum {
 		ConfigureStreamButtonSprite = 0,
 		CreatePlaylistButtonSprite = 1,
@@ -66,7 +65,7 @@ public:
 		PauseButtonSprite = 15
 	};
 
-	// Constants to use for card view row numbers
+	// Card view row numbers
 	enum {
 		AgentToggleRow = 0,
 		UnexpandedAgentRow = 1,
@@ -79,25 +78,35 @@ public:
 		MediaLoadingRow = 8
 	};
 
-	// Constants to use for toolbar modes
+	// Toolbar modes
 	enum {
 		MonitorMode = 0,
 		StreamMode = 1,
 		ModeCount = 2
 	};
 
-	// Constants to use as state values in findMediaStreamsMap
+	// State values for findMediaStreamsMap
 	enum {
 		StreamsRequestedState = 0,
 		StreamsReceivedState = 1
 	};
 
-	// Constants to use for empty state types
+	// Empty state types
 	enum {
 		EmptyAgentState = 0,
 		EmptyMediaState = 1,
 		EmptyMediaStreamState = 2
 	};
+
+	// Prefs keys
+	static const char *ImageSizeKey;
+	static const char *SortOrderKey;
+	static const char *SelectedAgentsKey;
+	static const char *ExpandedAgentsKey;
+	static const char *PlaylistsKey;
+	static const char *ToolbarModeKey;
+	static const char *VideoQualityKey;
+	static const char *ShowMediaWithoutStreamsKey;
 
 	MediaUi ();
 	~MediaUi ();
@@ -111,36 +120,66 @@ public:
 	// Execute actions appropriate for a command received from an agent control link client
 	void handleLinkClientCommand (const StdString &agentId, int commandId, Json *command);
 
-	// Clear the provided string if the widget is of the correct type and matches its content by name
-	static void matchPlaylistName (void *stringPtr, Widget *widgetPtr);
+protected:
+	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
+	StdString getSpritePath ();
 
+	// Return a newly created widget for use as a main toolbar breadcrumb item
+	Widget *createBreadcrumbWidget ();
+
+	// Load subclass-specific resources and return a result value
+	int doLoad ();
+
+	// Unload subclass-specific resources
+	void doUnload ();
+
+	// Add subclass-specific items to the provided main toolbar object
+	void doAddMainToolbarItems (Toolbar *toolbar);
+
+	// Add subclass-specific items to the provided secondary toolbar object
+	void doAddSecondaryToolbarItems (Toolbar *toolbar);
+
+	// Remove and destroy any subclass-specific popup widgets that have been created by the UI
+	void doClearPopupWidgets ();
+
+	// Update subclass-specific interface state as appropriate when the Ui becomes active
+	void doResume ();
+
+	// Update subclass-specific interface state as appropriate when the Ui becomes inactive
+	void doPause ();
+
+	// Update subclass-specific interface state as appropriate for an elapsed millisecond time period
+	void doUpdate (int msElapsed);
+
+	// Reload subclass-specific interface resources as needed to account for a new application window size
+	void doResize ();
+
+	// Execute subclass-specific actions appropriate for a received keypress event and return a boolean value indicating if the event was consumed and should no longer be processed
+	bool doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
+
+	// Execute subclass-specific operations to sync state with records present in the application's RecordStore object, which has been locked prior to invocation
+	void doSyncRecordStore ();
+	static void doSyncRecordStore_processMediaServerAgent (void *uiPtr, Json *record, const StdString &recordId);
+	static void doSyncRecordStore_processMonitorAgent (void *uiPtr, Json *record, const StdString &recordId);
+	static void doSyncRecordStore_processMediaItem (void *uiPtr, Json *record, const StdString &recordId);
+
+private:
 	// Callback functions
-	static void processMediaServerAgent (void *uiPtr, Json *record, const StdString &recordId);
-	static void processMonitorAgent (void *uiPtr, Json *record, const StdString &recordId);
-	static void processMediaItem (void *uiPtr, Json *record, const StdString &recordId);
 	static bool matchMediaItem (void *idPtr, Widget *widget);
-	static void appendSelectedAgentId (void *stringListPtr, Widget *widgetPtr);
-	static void appendExpandedAgentId (void *stringListPtr, Widget *widgetPtr);
 	static void imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void smallImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void mediumImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void reloadButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void reloadAgent (void *uiPtr, Widget *widgetPtr);
 	static void expandAgentsToggleStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void appendAgentId (void *stringListPtr, Widget *widgetPtr);
 	static void expandPlaylistsToggleStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void appendPlaylistId (void *stringListPtr, Widget *widgetPtr);
 	static void cardExpandStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void countExpandedAgents (void *intPtr, Widget *widgetPtr);
-	static void countExpandedPlaylists (void *intPtr, Widget *widgetPtr);
 	static void mediaWindowImageClicked (void *uiPtr, Widget *widgetPtr);
 	static void mediaWindowViewButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void mediaWindowBrowserPlayButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void mediaWindowSelectStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void searchFieldEdited (void *uiPtr, Widget *widgetPtr);
 	static void searchButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void appendMediaIdWithoutStream (void *stringListPtr, Widget *widgetPtr);
 	static void sortButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void showMediaWithoutStreamsActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void sortByNameActionClicked (void *uiPtr, Widget *widgetPtr);
@@ -176,57 +215,13 @@ public:
 	static void playlistItemsChanged (void *uiPtr, Widget *widgetPtr);
 	static void playlistRenameActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void playlistNameEdited (void *uiPtr, Widget *widgetPtr);
+	static void playlistNameEditEnterButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void playlistRemoveActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void removePlaylistActionClosed (void *uiPtr, Widget *widgetPtr);
 	static void playlistAddItemActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void playlistAddItemMouseEntered (void *uiPtr, Widget *widgetPtr);
 	static void playlistAddItemMouseExited (void *uiPtr, Widget *widgetPtr);
-	static void appendPlaylistJson (void *stringListPtr, Widget *widgetPtr);
 
-protected:
-	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
-	StdString getSpritePath ();
-
-	// Return a newly created widget for use as a main toolbar breadcrumb item
-	Widget *createBreadcrumbWidget ();
-
-	// Load subclass-specific resources and return a result value
-	int doLoad ();
-
-	// Unload subclass-specific resources
-	void doUnload ();
-
-	// Add subclass-specific items to the provided main toolbar object
-	void doAddMainToolbarItems (Toolbar *toolbar);
-
-	// Add subclass-specific items to the provided secondary toolbar object
-	void doAddSecondaryToolbarItems (Toolbar *toolbar);
-
-	// Remove and destroy any subclass-specific popup widgets that have been created by the UI
-	void doClearPopupWidgets ();
-
-	// Execute subclass-specific operations to refresh the interface's layout as appropriate for the current set of UiConfiguration values
-	void doRefresh ();
-
-	// Update subclass-specific interface state as appropriate when the Ui becomes active
-	void doResume ();
-
-	// Update subclass-specific interface state as appropriate when the Ui becomes inactive
-	void doPause ();
-
-	// Update subclass-specific interface state as appropriate for an elapsed millisecond time period
-	void doUpdate (int msElapsed);
-
-	// Reload subclass-specific interface resources as needed to account for a new application window size
-	void doResize ();
-
-	// Execute subclass-specific actions appropriate for a received keypress event and return a boolean value indicating if the event was consumed and should no longer be processed
-	bool doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
-
-	// Execute subclass-specific operations to sync state with records present in the application's RecordStore object, which has been locked prior to invocation
-	void doSyncRecordStore ();
-
-private:
 	struct MediaServerInfo {
 		int resultOffset;
 		int setSize;
@@ -258,8 +253,8 @@ private:
 	// Return a newly created StreamPlaylistWindow widget, suitable for use as a card view item
 	StreamPlaylistWindow *createStreamPlaylistWindow ();
 
-	// Return a generated string that does not match any existing playlist name
-	StdString getAvailablePlaylistName ();
+	// Return the provided base value, after appending suffixes as needed to generate an unused playlist name
+	StdString getAvailablePlaylistName (const StdString &baseName = StdString (""));
 
 	// Reset checked states for row expand toggles, as appropriate for item expand state
 	void resetExpandToggles ();
@@ -276,11 +271,10 @@ private:
 	// Return the estimated total storage size required for streams of all selected media items at the specified profile, in bytes
 	int64_t getSelectedCreateStreamSize (int profile);
 
-	static const int pageSize;
-	static const float truncateWidthMultiplier;
+	static const int PageSize;
+	static const float TruncateWidthMultiplier;
 
 	int toolbarMode;
-	CardView *cardView;
 	Button *playButton;
 	Button *writePlaylistButton;
 	Button *pauseButton;
@@ -293,6 +287,7 @@ private:
 	WidgetHandle emptyStateWindow;
 	WidgetHandle commandPopup;
 	WidgetHandle commandPopupSource;
+	WidgetHandle targetMediaWindow;
 	WidgetHandle lastSelectedMediaWindow;
 	WidgetHandle selectedPlaylistWindow;
 	WidgetHandle expandAgentsToggle;

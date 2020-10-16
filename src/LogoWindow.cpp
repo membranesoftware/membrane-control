@@ -57,7 +57,7 @@ LogoWindow::LogoWindow ()
 	dateLabel = (Label *) addWidget (new Label (OsUtil::getDateString (), UiConfiguration::CaptionFont, uiconfig->inverseTextColor));
 	timeLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->inverseTextColor));
 	timeLabel->setText (OsUtil::getTimeString ());
-	if (! App::instance->prefsMap.find (App::ShowClockKey, false)) {
+	if (! App::instance->isMainToolbarClockEnabled) {
 		dateLabel->isVisible = false;
 		timeLabel->isVisible = false;
 	}
@@ -74,7 +74,7 @@ StdString LogoWindow::toStringDetail () {
 }
 
 void LogoWindow::doRefresh () {
-	if (App::instance->prefsMap.find (App::ShowClockKey, false)) {
+	if (App::instance->isMainToolbarClockEnabled) {
 		dateLabel->setText (OsUtil::getDateString ());
 		timeLabel->setText (OsUtil::getTimeString ());
 		dateLabel->isVisible = true;

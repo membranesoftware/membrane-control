@@ -65,10 +65,6 @@ Slider::Slider (float minValue, float maxValue)
 , trackWidth (0.0f)
 , trackHeight (0.0f)
 , hoverSize (0.0f)
-, valueChangeCallback (NULL)
-, valueChangeCallbackData (NULL)
-, valueHoverCallback (NULL)
-, valueHoverCallbackData (NULL)
 {
 	UiConfiguration *uiconfig;
 
@@ -183,19 +179,9 @@ void Slider::setValue (float sliderValue, bool shouldSkipChangeCallback) {
 		return;
 	}
 	value = sliderValue;
-	if (valueChangeCallback && (! shouldSkipChangeCallback)) {
-		valueChangeCallback (valueChangeCallbackData, this);
+	if (valueChangeCallback.callback && (! shouldSkipChangeCallback)) {
+		valueChangeCallback.callback (valueChangeCallback.callbackData, this);
 	}
-}
-
-void Slider::setValueChangeCallback (Widget::EventCallback callback, void *callbackData) {
-	valueChangeCallback = callback;
-	valueChangeCallbackData = callbackData;
-}
-
-void Slider::setValueHoverCallback (Widget::EventCallback callback, void *callbackData) {
-	valueHoverCallback = callback;
-	valueHoverCallbackData = callbackData;
 }
 
 void Slider::addSnapValue (float snapValue) {
@@ -292,13 +278,13 @@ void Slider::doDraw (SDL_Texture *targetTexture, float originX, float originY) {
 	SDL_SetRenderDrawColor (render, 0, 0, 0, 0);
 }
 
-void Slider::doProcessMouseState (const Widget::MouseState &mouseState) {
+bool Slider::doProcessMouseState (const Widget::MouseState &mouseState) {
 	Input *input;
 	float val, dx;
 	bool firsthover;
 
 	if (isDisabled) {
-		return;
+		return (false);
 	}
 
 	input = &(App::instance->input);
@@ -331,8 +317,8 @@ void Slider::doProcessMouseState (const Widget::MouseState &mouseState) {
 
 		if (isHovering) {
 			isHovering = false;
-			if (valueHoverCallback) {
-				valueHoverCallback (valueHoverCallbackData, this);
+			if (valueHoverCallback.callback) {
+				valueHoverCallback.callback (valueHoverCallback.callbackData, this);
 			}
 		}
 	}
@@ -355,12 +341,14 @@ void Slider::doProcessMouseState (const Widget::MouseState &mouseState) {
 		else {
 			if (firsthover || (! FLOAT_EQUALS (val, hoverValue))) {
 				hoverValue = getSnappedValue (val);
-				if (valueHoverCallback) {
-					valueHoverCallback (valueHoverCallbackData, this);
+				if (valueHoverCallback.callback) {
+					valueHoverCallback.callback (valueHoverCallback.callbackData, this);
 				}
 			}
 		}
 	}
+
+	return (false);
 }
 
 void Slider::doRefresh () {

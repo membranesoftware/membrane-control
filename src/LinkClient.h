@@ -105,9 +105,9 @@ public:
 	LinkClient (void *callbackData = NULL, LinkContext::ConnectCallback connectCallback = NULL, LinkContext::DisconnectCallback disconnectCallback = NULL, LinkContext::CommandCallback commandCallback = NULL);
 	~LinkClient ();
 
-	static const int defaultPingInterval;
-	static const int reconnectPeriod;
-	static const int maxCommandSize;
+	static const int DefaultPingInterval;
+	static const int ReconnectPeriod;
+	static const int MaxCommandSize;
 
 	// Start the link client's operation
 	void start ();

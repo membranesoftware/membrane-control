@@ -49,6 +49,9 @@
 #include "CameraUi.h"
 #include "CameraWindow.h"
 
+const float CameraWindow::ExpandedTextTruncateScale = 0.24f;
+const float CameraWindow::UnexpandedTextTruncateScale = 0.10f;
+
 CameraWindow::CameraWindow (const StdString &agentId, SpriteGroup *cameraUiSpriteGroup)
 : Panel ()
 , isSelected (false)
@@ -59,16 +62,14 @@ CameraWindow::CameraWindow (const StdString &agentId, SpriteGroup *cameraUiSprit
 , iconImage (NULL)
 , nameLabel (NULL)
 , descriptionLabel (NULL)
+, dividerPanel (NULL)
 , statusIcon (NULL)
 , storageIcon (NULL)
 , imageQualityIcon (NULL)
 , capturePeriodIcon (NULL)
+, flipIcon (NULL)
 , selectToggle (NULL)
 , expandToggle (NULL)
-, selectStateChangeCallback (NULL)
-, selectStateChangeCallbackData (NULL)
-, expandStateChangeCallback (NULL)
-, expandStateChangeCallbackData (NULL)
 {
 	UiConfiguration *uiconfig;
 	UiText *uitext;
@@ -86,40 +87,51 @@ CameraWindow::CameraWindow (const StdString &agentId, SpriteGroup *cameraUiSprit
 	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	descriptionLabel->isVisible = false;
 
+	dividerPanel = (Panel *) addWidget (new Panel ());
+	dividerPanel->setFillBg (true, uiconfig->dividerColor);
+	dividerPanel->setFixedSize (true, 1.0f, uiconfig->headlineDividerLineWidth);
+	dividerPanel->isPanelSizeClipEnabled = true;
+	dividerPanel->isVisible = false;
+
 	statusIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::InactiveStateIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	statusIcon->setPadding (0.0f, 0.0f);
 	statusIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
-	statusIcon->setMouseHoverTooltip (uitext->getText (UiTextString::cameraActivityIconTooltip));
+	statusIcon->setMouseHoverTooltip (uitext->getText (UiTextString::CameraActivityIconTooltip));
 	statusIcon->isVisible = false;
 
 	storageIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::StorageIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	storageIcon->setPadding (0.0f, 0.0f);
 	storageIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
-	storageIcon->setMouseHoverTooltip (uitext->getText (UiTextString::storageTooltip));
+	storageIcon->setMouseHoverTooltip (uitext->getText (UiTextString::StorageTooltip));
 	storageIcon->isVisible = false;
 
 	imageQualityIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (CameraUi::ImageQualityIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	imageQualityIcon->setPadding (0.0f, 0.0f);
 	imageQualityIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
-	imageQualityIcon->setMouseHoverTooltip (uitext->getText (UiTextString::imageQuality).capitalized ());
+	imageQualityIcon->setMouseHoverTooltip (uitext->getText (UiTextString::CaptureQuality).capitalized ());
 	imageQualityIcon->isVisible = false;
 
 	capturePeriodIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (CameraUi::CapturePeriodIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	capturePeriodIcon->setPadding (0.0f, 0.0f);
 	capturePeriodIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
-	capturePeriodIcon->setMouseHoverTooltip (uitext->getText (UiTextString::capturePeriod).capitalized ());
+	capturePeriodIcon->setMouseHoverTooltip (uitext->getText (UiTextString::CapturePeriod).capitalized ());
 	capturePeriodIcon->isVisible = false;
 
+	flipIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (CameraUi::FlipIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	flipIcon->setPadding (0.0f, 0.0f);
+	flipIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
+	flipIcon->setMouseHoverTooltip (uitext->getText (UiTextString::ImageFlip).capitalized ());
+	flipIcon->isVisible = false;
+
 	selectToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::StarOutlineButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::StarButtonSprite)));
+	selectToggle->stateChangeCallback = Widget::EventCallbackContext (CameraWindow::selectToggleStateChanged, this);
 	selectToggle->setImageColor (uiconfig->flatButtonTextColor);
-	selectToggle->setStateChangeCallback (CameraWindow::selectToggleStateChanged, this);
-	selectToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::unselectedToggleTooltip), uitext->getText (UiTextString::selectedToggleTooltip));
-	selectToggle->isVisible = false;
+	selectToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::UnselectedToggleTooltip), uitext->getText (UiTextString::SelectedToggleTooltip));
 
 	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
+	expandToggle->stateChangeCallback = Widget::EventCallbackContext (CameraWindow::expandToggleStateChanged, this);
 	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
-	expandToggle->setStateChangeCallback (CameraWindow::expandToggleStateChanged, this);
-	expandToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::expand).capitalized (), uitext->getText (UiTextString::minimize).capitalized ());
+	expandToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::Expand).capitalized (), uitext->getText (UiTextString::Minimize).capitalized ());
 
 	refreshLayout ();
 }
@@ -140,17 +152,6 @@ CameraWindow *CameraWindow::castWidget (Widget *widget) {
 	return (CameraWindow::isWidgetType (widget) ? (CameraWindow *) widget : NULL);
 }
 
-void CameraWindow::setSelectStateChangeCallback (Widget::EventCallback callback, void *callbackData) {
-	selectStateChangeCallback = callback;
-	selectStateChangeCallbackData = callbackData;
-	selectToggle->isVisible = selectStateChangeCallback ? true : false;
-}
-
-void CameraWindow::setExpandStateChangeCallback (Widget::EventCallback callback, void *callbackData) {
-	expandStateChangeCallback = callback;
-	expandStateChangeCallbackData = callbackData;
-}
-
 void CameraWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
 	float x, y, x0, y0, x2, y2;
@@ -165,41 +166,61 @@ void CameraWindow::refreshLayout () {
 
 	iconImage->flowRight (&x, y, &x2, &y2);
 	nameLabel->flowDown (x, &y, &x2, &y2);
-	descriptionLabel->flowRight (&x, y, &x2, &y2);
+	if (descriptionLabel->isVisible) {
+		descriptionLabel->flowRight (&x, y, &x2, &y2);
+	}
 
 	x = x2 + uiconfig->marginSize;
 	y = y0;
 	expandToggle->flowRight (&x, y, &x2, &y2);
-	if (selectToggle->isVisible) {
-		selectToggle->flowDown (x, &y, &x2, &y2);
+	selectToggle->flowDown (x, &y, &x2, &y2);
+	if (dividerPanel->isVisible) {
+		dividerPanel->flowDown (0.0f, &y, &x2, &y2);
 	}
 
 	x = x0;
 	y = y2 + uiconfig->marginSize;
 	x2 = 0.0f;
 	if (statusIcon->isVisible) {
-		statusIcon->flowRight (&x, y, &x2, &y2);
-	}
-	if (imageQualityIcon->isVisible) {
-		imageQualityIcon->flowRight (&x, y, &x2, &y2);
+		statusIcon->flowDown (x, &y, &x2, &y2);
 	}
 	if (capturePeriodIcon->isVisible) {
 		capturePeriodIcon->flowRight (&x, y, &x2, &y2);
 	}
-
-	x = x0;
-	y = y2 + uiconfig->marginSize;
-	x2 = 0.0f;
+	if (imageQualityIcon->isVisible) {
+		imageQualityIcon->flowRight (&x, y, &x2, &y2);
+	}
+	if (flipIcon->isVisible) {
+		flipIcon->flowRight (&x, y, &x2, &y2);
+	}
 	if (storageIcon->isVisible) {
 		storageIcon->flowRight (&x, y, &x2, &y2);
 	}
 
 	resetSize ();
 
-	x = width - widthPadding;
-	if (selectToggle->isVisible) {
-		selectToggle->flowLeft (&x);
+	if (dividerPanel->isVisible) {
+		dividerPanel->setFixedSize (true, width, uiconfig->headlineDividerLineWidth);
 	}
+
+	x = width - widthPadding;
+	selectToggle->flowLeft (&x);
+	expandToggle->flowLeft (&x);
+}
+
+void CameraWindow::resetNameLabel () {
+	float w;
+
+	w = App::instance->windowWidth;
+	if (isExpanded) {
+		w *= CameraWindow::ExpandedTextTruncateScale;
+		nameLabel->setText (Label::getTruncatedText (agentName, UiConfiguration::HeadlineFont, w, Label::DotTruncateSuffix));
+	}
+	else {
+		w *= CameraWindow::UnexpandedTextTruncateScale;
+		nameLabel->setText (Label::getTruncatedText (agentName, UiConfiguration::BodyFont, w, Label::DotTruncateSuffix));
+	}
+	refreshLayout ();
 }
 
 void CameraWindow::syncRecordStore () {
@@ -208,7 +229,8 @@ void CameraWindow::syncRecordStore () {
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 	Json *record, serverstatus;
-	int captureperiod;
+	StdString videomonitor;
+	int captureperiod, flip;
 
 	store = &(App::instance->agentControl.recordStore);
 	interface = &(App::instance->systemInterface);
@@ -223,7 +245,6 @@ void CameraWindow::syncRecordStore () {
 	}
 
 	agentName.assign (interface->getCommandAgentName (record));
-	nameLabel->setText (agentName);
 	descriptionLabel->setText (interface->getCommandStringParam (record, "applicationName", ""));
 
 	isCapturing = serverstatus.getBoolean ("isCapturing", false);
@@ -232,26 +253,51 @@ void CameraWindow::syncRecordStore () {
 
 	captureperiod = serverstatus.getNumber ("capturePeriod", (int) 0) * 1000;
 	if (captureperiod <= 0) {
-		capturePeriodIcon->setText (uitext->getText (UiTextString::continuous).capitalized ());
+		capturePeriodIcon->setText (uitext->getText (UiTextString::Continuous).capitalized ());
 	}
 	else {
 		capturePeriodIcon->setText (OsUtil::getDurationDisplayString (captureperiod));
 	}
 
-	if (! isCapturing) {
-		statusIcon->setIconSprite (uiconfig->coreSprites.getSprite (UiConfiguration::InactiveStateIconSprite));
-		statusIcon->setText (uitext->getText (UiTextString::inactive).capitalized ());
-		imageQualityIcon->isVisible = false;
+	flip = serverstatus.getNumber ("flip", SystemInterface::Constant_NoFlip);
+	switch (flip) {
+		case SystemInterface::Constant_HorizontalFlip: {
+			flipIcon->setText (uitext->getText (UiTextString::HorizontalAbbreviation));
+			break;
+		}
+		case SystemInterface::Constant_VerticalFlip: {
+			flipIcon->setText (uitext->getText (UiTextString::VerticalAbbreviation));
+			break;
+		}
+		case SystemInterface::Constant_HorizontalAndVerticalFlip: {
+			flipIcon->setText (StdString::createSprintf ("%s/%s", uitext->getText (UiTextString::HorizontalAbbreviation).c_str (), uitext->getText (UiTextString::VerticalAbbreviation).c_str ()));
+			break;
+		}
+		default: {
+			flipIcon->setText (uitext->getText (UiTextString::None).capitalized ());
+			break;
+		}
+	}
+
+	videomonitor = serverstatus.getString ("videoMonitor", "");
+	if (! videomonitor.empty ()) {
+		statusIcon->setIconSprite (uiconfig->coreSprites.getSprite (UiConfiguration::ActiveStateIconSprite));
+		statusIcon->setText (Label::getTruncatedText (StdString::createSprintf ("%s: %s", uitext->getText (UiTextString::ShowingLiveVideo).capitalized ().c_str (), videomonitor.c_str ()), UiConfiguration::CaptionFont, ((float) App::instance->windowWidth) * CameraWindow::ExpandedTextTruncateScale, Label::DotTruncateSuffix));
 		capturePeriodIcon->isVisible = false;
 	}
-	else {
+	else if (isCapturing) {
 		statusIcon->setIconSprite (uiconfig->coreSprites.getSprite (UiConfiguration::ActiveStateIconSprite));
-		statusIcon->setText (uitext->getText (UiTextString::active).capitalized ());
-		imageQualityIcon->isVisible = isExpanded;
+		statusIcon->setText (uitext->getText (UiTextString::CapturingImages).capitalized ());
 		capturePeriodIcon->isVisible = isExpanded;
+	}
+	else {
+		statusIcon->setIconSprite (uiconfig->coreSprites.getSprite (UiConfiguration::InactiveStateIconSprite));
+		statusIcon->setText (uitext->getText (UiTextString::Inactive).capitalized ());
+		capturePeriodIcon->isVisible = false;
 	}
 
 	refreshLayout ();
+	resetNameLabel ();
 	Panel::syncRecordStore ();
 }
 
@@ -288,9 +334,11 @@ void CameraWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallbac
 		expandToggle->setChecked (true, shouldSkipStateChangeCallback);
 		nameLabel->setFont (UiConfiguration::HeadlineFont);
 		descriptionLabel->isVisible = true;
+		dividerPanel->isVisible = true;
 		statusIcon->isVisible = true;
 		storageIcon->isVisible = true;
-		imageQualityIcon->isVisible = isCapturing;
+		flipIcon->isVisible = true;
+		imageQualityIcon->isVisible = true;
 		capturePeriodIcon->isVisible = isCapturing;
 	}
 	else {
@@ -299,12 +347,15 @@ void CameraWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallbac
 		nameLabel->setFont (UiConfiguration::BodyFont);
 		statusIcon->isVisible = false;
 		descriptionLabel->isVisible = false;
+		dividerPanel->isVisible = false;
 		storageIcon->isVisible = false;
+		flipIcon->isVisible = false;
 		imageQualityIcon->isVisible = false;
 		capturePeriodIcon->isVisible = false;
 	}
 
 	refreshLayout ();
+	resetNameLabel ();
 }
 
 void CameraWindow::selectToggleStateChanged (void *windowPtr, Widget *widgetPtr) {
@@ -323,8 +374,8 @@ void CameraWindow::selectToggleStateChanged (void *windowPtr, Widget *widgetPtr)
 	else {
 		window->setCornerRadius (uiconfig->cornerRadius);
 	}
-	if (window->selectStateChangeCallback) {
-		window->selectStateChangeCallback (window->selectStateChangeCallbackData, window);
+	if (window->selectStateChangeCallback.callback) {
+		window->selectStateChangeCallback.callback (window->selectStateChangeCallback.callbackData, window);
 	}
 }
 
@@ -335,7 +386,7 @@ void CameraWindow::expandToggleStateChanged (void *windowPtr, Widget *widgetPtr)
 	window = (CameraWindow *) windowPtr;
 	toggle = (Toggle *) widgetPtr;
 	window->setExpanded (toggle->isChecked, true);
-	if (window->expandStateChangeCallback) {
-		window->expandStateChangeCallback (window->expandStateChangeCallbackData, window);
+	if (window->expandStateChangeCallback.callback) {
+		window->expandStateChangeCallback.callback (window->expandStateChangeCallback.callbackData, window);
 	}
 }

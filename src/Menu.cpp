@@ -63,7 +63,7 @@ Menu::Menu ()
 	setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
 
 	focusBackgroundPanel = (Panel *) addWidget (new Panel ());
-	focusBackgroundPanel->zLevel = Widget::minZLevel;
+	focusBackgroundPanel->zLevel = Widget::MinZLevel;
 	focusBackgroundPanel->setFillBg (true, uiconfig->darkBackgroundColor);
 	focusBackgroundPanel->isVisible = false;
 }
@@ -146,7 +146,7 @@ void Menu::addDivider () {
 	refreshLayout ();
 }
 
-void Menu::doProcessMouseState (const Widget::MouseState &mouseState) {
+bool Menu::doProcessMouseState (const Widget::MouseState &mouseState) {
 	std::list<Menu::Item>::iterator i, end;
 	bool shouldrefresh;
 
@@ -198,6 +198,8 @@ void Menu::doProcessMouseState (const Widget::MouseState &mouseState) {
 	if (shouldrefresh && (! isDestroyed)) {
 		refreshLayout ();
 	}
+
+	return (false);
 }
 
 void Menu::refreshLayout () {

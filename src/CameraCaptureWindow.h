@@ -33,32 +33,48 @@
 #define CAMERA_CAPTURE_WINDOW_H
 
 #include "StdString.h"
+#include "SpriteGroup.h"
 #include "Json.h"
 #include "Widget.h"
 #include "Label.h"
 #include "LabelWindow.h"
+#include "Image.h"
 #include "ImageWindow.h"
-#include "TextArea.h"
 #include "Button.h"
+#include "Toggle.h"
 #include "Panel.h"
 
 class CameraCaptureWindow : public Panel {
 public:
-	CameraCaptureWindow (Json *agentStatus);
+	CameraCaptureWindow (Json *agentStatus, int captureId, SpriteGroup *cameraUiSpriteGroup);
 	virtual ~CameraCaptureWindow ();
+
+	// Read-write data members
+	StdString itemId;
+	Widget::EventCallbackContext selectStateChangeCallback;
+	Widget::EventCallbackContext viewButtonClickCallback;
 
 	// Read-only data members
 	StdString agentId;
 	StdString agentName;
+	int captureId;
+	StdString captureName;
 	StdString captureImagePath;
-	int captureWidth, captureHeight;
-	int64_t captureTime;
+	int lastCaptureWidth, lastCaptureHeight;
+	int64_t lastCaptureTime;
+	int displayCaptureWidth, displayCaptureHeight;
+	int64_t displayCaptureTime;
+	int64_t selectedTime;
+	bool isSelected;
 
 	// Set the layout type that should be used to arrange the panel's widgets, as specified by a CardView detail constant
 	void setLayout (int layoutType, float maxPanelWidth);
 
-	// Set a callback that should be invoked when the view button is clicked
-	void setViewButtonClickCallback (Widget::EventCallback callback, void *callbackData);
+	// Set the window's selected state, then execute any select state change callback that might be configured unless shouldSkipStateChangeCallback is true
+	void setSelected (bool selected, bool shouldSkipStateChangeCallback = false);
+
+	// Set the image timestamp that should be displayed by the capture window. A negative timestamp indicates that the window should show the latest available image.
+	void setSelectedTimestamp (int64_t timestamp);
 
 	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
 	void syncRecordStore ();
@@ -75,29 +91,27 @@ public:
 	// Return a typecasted pointer to the provided widget, or NULL if the widget does not appear to be of the correct type
 	static CameraCaptureWindow *castWidget (Widget *widget);
 
-	// Callback functions
-	static void viewButtonClicked (void *windowPtr, Widget *widgetPtr);
-	static void thumbnailImageLongPressed (void *windowPtr, Widget *widgetPtr);
-
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
-
-	// Execute operations appropriate when the widget receives new mouse state
-	void doProcessMouseState (const Widget::MouseState &mouseState);
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
 	void refreshLayout ();
 
 private:
-	ImageWindow *thumbnailImage;
+	// Callback functions
+	static void viewButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void thumbnailImageLongPressed (void *windowPtr, Widget *widgetPtr);
+	static void thumbnailImageLoaded (void *windowPtr, Widget *widgetPtr);
+	static void selectToggleStateChanged (void *windowPtr, Widget *widgetPtr);
+
+	SpriteGroup *sprites;
+	Image *iconImage;
 	Label *nameLabel;
-	TextArea *detailText;
-	LabelWindow *mouseoverLabel;
-	LabelWindow *detailNameLabel;
+	Label *timeLabel;
+	ImageWindow *thumbnailImage;
+	Toggle *selectToggle;
 	Button *viewButton;
-	Widget::EventCallback viewButtonClickCallback;
-	void *viewButtonClickCallbackData;
 };
 
 #endif

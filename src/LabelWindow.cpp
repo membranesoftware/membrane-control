@@ -137,7 +137,7 @@ void LabelWindow::setCrawl (bool enable) {
 	}
 }
 
-void LabelWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
+bool LabelWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 	Panel::doProcessMouseState (mouseState);
 	if (isMouseoverHighlightEnabled) {
 		if (mouseState.isEntered) {
@@ -149,6 +149,8 @@ void LabelWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 			bgColor.translate (mouseoverNormalBgColor, mouseoverColorTranslateDuration);
 		}
 	}
+
+	return (false);
 }
 
 void LabelWindow::doUpdate (int msElapsed) {

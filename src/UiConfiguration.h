@@ -41,13 +41,13 @@
 
 class UiConfiguration {
 public:
-	// Constants to use for indexes in the coreSprites group
+	// Indexes in the coreSprites group
 	enum {
 		OkButtonSprite = 0,
 		CancelButtonSprite = 1,
 		EnterTextButtonSprite = 2,
 		AppLogoSprite = 3,
-		SettingsButtonSprite = 4,
+		SettingsGearButtonSprite = 4,
 		ExitButtonSprite = 5,
 		MainMenuButtonSprite = 6,
 		BackButtonSprite = 7,
@@ -55,7 +55,7 @@ public:
 		DeleteButtonSprite = 9,
 		HelpButtonSprite = 10,
 		PasteButtonSprite = 11,
-		StreamCatalogIcon = 12,
+		StreamCatalogIconSprite = 12,
 		NetworkConnectIconSprite = 13,
 		NetworkDisconnectIconSprite = 14,
 		CheckmarkSprite = 15,
@@ -78,7 +78,7 @@ public:
 		RenameButtonSprite = 32,
 		LargeErrorIconSprite = 33,
 		AboutButtonSprite = 34,
-		AgentAdminButtonSprite = 35,
+		SettingsBoxButtonSprite = 35,
 		LargeServerIconSprite = 36,
 		LargeDisplayIconSprite = 37,
 		LargeMediaIconSprite = 38,
@@ -94,7 +94,7 @@ public:
 		SmallStreamIconSprite = 48,
 		TaskCountIconSprite = 49,
 		SmallMediaIconSprite = 50,
-		KeyIconSprite = 51,
+		LargeKeyIconSprite = 51,
 		AddButtonSprite = 52,
 		VisibilityOnButtonSprite = 53,
 		VisibilityOffButtonSprite = 54,
@@ -118,16 +118,23 @@ public:
 		ConnectionFailedStateIconSprite = 72,
 		ConnectionWaitingStateIconSprite = 73,
 		ServerDisabledStateIconSprite = 74,
-		LargeCommandIconSprite = 75,
-		SmallCommandIconSprite = 76,
+		LargeProgramIconSprite = 75,
+		SmallProgramIconSprite = 76,
 		SmallServerIconSprite = 77,
 		ExpandAllLessButtonSprite = 78,
 		ExpandAllMoreButtonSprite = 79,
 		ActiveStateIconSprite = 80,
-		PauseIconSprite = 81
+		PauseIconSprite = 81,
+		LargeChannelIconSprite = 82,
+		SmallChannelIconSprite = 83,
+		OpenButtonSprite = 84,
+		LargeWebKioskIconSprite = 85,
+		SmallWebKioskIconSprite = 86,
+		ClockIconSprite = 87,
+		SmallKeyIconSprite = 88
 	};
 
-	// Constants to use for font types
+	// Font types
 	enum {
 		CaptionFont = 0,
 		BodyFont = 1,
@@ -137,7 +144,7 @@ public:
 		FontCount = 5
 	};
 
-	// Constants to use for sprite frame indexes
+	// Sprite frame indexes
 	enum {
 		WhiteButtonFrame = 0,
 		WhiteLargeButtonFrame = 1,
@@ -198,6 +205,7 @@ public:
 	Color raisedButtonBackgroundColor;
 	Color dropShadowColor;
 	float dropShadowWidth;
+	Color dividerColor;
 	int cornerRadius;
 	float buttonFocusedShadeAlpha;
 	float buttonPressedShadeAlpha;
@@ -215,6 +223,7 @@ public:
 	float textLineHeightMargin;
 	float textUnderlineMargin;
 	float menuDividerLineWidth;
+	float headlineDividerLineWidth;
 	float selectionBorderWidth;
 	float selectionBorderAlpha;
 	float sliderThumbSize;
@@ -226,6 +235,10 @@ public:
 	int textFieldShortLineLength;
 	int textFieldMediumLineLength;
 	int textFieldLongLineLength;
+	float textFieldInsertCursorWidth;
+	float textFieldOvertypeCursorScale; // portion of text font max glyph width, from 0.0f to 1.0f
+	int comboBoxLineLength;
+	int comboBoxExpandViewItems;
 	float timelineMarkerWidth;
 	float rightNavWidthScale; // portion of total window width, from 0.0f to 1.0f
 	int snackbarTimeout; // ms

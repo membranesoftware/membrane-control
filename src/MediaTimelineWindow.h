@@ -44,19 +44,20 @@ public:
 	MediaTimelineWindow (float barWidth, const StdString &recordId);
 	virtual ~MediaTimelineWindow ();
 
+	// Read-write data members
+	Widget::EventCallbackContext positionHoverCallback;
+	Widget::EventCallbackContext positionClickCallback;
+
 	// Read-only data members
 	StdString recordId;
 	StdString agentId;
 	int recordType;
 	int highlightedMarkerIndex;
-	float hoverPosition;
+	float hoverPosition; // A negative value indicates that the mouse is positioned outside the timeline bar
 	float clickPosition;
 
-	// Set a callback that should be invoked when the mouse hovers on a timeline position. The hoverPosition field stores the hovered value, with a negative value indicating that the mouse is outside the timeline bar.
-	void setPositionHoverCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback that should be invoked when the mouse clicks on a timeline position, with the clickPosition field storing the clicked value
-	void setPositionClickCallback (Widget::EventCallback callback, void *callbackData);
+	// Set the highlight marker's text color
+	void setHighlightColor (const Color &color);
 
 	// Set the bar to highlight the marker at the specified index. A negative index value indicates that any existing highlight should be cleared.
 	void setHighlightedMarker (int markerIndex);
@@ -71,11 +72,11 @@ protected:
 	// Reset the panel's widget layout as appropriate for its content and configuration
 	void refreshLayout ();
 
-	// Execute operations appropriate when the widget receives new mouse state
-	void doProcessMouseState (const Widget::MouseState &mouseState);
+	// Execute operations appropriate when the widget receives new mouse state and return a boolean value indicating if mouse wheel events were consumed and should no longer be processed
+	virtual bool doProcessMouseState (const Widget::MouseState &mouseState);
 
 private:
-	static const int guideSegmentCount;
+	static const int GuideSegmentCount;
 
 	// If markerList is empty, populate it with a set of Panel widgets meant to highlight positions on the timeline
 	void populateMarkers ();
@@ -91,10 +92,6 @@ private:
 	float duration;
 	int minDurationUnitType;
 	int thumbnailCount;
-	Widget::EventCallback positionHoverCallback;
-	void *positionHoverCallbackData;
-	Widget::EventCallback positionClickCallback;
-	void *positionClickCallbackData;
 };
 
 #endif

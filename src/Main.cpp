@@ -59,8 +59,9 @@ int main (int argc, char **argv)
 #if PLATFORM_LINUX || PLATFORM_MACOS
 	struct sigaction action;
 #endif
-	StdString val;
-	int result, exitval;
+	StdString logfilename, path;
+	int result, exitstatus;
+	bool shouldcreate;
 
 	atexit (cleanup);
 	App::createInstance ();
@@ -69,49 +70,49 @@ int main (int argc, char **argv)
 	if (OsUtil::getEnvValue ("LOG_STDERR", false)) {
 		App::instance->log.setStderrOutput (true);
 	}
-	val = OsUtil::getEnvValue ("LOG_FILENAME", "");
-	if (! val.empty ()) {
-		App::instance->log.setFileOutput (true, val);
+	logfilename = OsUtil::getEnvValue ("LOG_FILENAME", "");
+	if (! logfilename.empty ()) {
+		App::instance->log.setFileOutput (true, logfilename);
 	}
 
-	val = OsUtil::getEnvValue ("APPDATA_PATH", "");
-	if (! val.empty ()) {
-		App::instance->prefsPath.assign (OsUtil::getAppendPath (val, "membranecontrol.conf"));
-		App::instance->log.setFileOutput (true, OsUtil::getAppendPath (val, "membranecontrol.log"));
-	}
-	else {
-		val.assign ("");
+	shouldcreate = false;
+	path = OsUtil::getEnvValue ("APPDATA_PATH", "");
+	if (path.empty ()) {
+		shouldcreate = true;
 #if PLATFORM_LINUX
-		val = OsUtil::getEnvValue ("HOME", "");
-		if (! val.empty ()) {
-			val = OsUtil::getAppendPath (val, ".membrane");
+		path = OsUtil::getEnvValue ("HOME", "");
+		if (! path.empty ()) {
+			path = OsUtil::getAppendPath (path, CONFIG_APPDATA_DIRNAME);
 		}
 #endif
 #if PLATFORM_MACOS
-		val = OsUtil::getEnvValue ("HOME", "");
-		if (! val.empty ()) {
-			val = OsUtil::getAppendPath (val, "Library");
-			val = OsUtil::getAppendPath (val, "Application Support");
-			val = OsUtil::getAppendPath (val, "Membrane Control");
+		path = OsUtil::getEnvValue ("HOME", "");
+		if (! path.empty ()) {
+			path = OsUtil::getAppendPath (path, "Library");
+			path = OsUtil::getAppendPath (path, "Application Support");
+			path = OsUtil::getAppendPath (path, CONFIG_APPDATA_DIRNAME);
 		}
 #endif
 #if PLATFORM_WINDOWS
-		val = OsUtil::getEnvValue ("LOCALAPPDATA", "");
-		if (! val.empty ()) {
-			val = OsUtil::getAppendPath (val, "Membrane Control");
+		path = OsUtil::getEnvValue ("LOCALAPPDATA", "");
+		if (! path.empty ()) {
+			path = OsUtil::getAppendPath (path, CONFIG_APPDATA_DIRNAME);
 		}
 #endif
-		if (! val.empty ()) {
-			result = OsUtil::createDirectory (val);
+	}
+	if (path.empty ()) {
+		Log::warning ("Application data cannot be saved (set APPDATA_PATH to specify destination directory)");
+	}
+	else {
+		if (shouldcreate) {
+			result = OsUtil::createDirectory (path);
 			if (result != Result::Success) {
-				Log::warning ("Application data cannot be saved (failed to create directory); path=\"%s\" err=%i", val.c_str (), result);
+				Log::warning ("Application data cannot be saved (failed to create directory); path=\"%s\" err=%i", path.c_str (), result);
 			}
-			else {
-				App::instance->prefsPath.assign (OsUtil::getAppendPath (val, "membranecontrol.conf"));
-				if (App::instance->log.outputFilename.empty ()) {
-					App::instance->log.setFileOutput (true, OsUtil::getAppendPath (val, "membranecontrol.log"));
-				}
-			}
+		}
+		App::instance->prefsPath.assign (OsUtil::getAppendPath (path, CONFIG_PREFS_FILENAME));
+		if (logfilename.empty ()) {
+			App::instance->log.setFileOutput (true, OsUtil::getAppendPath (path, CONFIG_LOG_FILENAME));
 		}
 	}
 
@@ -141,41 +142,25 @@ int main (int argc, char **argv)
 	sigaction (SIGPIPE, &action, NULL);
 #endif
 
-	val = OsUtil::getEnvValue ("RESOURCE_PATH", CONFIG_DEFAULT_RESOURCE_PATH);
-	if (val.empty ()) {
-		Log::err ("Launch error: no resource path specified");
+	path = OsUtil::getEnvValue ("RESOURCE_PATH", CONFIG_DEFAULT_RESOURCE_PATH);
+	if (path.empty ()) {
+		Log::err ("Application resources not found (set RESOURCE_PATH to specify source path)");
 		exit (1);
 	}
-	App::instance->resource.setSource (val);
+	App::instance->resource.setSource (path);
 
-	val = OsUtil::getEnvValue ("MIN_DRAW_FRAME_DELAY", "");
-	if ((! val.empty ()) && val.parseInt (&result) && (result > 0)) {
-		App::instance->minDrawFrameDelay = result;
-	}
+	App::instance->minDrawFrameDelay = OsUtil::getEnvValue ("MIN_DRAW_FRAME_DELAY", 0);
+	App::instance->minUpdateFrameDelay = OsUtil::getEnvValue ("MIN_UPDATE_FRAME_DELAY", 0);
+	App::instance->windowWidth = OsUtil::getEnvValue ("WINDOW_WIDTH", 0);
+	App::instance->windowHeight = OsUtil::getEnvValue ("WINDOW_HEIGHT", 0);
 
-	val = OsUtil::getEnvValue ("MIN_UPDATE_FRAME_DELAY", "");
-	if ((! val.empty ()) && val.parseInt (&result) && (result > 0)) {
-		App::instance->minUpdateFrameDelay = result;
-	}
-
-	val = OsUtil::getEnvValue ("WINDOW_WIDTH", "");
-	if ((! val.empty ()) && val.parseInt (&result) && (result > 0)) {
-		App::instance->windowWidth = result;
-	}
-
-	val = OsUtil::getEnvValue ("WINDOW_HEIGHT", "");
-	if ((! val.empty ()) && val.parseInt (&result) && (result > 0)) {
-		App::instance->windowHeight = result;
-	}
-
-	exitval = 0;
+	exitstatus = 0;
 	result = App::instance->run ();
 	if (result != Result::Success) {
 		printf ("Failed to execute application. For errors, see log file: %s\n", App::instance->log.outputFilename.c_str ());
-		exitval = 1;
+		exitstatus = 1;
 	}
-
-	exit (exitval);
+	exit (exitstatus);
 }
 
 void cleanup () {

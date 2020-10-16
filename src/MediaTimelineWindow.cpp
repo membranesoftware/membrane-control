@@ -44,7 +44,7 @@
 #include "UiConfiguration.h"
 #include "MediaTimelineWindow.h"
 
-const int MediaTimelineWindow::guideSegmentCount = 4;
+const int MediaTimelineWindow::GuideSegmentCount = 4;
 
 MediaTimelineWindow::MediaTimelineWindow (float barWidth, const StdString &recordId)
 : Panel ()
@@ -62,10 +62,6 @@ MediaTimelineWindow::MediaTimelineWindow (float barWidth, const StdString &recor
 , duration (0.0f)
 , minDurationUnitType (0)
 , thumbnailCount (0)
-, positionHoverCallback (NULL)
-, positionHoverCallbackData (NULL)
-, positionClickCallback (NULL)
-, positionClickCallbackData (NULL)
 {
 	UiConfiguration *uiconfig;
 
@@ -84,7 +80,7 @@ MediaTimelineWindow::MediaTimelineWindow (float barWidth, const StdString &recor
 	endTimeLabel->isInputSuspended = true;
 	endTimeLabel->zLevel = 2;
 
-	highlightTimeLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->mediumSecondaryColor)));
+	highlightTimeLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->darkBackgroundColor)));
 	highlightTimeLabel->setPadding (uiconfig->paddingSize / 2.0, uiconfig->textLineHeightMargin);
 	highlightTimeLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
 	highlightTimeLabel->isInputSuspended = true;
@@ -102,16 +98,6 @@ MediaTimelineWindow::~MediaTimelineWindow () {
 
 StdString MediaTimelineWindow::toStringDetail () {
 	return (StdString (" MediaTimelineWindow"));
-}
-
-void MediaTimelineWindow::setPositionHoverCallback (Widget::EventCallback callback, void *callbackData) {
-	positionHoverCallback = callback;
-	positionHoverCallbackData = callbackData;
-}
-
-void MediaTimelineWindow::setPositionClickCallback (Widget::EventCallback callback, void *callbackData) {
-	positionClickCallback = callback;
-	positionClickCallbackData = callbackData;
 }
 
 void MediaTimelineWindow::syncRecordStore () {
@@ -193,7 +179,7 @@ void MediaTimelineWindow::populateMarkers () {
 
 			uiconfig = &(App::instance->uiConfig);
 			x = 0.0f;
-			dx = barWidth / (float) MediaTimelineWindow::guideSegmentCount;
+			dx = barWidth / (float) MediaTimelineWindow::GuideSegmentCount;
 			if (dx < 1.0f) {
 				dx = 1.0f;
 			}
@@ -209,6 +195,10 @@ void MediaTimelineWindow::populateMarkers () {
 			break;
 		}
 	}
+}
+
+void MediaTimelineWindow::setHighlightColor (const Color &color) {
+	highlightTimeLabel->setTextColor (color);
 }
 
 void MediaTimelineWindow::setHighlightedMarker (int markerIndex) {
@@ -311,29 +301,31 @@ void MediaTimelineWindow::refreshLayout () {
 	endTimeLabel->position.assign (barWidth - endTimeLabel->width, barHeight - endTimeLabel->height);
 }
 
-void MediaTimelineWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
+bool MediaTimelineWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 	Panel::doProcessMouseState (mouseState);
 	if (mouseState.isEntered) {
 		if (! FLOAT_EQUALS (hoverPosition, mouseState.enterDeltaX)) {
 			hoverPosition = mouseState.enterDeltaX;
-			if (positionHoverCallback) {
-				positionHoverCallback (positionHoverCallbackData, this);
+			if (positionHoverCallback.callback) {
+				positionHoverCallback.callback (positionHoverCallback.callbackData, this);
 			}
 		}
 
 		if (mouseState.isLeftClicked) {
 			clickPosition = mouseState.enterDeltaX;
-			if (positionClickCallback) {
-				positionClickCallback (positionClickCallbackData, this);
+			if (positionClickCallback.callback) {
+				positionClickCallback.callback (positionClickCallback.callbackData, this);
 			}
 		}
 	}
 	else {
 		if (hoverPosition >= 0.0f) {
 			hoverPosition = -1.0f;
-			if (positionHoverCallback) {
-				positionHoverCallback (positionHoverCallbackData, this);
+			if (positionHoverCallback.callback) {
+				positionHoverCallback.callback (positionHoverCallback.callbackData, this);
 			}
 		}
 	}
+
+	return (false);
 }

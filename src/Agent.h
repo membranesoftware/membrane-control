@@ -47,6 +47,9 @@ public:
 	StdString invokeHostname;
 	int invokeTcpPort1;
 	int invokeTcpPort2;
+	StdString authorizePath;
+	StdString authorizeSecret;
+	StdString authorizeToken;
 
 	// Read-only data members
 	int serverType;
@@ -62,14 +65,14 @@ public:
 	// Return a string representation of the agent
 	StdString toString ();
 
-	// Return a JSON string containing the agent's data, suitable for storage in application preferences
-	StdString toPrefsJsonString ();
-
 	// Update the agent's fields with information from the provided AgentStatus command
 	void readCommand (Json *command);
 
-	// Update the agent's fields with information from the provided prefs JSON string. Returns a Result value.
-	int readPrefsJson (const StdString &prefsJson);
+	// Return a newly created Json object containing the agent's data, suitable for storage in application preferences
+	Json *createState ();
+
+	// Update the agent's fields with state information from the provided Json object and return a Result value
+	int readState (Json *state);
 
 	// Return the URL that should be used for invoke operations targeting the agent
 	StdString getInvokeUrl ();
@@ -84,7 +87,7 @@ public:
 	StdString getApplicationNewsUrl ();
 
 private:
-	// Constants to use as object field names
+	// Object field names
 	static const char *AgentIdKey;
 	static const char *InvokeHostnameKey;
 	static const char *InvokeTcpPort1Key;

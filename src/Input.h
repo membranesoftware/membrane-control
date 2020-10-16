@@ -56,6 +56,9 @@ public:
 	// Initialize input functionality and acquire resources as needed. Returns a Result value.
 	int start ();
 
+	// Stop the input engine and release acquired resources
+	void stop ();
+
 	// Poll events to update input state. This method must be invoked only from the application's main thread.
 	void pollEvents ();
 

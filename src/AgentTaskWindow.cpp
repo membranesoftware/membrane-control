@@ -48,7 +48,7 @@
 #include "ProgressBar.h"
 #include "AgentTaskWindow.h"
 
-const float AgentTaskWindow::textTruncateScale = 0.15f;
+const float AgentTaskWindow::TextTruncateScale = 0.15f;
 
 AgentTaskWindow::AgentTaskWindow (const StdString &agentId)
 : Panel ()
@@ -75,10 +75,10 @@ AgentTaskWindow::AgentTaskWindow (const StdString &agentId)
 	descriptionLabel  = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	descriptionLabel->isInputSuspended = true;
 
-	progressBar = (ProgressBar *) addWidget (new ProgressBar (((float) App::instance->windowWidth) * AgentTaskWindow::textTruncateScale, uiconfig->progressBarHeight));
+	progressBar = (ProgressBar *) addWidget (new ProgressBar (((float) App::instance->windowWidth) * AgentTaskWindow::TextTruncateScale, uiconfig->progressBarHeight));
 	progressBar->isInputSuspended = true;
 
-	setMouseHoverTooltip (uitext->getText (UiTextString::taskInProgress).capitalized ());
+	setMouseHoverTooltip (uitext->getText (UiTextString::TaskInProgress).capitalized ());
 	refreshLayout ();
 }
 
@@ -114,10 +114,10 @@ void AgentTaskWindow::syncRecordStore () {
 	}
 
 	nameLabel->setText (interface->getCommandStringParam (record, "runTaskName", ""));
-	descriptionLabel->setText (Label::getTruncatedText (interface->getCommandStringParam (record, "runTaskSubtitle", ""), UiConfiguration::CaptionFont, ((float) App::instance->windowWidth) * AgentTaskWindow::textTruncateScale, StdString ("...")));
+	descriptionLabel->setText (Label::getTruncatedText (interface->getCommandStringParam (record, "runTaskSubtitle", ""), UiConfiguration::CaptionFont, ((float) App::instance->windowWidth) * AgentTaskWindow::TextTruncateScale, Label::DotTruncateSuffix));
 	pct = interface->getCommandNumberParam (record, "runTaskPercentComplete", (float) 0.0f);
 	progressBar->setProgress (pct, 100.0f);
-	setMouseHoverTooltip (StdString::createSprintf ("%s: %i%% %s", uitext->getText (UiTextString::taskInProgress).capitalized ().c_str (), (int) pct, uitext->getText (UiTextString::complete).c_str ()));
+	setMouseHoverTooltip (StdString::createSprintf ("%s: %i%% %s", uitext->getText (UiTextString::TaskInProgress).capitalized ().c_str (), (int) pct, uitext->getText (UiTextString::Complete).c_str ()));
 
 	if (nameLabel->text.empty ()) {
 		isTaskRunning = false;

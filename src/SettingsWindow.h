@@ -51,15 +51,6 @@ public:
 	// Set the window's size
 	void setWindowSize (float windowWidth, float windowHeight);
 
-	// Callback functions
-	static StdString windowSizeSliderValueName (float sliderValue);
-	static StdString textSizeSliderValueName (float sliderValue);
-	static void closeButtonClicked (void *windowPtr, Widget *widgetPtr);
-	static void windowSizeSliderChanged (void *windowPtr, Widget *widgetPtr);
-	static void textSizeSliderChanged (void *windowPtr, Widget *widgetPtr);
-	static void showClockToggleStateChanged (void *windowPtr, Widget *widgetPtr);
-	static void showInterfaceAnimationsToggleStateChanged (void *windowPtr, Widget *widgetPtr);
-
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
@@ -74,6 +65,15 @@ protected:
 	void refreshLayout ();
 
 private:
+	// Callback functions
+	static StdString windowSizeSliderValueName (float sliderValue);
+	static StdString textSizeSliderValueName (float sliderValue);
+	static void closeButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void windowSizeSliderChanged (void *windowPtr, Widget *widgetPtr);
+	static void textSizeSliderChanged (void *windowPtr, Widget *widgetPtr);
+	static void showClockToggleStateChanged (void *windowPtr, Widget *widgetPtr);
+	static void showInterfaceAnimationsToggleStateChanged (void *windowPtr, Widget *widgetPtr);
+
 	ImageWindow *headerImage;
 	bool isHeaderImageLoaded;
 	LabelWindow *titleLabel;

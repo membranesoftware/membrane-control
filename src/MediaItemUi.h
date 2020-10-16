@@ -39,12 +39,11 @@
 #include "Toolbar.h"
 #include "HashMap.h"
 #include "HelpWindow.h"
-#include "CardView.h"
 #include "Ui.h"
 
 class MediaItemUi : public Ui {
 public:
-	// Constants to use for sprite indexes
+	// Sprite indexes
 	enum {
 		ConfigureStreamButtonSprite = 0,
 		TimeIconSprite = 1,
@@ -52,14 +51,21 @@ public:
 		DurationIconSprite = 3
 	};
 
-	// Constants to use for card view row numbers
+	// Card view row numbers
 	enum {
 		InfoRow = 0,
 		ImageRow = 1
 	};
 
+	// Prefs keys
+	static const char *VideoQualityKey;
+	static const char *ImageSizeKey;
+
 	MediaItemUi (const StdString &mediaId, const StdString &mediaName);
 	~MediaItemUi ();
+
+	// Read-write data members
+	Widget::EventCallbackContext removeMediaCallback;
 
 	// Read-only data members
 	StdString mediaId;
@@ -72,25 +78,8 @@ public:
 	int thumbnailCount;
 	int64_t mediaSize;
 
-	// Set a callback that should be invoked when the UI's remove media function has been executed
-	void setRemoveMediaCallback (Widget::EventCallback callback, void *callbackData);
-
 	// Set fields in the provided HelpWindow widget as appropriate for the UI's help content
 	void setHelpWindowContent (HelpWindow *helpWindow);
-
-	// Callback functions
-	static void imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void smallImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void mediumImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void thumbnailMouseEntered (void *uiPtr, Widget *widgetPtr);
-	static void thumbnailMouseExited (void *uiPtr, Widget *widgetPtr);
-	static void configureStreamButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void configureStreamOptionChanged (void *uiPtr, Widget *widgetPtr);
-	static void configureStreamActionClosed (void *uiPtr, Widget *widgetPtr);
-	static void configureMediaStreamComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
-	static void removeMediaActionClosed (void *uiPtr, Widget *widgetPtr);
-	static void removeMediaComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
 
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
@@ -111,9 +100,6 @@ protected:
 	// Add subclass-specific items to the provided secondary toolbar object
 	void doAddSecondaryToolbarItems (Toolbar *toolbar);
 
-	// Execute subclass-specific operations to refresh the interface's layout as appropriate for the current set of UiConfiguration values
-	void doRefresh ();
-
 	// Update subclass-specific interface state as appropriate when the Ui becomes active
 	void doResume ();
 
@@ -123,25 +109,33 @@ protected:
 	// Update subclass-specific interface state as appropriate for an elapsed millisecond time period
 	void doUpdate (int msElapsed);
 
-	// Reload subclass-specific interface resources as needed to account for a new application window size
-	void doResize ();
-
 	// Execute subclass-specific operations to sync state with records present in the application's RecordStore object, which has been locked prior to invocation
 	void doSyncRecordStore ();
 
 private:
+	// Callback functions
+	static void imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void smallImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void mediumImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void thumbnailMouseEntered (void *uiPtr, Widget *widgetPtr);
+	static void thumbnailMouseExited (void *uiPtr, Widget *widgetPtr);
+	static void configureStreamButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void configureStreamOptionChanged (void *uiPtr, Widget *widgetPtr);
+	static void configureStreamActionClosed (void *uiPtr, Widget *widgetPtr);
+	static void configureMediaStreamComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
+	static void removeMediaActionClosed (void *uiPtr, Widget *widgetPtr);
+	static void removeMediaComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
+
 	// Find the source MediaItem record and populate the interface based on its fields
 	void syncMediaItem ();
 
 	bool isRecordSynced;
-	CardView *cardView;
 	int cardDetail;
 	WidgetHandle timelineWindow;
 	WidgetHandle configureStreamSizeIcon;
 	HashMap streamServerAgentMap;
 	bool isCreateStreamAvailable;
-	Widget::EventCallback removeMediaCallback;
-	void *removeMediaCallbackData;
 };
 
 #endif

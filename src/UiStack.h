@@ -89,7 +89,7 @@ public:
 	bool processKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
 
 	// Show the specified message in the application's snackbar window, optionally including an action button
-	void showSnackbar (const StdString &messageText, const StdString &actionButtonText = StdString (""), Widget::EventCallback actionButtonClickCallback = NULL, void *actionButtonClickCallbackData = NULL);
+	void showSnackbar (const StdString &messageText, const StdString &actionButtonText = StdString (""), Widget::EventCallbackContext actionButtonClickCallback = Widget::EventCallbackContext ());
 
 	// Toggle the visible state of the settings window
 	void toggleSettingsWindow ();
@@ -128,7 +128,7 @@ public:
 	static void imageDialogLoaded (void *uiStackPtr, Widget *widgetPtr);
 
 private:
-	// Constants to use for stack command types
+	// Stack command types
 	enum {
 		SetUiCommand = 0,
 		PushUiCommand = 1,

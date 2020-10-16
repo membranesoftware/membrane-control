@@ -36,7 +36,7 @@
 #include "Resource.h"
 #include "UiText.h"
 
-const StdString UiText::defaultLanguage = StdString ("en");
+const StdString UiText::DefaultLanguage = StdString ("en");
 
 UiText::UiText () {
 
@@ -53,8 +53,8 @@ int UiText::load (const StdString &language) {
 
 	path.sprintf ("text/%s.txt", language.c_str ());
 	buffer = App::instance->resource.loadFile (path);
-	if ((! buffer) && (! language.equals (UiText::defaultLanguage))) {
-		path.sprintf ("text/%s.txt", UiText::defaultLanguage.c_str ());
+	if ((! buffer) && (! language.equals (UiText::DefaultLanguage))) {
+		path.sprintf ("text/%s.txt", UiText::DefaultLanguage.c_str ());
 		buffer = App::instance->resource.loadFile (path);
 	}
 	if (! buffer) {

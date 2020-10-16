@@ -55,13 +55,15 @@ Ui::Ui ()
 , isLoaded (false)
 , isFirstResumeComplete (false)
 , isLinkConnected (false)
+, cardView (NULL)
+, actionSource (NULL)
 , refcount (0)
 , refcountMutex (NULL)
 {
 	refcountMutex = SDL_CreateMutex ();
 
 	rootPanel = new Panel ();
-	rootPanel->setKeyEventCallback (Ui::keyEvent, this);
+	rootPanel->keyEventCallback = Widget::KeyEventCallbackContext (Ui::keyEvent, this);
 	rootPanel->retain ();
 }
 
@@ -122,11 +124,17 @@ int Ui::load () {
 		}
 	}
 
+	cardView = (CardView *) addWidget (new CardView (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight));
+	cardView->isKeyboardScrollEnabled = true;
+	cardView->isMouseWheelScrollEnabled = true;
+	cardView->isExitedMouseWheelScrollEnabled = true;
+
 	result = doLoad ();
 	if (result != Result::Success) {
 		return (result);
 	}
 
+	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 	isLoaded = true;
 	return (Result::Success);
 }
@@ -182,7 +190,7 @@ void Ui::showShutdownWindow () {
 	panel->bgColor.translate (0.0f, 0.0f, 0.0f, uiconfig->overlayWindowAlpha, uiconfig->backgroundCrossFadeDuration);
 	panel->setFixedSize (true, App::instance->rootPanel->width, App::instance->rootPanel->height);
 
-	label = new LabelWindow (new Label (uitext->getText (UiTextString::shuttingDownApp), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
+	label = new LabelWindow (new Label (uitext->getText (UiTextString::ShuttingDownApp), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
 	label->setFillBg (true, uiconfig->lightBackgroundColor);
 
 	bar = new ProgressBar (label->width, uiconfig->progressBarHeight);
@@ -230,6 +238,8 @@ void Ui::resume () {
 	App::instance->rootPanel->addWidget (rootPanel);
 
 	setLinkConnected (true);
+	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
+	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 	doResume ();
 	isFirstResumeComplete = true;
 }
@@ -246,12 +256,13 @@ void Ui::pause () {
 }
 
 void Ui::update (int msElapsed) {
-#if ENABLE_TEST_KEYS
-	if (App::instance->isUiPaused) {
-		return;
+	if (actionWidget.widget) {
+		actionWidget.compact ();
+		if (! actionWidget.widget) {
+			actionTarget.clear ();
+		}
 	}
-#endif
-	actionWidget.compact ();
+
 	actionTarget.compact ();
 	breadcrumbWidget.compact ();
 	doUpdate (msElapsed);
@@ -264,6 +275,8 @@ void Ui::draw () {
 
 void Ui::refresh () {
 	rootPanel->refresh ();
+	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
+	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 	doRefresh ();
 }
 
@@ -274,9 +287,9 @@ void Ui::doRefresh () {
 void Ui::resize () {
 	rootPanel->position.assign (0.0f, 0.0f);
 	rootPanel->setFixedSize (true, App::instance->windowWidth, App::instance->windowHeight);
-
 	sprites.resize ();
-
+	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
+	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 	doResize ();
 	rootPanel->resetInputState ();
 }
@@ -307,6 +320,8 @@ void Ui::doDraw () {
 
 void Ui::clearPopupWidgets () {
 	actionWidget.destroyAndClear ();
+	actionTarget.clear ();
+	actionSource = NULL;
 	doClearPopupWidgets ();
 }
 
@@ -398,6 +413,128 @@ void Ui::addLinkAgent (const StdString &agentId) {
 	}
 }
 
+void Ui::showActionPopup (Widget *action, Widget *target, Widget::EventCallback sourceFn, const Widget::Rectangle &sourceRect, int xAlignment, int yAlignment) {
+	actionWidget.assign (action);
+	actionTarget.assign (target);
+	actionSource = sourceFn;
+
+	App::instance->rootPanel->addWidget (action);
+	action->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
+	assignPopupPosition (action, sourceRect, xAlignment, yAlignment);
+}
+
+bool Ui::clearActionPopup (Widget *target, Widget::EventCallback sourceFn) {
+	bool match;
+
+	match = actionWidget.widget && (actionTarget.widget == target) && (actionSource == sourceFn);
+	clearPopupWidgets ();
+
+	return (match);
+}
+
+void Ui::assignPopupPosition (Widget *popupWidget, const Widget::Rectangle &popupSourceRect, int xAlignment, int yAlignment) {
+	UiConfiguration *uiconfig;
+	float x, y;
+
+	uiconfig = &(App::instance->uiConfig);
+	switch (xAlignment) {
+		case Ui::LeftOfAlignment: {
+			x = popupSourceRect.x - popupWidget->width;
+			if (x <= uiconfig->marginSize) {
+				x = popupSourceRect.x + popupSourceRect.w;
+			}
+			break;
+		}
+		case Ui::LeftEdgeAlignment: {
+			x = popupSourceRect.x;
+			if (x < uiconfig->marginSize) {
+				x = uiconfig->marginSize;
+			}
+			if ((x + popupWidget->width) >= (App::instance->windowWidth - uiconfig->marginSize)) {
+				x = App::instance->windowWidth - uiconfig->marginSize - popupWidget->width;
+			}
+			break;
+		}
+		case Ui::RightEdgeAlignment: {
+			x = popupSourceRect.x + popupSourceRect.w - popupWidget->width;
+			if (x < uiconfig->marginSize) {
+				x = uiconfig->marginSize;
+			}
+			if ((x + popupWidget->width) >= (App::instance->windowWidth - uiconfig->marginSize)) {
+				x = App::instance->windowWidth - uiconfig->marginSize - popupWidget->width;
+			}
+			break;
+		}
+		case Ui::RightOfAlignment: {
+			x = popupSourceRect.x + popupSourceRect.w;
+			if ((x + popupWidget->width) >= (App::instance->windowWidth - uiconfig->marginSize)) {
+				x = popupSourceRect.x - popupWidget->width;
+			}
+			break;
+		}
+		default: {
+			x = popupSourceRect.x + ((popupSourceRect.w / 2.0f) - (popupWidget->width / 2.0f));
+			if (x < uiconfig->marginSize) {
+				x = uiconfig->marginSize;
+			}
+			if ((x + popupWidget->width) > (App::instance->windowWidth - uiconfig->marginSize)) {
+				x = App::instance->windowWidth - uiconfig->marginSize - popupWidget->width;
+			}
+			break;
+		}
+	}
+
+	switch (yAlignment) {
+		case Ui::TopOfAlignment: {
+			y = popupSourceRect.y - popupWidget->height;
+			if (y <= uiconfig->marginSize) {
+				y = popupSourceRect.y + popupSourceRect.h;
+			}
+			break;
+		}
+		case Ui::TopEdgeAlignment: {
+			y = popupSourceRect.y;
+			if (y < uiconfig->marginSize) {
+				y = uiconfig->marginSize;
+			}
+			if ((y + popupWidget->height) > (App::instance->windowHeight - uiconfig->marginSize)) {
+				y = App::instance->windowHeight - uiconfig->marginSize - popupWidget->height;
+			}
+			break;
+		}
+		case Ui::BottomEdgeAlignment: {
+			y = popupSourceRect.y + popupSourceRect.h - popupWidget->height;
+			if (y < uiconfig->marginSize) {
+				y = uiconfig->marginSize;
+			}
+			if ((y + popupWidget->height) >= (App::instance->windowHeight - uiconfig->marginSize)) {
+				y = App::instance->windowHeight - uiconfig->marginSize - popupWidget->height;
+			}
+			break;
+		}
+		case Ui::BottomOfAlignment: {
+			y = popupSourceRect.y + popupSourceRect.h;
+			if ((y + popupWidget->height) >= (App::instance->windowHeight - uiconfig->marginSize)) {
+				y = popupSourceRect.y - popupWidget->height;
+			}
+			break;
+		}
+		default: {
+			y = popupSourceRect.y + ((popupSourceRect.h / 2.0f) - (popupWidget->height / 2.0f));
+			if (y < uiconfig->marginSize) {
+				y = uiconfig->marginSize;
+			}
+			if ((y + popupWidget->height) > (App::instance->windowHeight - uiconfig->marginSize)) {
+				y = App::instance->windowHeight - uiconfig->marginSize - popupWidget->height;
+			}
+			break;
+		}
+	}
+
+	popupWidget->position.assign (x, y);
+	popupWidget->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
+}
+
 Panel *Ui::createRowHeaderPanel (const StdString &headerText, Panel *sidePanel) {
 	UiConfiguration *uiconfig;
 	Panel *panel;
@@ -425,7 +562,7 @@ Panel *Ui::createLoadingIconWindow () {
 
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
-	icon = new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallLoadingIconSprite), uitext->getText (UiTextString::loading).capitalized (), UiConfiguration::CaptionFont);
+	icon = new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallLoadingIconSprite), uitext->getText (UiTextString::Loading).capitalized (), UiConfiguration::CaptionFont);
 	icon->setFillBg (true, uiconfig->lightBackgroundColor);
 	icon->setProgressBar (true);
 

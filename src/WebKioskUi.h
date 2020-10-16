@@ -33,10 +33,10 @@
 #define WEB_KIOSK_UI_H
 
 #include "StdString.h"
+#include "StringList.h"
 #include "Json.h"
 #include "HashMap.h"
 #include "WidgetHandle.h"
-#include "CardView.h"
 #include "Toolbar.h"
 #include "TextFieldWindow.h"
 #include "WebPlaylistWindow.h"
@@ -45,7 +45,7 @@
 
 class WebKioskUi : public Ui {
 public:
-	// Constants to use for sprite indexes
+	// Sprite indexes
 	enum {
 		BreadcrumbIconSprite = 0,
 		ClearDisplayButtonSprite = 1,
@@ -59,7 +59,7 @@ public:
 		SpeedIconSprite = 9
 	};
 
-	// Constants to use for card view row numbers
+	// Card view row numbers
 	enum {
 		AgentToggleRow = 0,
 		UnexpandedAgentRow = 1,
@@ -69,6 +69,11 @@ public:
 		ExpandedPlaylistRow = 5
 	};
 
+	// Prefs keys
+	static const char *SelectedAgentsKey;
+	static const char *ExpandedAgentsKey;
+	static const char *PlaylistsKey;
+
 	WebKioskUi ();
 	~WebKioskUi ();
 
@@ -77,43 +82,6 @@ public:
 
 	// Execute operations appropriate when an agent control link client becomes connected
 	void handleLinkClientConnect (const StdString &agentId);
-
-	// Clear the provided string if the widget is of the correct type and matches its content by name
-	static void matchPlaylistName (void *stringPtr, Widget *widgetPtr);
-
-	// Callback functions
-	static void reloadButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void reloadAgent (void *uiPtr, Widget *widgetPtr);
-	static void processAgentStatus (void *uiPtr, Json *record, const StdString &recordId);
-	static void appendPlaylistJson (void *stringListPtr, Widget *widgetPtr);
-	static void appendSelectedAgentId (void *stringListPtr, Widget *widgetPtr);
-	static void appendExpandedAgentId (void *stringListPtr, Widget *widgetPtr);
-	static void agentSelectStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void agentExpandStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void agentScreenshotLoaded (void *uiPtr, Widget *widgetPtr);
-	static void playlistSelectStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void playlistExpandStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void expandAgentsToggleStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void appendAgentId (void *stringListPtr, Widget *widgetPtr);
-	static void countExpandedAgents (void *intPtr, Widget *widgetPtr);
-	static void expandPlaylistsToggleStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void appendPlaylistId (void *stringListPtr, Widget *widgetPtr);
-	static void countExpandedPlaylists (void *intPtr, Widget *widgetPtr);
-	static void browseUrlButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void showUrlButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void createPlaylistButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void writePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void playlistNameClicked (void *uiPtr, Widget *widgetPtr);
-	static void playlistNameEdited (void *uiPtr, Widget *widgetPtr);
-	static void playlistUrlListChanged (void *uiPtr, Widget *widgetPtr);
-	static void playlistRemoveActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void removePlaylistActionClosed (void *uiPtr, Widget *widgetPtr);
-	static void playlistAddItemActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void playlistAddItemMouseEntered (void *uiPtr, Widget *widgetPtr);
-	static void playlistAddItemMouseExited (void *uiPtr, Widget *widgetPtr);
-	static void clearDisplayButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr);
-	static void commandButtonMouseExited (void *uiPtr, Widget *widgetPtr);
 
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
@@ -140,9 +108,6 @@ protected:
 	// Update subclass-specific interface state as appropriate when the Ui becomes active
 	void doResume ();
 
-	// Execute subclass-specific operations to refresh the interface's layout as appropriate for the current set of UiConfiguration values
-	void doRefresh ();
-
 	// Update subclass-specific interface state as appropriate when the Ui becomes inactive
 	void doPause ();
 
@@ -154,13 +119,40 @@ protected:
 
 	// Execute subclass-specific operations to sync state with records present in the application's RecordStore object, which has been locked prior to invocation
 	void doSyncRecordStore ();
+	static void doSyncRecordStore_processAgentStatus (void *uiPtr, Json *record, const StdString &recordId);
 
 private:
+	// Callback functions
+	static void reloadButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void agentSelectStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void agentExpandStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void agentScreenshotLoaded (void *uiPtr, Widget *widgetPtr);
+	static void playlistSelectStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void playlistExpandStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void expandAgentsToggleStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void expandPlaylistsToggleStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void browseUrlButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void showUrlButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void createPlaylistButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void writePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void playlistNameClicked (void *uiPtr, Widget *widgetPtr);
+	static void playlistNameEdited (void *uiPtr, Widget *widgetPtr);
+	static void playlistNameEditEnterButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void playlistUrlListChanged (void *uiPtr, Widget *widgetPtr);
+	static void playlistRemoveActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void playlistRemoveActionClosed (void *uiPtr, Widget *widgetPtr);
+	static void playlistAddItemActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void playlistAddItemMouseEntered (void *uiPtr, Widget *widgetPtr);
+	static void playlistAddItemMouseExited (void *uiPtr, Widget *widgetPtr);
+	static void clearDisplayButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr);
+	static void commandButtonMouseExited (void *uiPtr, Widget *widgetPtr);
+
 	// Reset checked states for row expand toggles, as appropriate for item expand state
 	void resetExpandToggles ();
 
 	// Return the provided base value, after appending suffixes as needed to generate an unused playlist name
-	StdString getAvailablePlaylistName ();
+	StdString getAvailablePlaylistName (const StdString &baseName = StdString (""));
 
 	// Return a newly created WebPlaylistWindow object that has been initialized for use with the UI
 	WebPlaylistWindow *createWebPlaylistWindow ();
@@ -171,7 +163,6 @@ private:
 	int agentCount;
 	HashMap selectedAgentMap;
 	StdString selectedPlaylistId;
-	CardView *cardView;
 	TextFieldWindow *addressField;
 	Button *browseUrlButton;
 	Button *showUrlButton;

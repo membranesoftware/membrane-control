@@ -82,16 +82,23 @@ public:
 	void insert (const char *key, int value);
 	void insert (const StdString &key, int64_t value);
 	void insert (const char *key, int64_t value);
+
+	// Set a key-value pair in the map to store a StringList. If value is an empty list, instead remove the named key.
 	void insert (const StdString &key, StringList *value);
 	void insert (const char *key, StringList *value);
 
-	// Remove the specified key from the map
-	void remove (const StdString &key);
+	// Set key-value pairs in the map to store a JsonList, freeing all contained Json objects in the process. If value is an empty list, instead remove all key-value pairs for JsonList objects associated with the named base key.
+	void insert (const StdString &key, JsonList *value);
+	void insert (const char *key, JsonList *value);
 
-	// Read values from configuration file data or a Json object and store the resulting items in the map, optionally clearing the map before doing so. Returns a Result value. Note that the Json variant of this method reads only top-level primitive keys and does not recurse into objects.
+	// Remove the specified key or list of keys from the map
+	void remove (const StdString &key);
+	void remove (const char *key);
+	void remove (StringList *keys);
+
+	// Read values from configuration file data and store the resulting items in the map, optionally clearing the map before doing so. Returns a Result value.
 	int read (const StdString &filename, bool shouldClear = false);
 	int read (Buffer *buffer, bool shouldClear = false);
-	int read (Json *json, bool shouldClear = false);
 
 	// Write values from the map to the specified file. Returns a Result value.
 	int write (const StdString &filename);
@@ -100,7 +107,7 @@ public:
 	bool exists (const StdString &key);
 	bool exists (const char *key);
 
-	// Return a string containing a value from the map, or the specified default if no such value exists. StringList variants do not return a value, instead clearing the provided list and filling it with any items that are found.
+	// Return a string containing a value from the map, or the specified default if no such value exists
 	StdString find (const StdString &key, const StdString &defaultValue);
 	StdString find (const StdString &key, const char *defaultValue);
 	StdString find (const char *key, const char *defaultValue);
@@ -110,8 +117,14 @@ public:
 	int64_t find (const char *key, int64_t defaultValue);
 	bool find (const StdString &key, bool defaultValue);
 	bool find (const char *key, bool defaultValue);
+
+	// Clear the provided StringList and fill it with items from the specified string list key if found
 	void find (const StdString &key, StringList *destList);
 	void find (const char *key, StringList *destList);
+
+	// Clear the provided JsonList and free all contained Json objects, then fill it with items from the specified object list key if found
+	void find (const StdString &key, JsonList *destList);
+	void find (const char *key, JsonList *destList);
 
 	// Return an iterator positioned at the map's first element
 	HashMap::Iterator begin ();

@@ -38,6 +38,7 @@
 #if PLATFORM_WINDOWS
 #include <time.h>
 #include <windows.h>
+#include <processthreadsapi.h>
 #include <ShellAPI.h>
 #endif
 #include <sys/stat.h>
@@ -49,7 +50,7 @@
 #include "StringList.h"
 #include "OsUtil.h"
 
-const char *OsUtil::monthNames[12] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+const char *OsUtil::MonthNames[12] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
 
 int64_t OsUtil::getTime () {
 	int64_t t;
@@ -74,6 +75,14 @@ int64_t OsUtil::getTime () {
 	t -= 11644473600000ULL;
 #endif
 	return (t);
+}
+
+int OsUtil::getProcessId () {
+#if PLATFORM_WINDOWS
+	return ((int) GetCurrentProcessId ());
+#else
+	return ((int) getpid ());
+#endif
 }
 
 StdString OsUtil::getDurationString (int64_t duration, int minUnitType) {
@@ -137,8 +146,9 @@ StdString OsUtil::getDurationString (int64_t duration, int minUnitType) {
 }
 
 StdString OsUtil::getDurationDisplayString (int64_t duration) {
+	StdString result;
 	int64_t t;
-	int unit, d, h, m;
+	int unit, d, h, m, s;
 
 	unit = OsUtil::getDurationMinUnitType (duration);
 	t = duration;
@@ -148,18 +158,31 @@ StdString OsUtil::getDurationDisplayString (int64_t duration) {
 		h = (int) t;
 		d = h / 24;
 		h %= 24;
-		return (StdString::createSprintf ("%id%ih", d, h));
+		result.sprintf ("%id", d);
+		if (h > 0) {
+			result.appendSprintf ("%ih", h);
+		}
+		return (result);
 	}
 	if (unit >= OsUtil::HoursUnit) {
 		t /= 60;
 		h = (int) (t / 60);
 		t %= 60;
 		m = (int) t;
-		return (StdString::createSprintf ("%ih%im", h, m));
+		result.sprintf ("%ih", h);
+		if (m > 0) {
+			result.appendSprintf ("%im", m);
+		}
+		return (result);
 	}
 	if (unit >= OsUtil::MinutesUnit) {
 		m = (int) (t / 60);
-		return (StdString::createSprintf ("%im%is", m, (int) (t % 60)));
+		s = (int) (t % 60);
+		result.sprintf ("%im", m);
+		if (s > 0) {
+			result.appendSprintf ("%is", s);
+		}
+		return (result);
 	}
 
 	return (StdString::createSprintf ("%is", (int) t));
@@ -194,7 +217,7 @@ StdString OsUtil::getTimestampString (int64_t timestamp, bool isTimezoneEnabled)
 	ms = (int) (timestamp % 1000);
 	now = (time_t) (timestamp / 1000);
 	localtime_r (&now, &tv);
-	s.sprintf ("%02d/%s/%04d %02d:%02d:%02d.%03d", tv.tm_mday, OsUtil::monthNames[tv.tm_mon], tv.tm_year + 1900, tv.tm_hour, tv.tm_min, tv.tm_sec, ms);
+	s.sprintf ("%02d/%s/%04d %02d:%02d:%02d.%03d", tv.tm_mday, OsUtil::MonthNames[tv.tm_mon], tv.tm_year + 1900, tv.tm_hour, tv.tm_min, tv.tm_sec, ms);
 	if (isTimezoneEnabled) {
 		s.appendSprintf (" %+.2ld00", tv.tm_gmtoff / 3600);
 	}
@@ -212,7 +235,7 @@ StdString OsUtil::getTimestampString (int64_t timestamp, bool isTimezoneEnabled)
 	ft.dwHighDateTime = (timestamp & 0xFFFFFFFF);
 	if (FileTimeToSystemTime (&ft, &st)) {
 		if (SystemTimeToTzSpecificLocalTime (NULL, &st, &stlocal) != 0) {
-			s.sprintf ("%02d/%s/%04d %02d:%02d:%02d.%03d", stlocal.wDay, OsUtil::monthNames[stlocal.wMonth - 1], stlocal.wYear, stlocal.wHour, stlocal.wMinute, stlocal.wSecond, stlocal.wMilliseconds);
+			s.sprintf ("%02d/%s/%04d %02d:%02d:%02d.%03d", stlocal.wDay, OsUtil::MonthNames[stlocal.wMonth - 1], stlocal.wYear, stlocal.wHour, stlocal.wMinute, stlocal.wSecond, stlocal.wMilliseconds);
 
 			if (isTimezoneEnabled) {
 				result = GetTimeZoneInformation (&tz);
@@ -248,7 +271,7 @@ StdString OsUtil::getDateString (int64_t timestamp) {
 #if PLATFORM_LINUX || PLATFORM_MACOS
 	now = (time_t) (timestamp / 1000);
 	localtime_r (&now, &tv);
-	s.sprintf ("%02d/%s/%04d", tv.tm_mday, OsUtil::monthNames[tv.tm_mon], tv.tm_year + 1900);
+	s.sprintf ("%02d/%s/%04d", tv.tm_mday, OsUtil::MonthNames[tv.tm_mon], tv.tm_year + 1900);
 #endif
 #if PLATFORM_WINDOWS
 	FILETIME ft;
@@ -261,7 +284,7 @@ StdString OsUtil::getDateString (int64_t timestamp) {
 	ft.dwHighDateTime = (timestamp & 0xFFFFFFFF);
 	if (FileTimeToSystemTime (&ft, &st)) {
 		if (SystemTimeToTzSpecificLocalTime (NULL, &st, &stlocal) != 0) {
-			s.sprintf ("%02d/%s/%04d", stlocal.wDay, OsUtil::monthNames[stlocal.wMonth - 1], stlocal.wYear);
+			s.sprintf ("%02d/%s/%04d", stlocal.wDay, OsUtil::MonthNames[stlocal.wMonth - 1], stlocal.wYear);
 		}
 	}
 #endif
@@ -499,6 +522,17 @@ bool OsUtil::getEnvValue (const StdString &key, bool defaultValue) {
 
 	val = OsUtil::getEnvValue (key, defaultValue ? "true" : "false");
 	return (val.equals ("true"));
+}
+
+int OsUtil::getEnvValue (const StdString &key, int defaultValue) {
+	StdString val;
+	int result;
+
+	val = OsUtil::getEnvValue (key, "");
+	if (val.empty () || (! val.parseInt (&result))) {
+		return (defaultValue);
+	}
+	return (result);
 }
 
 StdString OsUtil::getEnvLanguage (const StdString &defaultValue) {

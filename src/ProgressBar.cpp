@@ -43,7 +43,7 @@
 #include "TextField.h"
 #include "ProgressBar.h"
 
-const float ProgressBar::animationFactor = 2.0f; // milliseconds per pixel
+const float ProgressBar::AnimationFactor = 2.0f; // milliseconds per pixel
 
 ProgressBar::ProgressBar (float barWidth, float barHeight)
 : Widget ()
@@ -130,7 +130,7 @@ void ProgressBar::doUpdate (int msElapsed) {
 			}
 			case 1: {
 				if (fillEnd < fillEndTarget) {
-					fillEnd += ((float) msElapsed) / ProgressBar::animationFactor;
+					fillEnd += ((float) msElapsed) / ProgressBar::AnimationFactor;
 					if (fillEnd >= fillEndTarget) {
 						fillEnd = fillEndTarget;
 					}
@@ -145,13 +145,13 @@ void ProgressBar::doUpdate (int msElapsed) {
 			}
 			case 2: {
 				if (fillEnd < fillEndTarget) {
-					fillEnd += ((float) msElapsed) / ProgressBar::animationFactor;
+					fillEnd += ((float) msElapsed) / ProgressBar::AnimationFactor;
 					if (fillEnd >= fillEndTarget) {
 						fillEnd = fillEndTarget;
 					}
 				}
 				if (fillStart < fillStartTarget) {
-					fillStart += ((float) msElapsed) / ProgressBar::animationFactor;
+					fillStart += ((float) msElapsed) / ProgressBar::AnimationFactor;
 					if (fillStart >= fillStartTarget) {
 						fillStart = fillStartTarget;
 					}
@@ -166,7 +166,7 @@ void ProgressBar::doUpdate (int msElapsed) {
 			}
 			case 3: {
 				if (fillStart < fillStartTarget) {
-					fillStart += ((float) msElapsed) / ProgressBar::animationFactor;
+					fillStart += ((float) msElapsed) / ProgressBar::AnimationFactor;
 					if (fillStart >= fillStartTarget) {
 						fillStart = fillStartTarget;
 					}

@@ -61,8 +61,8 @@ public:
 	static Menu *castWidget (Widget *widget);
 
 protected:
-	// Execute operations appropriate when the widget receives new mouse state
-	virtual void doProcessMouseState (const Widget::MouseState &mouseState);
+	// Execute operations appropriate when the widget receives new mouse state and return a boolean value indicating if mouse wheel events were consumed and should no longer be processed
+	virtual bool doProcessMouseState (const Widget::MouseState &mouseState);
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
 	virtual void refreshLayout ();

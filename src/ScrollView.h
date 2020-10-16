@@ -27,7 +27,7 @@
 * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 * POSSIBILITY OF SUCH DAMAGE.
 */
-// Widget consisting of a panel that implements scrolling functions for viewing content that extends beyond its own boundaries
+// Panel that implements scrolling functions for viewing content that extends beyond its own boundaries
 
 #ifndef SCROLL_VIEW_H
 #define SCROLL_VIEW_H
@@ -36,11 +36,16 @@
 
 class ScrollView : public Panel {
 public:
-	ScrollView (float viewWidth, float viewHeight);
+	ScrollView ();
 	virtual ~ScrollView ();
 
 	// Read-write data members
 	bool isKeyboardScrollEnabled;
+	bool isMouseWheelScrollEnabled;
+	bool isExitedMouseWheelScrollEnabled;
+
+	// Set the size of the viewable area
+	virtual void setViewSize (float viewWidth, float viewHeight);
 
 	// Set the vertical scroll speed to use for mouse wheel events, in pixels
 	void setVerticalScrollSpeed (float speed);
@@ -52,8 +57,8 @@ public:
 	bool isScrolledToBottom ();
 
 protected:
-	// Execute operations appropriate when the widget receives new mouse state
-	virtual void doProcessMouseState (const Widget::MouseState &mouseState);
+	// Execute operations appropriate when the widget receives new mouse state and return a boolean value indicating if mouse wheel events were consumed and should no longer be processed
+	virtual bool doProcessMouseState (const Widget::MouseState &mouseState);
 
 	// Update the widget as appropriate for a received keypress event and return a boolean value indicating if the event was consumed and should no longer be processed
 	virtual bool doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown);

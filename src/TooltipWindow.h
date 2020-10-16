@@ -41,8 +41,8 @@ public:
 	virtual ~TooltipWindow ();
 
 protected:
-	// Execute operations appropriate when the widget receives new mouse state
-	void doProcessMouseState (const Widget::MouseState &mouseState);
+	// Execute operations appropriate when the widget receives new mouse state and return a boolean value indicating if mouse wheel events were consumed and should no longer be processed
+	virtual bool doProcessMouseState (const Widget::MouseState &mouseState);
 
 private:
 

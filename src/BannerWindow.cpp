@@ -83,7 +83,7 @@ void BannerWindow::setWindowWidth (float fixedWidth) {
 	refreshLayout ();
 }
 
-void BannerWindow::setBanner (const StdString &messageText, Sprite *iconSprite, const StdString &actionText, Widget::EventCallback actionClickCallback, void *actionClickCallbackData) {
+void BannerWindow::setBanner (const StdString &messageText, Sprite *iconSprite, const StdString &actionText, Widget::EventCallbackContext actionClickCallback) {
 	UiConfiguration *uiconfig;
 	float w;
 
@@ -104,12 +104,12 @@ void BannerWindow::setBanner (const StdString &messageText, Sprite *iconSprite, 
 		iconImage->translateAlpha (0.0f, 1.0f, uiconfig->longColorTranslateDuration);
 		w -= (iconImage->width + uiconfig->marginSize);
 	}
-	if ((! actionClickCallback) || actionText.empty ()) {
+	if ((! actionClickCallback.callback) || actionText.empty ()) {
 		actionButton->isVisible = false;
 	}
 	else {
 		actionButton->setText (actionText.uppercased ());
-		actionButton->setMouseClickCallback (actionClickCallback, actionClickCallbackData);
+		actionButton->mouseClickCallback = actionClickCallback;
 		actionButton->isVisible = true;
 		w -= (actionButton->width + uiconfig->marginSize);
 	}

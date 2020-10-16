@@ -41,7 +41,7 @@
 
 class TextFieldWindow : public Panel {
 public:
-	static const int randomizeStringLength;
+	static const int RandomizeStringLength;
 
 	TextFieldWindow (float windowWidth, const StdString &promptText = StdString (""), Sprite *iconSprite = NULL);
 	virtual ~TextFieldWindow ();
@@ -49,6 +49,7 @@ public:
 	// Read-write data members
 	Widget::EventCallbackContext valueChangeCallback;
 	Widget::EventCallbackContext valueEditCallback;
+	Widget::EventCallbackContext enterButtonClickCallback;
 	bool shouldSkipTextClearCallbacks;
 
 	// Read-only data members
@@ -80,8 +81,8 @@ public:
 	// Return the text field's value
 	StdString getValue ();
 
-	// Set the text field's value
-	void setValue (const StdString &valueText);
+	// Set the text field's value and invoke any configured change and edit callbacks unless shouldSkipChangeCallback or shouldSkipEditCallback are true
+	void setValue (const StdString &valueText, bool shouldSkipChangeCallback = false, bool shouldSkipEditCallback = false);
 
 	// Assign keypress edit focus to the text field
 	void assignKeyFocus ();
@@ -92,6 +93,14 @@ public:
 	// Return a typecasted pointer to the provided widget, or NULL if the widget does not appear to be of the correct type
 	static TextFieldWindow *castWidget (Widget *widget);
 
+protected:
+	// Return a string that should be included as part of the toString method's output
+	StdString toStringDetail ();
+
+	// Reset the panel's widget layout as appropriate for its content and configuration
+	void refreshLayout ();
+
+private:
 	// Callback functions
 	static void textFieldValueChanged (void *windowPtr, Widget *widgetPtr);
 	static void textFieldValueEdited (void *windowPtr, Widget *widgetPtr);
@@ -102,14 +111,6 @@ public:
 	static void randomizeButtonClicked (void *windowPtr, Widget *widgetPtr);
 	static void visibilityToggleStateChanged (void *windowPtr, Widget *widgetPtr);
 
-protected:
-	// Return a string that should be included as part of the toString method's output
-	StdString toStringDetail ();
-
-	// Reset the panel's widget layout as appropriate for its content and configuration
-	void refreshLayout ();
-
-private:
 	bool isFixedHeight;
 	float windowWidth;
 	float windowHeight;

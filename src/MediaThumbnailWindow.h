@@ -62,20 +62,20 @@ public:
 	// Return a typecasted pointer to the provided widget, or NULL if the widget does not appear to be of the correct type
 	static MediaThumbnailWindow *castWidget (Widget *widget);
 
-	// Callback functions
-	static void thumbnailImageLongPressed (void *windowPtr, Widget *widgetPtr);
-
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
 
-	// Execute operations appropriate when the widget receives new mouse state
-	void doProcessMouseState (const Widget::MouseState &mouseState);
+	// Execute operations appropriate when the widget receives new mouse state and return a boolean value indicating if mouse wheel events were consumed and should no longer be processed
+	virtual bool doProcessMouseState (const Widget::MouseState &mouseState);
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
 	void refreshLayout ();
 
 private:
+	// Callback functions
+	static void thumbnailImageLongPressed (void *windowPtr, Widget *widgetPtr);
+
 	ImageWindow *thumbnailImage;
 	LabelWindow *timestampLabel;
 };

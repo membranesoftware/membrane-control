@@ -103,25 +103,27 @@ public:
 	// Return a typecasted pointer to the provided widget, or NULL if the widget does not appear to be of the correct type
 	static MediaWindow *castWidget (Widget *widget);
 
-	// Callback functions
-	static void mediaImageClicked (void *windowPtr, Widget *widgetPtr);
-	static void mediaImageLoaded (void *windowPtr, Widget *widgetPtr);
-	static void mediaImageLongPressed (void *windowPtr, Widget *widgetPtr);
-	static void viewButtonClicked (void *windowPtr, Widget *widgetPtr);
-	static void browserPlayButtonClicked (void *windowPtr, Widget *widgetPtr);
+	// Match a StreamItem record by sourceId using the provided StdString pointer
 	static bool matchStreamSourceId (void *idStringPtr, Json *record);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
 
-	// Execute operations appropriate when the widget receives new mouse state
-	void doProcessMouseState (const Widget::MouseState &mouseState);
+	// Execute operations appropriate when the widget receives new mouse state and return a boolean value indicating if mouse wheel events were consumed and should no longer be processed
+	virtual bool doProcessMouseState (const Widget::MouseState &mouseState);
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
 	void refreshLayout ();
 
 private:
+	// Callback functions
+	static void mediaImageClicked (void *windowPtr, Widget *widgetPtr);
+	static void mediaImageLoaded (void *windowPtr, Widget *widgetPtr);
+	static void mediaImageLongPressed (void *windowPtr, Widget *widgetPtr);
+	static void viewButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void browserPlayButtonClicked (void *windowPtr, Widget *widgetPtr);
+
 	SpriteGroup *sprites;
 	ImageWindow *mediaImage;
 	Label *nameLabel;

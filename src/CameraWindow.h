@@ -47,18 +47,19 @@ public:
 	CameraWindow (const StdString &agentId, SpriteGroup *cameraUiSpriteGroup);
 	virtual ~CameraWindow ();
 
+	static const float ExpandedTextTruncateScale;
+	static const float UnexpandedTextTruncateScale;
+
+	// Read-write data members
+	Widget::EventCallbackContext selectStateChangeCallback;
+	Widget::EventCallbackContext expandStateChangeCallback;
+
 	// Read-only data members
 	bool isSelected;
 	bool isExpanded;
 	StdString agentId;
 	StdString agentName;
 	bool isCapturing;
-
-	// Set a callback that should be invoked when the select toggle's checked state changes
-	void setSelectStateChangeCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback that should be invoked when the expand toggle's checked state changes
-	void setExpandStateChangeCallback (Widget::EventCallback callback, void *callbackData);
 
 	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
 	void syncRecordStore ();
@@ -75,10 +76,6 @@ public:
 	// Set the window's expand state, then execute any expand state change callback that might be configured unless shouldSkipStateChangeCallback is true
 	void setExpanded (bool expanded, bool shouldSkipStateChangeCallback = false);
 
-	// Callback functions
-	static void selectToggleStateChanged (void *windowPtr, Widget *widgetPtr);
-	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
-
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
@@ -87,20 +84,25 @@ protected:
 	void refreshLayout ();
 
 private:
+	// Callback functions
+	static void selectToggleStateChanged (void *windowPtr, Widget *widgetPtr);
+	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
+
+	// Reset the text shown by the name label, truncating it as needed to fit in its available space
+	void resetNameLabel ();
+
 	SpriteGroup *sprites;
 	Image *iconImage;
 	Label *nameLabel;
 	Label *descriptionLabel;
+	Panel *dividerPanel;
 	IconLabelWindow *statusIcon;
 	IconLabelWindow *storageIcon;
 	IconLabelWindow *imageQualityIcon;
 	IconLabelWindow *capturePeriodIcon;
+	IconLabelWindow *flipIcon;
 	Toggle *selectToggle;
 	Toggle *expandToggle;
-	Widget::EventCallback selectStateChangeCallback;
-	void *selectStateChangeCallbackData;
-	Widget::EventCallback expandStateChangeCallback;
-	void *expandStateChangeCallbackData;
 };
 
 #endif

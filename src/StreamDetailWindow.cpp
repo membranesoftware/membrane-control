@@ -79,19 +79,19 @@ StreamDetailWindow::StreamDetailWindow (const StdString &recordId, SpriteGroup *
 
 	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeStreamIconSprite)));
 	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::TitleFont, uiconfig->primaryTextColor));
-	descriptionLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::videoStream).capitalized (), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	descriptionLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::VideoStream).capitalized (), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 
 	attributesIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (StreamItemUi::AttributesIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	attributesIcon->setPadding (0.0f, 0.0f);
-	attributesIcon->setMouseHoverTooltip (uitext->getText (UiTextString::mediaAttributesTooltip));
+	attributesIcon->setMouseHoverTooltip (uitext->getText (UiTextString::MediaAttributesTooltip));
 
 	fileSizeIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::StorageIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	fileSizeIcon->setPadding (0.0f, 0.0f);
-	fileSizeIcon->setMouseHoverTooltip (uitext->getText (UiTextString::fileSize).capitalized ());
+	fileSizeIcon->setMouseHoverTooltip (uitext->getText (UiTextString::FileSize).capitalized ());
 
 	durationIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (StreamItemUi::DurationIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	durationIcon->setPadding (0.0f, 0.0f);
-	durationIcon->setMouseHoverTooltip (uitext->getText (UiTextString::duration).capitalized ());
+	durationIcon->setMouseHoverTooltip (uitext->getText (UiTextString::Duration).capitalized ());
 
 	refreshLayout ();
 }
@@ -177,7 +177,7 @@ void StreamDetailWindow::syncRecordStore () {
 	attributesIcon->setText (text);
 
 	if (streamSize > 0) {
-		fileSizeIcon->setText (StdString::createSprintf ("%lli (%s)", (long long int) streamSize, OsUtil::getByteCountDisplayString (streamSize).c_str ()));
+		fileSizeIcon->setText (StdString::createSprintf ("%s (%lli)", OsUtil::getByteCountDisplayString (streamSize).c_str (), (long long int) streamSize));
 	}
 
 	if (streamDuration > 0.0f) {

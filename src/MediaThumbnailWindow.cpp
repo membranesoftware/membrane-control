@@ -66,8 +66,8 @@ MediaThumbnailWindow::MediaThumbnailWindow (int thumbnailIndex, float thumbnailT
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
 	thumbnailImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
+	thumbnailImage->mouseLongPressCallback = Widget::EventCallbackContext (MediaThumbnailWindow::thumbnailImageLongPressed, this);
 	thumbnailImage->setLoadSprite (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
-	thumbnailImage->setMouseLongPressCallback (MediaThumbnailWindow::thumbnailImageLongPressed, this);
 	thumbnailImage->setImageUrl (sourceUrl);
 
 	timestampLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->inverseTextColor)));
@@ -160,7 +160,7 @@ void MediaThumbnailWindow::setHighlighted (bool highlighted) {
 	refreshLayout ();
 }
 
-void MediaThumbnailWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
+bool MediaThumbnailWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 	Panel::doProcessMouseState (mouseState);
 	if (layout == CardView::LowDetail) {
 		if (mouseState.isEntered) {
@@ -170,6 +170,8 @@ void MediaThumbnailWindow::doProcessMouseState (const Widget::MouseState &mouseS
 			timestampLabel->isVisible = false;
 		}
 	}
+
+	return (false);
 }
 
 void MediaThumbnailWindow::thumbnailImageLongPressed (void *windowPtr, Widget *widgetPtr) {

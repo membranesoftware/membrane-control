@@ -40,6 +40,7 @@
 #include "Input.h"
 #include "Resource.h"
 #include "Network.h"
+#include "Json.h"
 #include "HashMap.h"
 #include "Prng.h"
 #include "UiStack.h"
@@ -50,9 +51,6 @@
 #include "Panel.h"
 #include "SystemInterface.h"
 #include "AgentControl.h"
-#ifndef ENABLE_TEST_KEYS
-#define ENABLE_TEST_KEYS 0
-#endif
 
 class App {
 public:
@@ -67,17 +65,17 @@ public:
 	// Destroy and clear the App instance pointer
 	static void freeInstance ();
 
-	static const int defaultMinFrameDelay;
-	static const int windowWidths[];
-	static const int windowHeights[];
-	static const int windowSizeCount;
-	static const float fontScales[];
-	static const int fontScaleCount;
-	static const StdString serverUrl;
-	static const int64_t defaultServerTimeout;
-	static const int maxCornerRadius;
+	static const int DefaultMinFrameDelay;
+	static const int WindowWidths[];
+	static const int WindowHeights[];
+	static const int WindowSizeCount;
+	static const float FontScales[];
+	static const int FontScaleCount;
+	static const int MaxCornerRadius;
+	static const StdString ServerUrl;
+	static const int64_t DefaultServerTimeout;
 
-	// Constants to use as key values in the prefs map
+	// Key values for the prefs map
 	static const char *NetworkThreadsKey;
 	static const char *WindowWidthKey;
 	static const char *WindowHeightKey;
@@ -86,37 +84,7 @@ public:
 	static const char *ShowInterfaceAnimationsKey;
 	static const char *ShowClockKey;
 	static const char *IsFirstLaunchCompleteKey;
-	static const char *AgentStatusKey;
-	static const char *StoredCommandsKey;
-	static const char *MonitorImageSizeKey;
-	static const char *ServerAdminSecretsKey;
 	static const char *ServerTimeoutKey;
-	static const char *ServerUiUnexpandedAgentsKey;
-	static const char *WebKioskUiSelectedAgentsKey;
-	static const char *WebKioskUiExpandedAgentsKey;
-	static const char *WebKioskUiPlaylistsKey;
-	static const char *MainUiExpandedUiTypesKey;
-	static const char *MainUiApplicationNewsItemsKey;
-	static const char *MediaUiImageSizeKey;
-	static const char *MediaUiSortOrderKey;
-	static const char *MediaUiSelectedAgentsKey;
-	static const char *MediaUiExpandedAgentsKey;
-	static const char *MediaUiPlaylistsKey;
-	static const char *MediaUiToolbarModeKey;
-	static const char *MediaItemUiVideoQualityKey;
-	static const char *MediaUiVideoQualityKey;
-	static const char *MediaUiShowMediaWithoutStreamsKey;
-	static const char *MediaItemUiImageSizeKey;
-	static const char *StreamItemUiImageSizeKey;
-	static const char *MonitorCacheUiImageSizeKey;
-	static const char *MonitorCacheUiExpandedAgentKey;
-	static const char *MonitorCacheUiStartPositionKey;
-	static const char *MonitorCacheUiPlayDurationKey;
-	static const char *CameraUiSelectedAgentsKey;
-	static const char *CameraUiExpandedAgentsKey;
-	static const char *CameraUiImageSizeKey;
-	static const char *CameraUiAutoReloadKey;
-	static const char *CameraTimelineUiImageSizeKey;
 
 	// Read-write data members
 	Log log;
@@ -129,17 +97,13 @@ public:
 	Network network;
 	SystemInterface systemInterface;
 	AgentControl agentControl;
-	HashMap prefsMap;
 	bool shouldRefreshUi;
 	bool shouldSyncRecordStore;
 	bool isInterfaceAnimationEnabled;
+	bool isMainToolbarClockEnabled;
 	float nextFontScale;
 	int nextWindowWidth;
 	int nextWindowHeight;
-#if ENABLE_TEST_KEYS
-	bool isUiPaused;
-	bool isUiPauseKeyPressed;
-#endif
 	StdString prefsPath;
 
 	// Read-only data members
@@ -162,6 +126,7 @@ public:
 	int imageScale;
 	int64_t drawCount;
 	int64_t updateCount;
+	SDL_Rect clipRect;
 	bool isPrefsWriteDisabled;
 
 	// Run the application, returning only after the application exits
@@ -173,14 +138,20 @@ public:
 	// Return an int64_t value for use as a unique ID
 	int64_t getUniqueId ();
 
+	// Lock the application prefs map and return a pointer to its HashMap object
+	HashMap *lockPrefs ();
+
+	// Unlock the application prefs map
+	void unlockPrefs ();
+
 	// Suspend the application's update thread and block until the current update cycle completes
 	void suspendUpdate ();
 
 	// Unsuspend the application's update thread after a previous call to suspendUpdate
 	void unsuspendUpdate ();
 
-	// Apply the provided clip rectangle to the application's renderer and push it onto the clip stack
-	void pushClipRect (const SDL_Rect *rect);
+	// Push the provided rectangle onto the clip stack and apply it to the application's renderer. Apply the new clip rectangle as an intersection of any existing clip rectangle unless disableIntersection is true.
+	void pushClipRect (const SDL_Rect *rect, bool disableIntersection = false);
 
 	// Pop the clip stack
 	void popClipRect ();
@@ -253,6 +224,9 @@ public:
 	// Return the URL that should be used for the Membrane Software donation page
 	static StdString getDonateUrl ();
 
+	// Find and remove items from the specified legacy StringList prefs key, adding any items found to the provided list. Returns a boolean value indicating if any items were found.
+	static bool transferJsonListPrefs (HashMap *prefs, const char *prefsKey, JsonList *items);
+
 	// Callback functions
 	static bool keyEvent (void *ptr, SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
 
@@ -284,15 +258,16 @@ private:
 	// Callback function for use with Network::addDatagramCallback
 	static void datagramReceived (void *callbackData, const char *messageData, int messageLength, const char *sourceAddress, int sourcePort);
 
-	// Write the prefs map file if any of its keys have changed since the last write
-	void writePrefsMap ();
+	// Write the prefs file if any prefsMap keys have changed since the last write
+	void writePrefs ();
 
 	SDL_Thread *updateThread;
 	SDL_mutex *uniqueIdMutex;
 	int64_t nextUniqueId;
+	HashMap prefsMap;
+	SDL_mutex *prefsMapMutex;
 	std::vector<SDL_Keycode> keyPressList;
 	std::stack<SDL_Rect> clipRectStack;
-	SDL_Rect clipRect;
 	Sprite *roundedCornerSprite;
 	SDL_mutex *renderTaskMutex;
 	std::vector<App::RenderTaskContext> renderTaskList;

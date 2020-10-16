@@ -85,15 +85,15 @@ MediaDetailWindow::MediaDetailWindow (const StdString &recordId, SpriteGroup *me
 
 	attributesIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (MediaItemUi::AttributesIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	attributesIcon->setPadding (0.0f, 0.0f);
-	attributesIcon->setMouseHoverTooltip (uitext->getText (UiTextString::mediaAttributesTooltip));
+	attributesIcon->setMouseHoverTooltip (uitext->getText (UiTextString::MediaAttributesTooltip));
 
 	fileSizeIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::StorageIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	fileSizeIcon->setPadding (0.0f, 0.0f);
-	fileSizeIcon->setMouseHoverTooltip (uitext->getText (UiTextString::fileSize).capitalized ());
+	fileSizeIcon->setMouseHoverTooltip (uitext->getText (UiTextString::FileSize).capitalized ());
 
 	durationIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (MediaItemUi::DurationIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	durationIcon->setPadding (0.0f, 0.0f);
-	durationIcon->setMouseHoverTooltip (uitext->getText (UiTextString::duration).capitalized ());
+	durationIcon->setMouseHoverTooltip (uitext->getText (UiTextString::Duration).capitalized ());
 
 	refreshLayout ();
 }
@@ -172,7 +172,7 @@ void MediaDetailWindow::syncRecordStore () {
 	attributesIcon->setText (attributes.join (", "));
 
 	if (mediaSize > 0) {
-		fileSizeIcon->setText (StdString::createSprintf ("%lli (%s)", (long long int) mediaSize, OsUtil::getByteCountDisplayString (mediaSize).c_str ()));
+		fileSizeIcon->setText (StdString::createSprintf ("%s (%lli)", OsUtil::getByteCountDisplayString (mediaSize).c_str (), (long long int) mediaSize));
 	}
 
 	if (mediaDuration > 0.0f) {

@@ -72,6 +72,7 @@ UiConfiguration::UiConfiguration ()
 , raisedButtonBackgroundColor (Color::getByteValue (0xD0), Color::getByteValue (0xD0), Color::getByteValue (0xD0))
 , dropShadowColor (0.0f, 0.0f, 0.0f, 0.78f)
 , dropShadowWidth (2.0f)
+, dividerColor (0.0f, 0.0f, 0.0f, 0.14f)
 , cornerRadius (6)
 , buttonFocusedShadeAlpha (0.12f)
 , buttonPressedShadeAlpha (0.28f)
@@ -89,6 +90,7 @@ UiConfiguration::UiConfiguration ()
 , textLineHeightMargin (1.0f)
 , textUnderlineMargin (2.0f)
 , menuDividerLineWidth (2.0f)
+, headlineDividerLineWidth (2.0f)
 , selectionBorderWidth (5.0f)
 , selectionBorderAlpha (0.72f)
 , sliderThumbSize (16.0f)
@@ -100,6 +102,10 @@ UiConfiguration::UiConfiguration ()
 , textFieldShortLineLength (16)
 , textFieldMediumLineLength (32)
 , textFieldLongLineLength (60)
+, textFieldInsertCursorWidth (4.0f)
+, textFieldOvertypeCursorScale (0.9f)
+, comboBoxLineLength (30)
+, comboBoxExpandViewItems (7)
 , timelineMarkerWidth (16.0f)
 , rightNavWidthScale (0.275f)
 , snackbarTimeout (16000)
@@ -108,7 +114,7 @@ UiConfiguration::UiConfiguration ()
 , smallThumbnailImageScale (0.123f)
 , mediumThumbnailImageScale (0.240f)
 , largeThumbnailImageScale (0.450f)
-, coreSpritesPath ("ui/CoreSprites")
+, coreSpritesPath ("sprite")
 , isLoaded (false)
 {
 	memset (fonts, 0, sizeof (fonts));
@@ -231,6 +237,7 @@ void UiConfiguration::resetScale () {
 			sliderTrackWidth = 100.0f;
 			sliderTrackHeight = 4.0f;
 			timelineMarkerWidth = 12.0f;
+			comboBoxExpandViewItems = 6;
 			fontBaseSizes[UiConfiguration::CaptionFont] = 8;
 			fontBaseSizes[UiConfiguration::BodyFont] = 10;
 			fontBaseSizes[UiConfiguration::ButtonFont] = 10;
@@ -245,6 +252,7 @@ void UiConfiguration::resetScale () {
 			sliderTrackWidth = 130.0f;
 			sliderTrackHeight = 4.0f;
 			timelineMarkerWidth = 16.0f;
+			comboBoxExpandViewItems = 6;
 			fontBaseSizes[UiConfiguration::CaptionFont] = 8;
 			fontBaseSizes[UiConfiguration::BodyFont] = 10;
 			fontBaseSizes[UiConfiguration::ButtonFont] = 10;
@@ -259,6 +267,7 @@ void UiConfiguration::resetScale () {
 			sliderTrackWidth = 180.0f;
 			sliderTrackHeight = 5.0f;
 			timelineMarkerWidth = 16.0f;
+			comboBoxExpandViewItems = 7;
 			fontBaseSizes[UiConfiguration::CaptionFont] = 10;
 			fontBaseSizes[UiConfiguration::BodyFont] = 12;
 			fontBaseSizes[UiConfiguration::ButtonFont] = 12;
@@ -273,6 +282,7 @@ void UiConfiguration::resetScale () {
 			sliderTrackWidth = 240.0f;
 			sliderTrackHeight = 5.0f;
 			timelineMarkerWidth = 20.0f;
+			comboBoxExpandViewItems = 8;
 			fontBaseSizes[UiConfiguration::CaptionFont] = 10;
 			fontBaseSizes[UiConfiguration::BodyFont] = 12;
 			fontBaseSizes[UiConfiguration::ButtonFont] = 12;
@@ -287,6 +297,7 @@ void UiConfiguration::resetScale () {
 			sliderTrackWidth = 300.0f;
 			sliderTrackHeight = 6.0f;
 			timelineMarkerWidth = 20.0f;
+			comboBoxExpandViewItems = 8;
 			fontBaseSizes[UiConfiguration::CaptionFont] = 10;
 			fontBaseSizes[UiConfiguration::BodyFont] = 12;
 			fontBaseSizes[UiConfiguration::ButtonFont] = 12;
@@ -301,6 +312,7 @@ void UiConfiguration::resetScale () {
 			sliderTrackWidth = 200.0f;
 			sliderTrackHeight = 6.0f;
 			timelineMarkerWidth = 16.0f;
+			comboBoxExpandViewItems = 7;
 			fontBaseSizes[UiConfiguration::CaptionFont] = 10;
 			fontBaseSizes[UiConfiguration::BodyFont] = 12;
 			fontBaseSizes[UiConfiguration::ButtonFont] = 12;

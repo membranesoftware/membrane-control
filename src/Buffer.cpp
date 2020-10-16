@@ -34,13 +34,13 @@
 #include "Log.h"
 #include "Buffer.h"
 
-const int Buffer::defaultSizeIncrement = 1024; // bytes
+const int Buffer::DefaultSizeIncrement = 1024; // bytes
 
 Buffer::Buffer ()
 : data (NULL)
 , length (0)
 , size (0)
-, sizeIncrement (Buffer::defaultSizeIncrement)
+, sizeIncrement (Buffer::DefaultSizeIncrement)
 {
 
 }

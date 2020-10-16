@@ -47,11 +47,11 @@
 #include "ScrollView.h"
 #include "CardView.h"
 
-const float CardView::smallItemScale = 0.83f;
-const int CardView::animateScaleDuration = 80; // ms
+const float CardView::SmallItemScale = 0.83f;
+const int CardView::AnimateScaleDuration = 80; // ms
 
 CardView::CardView (float viewWidth, float viewHeight)
-: ScrollView (viewWidth, viewHeight)
+: ScrollView ()
 , cardAreaWidth (viewWidth)
 , itemMarginSize (0.0f)
 , itemMutex (NULL)
@@ -64,10 +64,11 @@ CardView::CardView (float viewWidth, float viewHeight)
 	itemMarginSize = uiconfig->marginSize;
 	itemMutex = SDL_CreateMutex ();
 	scrollBar = (ScrollBar *) addWidget (new ScrollBar (viewHeight - (uiconfig->paddingSize * 2.0f)));
-	scrollBar->setPositionChangeCallback (CardView::scrollBarPositionChanged, this);
+	scrollBar->positionChangeCallback = Widget::EventCallbackContext (CardView::scrollBarPositionChanged, this);
 	scrollBar->zLevel = 2;
 	scrollBar->isVisible = false;
 
+	setViewSize (viewWidth, viewHeight);
 	cardAreaWidth = width - scrollBar->width - (uiconfig->paddingSize * 2.0f) - (uiconfig->marginSize * 0.25f);
 }
 
@@ -100,8 +101,8 @@ CardView::~CardView () {
 void CardView::setViewSize (float viewWidth, float viewHeight) {
 	UiConfiguration *uiconfig;
 
+	ScrollView::setViewSize (viewWidth, viewHeight);
 	uiconfig = &(App::instance->uiConfig);
-	setFixedSize (true, viewWidth, viewHeight);
 	scrollBar->setMaxTrackLength (viewHeight - (uiconfig->paddingSize * 2.0f));
 	cardAreaWidth = width - scrollBar->width - (uiconfig->paddingSize * 2.0f) - (uiconfig->marginSize * 0.25f);
 	refreshLayout ();
@@ -211,7 +212,7 @@ void CardView::setRowDetail (int row, int detailType) {
 		}
 	}
 	if (pos->second.isSelectionAnimated) {
-		scale /= CardView::smallItemScale;
+		scale /= CardView::SmallItemScale;
 	}
 	pos->second.maxItemWidth = cardAreaWidth * scale;
 	if (pos->second.maxItemWidth < 1.0f) {
@@ -254,7 +255,7 @@ void CardView::doUpdate (int msElapsed) {
 			while (j != jend) {
 				if (j->row == i->first) {
 					if (! j->panel->isVisible) {
-						j->panel->animateScale (0.99f, CardView::smallItemScale, CardView::animateScaleDuration);
+						j->panel->animateScale (0.99f, CardView::SmallItemScale, CardView::AnimateScaleDuration);
 						j->panel->isVisible = true;
 						refresh = true;
 					}
@@ -271,15 +272,15 @@ void CardView::doUpdate (int msElapsed) {
 	}
 }
 
-void CardView::doProcessMouseState (const Widget::MouseState &mouseState) {
+bool CardView::doProcessMouseState (const Widget::MouseState &mouseState) {
 	std::map<int, CardView::Row>::iterator i, iend;
 	std::list<CardView::Item>::iterator j, jend, item;
 	int mousex, mousey;
 	float x1, y1, x2, y2, dx, dy;
-	bool highlight;
+	bool consumed, highlight;
 
 	y1 = viewOriginY;
-	ScrollView::doProcessMouseState (mouseState);
+	consumed = ScrollView::doProcessMouseState (mouseState);
 	if (! FLOAT_EQUALS (y1, viewOriginY)) {
 		scrollBar->setPosition (viewOriginY, true);
 		scrollBar->position.assignY (viewOriginY + App::instance->uiConfig.paddingSize);
@@ -311,7 +312,7 @@ void CardView::doProcessMouseState (const Widget::MouseState &mouseState) {
 			if (! highlight) {
 				item->isHighlighted = false;
 				item->panel->zLevel = -1;
-				item->panel->animateScale (1.0f, CardView::smallItemScale, CardView::animateScaleDuration * 2);
+				item->panel->animateScale (1.0f, CardView::SmallItemScale, CardView::AnimateScaleDuration * 2);
 				highlightedItemId.assign ("");
 			}
 		}
@@ -334,8 +335,8 @@ void CardView::doProcessMouseState (const Widget::MouseState &mouseState) {
 							y1 = j->panel->screenY;
 							x2 = x1 + j->panel->width;
 							y2 = y1 + j->panel->height;
-							dx = (1.0f - CardView::smallItemScale) * j->panel->width;
-							dy = (1.0f - CardView::smallItemScale) * j->panel->height;
+							dx = (1.0f - CardView::SmallItemScale) * j->panel->width;
+							dy = (1.0f - CardView::SmallItemScale) * j->panel->height;
 							x1 += (dx / 2.0f);
 							y1 += (dy / 2.0f);
 							x2 -= (dx / 2.0f);
@@ -348,14 +349,14 @@ void CardView::doProcessMouseState (const Widget::MouseState &mouseState) {
 						if (highlight) {
 							j->isHighlighted = true;
 							j->panel->zLevel = 1;
-							j->panel->animateScale (CardView::smallItemScale, 1.0f, CardView::animateScaleDuration);
+							j->panel->animateScale (CardView::SmallItemScale, 1.0f, CardView::AnimateScaleDuration);
 							highlightedItemId.assign (j->id);
 						}
 						else {
 							if (j->isHighlighted) {
 								j->isHighlighted = false;
 								j->panel->zLevel = -1;
-								j->panel->animateScale (1.0f, CardView::smallItemScale, CardView::animateScaleDuration * 2);
+								j->panel->animateScale (1.0f, CardView::SmallItemScale, CardView::AnimateScaleDuration * 2);
 							}
 						}
 					}
@@ -366,6 +367,8 @@ void CardView::doProcessMouseState (const Widget::MouseState &mouseState) {
 			++i;
 		}
 	}
+
+	return (consumed);
 }
 
 bool CardView::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown) {
@@ -679,8 +682,8 @@ void CardView::refreshLayout () {
 		if (row >= 0) {
 			rowpos = getRow (row);
 			if (rowpos->second.isSelectionAnimated) {
-				itemw *= CardView::smallItemScale;
-				itemh *= CardView::smallItemScale;
+				itemw *= CardView::SmallItemScale;
+				itemh *= CardView::SmallItemScale;
 				dx = (itempanel->width - itemw) / -4.0f;
 				dy = (itempanel->height - itemh) / -4.0f;
 			}

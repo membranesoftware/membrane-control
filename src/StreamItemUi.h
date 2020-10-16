@@ -38,26 +38,31 @@
 #include "WidgetHandle.h"
 #include "Toolbar.h"
 #include "HelpWindow.h"
-#include "CardView.h"
 #include "Ui.h"
 
 class StreamItemUi : public Ui {
 public:
-	// Constants to use for sprite indexes
+	// Sprite indexes
 	enum {
 		TimeIconSprite = 0,
 		AttributesIconSprite = 1,
 		DurationIconSprite = 2
 	};
 
-	// Constants to use for card view row numbers
+	// Card view row numbers
 	enum {
 		InfoRow = 0,
 		ImageRow = 1
 	};
 
-	StreamItemUi (const StdString &streamId, const StdString &streamName, const StdString &captionText = StdString (""));
+	// Prefs keys
+	static const char *ImageSizeKey;
+
+	StreamItemUi (const StdString &streamId, const StdString &streamName);
 	~StreamItemUi ();
+
+	// Read-write data members
+	Widget::EventCallbackContext thumbnailClickCallback;
 
 	// Read-only data members
 	StdString streamId;
@@ -72,21 +77,6 @@ public:
 
 	// Set fields in the provided HelpWindow widget as appropriate for the UI's help content
 	void setHelpWindowContent (HelpWindow *helpWindow);
-
-	// Set a callback that should be invoked when a ThumbnailWindow item is clicked on the UI
-	void setThumbnailClickCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Callback functions
-	static void imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void smallImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void mediumImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void thumbnailClicked (void *uiPtr, Widget *widgetPtr);
-	static void thumbnailMouseEntered (void *uiPtr, Widget *widgetPtr);
-	static void thumbnailMouseExited (void *uiPtr, Widget *widgetPtr);
-	static void timelineWindowPositionHovered (void *uiPtr, Widget *widgetPtr);
-	static void timelineWindowPositionClicked (void *uiPtr, Widget *widgetPtr);
-	static bool matchThumbnailIndex (void *intPtr, Widget *widgetPtr);
 
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
@@ -107,12 +97,6 @@ protected:
 	// Add subclass-specific items to the provided secondary toolbar object
 	void doAddSecondaryToolbarItems (Toolbar *toolbar);
 
-	// Remove and destroy any subclass-specific popup widgets that have been created by the UI
-	void doClearPopupWidgets ();
-
-	// Execute subclass-specific operations to refresh the interface's layout as appropriate for the current set of UiConfiguration values
-	void doRefresh ();
-
 	// Update subclass-specific interface state as appropriate when the Ui becomes active
 	void doResume ();
 
@@ -122,24 +106,32 @@ protected:
 	// Update subclass-specific interface state as appropriate for an elapsed millisecond time period
 	void doUpdate (int msElapsed);
 
-	// Reload subclass-specific interface resources as needed to account for a new application window size
-	void doResize ();
-
 	// Execute subclass-specific operations to sync state with records present in the application's RecordStore object, which has been locked prior to invocation
 	void doSyncRecordStore ();
 
 private:
+	// Callback functions
+	static void imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void smallImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void mediumImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void thumbnailClicked (void *uiPtr, Widget *widgetPtr);
+	static void thumbnailMouseEntered (void *uiPtr, Widget *widgetPtr);
+	static void thumbnailMouseExited (void *uiPtr, Widget *widgetPtr);
+	static void timelineWindowPositionHovered (void *uiPtr, Widget *widgetPtr);
+	static void timelineWindowPositionClicked (void *uiPtr, Widget *widgetPtr);
+	static void selectToggleStateChanged (void *uiPtr, Widget *widgetPtr);
+	static bool matchThumbnailIndex (void *intPtr, Widget *widgetPtr);
+
 	// Find the source StreamItem record and populate the interface based on its fields
 	void syncStreamItem ();
 
-	StdString captionText;
 	WidgetHandle timelineWindow;
+	WidgetHandle commandCaption;
 	bool isRecordSynced;
-	CardView *cardView;
 	int cardDetail;
 	int lastTimelineHoverPosition;
-	Widget::EventCallback thumbnailClickCallback;
-	void *thumbnailClickCallbackData;
+	bool isSelectingPlayPosition;
 };
 
 #endif

@@ -47,14 +47,15 @@
 #include "RecordStore.h"
 #include "AgentControl.h"
 
+const char *AgentControl::AgentStatusKey = "AgentStatus";
+const char *AgentControl::ServerAdminSecretsKey = "ServerAdminSecrets";
 const char *AgentControl::NameKey = "a";
 const char *AgentControl::SecretKey = "b";
 
-const int AgentControl::commandListIdleTimeout = 60000; // ms
+const int AgentControl::CommandListIdleTimeout = 60000; // ms
 
 AgentControl::AgentControl ()
 : agentDatagramPort (63738)
-, agentId ("")
 , urlHostname ("")
 , isStarted (false)
 , linkClient (this, AgentControl::linkClientConnect, AgentControl::linkClientDisconnect, AgentControl::linkClientCommand)
@@ -62,8 +63,6 @@ AgentControl::AgentControl ()
 , commandMapMutex (NULL)
 , adminSecretMutex (NULL)
 {
-	// TODO: Possibly set an agentId value (currently empty)
-
 	agentMapMutex = SDL_CreateMutex ();
 	commandMapMutex = SDL_CreateMutex ();
 	adminSecretMutex = SDL_CreateMutex ();
@@ -112,7 +111,6 @@ int AgentControl::start () {
 	}
 
 	readPrefs ();
-	commandStore.readPrefs ();
 	linkClient.start ();
 
 	isStarted = true;
@@ -160,7 +158,7 @@ void AgentControl::update (int msElapsed) {
 	mi = commandMap.begin ();
 	mend = commandMap.end ();
 	while (mi != mend) {
-		if (mi->second->isIdle (AgentControl::commandListIdleTimeout) && mi->second->empty ()) {
+		if (mi->second->isIdle (AgentControl::CommandListIdleTimeout) && mi->second->empty ()) {
 			keys.push_back (mi->first);
 		}
 		++mi;
@@ -309,6 +307,23 @@ bool AgentControl::isAgentUnauthorized (const StdString &agentId) {
 	}
 
 	return (isHostUnauthorized (hostname, port));
+}
+
+bool AgentControl::isAgentAuthorized (const StdString &agentId) {
+	std::map<StdString, Agent>::iterator pos;
+	bool result;
+
+	result = false;
+	SDL_LockMutex (agentMapMutex);
+	pos = findAgent (agentId);
+	if (pos != agentMap.end ()) {
+		if ((pos->second.lastStatusTime > 0) && (! pos->second.authorizeSecret.empty ())) {
+			result = true;
+		}
+	}
+	SDL_UnlockMutex (agentMapMutex);
+
+	return (result);
 }
 
 void AgentControl::disconnectLinkClient (const StdString &agentId) {
@@ -787,7 +802,6 @@ int AgentControl::invokeCommand (StringList *agentIdList, Json *command, Command
 		return (0);
 	}
 
-	commandStore.readRecentCommand (agentIdList, command);
 	count = 0;
 	i = agentIdList->begin ();
 	end = agentIdList->end ();
@@ -949,16 +963,18 @@ void AgentControl::storeAgentStatus (Json *agentStatusCommand, const StdString &
 }
 
 void AgentControl::addAdminSecret (const StdString &entryName, const StdString &entrySecret) {
-	StringList items;
+	HashMap *prefs;
+	JsonList items;
 	Json *json;
 
-	App::instance->prefsMap.find (App::ServerAdminSecretsKey, &items);
+	prefs = App::instance->lockPrefs ();
+	prefs->find (AgentControl::ServerAdminSecretsKey, &items);
 	json = new Json ();
 	json->set (AgentControl::NameKey, entryName);
 	json->set (AgentControl::SecretKey, entrySecret);
-	items.push_back (json->toString ());
-	delete (json);
-	App::instance->prefsMap.insert (App::ServerAdminSecretsKey, &items);
+	items.push_back (json);
+	prefs->insert (AgentControl::ServerAdminSecretsKey, &items);
+	App::instance->unlockPrefs ();
 
 	SDL_LockMutex (adminSecretMutex);
 	adminSecretList.push_back (getStringHash (entrySecret));
@@ -966,71 +982,77 @@ void AgentControl::addAdminSecret (const StdString &entryName, const StdString &
 }
 
 void AgentControl::removeAdminSecret (const StdString &entryName) {
-	StringList items, writeitems;
-	StringList::iterator i, end;
+	HashMap *prefs;
+	JsonList items;
+	JsonList::iterator i, end;
 	StdString val;
 	Json *json;
-	bool shouldwrite;
+	bool shouldwrite, found;
 
-	App::instance->prefsMap.find (App::ServerAdminSecretsKey, &items);
 	shouldwrite = false;
+	prefs = App::instance->lockPrefs ();
+	prefs->find (AgentControl::ServerAdminSecretsKey, &items);
+	App::instance->unlockPrefs ();
+	while (true) {
+		found = false;
+		i = items.begin ();
+		end = items.end ();
+		while (i != end) {
+			json = *i;
+			if (entryName.equals (json->getString (AgentControl::NameKey, ""))) {
+				found = true;
+				shouldwrite = true;
+				delete (json);
+				items.erase (i);
+				break;
+			}
+			++i;
+		}
+
+		if (! found) {
+			break;
+		}
+	}
+	if (! shouldwrite) {
+		return;
+	}
+
+	SDL_LockMutex (adminSecretMutex);
+	adminSecretList.clear ();
 	i = items.begin ();
 	end = items.end ();
 	while (i != end) {
-		json = new Json ();
-		if (! json->parse (*i)) {
-			shouldwrite = true;
+		json = *i;
+		val = json->getString (AgentControl::SecretKey, "");
+		if (! val.empty ()) {
+			adminSecretList.push_back (getStringHash (val));
 		}
-		else {
-			if (entryName.equals (json->getString (AgentControl::NameKey, ""))) {
-				shouldwrite = true;
-			}
-			else {
-				writeitems.push_back (*i);
-			}
-		}
-		delete (json);
 		++i;
 	}
+	SDL_UnlockMutex (adminSecretMutex);
 
-	if (shouldwrite) {
-		App::instance->prefsMap.insert (App::ServerAdminSecretsKey, &writeitems);
-		SDL_LockMutex (adminSecretMutex);
-		adminSecretList.clear ();
-		i = writeitems.begin ();
-		end = writeitems.end ();
-		while (i != end) {
-			json = new Json ();
-			if (json->parse (*i)) {
-				val = json->getString (AgentControl::SecretKey, "");
-				if (! val.empty ()) {
-					adminSecretList.push_back (getStringHash (val));
-				}
-			}
-			delete (json);
-			++i;
-		}
-		SDL_UnlockMutex (adminSecretMutex);
-	}
+	prefs = App::instance->lockPrefs ();
+	prefs->insert (AgentControl::ServerAdminSecretsKey, &items);
+	App::instance->unlockPrefs ();
 }
 
 StdString AgentControl::getAdminSecret (const StdString &entryName) {
-	StringList items;
-	StringList::iterator i, end;
+	HashMap *prefs;
+	JsonList items;
+	JsonList::iterator i, end;
 	StdString result;
 	Json *json;
 
-	App::instance->prefsMap.find (App::ServerAdminSecretsKey, &items);
+	prefs = App::instance->lockPrefs ();
+	prefs->find (AgentControl::ServerAdminSecretsKey, &items);
+	App::instance->unlockPrefs ();
 	i = items.begin ();
 	end = items.end ();
 	while (i != end) {
-		json = new Json ();
-		if (json->parse (*i)) {
-			if (entryName.equals (json->getString (AgentControl::NameKey, ""))) {
-				result.assign (json->getString (AgentControl::SecretKey, ""));
-			}
+		json = *i;
+		if (entryName.equals (json->getString (AgentControl::NameKey, ""))) {
+			result.assign (json->getString (AgentControl::SecretKey, ""));
 		}
-		delete (json);
 
 		if (! result.empty ()) {
 			break;
@@ -1042,35 +1064,131 @@ StdString AgentControl::getAdminSecret (const StdString &entryName) {
 }
 
 void AgentControl::getAdminSecretNames (StringList *destList) {
-	StringList items;
-	StringList::iterator i, end;
+	HashMap *prefs;
+	JsonList items;
+	JsonList::iterator i, end;
 	StdString name;
-	Json *json;
 
-	App::instance->prefsMap.find (App::ServerAdminSecretsKey, &items);
+	prefs = App::instance->lockPrefs ();
+	prefs->find (AgentControl::ServerAdminSecretsKey, &items);
+	App::instance->unlockPrefs ();
 	destList->clear ();
 	i = items.begin ();
 	end = items.end ();
 	while (i != end) {
-		json = new Json ();
-		if (json->parse (*i)) {
-			name = json->getString (AgentControl::NameKey, "");
-			if (! name.empty ()) {
-				destList->push_back (name);
-			}
+		name = (*i)->getString (AgentControl::NameKey, "");
+		if (! name.empty ()) {
+			destList->push_back (name);
 		}
-		delete (json);
 		++i;
 	}
 }
 
-bool AgentControl::setCommandAuthorization (Json *command, int secretIndex, const StdString &authToken, StdString *authPath) {
+bool AgentControl::getAgentAuthorization (const StdString &agentId, StdString *authorizePath, StdString *authorizeSecret, StdString *authorizeToken) {
+	std::map<StdString, Agent>::iterator pos;
+	bool result;
+
+	result = false;
+	SDL_LockMutex (agentMapMutex);
+	pos = findAgent (agentId);
+	if (pos != agentMap.end ()) {
+		result = true;
+		if (authorizePath) {
+			if (pos->second.authorizePath.empty ()) {
+				authorizePath->assign (SystemInterface::Constant_DefaultAuthorizePath);
+			}
+			else {
+				authorizePath->assign (pos->second.authorizePath);
+			}
+		}
+		if (authorizeSecret) {
+			authorizeSecret->assign (pos->second.authorizeSecret);
+		}
+		if (authorizeToken) {
+			authorizeToken->assign (pos->second.authorizeToken);
+		}
+	}
+	SDL_UnlockMutex (agentMapMutex);
+
+	if (! result) {
+		if (authorizePath) {
+			authorizePath->assign (SystemInterface::Constant_DefaultAuthorizePath);
+		}
+		if (authorizeSecret) {
+			authorizeSecret->assign ("");
+		}
+		if (authorizeToken) {
+			authorizeToken->assign ("");
+		}
+	}
+	return (result);
+}
+
+void AgentControl::setAgentAuthorization (const StdString &agentId, const StdString &entryName, const StdString &authorizeToken) {
+	std::map<StdString, Agent>::iterator pos;
+	StdString adminsecret;
+
+	if (! entryName.empty ()) {
+		adminsecret = getAdminSecret (entryName);
+	}
+	SDL_LockMutex (agentMapMutex);
+	pos = findAgent (agentId);
+	if (pos != agentMap.end ()) {
+		if (adminsecret.empty ()) {
+			pos->second.authorizePath.assign ("");
+			pos->second.authorizeSecret.assign ("");
+			pos->second.authorizeToken.assign ("");
+		}
+		else {
+			getAuthorizationValues (adminsecret, &(pos->second.authorizePath), &(pos->second.authorizeSecret));
+			pos->second.authorizeToken.assign (authorizeToken);
+		}
+	}
+	SDL_UnlockMutex (agentMapMutex);
+}
+
+void AgentControl::setHostAuthorization (const StdString &hostname, int tcpPort, int secretIndex, const StdString &authorizeToken) {
+	std::map<StdString, Agent>::iterator pos;
+	StdString adminsecret;
+
+	if (secretIndex >= 0) {
+		SDL_LockMutex (adminSecretMutex);
+		if (secretIndex < (int) adminSecretList.size ()) {
+			adminsecret = adminSecretList.at (secretIndex);
+		}
+		SDL_UnlockMutex (adminSecretMutex);
+	}
+
+	SDL_LockMutex (agentMapMutex);
+	pos = findAgent (hostname, tcpPort);
+	if (pos != agentMap.end ()) {
+		if (adminsecret.empty ()) {
+			pos->second.authorizePath.assign ("");
+			pos->second.authorizeSecret.assign ("");
+			pos->second.authorizeToken.assign ("");
+		}
+		else {
+			getAuthorizationValues (adminsecret, &(pos->second.authorizePath), &(pos->second.authorizeSecret));
+			pos->second.authorizeToken.assign (authorizeToken);
+		}
+	}
+	SDL_UnlockMutex (agentMapMutex);
+}
+
+bool AgentControl::setCommandAuthorization (Json *command, int secretIndex, const StdString &authorizeToken, StdString *authorizePath) {
 	EVP_MD_CTX *ctx;
-	StdString secret;
-	int len;
+	StdString adminsecret, authsecret;
 	bool result;
 
 	if (secretIndex < 0) {
+		return (false);
+	}
+	SDL_LockMutex (adminSecretMutex);
+	if (secretIndex < (int) adminSecretList.size ()) {
+		adminsecret = adminSecretList.at (secretIndex);
+	}
+	SDL_UnlockMutex (adminSecretMutex);
+	if (adminsecret.empty ()) {
 		return (false);
 	}
 
@@ -1085,26 +1203,8 @@ bool AgentControl::setCommandAuthorization (Json *command, int secretIndex, cons
 		return (false);
 	}
 
-	result = false;
-	SDL_LockMutex (adminSecretMutex);
-	if (secretIndex < (int) adminSecretList.size ()) {
-		secret = adminSecretList.at (secretIndex);
-		len = ((int) secret.length ()) / 2;
-		if (len <= 0) {
-			if (authPath) {
-				authPath->assign (SystemInterface::Constant_DefaultAuthorizePath);
-			}
-		}
-		else {
-			if (authPath) {
-				authPath->assign (secret.substr (len));
-			}
-			secret.erase (len);
-		}
-
-		result = App::instance->systemInterface.setCommandAuthorization (command, secret, authToken, AgentControl::hashUpdate, AgentControl::hashDigest, ctx);
-	}
-	SDL_UnlockMutex (adminSecretMutex);
+	getAuthorizationValues (adminsecret, authorizePath, &authsecret);
+	result = App::instance->systemInterface.setCommandAuthorization (command, authsecret, authorizeToken, AgentControl::hashUpdate, AgentControl::hashDigest, ctx);
 	EVP_MD_CTX_destroy (ctx);
 
 	return (result);
@@ -1127,38 +1227,46 @@ StdString AgentControl::hashDigest (void *contextPtr) {
 }
 
 void AgentControl::writePrefs () {
+	HashMap *prefs;
 	std::map<StdString, Agent>::iterator i, end;
-	StringList items;
+	JsonList items;
 
 	SDL_LockMutex (agentMapMutex);
 	i = agentMap.begin ();
 	end = agentMap.end ();
 	while (i != end) {
 		if (! i->second.id.empty ()) {
-			items.push_back (i->second.toPrefsJsonString ());
+			items.push_back (i->second.createState ());
 		}
 		++i;
 	}
 	SDL_UnlockMutex (agentMapMutex);
 
-	App::instance->prefsMap.insert (App::AgentStatusKey, &items);
+	prefs = App::instance->lockPrefs ();
+	prefs->insert (AgentControl::AgentStatusKey, &items);
+	App::instance->unlockPrefs ();
 }
 
 void AgentControl::readPrefs () {
-	StringList items;
-	StringList::iterator i, end;
-	StdString val;
+	HashMap *prefs;
+	JsonList items;
+	JsonList::iterator i, end;
 	std::map<StdString, Agent>::iterator pos;
 	Agent agent;
-	Json *json;
+	StdString val;
 	int result;
 
-	App::instance->prefsMap.find (App::AgentStatusKey, &items);
+	prefs = App::instance->lockPrefs ();
+	prefs->find (AgentControl::AgentStatusKey, &items);
+	// TODO: Remove this operation (when transition from the legacy key is no longer needed)
+	App::transferJsonListPrefs (prefs, "AgentStatus", &items);
+	App::instance->unlockPrefs ();
+
 	SDL_LockMutex (agentMapMutex);
 	i = items.begin ();
 	end = items.end ();
 	while (i != end) {
-		result = agent.readPrefsJson (*i);
+		result = agent.readState (*i);
 		if (result == Result::Success) {
 			pos = agentMap.find (agent.id);
 			if (pos == agentMap.end ()) {
@@ -1172,20 +1280,23 @@ void AgentControl::readPrefs () {
 	}
 	SDL_UnlockMutex (agentMapMutex);
 
-	App::instance->prefsMap.find (App::ServerAdminSecretsKey, &items);
+	prefs = App::instance->lockPrefs ();
+	prefs->find (AgentControl::ServerAdminSecretsKey, &items);
+	// TODO: Remove this operation (when transition from the legacy key is no longer needed)
+	if (App::transferJsonListPrefs (prefs, "ServerAdminSecrets", &items)) {
+		prefs->insert (AgentControl::ServerAdminSecretsKey, &items);
+	}
+	App::instance->unlockPrefs ();
+
 	SDL_LockMutex (adminSecretMutex);
 	adminSecretList.clear ();
 	i = items.begin ();
 	end = items.end ();
 	while (i != end) {
-		json = new Json ();
-		if (json->parse (*i)) {
-			val = json->getString (AgentControl::SecretKey, "");
-			if (! val.empty ()) {
-				adminSecretList.push_back (getStringHash (val));
-			}
+		val = (*i)->getString (AgentControl::SecretKey, "");
+		if (! val.empty ()) {
+			adminSecretList.push_back (getStringHash (val));
 		}
-		delete (json);
 		++i;
 	}
 	SDL_UnlockMutex (adminSecretMutex);
@@ -1241,4 +1352,26 @@ std::map<StdString, Agent>::iterator AgentControl::findAgent (const StdString &i
 	}
 
 	return (end);
+}
+
+void AgentControl::getAuthorizationValues (const StdString &adminSecret, StdString *authorizePath, StdString *authorizeSecret) {
+	StdString path, secret;
+	int len;
+
+	secret.assign (adminSecret);
+	len = ((int) secret.length ()) / 2;
+	if (len <= 0) {
+		path.assign (SystemInterface::Constant_DefaultAuthorizePath);
+	}
+	else {
+		path.assign (secret.substr (len));
+		secret.erase (len);
+	}
+
+	if (authorizePath) {
+		authorizePath->assign (path);
+	}
+	if (authorizeSecret) {
+		authorizeSecret->assign (secret);
+	}
 }

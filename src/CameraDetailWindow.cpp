@@ -49,6 +49,8 @@
 #include "CameraTimelineUi.h"
 #include "CameraDetailWindow.h"
 
+const float CameraDetailWindow::NameTruncateScale = 0.24f;
+
 CameraDetailWindow::CameraDetailWindow (const StdString &agentId, SpriteGroup *cameraTimelineUiSpriteGroup)
 : Panel ()
 , agentId (agentId)
@@ -73,12 +75,12 @@ CameraDetailWindow::CameraDetailWindow (const StdString &agentId, SpriteGroup *c
 
 	captureTimespanIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (CameraTimelineUi::TimeIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	captureTimespanIcon->setPadding (0.0f, 0.0f);
-	captureTimespanIcon->setMouseHoverTooltip (uitext->getText (UiTextString::captureTimespanTooltip));
+	captureTimespanIcon->setMouseHoverTooltip (uitext->getText (UiTextString::CaptureTimespanTooltip));
 	captureTimespanIcon->isVisible = false;
 
 	selectedTimespanIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (CameraTimelineUi::SelectedTimespanIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	selectedTimespanIcon->setPadding (0.0f, 0.0f);
-	selectedTimespanIcon->setMouseHoverTooltip (uitext->getText (UiTextString::selectedCaptureTimespanTooltip));
+	selectedTimespanIcon->setMouseHoverTooltip (uitext->getText (UiTextString::SelectedCaptureTimespanTooltip));
 	selectedTimespanIcon->isVisible = false;
 
 	refreshLayout ();
@@ -116,7 +118,7 @@ void CameraDetailWindow::syncRecordStore () {
 		return;
 	}
 
-	nameLabel->setText (interface->getCommandAgentName (record));
+	nameLabel->setText (Label::getTruncatedText (interface->getCommandAgentName (record), UiConfiguration::TitleFont, (float) App::instance->windowWidth * CameraDetailWindow::NameTruncateScale, Label::DotTruncateSuffix));
 	t1 = serverstatus.getNumber ("minCaptureTime", (int64_t) 0);
 	t2 = serverstatus.getNumber ("lastCaptureTime", (int64_t) 0);
 	if ((t1 <= 0) || (t2 <= 0)) {
@@ -162,7 +164,7 @@ void CameraDetailWindow::setSelectedTimespan (int64_t selectedTime, bool isDesce
 		selectedTimespanIcon->setText (StdString (""));
 	}
 	else {
-		selectedTimespanIcon->setText (StdString::createSprintf ("%s: %s", uitext->getText (isDescending ? UiTextString::before : UiTextString::after).capitalized ().c_str (), OsUtil::getTimestampDisplayString (selectedTime).c_str ()));
+		selectedTimespanIcon->setText (StdString::createSprintf ("%s: %s", uitext->getText (isDescending ? UiTextString::Before : UiTextString::After).capitalized ().c_str (), OsUtil::getTimestampDisplayString (selectedTime).c_str ()));
 	}
 	refreshLayout ();
 }

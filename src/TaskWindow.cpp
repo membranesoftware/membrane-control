@@ -54,8 +54,6 @@ TaskWindow::TaskWindow (const StdString &taskId)
 , descriptionLabel (NULL)
 , progressBar (NULL)
 , deleteButton (NULL)
-, deleteCallback (NULL)
-, deleteCallbackData (NULL)
 {
 	UiConfiguration *uiconfig;
 
@@ -69,7 +67,7 @@ TaskWindow::TaskWindow (const StdString &taskId)
 	progressBar = (ProgressBar *) addWidget (new ProgressBar (((float) App::instance->windowWidth) * 0.16f, uiconfig->progressBarHeight));
 
 	deleteButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
-	deleteButton->setMouseClickCallback (TaskWindow::deleteButtonClicked, this);
+	deleteButton->mouseClickCallback = Widget::EventCallbackContext (TaskWindow::deleteButtonClicked, this);
 	deleteButton->setImageColor (uiconfig->flatButtonTextColor);
 	deleteButton->isVisible = false;
 
@@ -82,11 +80,6 @@ TaskWindow::~TaskWindow () {
 
 StdString TaskWindow::toStringDetail () {
 	return (StdString (" TaskWindow"));
-}
-
-void TaskWindow::setDeleteCallback (Widget::EventCallback callback, void *callbackData) {
-	deleteCallback = callback;
-	deleteCallbackData = callbackData;
 }
 
 void TaskWindow::syncRecordStore () {
@@ -159,7 +152,7 @@ void TaskWindow::deleteButtonClicked (void *windowPtr, Widget *widgetPtr) {
 
 	window = (TaskWindow *) windowPtr;
 	window->isDeleted = true;
-	if (window->deleteCallback) {
-		window->deleteCallback (window->deleteCallbackData, window);
+	if (window->deleteCallback.callback) {
+		window->deleteCallback.callback (window->deleteCallback.callbackData, window);
 	}
 }

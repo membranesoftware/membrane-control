@@ -44,7 +44,7 @@ public:
 	Button (Sprite *sprite = NULL, const StdString &labelText = StdString (""));
 	virtual ~Button ();
 
-	static const float focusTextOffset;
+	static const float FocusTextOffset;
 
 	// Read-write data members
 	SDL_Keycode shortcutKey;

@@ -30,6 +30,7 @@
 #include "Config.h"
 #include <stdlib.h>
 #include <map>
+#include "SDL2/SDL.h"
 #include "Result.h"
 #include "Log.h"
 #include "StdString.h"

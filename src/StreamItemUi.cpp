@@ -29,6 +29,7 @@
 */
 #include "Config.h"
 #include <stdlib.h>
+#include "SDL2/SDL.h"
 #include "Result.h"
 #include "Log.h"
 #include "StdString.h"
@@ -44,14 +45,19 @@
 #include "Toolbar.h"
 #include "Menu.h"
 #include "Chip.h"
+#include "Toggle.h"
+#include "Label.h"
 #include "CardView.h"
+#include "LabelWindow.h"
 #include "HelpWindow.h"
 #include "MediaTimelineWindow.h"
 #include "StreamDetailWindow.h"
 #include "MediaThumbnailWindow.h"
 #include "StreamItemUi.h"
 
-StreamItemUi::StreamItemUi (const StdString &streamId, const StdString &streamName, const StdString &captionText)
+const char *StreamItemUi::ImageSizeKey = "StreamItem_ImageSize";
+
+StreamItemUi::StreamItemUi (const StdString &streamId, const StdString &streamName)
 : Ui ()
 , streamId (streamId)
 , streamName (streamName)
@@ -59,13 +65,10 @@ StreamItemUi::StreamItemUi (const StdString &streamId, const StdString &streamNa
 , frameWidth (0)
 , frameHeight (0)
 , segmentCount (0)
-, captionText (captionText)
 , isRecordSynced (false)
-, cardView (NULL)
 , cardDetail (-1)
 , lastTimelineHoverPosition (-1)
-, thumbnailClickCallback (NULL)
-, thumbnailClickCallbackData (NULL)
+, isSelectingPlayPosition (false)
 {
 
 }
@@ -74,42 +77,38 @@ StreamItemUi::~StreamItemUi () {
 
 }
 
-void StreamItemUi::setThumbnailClickCallback (Widget::EventCallback callback, void *callbackData) {
-	thumbnailClickCallback = callback;
-	thumbnailClickCallbackData = callbackData;
-}
-
 StdString StreamItemUi::getSpritePath () {
 	return (StdString ("ui/StreamItemUi/sprite"));
 }
 
 Widget *StreamItemUi::createBreadcrumbWidget () {
-	return (new Chip (streamName));
+	return (new Chip (Label::getTruncatedText (streamName, UiConfiguration::CaptionFont, ((float) App::instance->windowWidth) * 0.5f, Label::DotTruncateSuffix)));
 }
 
 void StreamItemUi::setHelpWindowContent (HelpWindow *helpWindow) {
 	UiText *uitext;
 
 	uitext = &(App::instance->uiText);
-	helpWindow->setHelpText (uitext->getText (UiTextString::streamItemUiHelpTitle), uitext->getText (UiTextString::streamItemUiHelpText));
-	helpWindow->addAction (uitext->getText (UiTextString::streamItemUiHelpAction1Text));
+	helpWindow->setHelpText (uitext->getText (UiTextString::StreamItemUiHelpTitle), uitext->getText (UiTextString::StreamItemUiHelpText));
+	helpWindow->addAction (uitext->getText (UiTextString::StreamItemUiHelpAction1Text));
+	helpWindow->addAction (uitext->getText (UiTextString::StreamItemUiHelpAction2Text));
 
-	helpWindow->addTopicLink (uitext->getText (UiTextString::mediaStreaming).capitalized (), App::getHelpUrl ("media-streaming"));
-	helpWindow->addTopicLink (uitext->getText (UiTextString::searchForHelp).capitalized (), App::getHelpUrl (""));
+	helpWindow->addTopicLink (uitext->getText (UiTextString::MediaStreaming).capitalized (), App::getHelpUrl ("media-streaming"));
+	helpWindow->addTopicLink (uitext->getText (UiTextString::SearchForHelp).capitalized (), App::getHelpUrl (""));
 }
 
 int StreamItemUi::doLoad () {
 	UiConfiguration *uiconfig;
+	HashMap *prefs;
 	StreamDetailWindow *detailwindow;
 
 	uiconfig = &(App::instance->uiConfig);
-	cardDetail = App::instance->prefsMap.find (App::StreamItemUiImageSizeKey, (int) CardView::MediumDetail);
+	prefs = App::instance->lockPrefs ();
+	cardDetail = prefs->find (StreamItemUi::ImageSizeKey, (int) CardView::MediumDetail);
+	App::instance->unlockPrefs ();
 
-	cardView = (CardView *) addWidget (new CardView (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight));
-	cardView->isKeyboardScrollEnabled = true;
 	cardView->setItemMarginSize (uiconfig->marginSize / 2.0f);
 	cardView->setRowDetail (StreamItemUi::ImageRow, cardDetail);
-	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 
 	detailwindow = new StreamDetailWindow (streamId, &sprites);
 	cardView->addItem (detailwindow, streamId, StreamItemUi::InfoRow);
@@ -121,6 +120,7 @@ int StreamItemUi::doLoad () {
 
 void StreamItemUi::doUnload () {
 	timelineWindow.clear ();
+	commandCaption.destroyAndClear ();
 }
 
 void StreamItemUi::doAddMainToolbarItems (Toolbar *toolbar) {
@@ -130,47 +130,39 @@ void StreamItemUi::doAddMainToolbarItems (Toolbar *toolbar) {
 	uitext = &(App::instance->uiText);
 
 	button = new Button (App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::SelectImageSizeButtonSprite));
+	button->mouseClickCallback = Widget::EventCallbackContext (StreamItemUi::imageSizeButtonClicked, this);
 	button->setInverseColor (true);
-	button->setMouseClickCallback (StreamItemUi::imageSizeButtonClicked, this);
-	button->setMouseHoverTooltip (uitext->getText (UiTextString::thumbnailImageSizeTooltip));
+	button->setMouseHoverTooltip (uitext->getText (UiTextString::ThumbnailImageSizeTooltip));
 	toolbar->addRightItem (button);
 }
 
 void StreamItemUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
 	UiConfiguration *uiconfig;
+	UiText *uitext;
 	MediaTimelineWindow *timeline;
-	Label *label;
+	Toggle *toggle;
 
 	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
 
 	toolbar->setLeftCorner (new Image (sprites.getSprite (StreamItemUi::TimeIconSprite)));
 
 	timeline = new MediaTimelineWindow (App::instance->windowWidth * 0.5f, streamId);
-	timeline->setPositionHoverCallback (StreamItemUi::timelineWindowPositionHovered, this);
-	timeline->setPositionClickCallback (StreamItemUi::timelineWindowPositionClicked, this);
+	timeline->positionHoverCallback = Widget::EventCallbackContext (StreamItemUi::timelineWindowPositionHovered, this);
+	timeline->positionClickCallback = Widget::EventCallbackContext (StreamItemUi::timelineWindowPositionClicked, this);
 	toolbar->addLeftItem (timeline);
 	timelineWindow.assign (timeline);
 
-	if (! captionText.empty ()) {
-		label = new Label (captionText, UiConfiguration::CaptionFont, uiconfig->mediumSecondaryColor);
-		toolbar->addRightItem (label);
-	}
-}
-
-void StreamItemUi::doClearPopupWidgets () {
-
-}
-
-void StreamItemUi::doRefresh () {
-	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
-	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
+	toggle = new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::StarOutlineButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::StarButtonSprite));
+	toggle->shortcutKey = SDLK_TAB;
+	toggle->stateChangeCallback = Widget::EventCallbackContext (StreamItemUi::selectToggleStateChanged, this);
+	toggle->setInverseColor (true);
+	toggle->setMouseHoverTooltip (uitext->getText (UiTextString::StreamItemUiSelectTooltip), Widget::LeftAlignment);
+	toolbar->addRightItem (toggle);
 }
 
 void StreamItemUi::doResume () {
 	App::instance->setNextBackgroundTexturePath ("ui/StreamItemUi/bg");
-
-	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
-	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 }
 
 void StreamItemUi::doPause () {
@@ -179,6 +171,7 @@ void StreamItemUi::doPause () {
 
 void StreamItemUi::doUpdate (int msElapsed) {
 	timelineWindow.compact ();
+	commandCaption.compact ();
 }
 
 void StreamItemUi::doSyncRecordStore () {
@@ -247,9 +240,9 @@ void StreamItemUi::syncStreamItem () {
 				t = i * ((float) duration / (float) segmentCount);
 			}
 			thumbnail = new MediaThumbnailWindow (i, t, frameWidth, frameHeight, url);
-			thumbnail->setMouseClickCallback (StreamItemUi::thumbnailClicked, this);
-			thumbnail->setMouseEnterCallback (StreamItemUi::thumbnailMouseEntered, this);
-			thumbnail->setMouseExitCallback (StreamItemUi::thumbnailMouseExited, this);
+			thumbnail->mouseClickCallback = Widget::EventCallbackContext (StreamItemUi::thumbnailClicked, this);
+			thumbnail->mouseEnterCallback = Widget::EventCallbackContext (StreamItemUi::thumbnailMouseEntered, this);
+			thumbnail->mouseExitCallback = Widget::EventCallbackContext (StreamItemUi::thumbnailMouseExited, this);
 			cardView->addItem (thumbnail, cardid, StreamItemUi::ImageRow, true);
 		}
 		cardView->refresh ();
@@ -258,46 +251,33 @@ void StreamItemUi::syncStreamItem () {
 	isRecordSynced = true;
 }
 
-void StreamItemUi::doResize () {
-	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
-	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
-}
-
 void StreamItemUi::imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	StreamItemUi *ui;
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 	Menu *menu;
-	bool show;
 
 	ui = (StreamItemUi *) uiPtr;
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
+
 	App::instance->uiStack.suspendMouseHover ();
-
-	show = true;
-	if (Menu::isWidgetType (ui->actionWidget.widget) && (ui->actionTarget.widget == widgetPtr)) {
-		show = false;
-	}
-
-	ui->clearPopupWidgets ();
-	if (! show) {
+	if (ui->clearActionPopup (widgetPtr, StreamItemUi::imageSizeButtonClicked)) {
 		return;
 	}
 
-	menu = (Menu *) App::instance->rootPanel->addWidget (new Menu ());
-	menu->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
+	menu = new Menu ();
 	menu->isClickDestroyEnabled = true;
-	menu->addItem (uitext->getText (UiTextString::small).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::SmallSizeButtonSprite), StreamItemUi::smallImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::LowDetail);
-	menu->addItem (uitext->getText (UiTextString::medium).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::MediumSizeButtonSprite), StreamItemUi::mediumImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::MediumDetail);
-	menu->addItem (uitext->getText (UiTextString::large).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::LargeSizeButtonSprite), StreamItemUi::largeImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::HighDetail);
-	menu->position.assign (widgetPtr->position.x + widgetPtr->width - menu->width, widgetPtr->position.y + widgetPtr->height);
-	ui->actionWidget.assign (menu);
-	ui->actionTarget.assign (widgetPtr);
+	menu->addItem (uitext->getText (UiTextString::Small).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::SmallSizeButtonSprite), StreamItemUi::smallImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::LowDetail);
+	menu->addItem (uitext->getText (UiTextString::Medium).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::MediumSizeButtonSprite), StreamItemUi::mediumImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::MediumDetail);
+	menu->addItem (uitext->getText (UiTextString::Large).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::LargeSizeButtonSprite), StreamItemUi::largeImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::HighDetail);
+
+	ui->showActionPopup (menu, widgetPtr, StreamItemUi::imageSizeButtonClicked, widgetPtr->getScreenRect (), Ui::RightEdgeAlignment, Ui::BottomOfAlignment);
 }
 
 void StreamItemUi::smallImageSizeActionClicked (void *uiPtr, Widget *widgetPtr) {
 	StreamItemUi *ui;
+	HashMap *prefs;
 	int detail;
 
 	ui = (StreamItemUi *) uiPtr;
@@ -307,11 +287,14 @@ void StreamItemUi::smallImageSizeActionClicked (void *uiPtr, Widget *widgetPtr) 
 	}
 	ui->cardDetail = detail;
 	ui->cardView->setRowDetail (StreamItemUi::ImageRow, ui->cardDetail);
-	App::instance->prefsMap.insert (App::StreamItemUiImageSizeKey, ui->cardDetail);
+	prefs = App::instance->lockPrefs ();
+	prefs->insert (StreamItemUi::ImageSizeKey, ui->cardDetail);
+	App::instance->unlockPrefs ();
 }
 
 void StreamItemUi::mediumImageSizeActionClicked (void *uiPtr, Widget *widgetPtr) {
 	StreamItemUi *ui;
+	HashMap *prefs;
 	int detail;
 
 	ui = (StreamItemUi *) uiPtr;
@@ -321,11 +304,14 @@ void StreamItemUi::mediumImageSizeActionClicked (void *uiPtr, Widget *widgetPtr)
 	}
 	ui->cardDetail = detail;
 	ui->cardView->setRowDetail (StreamItemUi::ImageRow, ui->cardDetail);
-	App::instance->prefsMap.insert (App::StreamItemUiImageSizeKey, ui->cardDetail);
+	prefs = App::instance->lockPrefs ();
+	prefs->insert (StreamItemUi::ImageSizeKey, ui->cardDetail);
+	App::instance->unlockPrefs ();
 }
 
 void StreamItemUi::largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr) {
 	StreamItemUi *ui;
+	HashMap *prefs;
 	int detail;
 
 	ui = (StreamItemUi *) uiPtr;
@@ -335,7 +321,9 @@ void StreamItemUi::largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr) 
 	}
 	ui->cardDetail = detail;
 	ui->cardView->setRowDetail (StreamItemUi::ImageRow, ui->cardDetail);
-	App::instance->prefsMap.insert (App::StreamItemUiImageSizeKey, ui->cardDetail);
+	prefs = App::instance->lockPrefs ();
+	prefs->insert (StreamItemUi::ImageSizeKey, ui->cardDetail);
+	App::instance->unlockPrefs ();
 }
 
 void StreamItemUi::thumbnailClicked (void *uiPtr, Widget *widgetPtr) {
@@ -343,13 +331,17 @@ void StreamItemUi::thumbnailClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaThumbnailWindow *target;
 
 	ui = (StreamItemUi *) uiPtr;
+	if (! ui->isSelectingPlayPosition) {
+		return;
+	}
+
 	target = MediaThumbnailWindow::castWidget (widgetPtr);
 	if (! target) {
 		return;
 	}
 
-	if (ui->thumbnailClickCallback) {
-		ui->thumbnailClickCallback (ui->thumbnailClickCallbackData, target);
+	if (ui->thumbnailClickCallback.callback) {
+		ui->thumbnailClickCallback.callback (ui->thumbnailClickCallback.callbackData, target);
 	}
 }
 
@@ -360,6 +352,10 @@ void StreamItemUi::thumbnailMouseEntered (void *uiPtr, Widget *widgetPtr) {
 
 	ui = (StreamItemUi *) uiPtr;
 	thumbnail = (MediaThumbnailWindow *) widgetPtr;
+	if (! ui->isSelectingPlayPosition) {
+		return;
+	}
+
 	timeline = (MediaTimelineWindow *) ui->timelineWindow.widget;
 	if (timeline) {
 		timeline->setHighlightedMarker (thumbnail->thumbnailIndex);
@@ -374,6 +370,7 @@ void StreamItemUi::thumbnailMouseExited (void *uiPtr, Widget *widgetPtr) {
 
 	ui = (StreamItemUi *) uiPtr;
 	thumbnail = (MediaThumbnailWindow *) widgetPtr;
+
 	timeline = (MediaTimelineWindow *) ui->timelineWindow.widget;
 	if (timeline && (timeline->highlightedMarkerIndex == thumbnail->thumbnailIndex)) {
 		timeline->setHighlightedMarker (-1);
@@ -427,12 +424,16 @@ void StreamItemUi::timelineWindowPositionClicked (void *uiPtr, Widget *widgetPtr
 
 	ui = (StreamItemUi *) uiPtr;
 	timeline = (MediaTimelineWindow *) widgetPtr;
-	if (ui->thumbnailClickCallback) {
-		index = (int) (timeline->clickPosition / timeline->width * (float) ui->segmentCount);
+	index = (int) (timeline->clickPosition / timeline->width * (float) ui->segmentCount);
+
+	if (ui->isSelectingPlayPosition) {
 		target = (MediaThumbnailWindow *) ui->cardView->findItem (StreamItemUi::matchThumbnailIndex, &index);
-		if (target) {
-			ui->thumbnailClickCallback (ui->thumbnailClickCallbackData, target);
+		if (target && ui->thumbnailClickCallback.callback) {
+			ui->thumbnailClickCallback.callback (ui->thumbnailClickCallback.callbackData, target);
 		}
+	}
+	else {
+		ui->cardView->scrollToItem (StdString::createSprintf ("%i", index));
 	}
 }
 
@@ -447,4 +448,51 @@ bool StreamItemUi::matchThumbnailIndex (void *intPtr, Widget *widgetPtr) {
 
 	index = (int *) intPtr;
 	return (*index == item->thumbnailIndex);
+}
+
+static void selectToggleStateChanged_processMediaThumbnails (void *uiPtr, Widget *widgetPtr) {
+	MediaThumbnailWindow *thumbnail;
+
+	thumbnail = MediaThumbnailWindow::castWidget (widgetPtr);
+	if (thumbnail) {
+		thumbnail->setHighlighted (false);
+	}
+}
+void StreamItemUi::selectToggleStateChanged (void *uiPtr, Widget *widgetPtr) {
+	StreamItemUi *ui;
+	Toggle *toggle;
+	UiConfiguration *uiconfig;
+	UiText *uitext;
+	MediaTimelineWindow *timeline;
+	LabelWindow *caption;
+
+	ui = (StreamItemUi *) uiPtr;
+	toggle = (Toggle *) widgetPtr;
+	uiconfig = &(App::instance->uiConfig);
+	uitext = &(App::instance->uiText);
+	timeline = (MediaTimelineWindow *) ui->timelineWindow.widget;
+
+	ui->isSelectingPlayPosition = toggle->isChecked;
+
+	if (! ui->isSelectingPlayPosition) {
+		ui->commandCaption.destroyAndClear ();
+		ui->cardView->processRowItems (StreamItemUi::ImageRow, selectToggleStateChanged_processMediaThumbnails, ui);
+		if (timeline) {
+			timeline->setHighlightedMarker (-1);
+			timeline->setHighlightColor (uiconfig->darkBackgroundColor);
+		}
+		return;
+	}
+
+	if (timeline) {
+		timeline->setHighlightColor (uiconfig->mediumSecondaryColor);
+	}
+	caption = (LabelWindow *) App::instance->rootPanel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::SelectPlayPosition).capitalized (), UiConfiguration::BodyFont, uiconfig->mediumSecondaryColor)));
+	ui->commandCaption.assign (caption);
+	caption->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->overlayWindowAlpha));
+	caption->setBorder (true, Color (uiconfig->darkBackgroundColor.r, uiconfig->darkBackgroundColor.g, uiconfig->darkBackgroundColor.b, uiconfig->overlayWindowAlpha));
+
+	caption->setLayout (Panel::VerticalRightJustifiedLayout);
+	caption->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
+	caption->position.assign (App::instance->windowWidth - caption->width - uiconfig->paddingSize, App::instance->windowHeight - App::instance->uiStack.bottomBarHeight - caption->height - uiconfig->marginSize);
 }

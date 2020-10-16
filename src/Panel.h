@@ -45,13 +45,14 @@ public:
 	Panel ();
 	virtual ~Panel ();
 
-	static const int longPressDuration; // ms
+	static const int LongPressDuration; // ms
 
-	// Constants to use for layout types
+	// Layout types
 	enum {
 		VerticalLayout = 0,
 		VerticalRightJustifiedLayout = 1,
-		HorizontalLayout = 2
+		HorizontalLayout = 2,
+		HorizontalVcenteredLayout = 3
 	};
 
 	// Read-write data members
@@ -79,7 +80,6 @@ public:
 	bool isDropShadowed;
 	float dropShadowWidth;
 	bool isFixedSize;
-	bool isMouseDragScrollEnabled;
 	bool isWaiting;
 	int layout;
 	bool isAnimating;
@@ -135,9 +135,6 @@ public:
 	// Set the fixed size option. If enabled, the panel uses the specified width and height values instead of dynamic resizing to fit contained elements.
 	void setFixedSize (bool enable, float fixedWidth = 0.0f, float fixedHeight = 0.0f);
 
-	// Set the mouse drag scroll option. If enabled, the panel responds to mouse drag actions by scrolling its view position.
-	void setMouseDragScroll (bool enable);
-
 	// Set the waiting option. If enabled, the panel disables input, shades it content, and shows a progress bar widget.
 	void setWaiting (bool enable);
 
@@ -163,8 +160,8 @@ protected:
 	// Execute operations appropriate when the widget's input state is reset
 	virtual void doResetInputState ();
 
-	// Execute operations appropriate when the widget receives new mouse state
-	virtual void doProcessMouseState (const Widget::MouseState &mouseState);
+	// Execute operations appropriate when the widget receives new mouse state and return a boolean value indicating if mouse wheel events were consumed and should no longer be processed
+	virtual bool doProcessMouseState (const Widget::MouseState &mouseState);
 
 	// Update the widget as appropriate for a received keypress event and return a boolean value indicating if the event was consumed and should no longer be processed
 	virtual bool doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown);

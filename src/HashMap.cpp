@@ -234,36 +234,6 @@ int HashMap::read (Buffer *buffer, bool shouldClear) {
 	return (Result::Success);
 }
 
-int HashMap::read (Json *json, bool shouldClear) {
-	StringList keys;
-	StringList::iterator i, end;
-
-	if (! json) {
-		return (Result::InvalidParamError);
-	}
-
-	if (shouldClear) {
-		clear ();
-	}
-	json->getKeys (&keys);
-	i = keys.begin ();
-	end = keys.end ();
-	while (i != end) {
-		if (json->isNumber (*i)) {
-			insert (*i, json->getNumber (*i, (int64_t) 0));
-		}
-		else if (json->isBoolean (*i)) {
-			insert (*i, json->getBoolean (*i, false));
-		}
-		else if (json->isString (*i)) {
-			insert (*i, json->getString (*i, ""));
-		}
-		++i;
-	}
-
-	return (Result::Success);
-}
-
 int HashMap::write (const StdString &filename) {
 	std::map<StdString, StdString>::iterator i, end;
 	StdString out;
@@ -356,10 +326,72 @@ void HashMap::insert (const char *key, int64_t value) {
 }
 
 void HashMap::insert (const StdString &key, StringList *value) {
-	insert (key, value->toJsonString ());
+	if (value->empty ()) {
+		remove (key);
+	}
+	else {
+		insert (key, value->toJsonString ());
+	}
 }
 
 void HashMap::insert (const char *key, StringList *value) {
+	insert (StdString (key), value);
+}
+
+void HashMap::insert (const StdString &key, JsonList *value) {
+	std::map<StdString, StdString>::iterator mi, mend;
+	JsonList::iterator ji, jend;
+	Json *j;
+	StringList keys;
+	StdString s;
+	bool match;
+	char *c;
+	int index;
+
+	mi = valueMap.begin ();
+	mend = valueMap.end ();
+	while (mi != mend) {
+		s.assign (mi->first);
+		match = false;
+		if ((s.length () > (key.length () + 1)) && s.startsWith (key)) {
+			c = (char *) s.c_str ();
+			c += key.length ();
+			if ((*c) == '_') {
+				while (true) {
+					++c;
+					if (*c == '\0') {
+						match = true;
+						break;
+					}
+					if ((*c < '0') || (*c > '9')) {
+						break;
+					}
+				}
+			}
+		}
+		if (match) {
+			keys.push_back (s);
+		}
+		++mi;
+	}
+	remove (&keys);
+
+	index = 1;
+	ji = value->begin ();
+	jend = value->end ();
+	while (ji != jend) {
+		j = *ji;
+		if (! j->isAssigned ()) {
+			j->setEmpty ();
+		}
+		insert (StdString::createSprintf ("%s_%i", key.c_str (), index), j->toString ());
+		++index;
+		++ji;
+	}
+	value->clear ();
+}
+
+void HashMap::insert (const char *key, JsonList *value) {
 	insert (StdString (key), value);
 }
 
@@ -371,6 +403,21 @@ void HashMap::remove (const StdString &key) {
 		valueMap.erase (i);
 		isWriteDirty = true;
 		isSorted = false;
+	}
+}
+
+void HashMap::remove (const char *key) {
+	remove (StdString (key));
+}
+
+void HashMap::remove (StringList *keys) {
+	StringList::iterator i, end;
+
+	i = keys->begin ();
+	end = keys->end ();
+	while (i != end) {
+		remove (*i);
+		++i;
 	}
 }
 
@@ -452,6 +499,32 @@ void HashMap::find (const StdString &key, StringList *destList) {
 }
 
 void HashMap::find (const char *key, StringList *destList) {
+	find (StdString (key), destList);
+}
+
+void HashMap::find (const StdString &key, JsonList *destList) {
+	Json *json;
+	StdString s;
+	int index;
+
+	destList->clear ();
+	index = 1;
+	while (true) {
+		s = find (StdString::createSprintf ("%s_%i", key.c_str (), index), "");
+		if (s.empty ()) {
+			break;
+		}
+		json = new Json ();
+		if (! json->parse (s)) {
+			delete (json);
+			break;
+		}
+		destList->push_back (json);
+		++index;
+	}
+}
+
+void HashMap::find (const char *key, JsonList *destList) {
 	find (StdString (key), destList);
 }
 

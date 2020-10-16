@@ -58,6 +58,9 @@
 #include "MediaDetailWindow.h"
 #include "MediaItemUi.h"
 
+const char *MediaItemUi::VideoQualityKey = "MediaItem_VideoQuality";
+const char *MediaItemUi::ImageSizeKey = "MediaItem_ImageSize";
+
 MediaItemUi::MediaItemUi (const StdString &mediaId, const StdString &mediaName)
 : Ui ()
 , mediaId (mediaId)
@@ -68,11 +71,8 @@ MediaItemUi::MediaItemUi (const StdString &mediaId, const StdString &mediaName)
 , thumbnailCount (0)
 , mediaSize (0)
 , isRecordSynced (false)
-, cardView (NULL)
 , cardDetail (-1)
 , isCreateStreamAvailable (true)
-, removeMediaCallback (NULL)
-, removeMediaCallbackData (NULL)
 {
 	streamServerAgentMap.sort (HashMap::sortAscending);
 }
@@ -86,35 +86,36 @@ StdString MediaItemUi::getSpritePath () {
 }
 
 Widget *MediaItemUi::createBreadcrumbWidget () {
-	return (new Chip (mediaName));
-}
-
-void MediaItemUi::setRemoveMediaCallback (Widget::EventCallback callback, void *callbackData) {
-	removeMediaCallback = callback;
-	removeMediaCallbackData = callbackData;
+	return (new Chip (Label::getTruncatedText (mediaName, UiConfiguration::CaptionFont, ((float) App::instance->windowWidth) * 0.5f, Label::DotTruncateSuffix)));
 }
 
 void MediaItemUi::setHelpWindowContent (HelpWindow *helpWindow) {
 	UiText *uitext;
 
 	uitext = &(App::instance->uiText);
-	helpWindow->setHelpText (uitext->getText (UiTextString::mediaItemUiHelpTitle), uitext->getText (UiTextString::mediaItemUiHelpText));
-	helpWindow->addTopicLink (uitext->getText (UiTextString::mediaStreaming).capitalized (), App::getHelpUrl ("media-streaming"));
-	helpWindow->addTopicLink (uitext->getText (UiTextString::searchForHelp).capitalized (), App::getHelpUrl (""));
+	helpWindow->setHelpText (uitext->getText (UiTextString::MediaItemUiHelpTitle), uitext->getText (UiTextString::MediaItemUiHelpText));
+	if (isCreateStreamAvailable) {
+		helpWindow->addAction (uitext->getText (UiTextString::MediaItemUiHelpAction1Text));
+	}
+	else {
+		helpWindow->addAction (uitext->getText (UiTextString::MediaItemUiHelpAction2Text));
+	}
+	helpWindow->addTopicLink (uitext->getText (UiTextString::MediaStreaming).capitalized (), App::getHelpUrl ("media-streaming"));
+	helpWindow->addTopicLink (uitext->getText (UiTextString::SearchForHelp).capitalized (), App::getHelpUrl (""));
 }
 
 int MediaItemUi::doLoad () {
 	UiConfiguration *uiconfig;
+	HashMap *prefs;
 	MediaDetailWindow *detailwindow;
 
 	uiconfig = &(App::instance->uiConfig);
-	cardDetail = App::instance->prefsMap.find (App::MediaItemUiImageSizeKey, (int) CardView::MediumDetail);
+	prefs = App::instance->lockPrefs ();
+	cardDetail = prefs->find (MediaItemUi::ImageSizeKey, (int) CardView::MediumDetail);
+	App::instance->unlockPrefs ();
 
-	cardView = (CardView *) addWidget (new CardView (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight));
-	cardView->isKeyboardScrollEnabled = true;
 	cardView->setRowItemMarginSize (MediaItemUi::ImageRow, uiconfig->marginSize / 2.0f);
 	cardView->setRowDetail (MediaItemUi::ImageRow, cardDetail);
-	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 
 	detailwindow = new MediaDetailWindow (mediaId, &sprites);
 	cardView->addItem (detailwindow, mediaId, MediaItemUi::InfoRow);
@@ -136,9 +137,9 @@ void MediaItemUi::doAddMainToolbarItems (Toolbar *toolbar) {
 	uitext = &(App::instance->uiText);
 
 	button = new Button (App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::SelectImageSizeButtonSprite));
+	button->mouseClickCallback = Widget::EventCallbackContext (MediaItemUi::imageSizeButtonClicked, this);
 	button->setInverseColor (true);
-	button->setMouseClickCallback (MediaItemUi::imageSizeButtonClicked, this);
-	button->setMouseHoverTooltip (uitext->getText (UiTextString::thumbnailImageSizeTooltip));
+	button->setMouseHoverTooltip (uitext->getText (UiTextString::ThumbnailImageSizeTooltip));
 	toolbar->addRightItem (button);
 }
 
@@ -155,22 +156,14 @@ void MediaItemUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
 	timelineWindow.assign (timeline);
 
 	button = new Button (sprites.getSprite (MediaItemUi::ConfigureStreamButtonSprite));
+	button->mouseClickCallback = Widget::EventCallbackContext (MediaItemUi::configureStreamButtonClicked, this);
 	button->setInverseColor (true);
-	button->setMouseClickCallback (MediaItemUi::configureStreamButtonClicked, this);
-	button->setMouseHoverTooltip (uitext->getText (UiTextString::mediaItemUiConfigureStreamTooltip), Widget::LeftAlignment);
+	button->setMouseHoverTooltip (uitext->getText (UiTextString::MediaItemUiConfigureStreamTooltip), Widget::LeftAlignment);
 	toolbar->addRightItem (button);
-}
-
-void MediaItemUi::doRefresh () {
-	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
-	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 }
 
 void MediaItemUi::doResume () {
 	App::instance->setNextBackgroundTexturePath ("ui/MediaItemUi/bg");
-
-	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
-	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 }
 
 void MediaItemUi::doPause () {
@@ -179,11 +172,6 @@ void MediaItemUi::doPause () {
 
 void MediaItemUi::doUpdate (int msElapsed) {
 	configureStreamSizeIcon.compact ();
-}
-
-void MediaItemUi::doResize () {
-	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
-	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 }
 
 void MediaItemUi::doSyncRecordStore () {
@@ -253,8 +241,8 @@ void MediaItemUi::syncMediaItem () {
 
 			cardid.sprintf ("%i", i);
 			thumbnail = new MediaThumbnailWindow (i, (dt / 2.0f) + ((float) i * dt), frameWidth, frameHeight, url);
-			thumbnail->setMouseEnterCallback (MediaItemUi::thumbnailMouseEntered, this);
-			thumbnail->setMouseExitCallback (MediaItemUi::thumbnailMouseExited, this);
+			thumbnail->mouseEnterCallback = Widget::EventCallbackContext (MediaItemUi::thumbnailMouseEntered, this);
+			thumbnail->mouseExitCallback = Widget::EventCallbackContext (MediaItemUi::thumbnailMouseExited, this);
 			cardView->addItem (thumbnail, cardid, MediaItemUi::ImageRow, true);
 		}
 
@@ -269,36 +257,28 @@ void MediaItemUi::imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 	Menu *menu;
-	bool show;
 
 	ui = (MediaItemUi *) uiPtr;
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
+
 	App::instance->uiStack.suspendMouseHover ();
-
-	show = true;
-	if (Menu::isWidgetType (ui->actionWidget.widget) && (ui->actionTarget.widget == widgetPtr)) {
-		show = false;
-	}
-
-	ui->clearPopupWidgets ();
-	if (! show) {
+	if (ui->clearActionPopup (widgetPtr, MediaItemUi::imageSizeButtonClicked)) {
 		return;
 	}
 
-	menu = (Menu *) App::instance->rootPanel->addWidget (new Menu ());
-	menu->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
+	menu = new Menu ();
 	menu->isClickDestroyEnabled = true;
-	menu->addItem (uitext->getText (UiTextString::small).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::SmallSizeButtonSprite), MediaItemUi::smallImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::LowDetail);
-	menu->addItem (uitext->getText (UiTextString::medium).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::MediumSizeButtonSprite), MediaItemUi::mediumImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::MediumDetail);
-	menu->addItem (uitext->getText (UiTextString::large).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::LargeSizeButtonSprite), MediaItemUi::largeImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::HighDetail);
-	menu->position.assign (widgetPtr->position.x + widgetPtr->width - menu->width, widgetPtr->position.y + widgetPtr->height);
-	ui->actionWidget.assign (menu);
-	ui->actionTarget.assign (widgetPtr);
+	menu->addItem (uitext->getText (UiTextString::Small).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::SmallSizeButtonSprite), MediaItemUi::smallImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::LowDetail);
+	menu->addItem (uitext->getText (UiTextString::Medium).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::MediumSizeButtonSprite), MediaItemUi::mediumImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::MediumDetail);
+	menu->addItem (uitext->getText (UiTextString::Large).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::LargeSizeButtonSprite), MediaItemUi::largeImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::HighDetail);
+
+	ui->showActionPopup (menu, widgetPtr, MediaItemUi::imageSizeButtonClicked, widgetPtr->getScreenRect (), Ui::RightEdgeAlignment, Ui::BottomOfAlignment);
 }
 
 void MediaItemUi::smallImageSizeActionClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaItemUi *ui;
+	HashMap *prefs;
 	int detail;
 
 	ui = (MediaItemUi *) uiPtr;
@@ -308,11 +288,14 @@ void MediaItemUi::smallImageSizeActionClicked (void *uiPtr, Widget *widgetPtr) {
 	}
 	ui->cardDetail = detail;
 	ui->cardView->setRowDetail (MediaItemUi::ImageRow, ui->cardDetail);
-	App::instance->prefsMap.insert (App::MediaItemUiImageSizeKey, ui->cardDetail);
+	prefs = App::instance->lockPrefs ();
+	prefs->insert (MediaItemUi::ImageSizeKey, ui->cardDetail);
+	App::instance->unlockPrefs ();
 }
 
 void MediaItemUi::mediumImageSizeActionClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaItemUi *ui;
+	HashMap *prefs;
 	int detail;
 
 	ui = (MediaItemUi *) uiPtr;
@@ -322,11 +305,14 @@ void MediaItemUi::mediumImageSizeActionClicked (void *uiPtr, Widget *widgetPtr) 
 	}
 	ui->cardDetail = detail;
 	ui->cardView->setRowDetail (MediaItemUi::ImageRow, ui->cardDetail);
-	App::instance->prefsMap.insert (App::MediaItemUiImageSizeKey, ui->cardDetail);
+	prefs = App::instance->lockPrefs ();
+	prefs->insert (MediaItemUi::ImageSizeKey, ui->cardDetail);
+	App::instance->unlockPrefs ();
 }
 
 void MediaItemUi::largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaItemUi *ui;
+	HashMap *prefs;
 	int detail;
 
 	ui = (MediaItemUi *) uiPtr;
@@ -336,7 +322,9 @@ void MediaItemUi::largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr) {
 	}
 	ui->cardDetail = detail;
 	ui->cardView->setRowDetail (MediaItemUi::ImageRow, ui->cardDetail);
-	App::instance->prefsMap.insert (App::MediaItemUiImageSizeKey, ui->cardDetail);
+	prefs = App::instance->lockPrefs ();
+	prefs->insert (MediaItemUi::ImageSizeKey, ui->cardDetail);
+	App::instance->unlockPrefs ();
 }
 
 void MediaItemUi::thumbnailMouseEntered (void *uiPtr, Widget *widgetPtr) {
@@ -369,69 +357,64 @@ void MediaItemUi::configureStreamButtonClicked (void *uiPtr, Widget *widgetPtr) 
 	MediaItemUi *ui;
 	UiConfiguration *uiconfig;
 	UiText *uitext;
+	HashMap *prefs;
 	ActionWindow *action;
-	Widget *target;
 	ComboBox *combobox;
 	IconLabelWindow *icon;
 	int profile;
 
 	ui = (MediaItemUi *) uiPtr;
-	action = ActionWindow::castWidget (ui->actionWidget.widget);
-	target = ui->actionTarget.widget;
-	if (action && (target == widgetPtr)) {
-		ui->clearPopupWidgets ();
-		ui->actionTarget.clear ();
-		return;
-	}
-
 	if (ui->streamServerAgentMap.empty ()) {
 		// TODO: Show an error message here
 		return;
 	}
 
+	if (ui->clearActionPopup (widgetPtr, MediaItemUi::configureStreamButtonClicked)) {
+		return;
+	}
+
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
-	ui->clearPopupWidgets ();
 
-	action = (ActionWindow *) App::instance->rootPanel->addWidget (new ActionWindow ());
-	action->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
+	action = new ActionWindow ();
 	action->setInverseColor (true);
 	action->setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
 
 	if (ui->isCreateStreamAvailable) {
-		action->setTitleText (uitext->getText (UiTextString::configureStream).capitalized ());
-		action->setConfirmTooltipText (uitext->getText (UiTextString::apply).capitalized ());
+		action->setTitleText (uitext->getText (UiTextString::ConfigureStream).capitalized ());
+		action->setConfirmTooltipText (uitext->getText (UiTextString::Apply).capitalized ());
 		action->optionChangeCallback = Widget::EventCallbackContext (MediaItemUi::configureStreamOptionChanged, ui);
 		action->closeCallback = Widget::EventCallbackContext (MediaItemUi::configureStreamActionClosed, ui);
 
 	// TODO: Allow selection of a stream server (currently restricted to the server holding the source media item)
 	//	action->addComboBoxOption (uitext->getText (UiTextString::streamServer).capitalized (), &(ui->streamServerAgentMap));
 
+		prefs = App::instance->lockPrefs ();
+		profile = prefs->find (MediaItemUi::VideoQualityKey, SystemInterface::Constant_DefaultStreamProfile);
+		App::instance->unlockPrefs ();
+
 		combobox = new ComboBox ();
 		combobox->addItem (MediaUtil::getStreamProfileDescription (SystemInterface::Constant_DefaultStreamProfile));
 		combobox->addItem (MediaUtil::getStreamProfileDescription (SystemInterface::Constant_CompressedStreamProfile));
 		combobox->addItem (MediaUtil::getStreamProfileDescription (SystemInterface::Constant_LowQualityStreamProfile));
 		combobox->addItem (MediaUtil::getStreamProfileDescription (SystemInterface::Constant_LowestQualityStreamProfile));
-		profile = App::instance->prefsMap.find (App::MediaItemUiVideoQualityKey, SystemInterface::Constant_DefaultStreamProfile);
 		combobox->setValue (MediaUtil::getStreamProfileDescription (profile));
-		action->addOption (uitext->getText (UiTextString::videoQuality).capitalized (), combobox, uitext->getText (UiTextString::videoQualityDescription));
+		action->addOption (uitext->getText (UiTextString::VideoQuality).capitalized (), combobox, uitext->getText (UiTextString::VideoQualityDescription));
 
 		icon = new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::StorageIconSprite), OsUtil::getByteCountDisplayString (MediaUtil::getStreamSize (ui->mediaSize, profile)), UiConfiguration::CaptionFont, uiconfig->primaryTextColor);
 		icon->setFillBg (true, uiconfig->lightBackgroundColor);
-		icon->setMouseHoverTooltip (uitext->getText (UiTextString::configureStreamByteCountTooltip));
+		icon->setMouseHoverTooltip (uitext->getText (UiTextString::ConfigureStreamByteCountTooltip));
 		ui->configureStreamSizeIcon.assign (icon);
 		action->setFooterPanel (icon);
 	}
 	else {
-		action->setTitleText (uitext->getText (UiTextString::removeMedia).capitalized ());
-		action->setDescriptionText (uitext->getText (UiTextString::removeMediaActionText));
-		action->setConfirmTooltipText (uitext->getText (UiTextString::remove).uppercased ());
+		action->setTitleText (uitext->getText (UiTextString::RemoveMedia).capitalized ());
+		action->setDescriptionText (uitext->getText (UiTextString::RemoveMediaActionText));
+		action->setConfirmTooltipText (uitext->getText (UiTextString::Remove).capitalized ());
 		action->closeCallback = Widget::EventCallbackContext (MediaItemUi::removeMediaActionClosed, ui);
 	}
 
-	action->position.assign (widgetPtr->screenX + widgetPtr->width - action->width, widgetPtr->screenY - action->height);
-	ui->actionWidget.assign (action);
-	ui->actionTarget.assign (widgetPtr);
+	ui->showActionPopup (action, widgetPtr, MediaItemUi::configureStreamButtonClicked, widgetPtr->getScreenRect (), Ui::RightEdgeAlignment, Ui::TopOfAlignment);
 }
 
 void MediaItemUi::configureStreamOptionChanged (void *uiPtr, Widget *widgetPtr) {
@@ -447,7 +430,7 @@ void MediaItemUi::configureStreamOptionChanged (void *uiPtr, Widget *widgetPtr) 
 	if (! icon) {
 		return;
 	}
-	icon->setText (OsUtil::getByteCountDisplayString (MediaUtil::getStreamSize (ui->mediaSize, MediaUtil::getStreamProfile (action->getStringValue (uitext->getText (UiTextString::videoQuality).capitalized (), "")))));
+	icon->setText (OsUtil::getByteCountDisplayString (MediaUtil::getStreamSize (ui->mediaSize, MediaUtil::getStreamProfile (action->getStringValue (uitext->getText (UiTextString::VideoQuality).capitalized (), "")))));
 	action->refresh ();
 }
 
@@ -455,6 +438,7 @@ void MediaItemUi::configureStreamActionClosed (void *uiPtr, Widget *widgetPtr) {
 	MediaItemUi *ui;
 	ActionWindow *action;
 	UiText *uitext;
+	HashMap *prefs;
 	Json *params;
 	int result, profile;
 
@@ -462,13 +446,15 @@ void MediaItemUi::configureStreamActionClosed (void *uiPtr, Widget *widgetPtr) {
 	action = (ActionWindow *) widgetPtr;
 	uitext = &(App::instance->uiText);
 	if (action->isConfirmed && (! ui->agentId.empty ())) {
-		profile = MediaUtil::getStreamProfile (action->getStringValue (uitext->getText (UiTextString::videoQuality).capitalized (), ""));
+		profile = MediaUtil::getStreamProfile (action->getStringValue (uitext->getText (UiTextString::VideoQuality).capitalized (), ""));
+		prefs = App::instance->lockPrefs ();
 		if (profile != SystemInterface::Constant_DefaultStreamProfile) {
-			App::instance->prefsMap.insert (App::MediaItemUiVideoQualityKey, profile);
+			prefs->insert (MediaItemUi::VideoQualityKey, profile);
 		}
 		else {
-			App::instance->prefsMap.remove (App::MediaItemUiVideoQualityKey);
+			prefs->remove (MediaItemUi::VideoQualityKey);
 		}
+		App::instance->unlockPrefs ();
 
 		params = new Json ();
 		params->set ("mediaId", ui->mediaId);
@@ -486,10 +472,9 @@ void MediaItemUi::configureStreamActionClosed (void *uiPtr, Widget *widgetPtr) {
 		if (result != Result::Success) {
 			ui->release ();
 			Log::debug ("Failed to invoke ConfigureMediaStream command; err=%i agentId=\"%s\"", result, ui->agentId.c_str ());
-			App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
+			App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
 		}
 	}
-	ui->actionWidget.clear ();
 }
 
 void MediaItemUi::configureMediaStreamComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand) {
@@ -506,11 +491,11 @@ void MediaItemUi::configureMediaStreamComplete (void *uiPtr, int invokeResult, c
 		if (! agentname.empty ()) {
 			text.appendSprintf ("%s: ", agentname.c_str ());
 		}
-		text.appendSprintf ("%s, %s", uitext->getText (UiTextString::startedCreatingStream).capitalized ().c_str (), ui->mediaName.c_str ());
+		text.appendSprintf ("%s, %s", uitext->getText (UiTextString::StartedCreatingStream).capitalized ().c_str (), ui->mediaName.c_str ());
 		App::instance->uiStack.showSnackbar (text);
 	}
 	else {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
 	}
 
 	ui->release ();
@@ -533,10 +518,9 @@ void MediaItemUi::removeMediaActionClosed (void *uiPtr, Widget *widgetPtr) {
 		if (result != Result::Success) {
 			ui->release ();
 			Log::debug ("Failed to invoke RemoveMedia command; err=%i agentId=\"%s\"", result, ui->agentId.c_str ());
-			App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
+			App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
 		}
 	}
-	ui->actionWidget.clear ();
 }
 
 void MediaItemUi::removeMediaComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand) {
@@ -547,13 +531,13 @@ void MediaItemUi::removeMediaComplete (void *uiPtr, int invokeResult, const StdS
 	interface = &(App::instance->systemInterface);
 	if (responseCommand && (interface->getCommandId (responseCommand) == SystemInterface::CommandId_CommandResult) && interface->getCommandBooleanParam (responseCommand, "success", false)) {
 		App::instance->agentControl.recordStore.removeRecord (ui->mediaId);
-		if (ui->removeMediaCallback) {
-			ui->removeMediaCallback (ui->removeMediaCallbackData, NULL);
+		if (ui->removeMediaCallback.callback) {
+			ui->removeMediaCallback.callback (ui->removeMediaCallback.callbackData, NULL);
 		}
 		App::instance->uiStack.popUi ();
 	}
 	else {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
 	}
 
 	ui->release ();

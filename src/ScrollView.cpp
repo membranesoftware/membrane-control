@@ -43,20 +43,26 @@
 #include "UiConfiguration.h"
 #include "ScrollView.h"
 
-ScrollView::ScrollView (float viewWidth, float viewHeight)
+ScrollView::ScrollView ()
 : Panel ()
 , isKeyboardScrollEnabled (false)
+, isMouseWheelScrollEnabled (false)
+, isExitedMouseWheelScrollEnabled (false)
 , verticalScrollSpeed (0.0f)
 {
+
+}
+
+ScrollView::~ScrollView () {
+
+}
+
+void ScrollView::setViewSize (float viewWidth, float viewHeight) {
 	UiConfiguration *uiconfig;
 
 	uiconfig = &(App::instance->uiConfig);
 	setFixedSize (true, viewWidth, viewHeight);
 	setVerticalScrollSpeed (height * uiconfig->mouseWheelScrollSpeed);
-}
-
-ScrollView::~ScrollView () {
-
 }
 
 void ScrollView::setVerticalScrollSpeed (float speed) {
@@ -69,29 +75,37 @@ void ScrollView::setVerticalScrollSpeed (float speed) {
 	}
 }
 
-void ScrollView::doProcessMouseState (const Widget::MouseState &mouseState) {
+bool ScrollView::doProcessMouseState (const Widget::MouseState &mouseState) {
+	bool consumed;
 	float dy, delta;
 
-	Panel::doProcessMouseState (mouseState);
+	consumed = Panel::doProcessMouseState (mouseState);
 
-	delta = 0.0f;
-	if (mouseState.wheelUp > 0) {
-		dy = ((float) mouseState.wheelUp) * verticalScrollSpeed * -1.0f;
-		if (dy > -1.0f) {
-			dy = -1.0f;
+	if (! consumed) {
+		if ((isMouseWheelScrollEnabled && mouseState.isEntered) || isExitedMouseWheelScrollEnabled) {
+			consumed = true;
+			delta = 0.0f;
+			if (mouseState.wheelUp > 0) {
+				dy = ((float) mouseState.wheelUp) * verticalScrollSpeed * -1.0f;
+				if (dy > -1.0f) {
+					dy = -1.0f;
+				}
+				delta += dy;
+			}
+			if (mouseState.wheelDown > 0) {
+				dy = ((float) mouseState.wheelDown) * verticalScrollSpeed;
+				if (dy < 1.0f) {
+					dy = 1.0f;
+				}
+				delta += dy;
+			}
+			if (fabs (delta) > 0.0f) {
+				setViewOrigin (0.0f, viewOriginY + delta);
+			}
 		}
-		delta += dy;
 	}
-	if (mouseState.wheelDown > 0) {
-		dy = ((float) mouseState.wheelDown) * verticalScrollSpeed;
-		if (dy < 1.0f) {
-			dy = 1.0f;
-		}
-		delta += dy;
-	}
-	if (fabs (delta) > 0.0f) {
-		setViewOrigin (0.0f, viewOriginY + delta);
-	}
+
+	return (consumed);
 }
 
 void ScrollView::setVerticalScrollBounds (float minY, float maxY) {

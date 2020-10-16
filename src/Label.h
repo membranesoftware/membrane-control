@@ -45,6 +45,9 @@ public:
 	Label (const StdString &text, int fontType = UiConfiguration::BodyFont, const Color &color = Color (0.0f, 0.0f, 0.0f));
 	~Label ();
 
+	static const char ObscureCharacter;
+	static const StdString DotTruncateSuffix;
+
 	// Read-write data members
 	Color textColor;
 
@@ -82,6 +85,9 @@ public:
 
 	// Return the provided y position value, adjusted as appropriate for the label's line height
 	float getLinePosition (float targetY);
+
+	// Return the width of the label's text up to the specified character position
+	float getCharacterPosition (int position);
 
 	// Assign the widget's position to the provided x/y values, then reset positionX as appropriate for a rightward flow. If rightExtent and bottomExtent are provided, update them with the widget's right (x plus width) and bottom (y plus height) extents if greater.
 	virtual void flowRight (float *positionX, float positionY, float *rightExtent = NULL, float *bottomExtent = NULL);

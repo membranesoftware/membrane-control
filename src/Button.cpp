@@ -45,7 +45,7 @@
 #include "UiConfiguration.h"
 #include "Button.h"
 
-const float Button::focusTextOffset = 2.0f;
+const float Button::FocusTextOffset = 2.0f;
 
 Button::Button (Sprite *sprite, const StdString &labelText)
 : Panel ()
@@ -82,10 +82,10 @@ Button::Button (Sprite *sprite, const StdString &labelText)
 	widthPadding = uiconfig->paddingSize;
 	heightPadding = uiconfig->paddingSize;
 
-	setMouseEnterCallback (Button::mouseEntered, this);
-	setMouseExitCallback (Button::mouseExited, this);
-	setMousePressCallback (Button::mousePressed, this);
-	setMouseReleaseCallback (Button::mouseReleased, this);
+	mouseEnterCallback = Widget::EventCallbackContext (Button::mouseEntered, this);
+	mouseExitCallback = Widget::EventCallbackContext (Button::mouseExited, this);
+	mousePressCallback = Widget::EventCallbackContext (Button::mousePressed, this);
+	mouseReleaseCallback = Widget::EventCallbackContext (Button::mouseReleased, this);
 
 	refreshLayout ();
 }
@@ -202,9 +202,7 @@ bool Button::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isCo
 		setPressed (true);
 		pressClock = App::instance->uiConfig.blinkDuration;
 		refreshLayout ();
-		if (mouseClickCallback) {
-			mouseClickCallback (mouseClickCallbackData, this);
-		}
+		mouseClick ();
 		return (true);
 	}
 
@@ -424,7 +422,7 @@ void Button::refreshLayout () {
 		}
 
 		if (isFocused && (! isFocusDropShadowDisabled)) {
-			label->position.move (-(Button::focusTextOffset), -(Button::focusTextOffset));
+			label->position.move (-(Button::FocusTextOffset), -(Button::FocusTextOffset));
 		}
 	}
 

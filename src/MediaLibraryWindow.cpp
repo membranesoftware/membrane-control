@@ -52,18 +52,17 @@
 #include "AgentTaskWindow.h"
 #include "MediaLibraryWindow.h"
 
-const float MediaLibraryWindow::textTruncateScale = 0.21f;
+const float MediaLibraryWindow::TextTruncateScale = 0.21f;
 
 MediaLibraryWindow::MediaLibraryWindow (const StdString &agentId)
 : Panel ()
 , isExpanded (false)
 , agentId (agentId)
 , agentTaskCount (0)
-, menuPositionX (0.0f)
-, menuPositionY (0.0f)
 , iconImage (NULL)
 , nameLabel (NULL)
 , descriptionLabel (NULL)
+, dividerPanel (NULL)
 , catalogLinkIcon (NULL)
 , taskCountIcon (NULL)
 , storageIcon (NULL)
@@ -89,12 +88,18 @@ MediaLibraryWindow::MediaLibraryWindow (const StdString &agentId)
 	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	descriptionLabel->isVisible = false;
 
-	catalogLinkIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::StreamCatalogIcon), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	dividerPanel = (Panel *) addWidget (new Panel ());
+	dividerPanel->setFillBg (true, uiconfig->dividerColor);
+	dividerPanel->setFixedSize (true, 1.0f, uiconfig->headlineDividerLineWidth);
+	dividerPanel->isPanelSizeClipEnabled = true;
+	dividerPanel->isVisible = false;
+
+	catalogLinkIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::StreamCatalogIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	catalogLinkIcon->textClickCallback = Widget::EventCallbackContext (MediaLibraryWindow::catalogLinkClicked, this);
 	catalogLinkIcon->setPadding (0.0f, 0.0f);
 	catalogLinkIcon->setTextColor (uiconfig->linkTextColor);
 	catalogLinkIcon->setTextUnderlined (true);
-	catalogLinkIcon->setMouseHoverTooltip (uitext->getText (UiTextString::mediaServerCatalogTooltip));
-	catalogLinkIcon->setTextClickCallback (MediaLibraryWindow::catalogLinkClicked, this);
+	catalogLinkIcon->setMouseHoverTooltip (uitext->getText (UiTextString::MediaServerCatalogTooltip));
 	catalogLinkIcon->isVisible = false;
 
 	taskCountIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::TaskCountIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
@@ -105,7 +110,7 @@ MediaLibraryWindow::MediaLibraryWindow (const StdString &agentId)
 	storageIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::StorageIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 	storageIcon->setPadding (0.0f, 0.0f);
 	storageIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
-	storageIcon->setMouseHoverTooltip (uitext->getText (UiTextString::storageTooltip));
+	storageIcon->setMouseHoverTooltip (uitext->getText (UiTextString::StorageTooltip));
 	storageIcon->isVisible = false;
 
 	mediaCountIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallMediaIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
@@ -119,15 +124,15 @@ MediaLibraryWindow::MediaLibraryWindow (const StdString &agentId)
 	streamCountIcon->isVisible = false;
 
 	menuButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::MainMenuButtonSprite)));
-	menuButton->setMouseClickCallback (MediaLibraryWindow::menuButtonClicked, this);
+	menuButton->mouseClickCallback = Widget::EventCallbackContext (MediaLibraryWindow::menuButtonClicked, this);
 	menuButton->setImageColor (uiconfig->flatButtonTextColor);
-	menuButton->setMouseHoverTooltip (uitext->getText (UiTextString::moreActionsTooltip));
+	menuButton->setMouseHoverTooltip (uitext->getText (UiTextString::MoreActionsTooltip));
 	menuButton->isVisible = false;
 
 	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
+	expandToggle->stateChangeCallback = Widget::EventCallbackContext (MediaLibraryWindow::expandToggleStateChanged, this);
 	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
-	expandToggle->setStateChangeCallback (MediaLibraryWindow::expandToggleStateChanged, this);
-	expandToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::expand).capitalized (), uitext->getText (UiTextString::minimize).capitalized ());
+	expandToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::Expand).capitalized (), uitext->getText (UiTextString::Minimize).capitalized ());
 
 	agentTaskWindow = (AgentTaskWindow *) addWidget (new AgentTaskWindow (agentId));
 
@@ -148,6 +153,10 @@ bool MediaLibraryWindow::isWidgetType (Widget *widget) {
 
 MediaLibraryWindow *MediaLibraryWindow::castWidget (Widget *widget) {
 	return (MediaLibraryWindow::isWidgetType (widget) ? (MediaLibraryWindow *) widget : NULL);
+}
+
+Widget::Rectangle MediaLibraryWindow::getMenuButtonScreenRect () {
+	return (menuButton->getScreenRect ());
 }
 
 void MediaLibraryWindow::syncRecordStore () {
@@ -181,7 +190,7 @@ void MediaLibraryWindow::syncRecordStore () {
 		catalogLinkIcon->isVisible = false;
 	}
 	else {
-		catalogLinkIcon->setText (Label::getTruncatedText (App::instance->agentControl.getAgentSecondaryUrl (agentId, NULL, htmlCatalogPath), UiConfiguration::CaptionFont, ((float) App::instance->windowWidth) * MediaLibraryWindow::textTruncateScale, StdString ("...")));
+		catalogLinkIcon->setText (Label::getTruncatedText (App::instance->agentControl.getAgentSecondaryUrl (agentId, NULL, htmlCatalogPath), UiConfiguration::CaptionFont, ((float) App::instance->windowWidth) * MediaLibraryWindow::TextTruncateScale, Label::DotTruncateSuffix));
 		catalogLinkIcon->isVisible = isExpanded;
 	}
 
@@ -189,14 +198,14 @@ void MediaLibraryWindow::syncRecordStore () {
 
 	count = mediaserverstatus.getNumber ("mediaCount", (int) 0);
 	mediaCountIcon->setText (StdString::createSprintf ("%i", count));
-	mediaCountIcon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::mediaFile, UiTextString::mediaFiles));
+	mediaCountIcon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::MediaFile, UiTextString::MediaFiles));
 
 	count = streamserverstatus.getNumber ("streamCount", (int) 0);
 	streamCountIcon->setText (StdString::createSprintf ("%i", count));
-	streamCountIcon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::videoStream, UiTextString::videoStreams));
+	streamCountIcon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::VideoStream, UiTextString::VideoStreams));
 
 	taskCountIcon->setText (StdString::createSprintf ("%i", agentTaskCount));
-	taskCountIcon->setMouseHoverTooltip (uitext->getCountText (agentTaskCount, UiTextString::taskInProgress, UiTextString::tasksInProgress));
+	taskCountIcon->setMouseHoverTooltip (uitext->getCountText (agentTaskCount, UiTextString::TaskInProgress, UiTextString::TasksInProgress));
 
 	agentTaskWindow->syncRecordStore ();
 	if ((agentTaskCount > 0) && isExpanded) {
@@ -234,6 +243,7 @@ void MediaLibraryWindow::setExpanded (bool expanded, bool shouldSkipStateChangeC
 		expandToggle->setChecked (true, shouldSkipStateChangeCallback);
 		nameLabel->setFont (UiConfiguration::HeadlineFont);
 		descriptionLabel->isVisible = true;
+		dividerPanel->isVisible = true;
 		if (agentTaskCount > 0) {
 			taskCountIcon->isVisible = true;
 			if (! agentTaskWindow->isTaskRunning) {
@@ -257,6 +267,7 @@ void MediaLibraryWindow::setExpanded (bool expanded, bool shouldSkipStateChangeC
 		expandToggle->setChecked (false, shouldSkipStateChangeCallback);
 		nameLabel->setFont (UiConfiguration::BodyFont);
 		descriptionLabel->isVisible = false;
+		dividerPanel->isVisible = false;
 		taskCountIcon->isVisible = false;
 		storageIcon->isVisible = false;
 		mediaCountIcon->isVisible = false;
@@ -293,10 +304,13 @@ void MediaLibraryWindow::refreshLayout () {
 		menuButton->flowRight (&x, y, &x2, &y2);
 	}
 
+	x = x0;
+	y = y2 + uiconfig->marginSize;
+	x2 = 0.0f;
+	if (dividerPanel->isVisible) {
+		dividerPanel->flowDown (0.0f, &y, &x2, &y2);
+	}
 	if (catalogLinkIcon->isVisible) {
-		x = x0;
-		y = y2 + uiconfig->marginSize;
-		x2 = 0.0f;
 		catalogLinkIcon->flowDown (x, &y, &x2, &y2);
 	}
 
@@ -325,11 +339,13 @@ void MediaLibraryWindow::refreshLayout () {
 
 	resetSize ();
 
+	if (dividerPanel->isVisible) {
+		dividerPanel->setFixedSize (true, width, uiconfig->headlineDividerLineWidth);
+	}
+
 	x = width - widthPadding;
 	if (menuButton->isVisible) {
 		menuButton->flowLeft (&x);
-		menuPositionX = menuButton->position.x;
-		menuPositionY = menuButton->position.y + menuButton->height;
 	}
 	expandToggle->flowLeft (&x);
 }

@@ -45,6 +45,8 @@ public:
 	CameraDetailWindow (const StdString &agentId, SpriteGroup *cameraTimelineUiSpriteGroup);
 	virtual ~CameraDetailWindow ();
 
+	static const float NameTruncateScale;
+
 	// Read-only data members
 	StdString agentId;
 

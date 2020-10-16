@@ -41,6 +41,7 @@
 #include "Toolbar.h"
 #include "Sprite.h"
 #include "SpriteGroup.h"
+#include "CardView.h"
 #include "HelpWindow.h"
 
 class Ui {
@@ -117,9 +118,6 @@ public:
 	// Execute actions appropriate for a received keypress event and return a boolean value indicating if the event was consumed and should no longer be processed
 	bool processKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
 
-	// Callback functions
-	static bool keyEvent (void *uiPtr, SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
-
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
 	virtual StdString getSpritePath ();
@@ -172,6 +170,27 @@ protected:
 	// Add the specified agent ID to the set that should be maintained with a link client connection
 	void addLinkAgent (const StdString &agentId);
 
+	// Add a widget to the root panel and position it as an action popup
+	void showActionPopup (Widget *action, Widget *target, Widget::EventCallback sourceFn, const Widget::Rectangle &sourceRect, int xAlignment, int yAlignment);
+
+	// Clear popup widgets and return a boolean value indicating if an action popup matching target and sourceFn was removed
+	bool clearActionPopup (Widget *target, Widget::EventCallback sourceFn);
+
+	enum {
+		LeftOfAlignment = 0,
+		LeftEdgeAlignment = 1,
+		XCenteredAlignment = 2,
+		RightEdgeAlignment = 3,
+		RightOfAlignment = 4,
+		TopOfAlignment = 5,
+		TopEdgeAlignment = 6,
+		YCenteredAlignment = 7,
+		BottomEdgeAlignment = 8,
+		BottomOfAlignment = 9
+	};
+	// Assign a popup widget's screen position using the provided source rectangle and alignment values
+	void assignPopupPosition (Widget *popupWidget, const Widget::Rectangle &popupSourceRect, int xAlignment, int yAlignment);
+
 	// Return a newly created Panel containing the provided elements, as appropriate for use as a CardView row header
 	Panel *createRowHeaderPanel (const StdString &headerText = StdString (""), Panel *sidePanel = NULL);
 
@@ -179,12 +198,17 @@ protected:
 	Panel *createLoadingIconWindow ();
 
 	SpriteGroup sprites;
+	CardView *cardView;
 	WidgetHandle actionWidget;
 	WidgetHandle actionTarget;
+	Widget::EventCallback actionSource;
 	WidgetHandle breadcrumbWidget;
 	StringList linkAgentIds;
 
 private:
+	// Callback functions
+	static bool keyEvent (void *uiPtr, SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
+
 	int refcount;
 	SDL_mutex *refcountMutex;
 };

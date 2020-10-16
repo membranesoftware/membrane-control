@@ -96,10 +96,10 @@ MediaWindow::MediaWindow (Json *mediaItem, SpriteGroup *mediaUiSpriteGroup)
 	mediaHeight = interface->getCommandNumberParam (mediaItem, "height", (int) 0);
 
 	mediaImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
+	mediaImage->loadCallback = Widget::EventCallbackContext (MediaWindow::mediaImageLoaded, this);
+	mediaImage->mouseClickCallback = Widget::EventCallbackContext (MediaWindow::mediaImageClicked, this);
+	mediaImage->mouseLongPressCallback = Widget::EventCallbackContext (MediaWindow::mediaImageLongPressed, this);
 	mediaImage->setLoadSprite (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
-	mediaImage->setMouseClickCallback (MediaWindow::mediaImageClicked, this);
-	mediaImage->setLoadCallback (MediaWindow::mediaImageLoaded, this);
-	mediaImage->setMouseLongPressCallback (MediaWindow::mediaImageLongPressed, this);
 
 	nameLabel = (Label *) addWidget (new Label (mediaName, UiConfiguration::BodyFont, uiconfig->primaryTextColor));
 	nameLabel->isInputSuspended = true;
@@ -126,20 +126,20 @@ MediaWindow::MediaWindow (Json *mediaItem, SpriteGroup *mediaUiSpriteGroup)
 	detailNameLabel->isVisible = false;
 
 	viewButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::ImageButtonSprite)));
+	viewButton->mouseClickCallback = Widget::EventCallbackContext (MediaWindow::viewButtonClicked, this);
 	viewButton->zLevel = 4;
 	viewButton->isTextureTargetDrawEnabled = false;
 	viewButton->setImageColor (uiconfig->flatButtonTextColor);
 	viewButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
-	viewButton->setMouseHoverTooltip (uitext->getText (UiTextString::viewTimelineImagesTooltip));
-	viewButton->setMouseClickCallback (MediaWindow::viewButtonClicked, this);
+	viewButton->setMouseHoverTooltip (uitext->getText (UiTextString::ViewTimelineImagesTooltip));
 
 	browserPlayButton = (Button *) addWidget (new Button (sprites->getSprite (MediaUi::BrowserPlayButtonSprite)));
+	browserPlayButton->mouseClickCallback = Widget::EventCallbackContext (MediaWindow::browserPlayButtonClicked, this);
 	browserPlayButton->zLevel = 4;
 	browserPlayButton->isTextureTargetDrawEnabled = false;
 	browserPlayButton->setImageColor (uiconfig->flatButtonTextColor);
 	browserPlayButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
-	browserPlayButton->setMouseHoverTooltip (uitext->getText (UiTextString::mediaUiBrowserPlayTooltip));
-	browserPlayButton->setMouseClickCallback (MediaWindow::browserPlayButtonClicked, this);
+	browserPlayButton->setMouseHoverTooltip (uitext->getText (UiTextString::MediaUiBrowserPlayTooltip));
 	browserPlayButton->isVisible = false;
 
 	timestampLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->primaryTextColor)));
@@ -153,14 +153,14 @@ MediaWindow::MediaWindow (Json *mediaItem, SpriteGroup *mediaUiSpriteGroup)
 	streamIconImage->zLevel = 3;
 	streamIconImage->setFillBg (true, uiconfig->darkBackgroundColor);
 	streamIconImage->setPadding (uiconfig->paddingSize / 2.0f, 0.0f);
-	streamIconImage->setMouseHoverTooltip (uitext->getText (UiTextString::streamIconTooltip));
+	streamIconImage->setMouseHoverTooltip (uitext->getText (UiTextString::StreamIconTooltip));
 	streamIconImage->isVisible = false;
 
 	createStreamUnavailableIconImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::SmallErrorIconSprite))));
 	createStreamUnavailableIconImage->zLevel = 3;
 	createStreamUnavailableIconImage->setFillBg (true, uiconfig->darkBackgroundColor);
 	createStreamUnavailableIconImage->setPadding (uiconfig->paddingSize / 2.0f, 0.0f);
-	createStreamUnavailableIconImage->setMouseHoverTooltip (uitext->getText (UiTextString::createStreamUnavailableTooltip));
+	createStreamUnavailableIconImage->setMouseHoverTooltip (uitext->getText (UiTextString::CreateStreamUnavailableTooltip));
 	createStreamUnavailableIconImage->isVisible = false;
 }
 
@@ -436,7 +436,7 @@ void MediaWindow::refreshLayout () {
 	}
 }
 
-void MediaWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
+bool MediaWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 	Panel::doProcessMouseState (mouseState);
 	if (layout == CardView::LowDetail) {
 		if (mouseState.isEntered) {
@@ -446,6 +446,8 @@ void MediaWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 			mouseoverLabel->isVisible = false;
 		}
 	}
+
+	return (false);
 }
 
 void MediaWindow::setLayout (int layoutType, float maxPanelWidth) {

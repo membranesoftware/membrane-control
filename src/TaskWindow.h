@@ -46,19 +46,16 @@ public:
 	TaskWindow (const StdString &taskId);
 	virtual ~TaskWindow ();
 
+	// Read-write data members
+	Widget::EventCallbackContext deleteCallback;
+
 	// Read-only data members
 	StdString taskId;
 	bool isTaskComplete;
 	bool isDeleted;
 
-	// Set a function that should be invoked when the window's delete action is clicked
-	void setDeleteCallback (Widget::EventCallback callback, void *callbackData);
-
 	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
 	void syncRecordStore ();
-
-	// Callback functions
-	static void deleteButtonClicked (void *windowPtr, Widget *widgetPtr);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
@@ -68,13 +65,14 @@ protected:
 	void refreshLayout ();
 
 private:
+	// Callback functions
+	static void deleteButtonClicked (void *windowPtr, Widget *widgetPtr);
+
 	Image *iconImage;
 	Label *nameLabel;
 	Label *descriptionLabel;
 	ProgressBar *progressBar;
 	Button *deleteButton;
-	Widget::EventCallback deleteCallback;
-	void *deleteCallbackData;
 };
 
 #endif

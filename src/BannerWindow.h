@@ -49,7 +49,7 @@ public:
 	void setWindowWidth (float fixedWidth);
 
 	// Set the window's banner content
-	void setBanner (const StdString &messageText, Sprite *iconSprite = NULL, const StdString &actionText = StdString (""), Widget::EventCallback actionClickCallback = NULL, void *actionClickCallbackData = NULL);
+	void setBanner (const StdString &messageText, Sprite *iconSprite = NULL, const StdString &actionText = StdString (""), Widget::EventCallbackContext actionClickCallback = Widget::EventCallbackContext ());
 
 	// Return a boolean value indicating if the provided Widget is a member of this class
 	static bool isWidgetType (Widget *widget);

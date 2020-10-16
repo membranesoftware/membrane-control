@@ -36,7 +36,7 @@
 
 class MediaUtil {
 public:
-	static const float aspectRatioMatchEpsilon;
+	static const float AspectRatioMatchEpsilon;
 
 	// Return a string containing the name of the specified aspect ratio, or an empty string if no such name was found.
 	static StdString getAspectRatioDisplayString (int width, int height);

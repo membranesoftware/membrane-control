@@ -56,11 +56,6 @@ public:
 	// Return the provided y position value, adjusted as appropriate for the link's line height
 	float getLinePosition (float targetY);
 
-	// Callback functions
-	static void windowClicked (void *windowPtr, Widget *widgetPtr);
-	static void windowMouseEntered (void *windowPtr, Widget *widgetPtr);
-	static void windowMouseExited (void *windowPtr, Widget *widgetPtr);
-
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
@@ -69,6 +64,11 @@ protected:
 	void refreshLayout ();
 
 private:
+	// Callback functions
+	static void windowClicked (void *windowPtr, Widget *widgetPtr);
+	static void windowMouseEntered (void *windowPtr, Widget *widgetPtr);
+	static void windowMouseExited (void *windowPtr, Widget *widgetPtr);
+
 	Label *label;
 	StdString url;
 	float labelWidth;

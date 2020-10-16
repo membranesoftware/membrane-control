@@ -36,10 +36,13 @@
 
 class OsUtil {
 public:
-	static const char *monthNames[];
+	static const char *MonthNames[];
 
 	// Return the current time in milliseconds since the epoch
 	static int64_t getTime ();
+
+	// Return the application's process ID
+	static int getProcessId ();
 
 	// Return a string containing a formatted value representing the specified millisecond duration
 	enum {
@@ -91,6 +94,7 @@ public:
 	static StdString getEnvValue (const StdString &key, const StdString &defaultValue);
 	static StdString getEnvValue (const StdString &key, const char *defaultValue);
 	static bool getEnvValue (const StdString &key, bool defaultValue);
+	static int getEnvValue (const StdString &key, int defaultValue);
 
 	// Return the language identifier from the environment, or the specified default if no such value was found
 	static StdString getEnvLanguage (const StdString &defaultValue);

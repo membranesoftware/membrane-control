@@ -50,26 +50,27 @@
 #include "WebKioskUi.h"
 #include "CameraUi.h"
 #include "MediaUi.h"
-#include "CommandUi.h"
 #include "MainUi.h"
 
-const int MainUi::uiLaunchWindowTypes[] = {
+const char *MainUi::ExpandedUiTypesKey = "Main_ExpandedUiTypes";
+const char *MainUi::ShortcutUiTypeKey = "Main_ShortcutUiType";
+const char *MainUi::ApplicationNewsItemsKey = "Main_ApplicationNewsItems";
+
+const int MainUi::UiLaunchWindowTypes[] = {
 	UiLaunchWindow::ServerUi,
 	UiLaunchWindow::MediaUi,
 	UiLaunchWindow::WebKioskUi,
-	UiLaunchWindow::CameraUi,
-	UiLaunchWindow::CommandUi
+	UiLaunchWindow::CameraUi
 };
-const StdString MainUi::announcementIconType = StdString ("a");
-const StdString MainUi::updateIconType = StdString ("b");
-const StdString MainUi::textMessageIconType = StdString ("c");
-const StdString MainUi::videoMessageIconType = StdString ("d");
-const StdString MainUi::openUrlActionType = StdString ("a");
-const StdString MainUi::helpActionType = StdString ("b");
+const StdString MainUi::AnnouncementIconType = StdString ("a");
+const StdString MainUi::UpdateIconType = StdString ("b");
+const StdString MainUi::TextMessageIconType = StdString ("c");
+const StdString MainUi::VideoMessageIconType = StdString ("d");
+const StdString MainUi::OpenUrlActionType = StdString ("a");
+const StdString MainUi::HelpActionType = StdString ("b");
 
 MainUi::MainUi ()
 : Ui ()
-, cardView (NULL)
 , bannerClock (0)
 , agentCount (0)
 {
@@ -89,13 +90,13 @@ void MainUi::setHelpWindowContent (HelpWindow *helpWindow) {
 
 	uitext = &(App::instance->uiText);
 
-	helpWindow->setHelpText (uitext->getText (UiTextString::mainUiHelpTitle), uitext->getText (UiTextString::mainUiHelpText));
+	helpWindow->setHelpText (uitext->getText (UiTextString::MainUiHelpTitle), uitext->getText (UiTextString::MainUiHelpText));
 	if (agentCount <= 0) {
-		helpWindow->addAction (uitext->getText (UiTextString::mainUiServersHelpActionText), uitext->getText (UiTextString::learnMore).capitalized (), App::getHelpUrl ("servers"));
+		helpWindow->addAction (uitext->getText (UiTextString::MainUiServersHelpActionText), uitext->getText (UiTextString::LearnMore).capitalized (), App::getHelpUrl ("servers"));
 	}
 
-	helpWindow->addTopicLink (uitext->getText (UiTextString::membraneSoftwareOverviewHelpTitle), App::getHelpUrl ("membrane-software-overview"));
-	helpWindow->addTopicLink (uitext->getText (UiTextString::searchForHelp).capitalized (), App::getHelpUrl (""));
+	helpWindow->addTopicLink (uitext->getText (UiTextString::MembraneSoftwareOverviewHelpTitle), App::getHelpUrl ("membrane-software-overview"));
+	helpWindow->addTopicLink (uitext->getText (UiTextString::SearchForHelp).capitalized (), App::getHelpUrl (""));
 }
 
 int MainUi::doLoad () {
@@ -103,20 +104,16 @@ int MainUi::doLoad () {
 
 	uitext = &(App::instance->uiText);
 
-	cardView = (CardView *) addWidget (new CardView (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight));
-	cardView->isKeyboardScrollEnabled = true;
-	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
-	cardView->setRowHeader (MainUi::UnexpandedUiRow, createRowHeaderPanel (uitext->getText (UiTextString::mainMenu).capitalized ()));
-
+	cardView->setRowHeader (MainUi::UnexpandedUiRow, createRowHeaderPanel (uitext->getText (UiTextString::MainMenu).capitalized ()));
 	cardView->setRowReverseSorted (MainUi::ExpandedUiRow, true);
 
 	bannerList.randomizeOrder (&(App::instance->prng));
-	bannerIconTypeMap.insert (MainUi::announcementIconType, MainUi::AnnouncementIconSprite);
-	bannerIconTypeMap.insert (MainUi::updateIconType, MainUi::UpdateIconSprite);
-	bannerIconTypeMap.insert (MainUi::textMessageIconType, MainUi::TextMessageIconSprite);
-	bannerIconTypeMap.insert (MainUi::videoMessageIconType, MainUi::VideoMessageIconSprite);
-	bannerActionCallbackMap.insert (std::pair<StdString, Widget::EventCallback> (MainUi::openUrlActionType, MainUi::openUrlActionClicked));
-	bannerActionCallbackMap.insert (std::pair<StdString, Widget::EventCallback> (MainUi::helpActionType, MainUi::helpActionClicked));
+	bannerIconTypeMap.insert (MainUi::AnnouncementIconType, MainUi::AnnouncementIconSprite);
+	bannerIconTypeMap.insert (MainUi::UpdateIconType, MainUi::UpdateIconSprite);
+	bannerIconTypeMap.insert (MainUi::TextMessageIconType, MainUi::TextMessageIconSprite);
+	bannerIconTypeMap.insert (MainUi::VideoMessageIconType, MainUi::VideoMessageIconSprite);
+	bannerActionCallbackMap.insert (std::pair<StdString, Widget::EventCallback> (MainUi::OpenUrlActionType, MainUi::openUrlActionClicked));
+	bannerActionCallbackMap.insert (std::pair<StdString, Widget::EventCallback> (MainUi::HelpActionType, MainUi::helpActionClicked));
 	bannerClock = 1200;
 	resetBanners ();
 
@@ -142,9 +139,9 @@ void MainUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
 	uitext = &(App::instance->uiText);
 
 	button = new Button (sprites.getSprite (MainUi::NextItemButtonSprite));
+	button->mouseClickCallback = Widget::EventCallbackContext (MainUi::nextBannerButtonClicked, this);
 	button->setInverseColor (true);
-	button->setMouseClickCallback (MainUi::nextBannerButtonClicked, this);
-	button->setMouseHoverTooltip (uitext->getText (UiTextString::mainUiNextBannerTooltip));
+	button->setMouseHoverTooltip (uitext->getText (UiTextString::MainUiNextBannerTooltip));
 	button->zLevel = 1;
 	toolbar->addRightItem (button);
 
@@ -158,29 +155,33 @@ void MainUi::doClearPopupWidgets () {
 }
 
 void MainUi::doResume () {
+	HashMap *prefs;
 	UiLaunchWindow *uiwindow;
 	StringList items;
 	int i, len, row, pos;
+	bool shouldgetnews;
 
 	App::instance->setNextBackgroundTexturePath ("ui/MainUi/bg");
-	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
-	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 	bannerClock = 1200;
 
 	if (! isFirstResumeComplete) {
-		if (! App::instance->prefsMap.find (App::IsFirstLaunchCompleteKey, false)) {
-			App::instance->prefsMap.insert (App::IsFirstLaunchCompleteKey, true);
+		shouldgetnews = false;
+
+		prefs = App::instance->lockPrefs ();
+		if (! prefs->find (App::IsFirstLaunchCompleteKey, false)) {
+			prefs->insert (App::IsFirstLaunchCompleteKey, true);
 		}
 		else {
-			App::instance->network.sendHttpGet (App::getApplicationNewsUrl (), MainUi::getApplicationNewsComplete, this);
+			shouldgetnews = true;
 		}
+		prefs->find (MainUi::ExpandedUiTypesKey, &items);
+		App::instance->unlockPrefs ();
 
-		App::instance->prefsMap.find (App::MainUiExpandedUiTypesKey, &items);
-		len = sizeof (MainUi::uiLaunchWindowTypes) / sizeof (MainUi::uiLaunchWindowTypes[0]);
+		len = sizeof (MainUi::UiLaunchWindowTypes) / sizeof (MainUi::UiLaunchWindowTypes[0]);
 		for (i = 0; i < len; ++i) {
-			uiwindow = new UiLaunchWindow (MainUi::uiLaunchWindowTypes[i], &sprites);
-			uiwindow->setExpandStateChangeCallback (MainUi::uiExpandStateChanged, this);
-			uiwindow->setOpenCallback (MainUi::uiOpenClicked, this);
+			uiwindow = new UiLaunchWindow (MainUi::UiLaunchWindowTypes[i], &sprites);
+			uiwindow->expandStateChangeCallback = Widget::EventCallbackContext (MainUi::uiExpandStateChanged, this);
+			uiwindow->openCallback = Widget::EventCallbackContext (MainUi::uiOpenClicked, this);
 			uiwindow->itemId.sprintf ("%08x", i);
 
 			pos = items.indexOf (StdString::createSprintf ("%i", uiwindow->uiType));
@@ -199,24 +200,21 @@ void MainUi::doResume () {
 		}
 
 		cardView->refresh ();
-	}
-}
 
-void MainUi::doRefresh () {
-	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
-	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
+		if (shouldgetnews) {
+			App::instance->network.sendHttpGet (App::getApplicationNewsUrl (), MainUi::getApplicationNewsComplete, this);
+		}
+	}
 }
 
 void MainUi::doPause () {
+	HashMap *prefs;
 	StringList items;
 
 	cardView->processItems (MainUi::appendExpandedUiType, &items);
-	if (items.empty ()) {
-		App::instance->prefsMap.remove (App::MainUiExpandedUiTypesKey);
-	}
-	else {
-		App::instance->prefsMap.insert (App::MainUiExpandedUiTypesKey, &items);
-	}
+	prefs = App::instance->lockPrefs ();
+	prefs->insert (MainUi::ExpandedUiTypesKey, &items);
+	App::instance->unlockPrefs ();
 }
 
 void MainUi::appendExpandedUiType (void *stringListPtr, Widget *widgetPtr) {
@@ -241,8 +239,6 @@ void MainUi::doUpdate (int msElapsed) {
 }
 
 void MainUi::doResize () {
-	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
-	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 	if (bannerWindow.widget) {
 		((BannerWindow *) bannerWindow.widget)->setWindowWidth (App::instance->uiStack.secondaryToolbar->getLeftWidth ());
 	}
@@ -250,9 +246,15 @@ void MainUi::doResize () {
 
 void MainUi::doSyncRecordStore () {
 	RecordStore *store;
+	HashMap *prefs;
+	int timeout;
 
 	store = &(App::instance->agentControl.recordStore);
-	agentCount = store->countCommandRecords (SystemInterface::CommandId_AgentStatus, App::instance->prefsMap.find (App::ServerTimeoutKey, App::defaultServerTimeout) * 1000);
+	prefs = App::instance->lockPrefs ();
+	timeout = prefs->find (App::ServerTimeoutKey, App::DefaultServerTimeout) * 1000;
+	App::instance->unlockPrefs ();
+
+	agentCount = store->countCommandRecords (SystemInterface::CommandId_AgentStatus, timeout);
 	cardView->syncRecordStore ();
 	cardView->refresh ();
 }
@@ -303,10 +305,6 @@ void MainUi::uiOpenClicked (void *uiPtr, Widget *widgetPtr) {
 			ui = (Ui *) new CameraUi ();
 			break;
 		}
-		case UiLaunchWindow::CommandUi: {
-			ui = (Ui *) new CommandUi ();
-			break;
-		}
 	}
 
 	if (ui) {
@@ -339,9 +337,9 @@ void MainUi::showNextBanner () {
 			callback = pos->second;
 			if (callback) {
 				button = new Button (NULL, activeBanner.actionText.uppercased ());
+				button->mouseClickCallback = Widget::EventCallbackContext (callback, this);
 				button->setRaised (true, uiconfig->raisedButtonBackgroundColor);
 				button->setTextColor (uiconfig->raisedButtonTextColor);
-				button->setMouseClickCallback (callback, this);
 				button->zLevel = 1;
 				bannerActionButton.assign (button);
 				App::instance->uiStack.secondaryToolbar->addRightItem (button);
@@ -351,7 +349,7 @@ void MainUi::showNextBanner () {
 
 	banner->setWindowWidth (App::instance->uiStack.secondaryToolbar->getLeftWidth () - (uiconfig->marginSize * 2.0f));
 	banner->setBanner (activeBanner.messageText, sprites.getSprite (spriteindex));
-	if (activeBanner.actionType.equals (MainUi::helpActionType)) {
+	if (activeBanner.actionType.equals (MainUi::HelpActionType)) {
 		bannerClock = 300000;
 	}
 	else {
@@ -362,6 +360,7 @@ void MainUi::showNextBanner () {
 void MainUi::getApplicationNewsComplete (void *uiPtr, const StdString &targetUrl, int statusCode, SharedBuffer *responseData) {
 	MainUi *ui;
 	SystemInterface *interface;
+	HashMap *prefs;
 	Json *cmd, *item;
 	StringList items;
 	int i, count;
@@ -385,12 +384,15 @@ void MainUi::getApplicationNewsComplete (void *uiPtr, const StdString &targetUrl
 	}
 	delete (cmd);
 
-	App::instance->prefsMap.insert (App::MainUiApplicationNewsItemsKey, &items);
+	prefs = App::instance->lockPrefs ();
+	prefs->insert (MainUi::ApplicationNewsItemsKey, &items);
+	App::instance->unlockPrefs ();
 	ui->resetBanners ();
 }
 
 void MainUi::resetBanners () {
 	UiText *uitext;
+	HashMap *prefs;
 	MainUi::Banner item;
 	StringList items;
 	StringList::iterator i, end;
@@ -398,23 +400,26 @@ void MainUi::resetBanners () {
 
 	uitext = &(App::instance->uiText);
 	bannerList.clear ();
-	if (! App::instance->prefsMap.find (App::IsFirstLaunchCompleteKey, false)) {
+
+	prefs = App::instance->lockPrefs ();
+	if (! prefs->find (App::IsFirstLaunchCompleteKey, false)) {
 		item = MainUi::Banner ();
-		item.messageText.assign (uitext->getText (UiTextString::firstLaunchBannerMessage));
-		item.iconType.assign (MainUi::announcementIconType);
-		item.actionType.assign (MainUi::helpActionType);
-		item.actionText.assign (uitext->getText (UiTextString::openHelp));
+		item.messageText.assign (uitext->getText (UiTextString::FirstLaunchBannerMessage));
+		item.iconType.assign (MainUi::AnnouncementIconType);
+		item.actionType.assign (MainUi::HelpActionType);
+		item.actionText.assign (uitext->getText (UiTextString::OpenHelp));
 		bannerList.push_back (item);
 		bannerList.nextItemIndex = 0;
 	}
 	else {
 		item = MainUi::Banner ();
-		item.messageText.assign (uitext->getText (UiTextString::helpKeyBannerMessage));
-		item.iconType.assign (MainUi::textMessageIconType);
+		item.messageText.assign (uitext->getText (UiTextString::HelpKeyBannerMessage));
+		item.iconType.assign (MainUi::TextMessageIconType);
 		bannerList.push_back (item);
 	}
+	prefs->find (MainUi::ApplicationNewsItemsKey, &items);
+	App::instance->unlockPrefs ();
 
-	App::instance->prefsMap.find (App::MainUiApplicationNewsItemsKey, &items);
 	i = items.begin ();
 	end = items.end ();
 	while (i != end) {
@@ -435,30 +440,30 @@ void MainUi::resetBanners () {
 	}
 
 	item = MainUi::Banner ();
-	item.messageText.assign (uitext->getText (UiTextString::freeApplicationBannerMessage));
-	item.iconType.assign (MainUi::textMessageIconType);
+	item.messageText.assign (uitext->getText (UiTextString::FreeApplicationBannerMessage));
+	item.iconType.assign (MainUi::TextMessageIconType);
 	bannerList.push_back (item);
 	item = MainUi::Banner ();
-	item.messageText.assign (uitext->getText (UiTextString::membraneSoftwareBannerMessage));
-	item.iconType.assign (MainUi::textMessageIconType);
-	item.actionType.assign (MainUi::openUrlActionType);
-	item.actionText.assign (uitext->getText (UiTextString::learnMore));
+	item.messageText.assign (uitext->getText (UiTextString::MembraneSoftwareBannerMessage));
+	item.iconType.assign (MainUi::TextMessageIconType);
+	item.actionType.assign (MainUi::OpenUrlActionType);
+	item.actionText.assign (uitext->getText (UiTextString::LearnMore));
 	item.actionTarget.assign (App::getHelpUrl ("about-membrane-software"));
 	bannerList.push_back (item);
 	item = MainUi::Banner ();
-	item.messageText.assign (uitext->getText (UiTextString::donateBannerMessage));
-	item.iconType.assign (MainUi::announcementIconType);
-	item.actionType.assign (MainUi::openUrlActionType);
-	item.actionText.assign (uitext->getText (UiTextString::learnMore));
+	item.messageText.assign (uitext->getText (UiTextString::DonateBannerMessage));
+	item.iconType.assign (MainUi::AnnouncementIconType);
+	item.actionType.assign (MainUi::OpenUrlActionType);
+	item.actionText.assign (uitext->getText (UiTextString::LearnMore));
 	item.actionTarget.assign (App::getDonateUrl ());
 	bannerList.push_back (item);
 	item = MainUi::Banner ();
-	item.messageText.assign (uitext->getText (UiTextString::mouseHoverBannerMessage));
-	item.iconType.assign (MainUi::textMessageIconType);
+	item.messageText.assign (uitext->getText (UiTextString::MouseHoverBannerMessage));
+	item.iconType.assign (MainUi::TextMessageIconType);
 	bannerList.push_back (item);
 	item = MainUi::Banner ();
-	item.messageText.assign (uitext->getText (UiTextString::imageLongPressBannerMessage));
-	item.iconType.assign (MainUi::textMessageIconType);
+	item.messageText.assign (uitext->getText (UiTextString::ImageLongPressBannerMessage));
+	item.iconType.assign (MainUi::TextMessageIconType);
 	bannerList.push_back (item);
 
 	bannerClock = 1200;
@@ -479,15 +484,15 @@ void MainUi::openUrlActionClicked (void *uiPtr, Widget *widgetPtr) {
 	ui = (MainUi *) uiPtr;
 	url.assign (ui->activeBanner.actionTarget);
 	if (url.empty ()) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::launchWebBrowserError));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::LaunchWebBrowserError));
 		return;
 	}
 
 	result = OsUtil::openUrl (url);
 	if (result != Result::Success) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::launchWebBrowserError));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::LaunchWebBrowserError));
 	}
 	else {
-		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::launchedWebBrowser).capitalized ().c_str (), url.c_str ()));
+		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::LaunchedWebBrowser).capitalized ().c_str (), url.c_str ()));
 	}
 }

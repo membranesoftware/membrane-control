@@ -67,19 +67,19 @@ HelpWindow::HelpWindow (float windowWidth, float windowHeight)
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
 	headerImage = (ImageWindow *) addWidget (new ImageWindow ());
-	headerImage->setLoadResourcePath (StdString::createSprintf ("bg/help/%i.png", App::instance->imageScale));
+	headerImage->setImageFilePath (StdString::createSprintf ("bg/help/%i.png", App::instance->imageScale));
 
-	titleLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::help).capitalized (), UiConfiguration::TitleFont, uiconfig->primaryTextColor)));
+	titleLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::Help).capitalized (), UiConfiguration::TitleFont, uiconfig->primaryTextColor)));
 	titleLabel->setPadding (0.0f, 0.0f);
 
 	closeButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::ExitButtonSprite)));
+	closeButton->mouseClickCallback = Widget::EventCallbackContext (HelpWindow::closeButtonClicked, this);
 	closeButton->zLevel = 1;
-	closeButton->setMouseClickCallback (HelpWindow::closeButtonClicked, this);
 	closeButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
 
 	helpTitleLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::TitleFont, uiconfig->primaryTextColor));
 	helpText = (TextArea *) addWidget (new TextArea (UiConfiguration::CaptionFont, uiconfig->primaryTextColor, uiconfig->textAreaLongLineLength, windowWidth - (uiconfig->paddingSize * 2.0f)));
-	linkTitleLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::moreHelpTopics).capitalized (), UiConfiguration::TitleFont, uiconfig->primaryTextColor));
+	linkTitleLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::MoreHelpTopics).capitalized (), UiConfiguration::TitleFont, uiconfig->primaryTextColor));
 	linkIconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::WebLinkIconSprite)));
 
 	versionLabel = (Label *) addWidget (new Label (StdString::createSprintf ("%s %s", BUILD_ID, BUILD_DATE), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));

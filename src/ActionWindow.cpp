@@ -79,17 +79,17 @@ ActionWindow::ActionWindow ()
 	descriptionText->isVisible = false;
 
 	confirmButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::OkButtonSprite)));
-	confirmButton->setMouseClickCallback (ActionWindow::confirmButtonClicked, this);
+	confirmButton->mouseClickCallback = Widget::EventCallbackContext (ActionWindow::confirmButtonClicked, this);
 	confirmButton->setTextColor (uiconfig->raisedButtonTextColor);
 	confirmButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
-	confirmButtonTooltipText.assign (uitext->getText (UiTextString::confirm).capitalized ());
+	confirmButtonTooltipText.assign (uitext->getText (UiTextString::Confirm).capitalized ());
 	confirmButton->setMouseHoverTooltip (confirmButtonTooltipText);
 
 	cancelButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::CancelButtonSprite)));
-	cancelButton->setMouseClickCallback (ActionWindow::cancelButtonClicked, this);
+	cancelButton->mouseClickCallback = Widget::EventCallbackContext (ActionWindow::cancelButtonClicked, this);
 	cancelButton->setTextColor (uiconfig->raisedButtonTextColor);
 	cancelButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
-	cancelButton->setMouseHoverTooltip (uitext->getText (UiTextString::cancel).capitalized ());
+	cancelButton->setMouseHoverTooltip (uitext->getText (UiTextString::Cancel).capitalized ());
 
 	refreshLayout ();
 }
@@ -147,7 +147,7 @@ void ActionWindow::setConfirmTooltipText (const StdString &text) {
 		confirmButton->setMouseHoverTooltip (confirmButtonTooltipText);
 	}
 	else {
-		confirmButton->setMouseHoverTooltip (StdString::createSprintf ("%s %s", confirmButtonTooltipText.c_str (), uitext->getText (UiTextString::actionWindowInvalidDataTooltip).c_str ()));
+		confirmButton->setMouseHoverTooltip (StdString::createSprintf ("%s %s", confirmButtonTooltipText.c_str (), uitext->getText (UiTextString::ActionWindowInvalidDataTooltip).c_str ()));
 	}
 }
 
@@ -229,7 +229,7 @@ void ActionWindow::setFooterPanel (Panel *panel) {
 }
 
 void ActionWindow::addOption (const StdString &optionName, ComboBox *comboBox, const StdString &descriptionText) {
-	comboBox->setValueChangeCallback (ActionWindow::optionValueChanged, this);
+	comboBox->valueChangeCallback = Widget::EventCallbackContext (ActionWindow::optionValueChanged, this);
 	comboBox->setInverseColor (isInverseColor);
 	doAddOption (ActionWindow::ComboBoxItem, optionName, comboBox, descriptionText);
 }
@@ -249,7 +249,7 @@ void ActionWindow::addOption (const StdString &optionName, TextFieldWindow *text
 }
 
 void ActionWindow::addOption (const StdString &optionName, Toggle *toggle, const StdString &descriptionText) {
-	toggle->setStateChangeCallback (ActionWindow::optionValueChanged, this);
+	toggle->stateChangeCallback = Widget::EventCallbackContext (ActionWindow::optionValueChanged, this);
 	toggle->setInverseColor (isInverseColor);
 	doAddOption (ActionWindow::ToggleItem, optionName, toggle, descriptionText);
 }
@@ -291,6 +291,130 @@ void ActionWindow::doAddOption (int itemType, const StdString &optionName, Widge
 		item->optionWidget = optionWidget;
 	}
 	verifyOptions ();
+	refreshLayout ();
+}
+
+void ActionWindow::setOptionValue (const StdString &optionName, const char *optionValue, bool shouldSkipChangeCallback) {
+	setOptionValue (optionName, StdString (optionValue), shouldSkipChangeCallback);
+}
+
+void ActionWindow::setOptionValue (const StdString &optionName, const StdString &optionValue, bool shouldSkipChangeCallback) {
+	std::list<ActionWindow::Item>::iterator item;
+
+	item = findItem (optionName);
+	if (item == itemList.end ()) {
+		return;
+	}
+
+	switch (item->type) {
+		case ActionWindow::ComboBoxItem: {
+			((ComboBox *) item->optionWidget)->setValue (optionValue, shouldSkipChangeCallback);
+			break;
+		}
+		case ActionWindow::TextFieldItem: {
+			((TextField *) item->optionWidget)->setValue (optionValue, shouldSkipChangeCallback, true);
+			break;
+		}
+		case ActionWindow::TextFieldWindowItem: {
+			((TextFieldWindow *) item->optionWidget)->setValue (optionValue, shouldSkipChangeCallback, true);
+			break;
+		}
+		case ActionWindow::ToggleItem: {
+			((Toggle *) item->optionWidget)->setChecked (optionValue.equals ("true"), shouldSkipChangeCallback);
+			break;
+		}
+	}
+
+	if (shouldSkipChangeCallback) {
+		verifyOptions ();
+	}
+	refreshLayout ();
+}
+
+void ActionWindow::setOptionValue (const StdString &optionName, int optionValue, bool shouldSkipChangeCallback) {
+	std::list<ActionWindow::Item>::iterator item;
+
+	item = findItem (optionName);
+	if (item == itemList.end ()) {
+		return;
+	}
+
+	switch (item->type) {
+		case ActionWindow::ComboBoxItem: {
+			((ComboBox *) item->optionWidget)->setValue (StdString::createSprintf ("%i", optionValue), shouldSkipChangeCallback);
+			break;
+		}
+		case ActionWindow::TextFieldItem: {
+			((TextField *) item->optionWidget)->setValue (StdString::createSprintf ("%i", optionValue), shouldSkipChangeCallback, true);
+			break;
+		}
+		case ActionWindow::TextFieldWindowItem: {
+			((TextFieldWindow *) item->optionWidget)->setValue (StdString::createSprintf ("%i", optionValue), shouldSkipChangeCallback, true);
+			break;
+		}
+		case ActionWindow::SliderItem: {
+			((SliderWindow *) item->optionWidget)->setValue ((float) optionValue, shouldSkipChangeCallback);
+			break;
+		}
+	}
+
+	if (shouldSkipChangeCallback) {
+		verifyOptions ();
+	}
+	refreshLayout ();
+}
+
+void ActionWindow::setOptionValue (const StdString &optionName, float optionValue, bool shouldSkipChangeCallback) {
+	std::list<ActionWindow::Item>::iterator item;
+
+	item = findItem (optionName);
+	if (item == itemList.end ()) {
+		return;
+	}
+
+	switch (item->type) {
+		case ActionWindow::ComboBoxItem: {
+			((ComboBox *) item->optionWidget)->setValue (StdString::createSprintf ("%f", optionValue), shouldSkipChangeCallback);
+			break;
+		}
+		case ActionWindow::TextFieldItem: {
+			((TextField *) item->optionWidget)->setValue (StdString::createSprintf ("%f", optionValue), shouldSkipChangeCallback, true);
+			break;
+		}
+		case ActionWindow::TextFieldWindowItem: {
+			((TextFieldWindow *) item->optionWidget)->setValue (StdString::createSprintf ("%f", optionValue), shouldSkipChangeCallback, true);
+			break;
+		}
+		case ActionWindow::SliderItem: {
+			((SliderWindow *) item->optionWidget)->setValue (optionValue, shouldSkipChangeCallback);
+			break;
+		}
+	}
+
+	if (shouldSkipChangeCallback) {
+		verifyOptions ();
+	}
+	refreshLayout ();
+}
+
+void ActionWindow::setOptionValue (const StdString &optionName, bool optionValue, bool shouldSkipChangeCallback) {
+	std::list<ActionWindow::Item>::iterator item;
+
+	item = findItem (optionName);
+	if (item == itemList.end ()) {
+		return;
+	}
+
+	switch (item->type) {
+		case ActionWindow::ToggleItem: {
+			((Toggle *) item->optionWidget)->setChecked (optionValue, shouldSkipChangeCallback);
+			break;
+		}
+	}
+
+	if (shouldSkipChangeCallback) {
+		verifyOptions ();
+	}
 	refreshLayout ();
 }
 
@@ -563,6 +687,27 @@ void ActionWindow::optionValueChanged (void *windowPtr, Widget *widgetPtr) {
 	}
 }
 
+void ActionWindow::setOptionDescriptionText (const StdString &optionName, const StdString &descriptionText) {
+	UiConfiguration *uiconfig;
+	std::list<ActionWindow::Item>::iterator item;
+
+	item = findItem (optionName);
+	if (item == itemList.end ()) {
+		return;
+	}
+
+	uiconfig = &(App::instance->uiConfig);
+	if (item->descriptionText) {
+		item->descriptionText->isDestroyed = true;
+		item->descriptionText = NULL;
+	}
+	if (! descriptionText.empty ()) {
+		item->descriptionText = (TextArea *) addWidget (new TextArea (UiConfiguration::CaptionFont, isInverseColor ? uiconfig->darkInverseTextColor : uiconfig->lightPrimaryTextColor, 0, uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth));
+		item->descriptionText->setText (descriptionText);
+	}
+	refreshLayout ();
+}
+
 void ActionWindow::setOptionNotEmptyString (const StdString &optionName) {
 	std::list<ActionWindow::Item>::iterator item;
 
@@ -678,6 +823,6 @@ void ActionWindow::verifyOptions () {
 	}
 	else {
 		confirmButton->setDisabled (true);
-		confirmButton->setMouseHoverTooltip (StdString::createSprintf ("%s %s", confirmButtonTooltipText.c_str (), uitext->getText (UiTextString::actionWindowInvalidDataTooltip).c_str ()));
+		confirmButton->setMouseHoverTooltip (StdString::createSprintf ("%s %s", confirmButtonTooltipText.c_str (), uitext->getText (UiTextString::ActionWindowInvalidDataTooltip).c_str ()));
 	}
 }

@@ -42,15 +42,12 @@ O=ActionWindow.o \
 	CameraTimelineWindow.o \
 	CameraUi.o \
 	CameraWindow.o \
+	CapturePlaylistWindow.o \
 	CardView.o \
 	Chip.o \
 	Color.o \
 	ComboBox.o \
 	CommandList.o \
-	CommandRecord.o \
-	CommandStore.o \
-	CommandUi.o \
-	CommandWindow.o \
 	Font.o \
 	HashMap.o \
 	HelpActionWindow.o \

@@ -93,10 +93,10 @@ StreamWindow::StreamWindow (Json *streamItem)
 	streamSize = interface->getCommandNumberParam (streamItem, "size", (int64_t) 0);
 
 	streamImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
+	streamImage->loadCallback = Widget::EventCallbackContext (StreamWindow::streamImageLoaded, this);
+	streamImage->mouseClickCallback = Widget::EventCallbackContext (StreamWindow::streamImageClicked, this);
+	streamImage->mouseLongPressCallback = Widget::EventCallbackContext (StreamWindow::streamImageLongPressed, this);
 	streamImage->setLoadSprite (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
-	streamImage->setMouseClickCallback (StreamWindow::streamImageClicked, this);
-	streamImage->setMouseLongPressCallback (StreamWindow::streamImageLongPressed, this);
-	streamImage->setLoadCallback (StreamWindow::streamImageLoaded, this);
 
 	nameLabel = (Label *) addWidget (new Label (streamName, UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
 	nameLabel->isInputSuspended = true;
@@ -129,20 +129,20 @@ StreamWindow::StreamWindow (Json *streamItem)
 	timestampLabel->isVisible = false;
 
 	viewButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::ImageButtonSprite)));
+	viewButton->mouseClickCallback = Widget::EventCallbackContext (StreamWindow::viewButtonClicked, this);
 	viewButton->zLevel = 4;
 	viewButton->isTextureTargetDrawEnabled = false;
 	viewButton->setImageColor (uiconfig->flatButtonTextColor);
 	viewButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
-	viewButton->setMouseHoverTooltip (uitext->getText (UiTextString::viewTimelineImagesTooltip));
-	viewButton->setMouseClickCallback (StreamWindow::viewButtonClicked, this);
+	viewButton->setMouseHoverTooltip (uitext->getText (UiTextString::ViewTimelineImagesTooltip));
 
 	removeButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
+	removeButton->mouseClickCallback = Widget::EventCallbackContext (StreamWindow::removeButtonClicked, this);
 	removeButton->zLevel = 4;
 	removeButton->isTextureTargetDrawEnabled = false;
 	removeButton->setImageColor (uiconfig->flatButtonTextColor);
 	removeButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
-	removeButton->setMouseHoverTooltip (uitext->getText (UiTextString::removeStream).capitalized ());
-	removeButton->setMouseClickCallback (StreamWindow::removeButtonClicked, this);
+	removeButton->setMouseHoverTooltip (uitext->getText (UiTextString::RemoveStream).capitalized ());
 }
 
 StreamWindow::~StreamWindow () {
@@ -255,7 +255,7 @@ void StreamWindow::setDisplayTimestamp (float timestamp) {
 	refreshLayout ();
 }
 
-void StreamWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
+bool StreamWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 	Panel::doProcessMouseState (mouseState);
 	if (layout == CardView::LowDetail) {
 		if (mouseState.isEntered) {
@@ -265,6 +265,8 @@ void StreamWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 			mouseoverLabel->isVisible = false;
 		}
 	}
+
+	return (false);
 }
 
 void StreamWindow::syncRecordStore () {

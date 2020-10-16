@@ -39,6 +39,7 @@
 #include "Button.h"
 #include "Toggle.h"
 #include "ListView.h"
+#include "IconLabelWindow.h"
 #include "ActionWindow.h"
 #include "Panel.h"
 
@@ -47,14 +48,12 @@ public:
 	AdminSecretWindow ();
 	virtual ~AdminSecretWindow ();
 
+	// Read-write data members
+	Widget::EventCallbackContext addButtonClickCallback;
+	Widget::EventCallbackContext expandStateChangeCallback;
+
 	// Read-only data members
 	bool isExpanded;
-
-	// Set a callback that should be invoked when the expand toggle's checked state changes
-	void setExpandStateChangeCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback function that should be invoked when the window's add button is pressed
-	void setAddButtonClickCallback (Widget::EventCallback callback, void *callbackData);
 
 	// Set the window's expand state, then execute any expand state change callback that might be configured unless shouldSkipStateChangeCallback is true
 	void setExpanded (bool expanded, bool shouldSkipStateChangeCallback = false);
@@ -74,12 +73,6 @@ public:
 	// Return a typecasted pointer to the provided widget, or NULL if the widget does not appear to be of the correct type
 	static AdminSecretWindow *castWidget (Widget *widget);
 
-	// Callback functions
-	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
-	static void addButtonClicked (void *windowPtr, Widget *widgetPtr);
-	static void listChanged (void *windowPtr, Widget *widgetPtr);
-	static void listItemDeleted (void *windowPtr, Widget *widgetPtr);
-
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
@@ -88,15 +81,18 @@ protected:
 	void refreshLayout ();
 
 private:
+	// Callback functions
+	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
+	static void addButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void listChanged (void *windowPtr, Widget *widgetPtr);
+	static void listItemDeleted (void *windowPtr, Widget *widgetPtr);
+
 	Image *iconImage;
-	Label *nameLabel;
+	IconLabelWindow *iconLabel;
+	Panel *dividerPanel;
 	ListView *itemListView;
 	Button *addButton;
 	Toggle *expandToggle;
-	Widget::EventCallback addButtonClickCallback;
-	void *addButtonClickCallbackData;
-	Widget::EventCallback expandStateChangeCallback;
-	void *expandStateChangeCallbackData;
 };
 
 #endif

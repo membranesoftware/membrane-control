@@ -51,9 +51,23 @@ public:
 	StreamPlaylistWindow (SpriteGroup *mediaUiSpriteGroup);
 	virtual ~StreamPlaylistWindow ();
 
-	static const float windowWidthMultiplier;
+	static const float WindowWidthMultiplier;
 
-	// Constants to use for slider options
+	// State field names
+	static const char *PlaylistNameKey;
+	static const char *IsSelectedKey;
+	static const char *IsExpandedKey;
+	static const char *PlayDurationKey;
+	static const char *ItemListKey;
+	static const char *IsShuffleKey;
+	static const char *StreamUrlKey;
+	static const char *StreamIdKey;
+	static const char *MediaNameKey;
+	static const char *StartPositionKey;
+	static const char *ThumbnailUrlKey;
+	static const char *ThumbnailIndexKey;
+
+	// Slider options
 	enum {
 		ZeroStartPosition = 0,
 		NearBeginningStartPosition = 1,
@@ -86,10 +100,8 @@ public:
 	// Read-only data members
 	bool isSelected;
 	bool isExpanded;
+	float windowWidth;
 	StdString playlistName;
-	float addItemButtonX1;
-	float addItemButtonX2;
-	float addItemButtonY;
 
 	// Set the playlist name shown by the window
 	void setPlaylistName (const StdString &name);
@@ -106,14 +118,20 @@ public:
 	// Add an item to the window's playlist
 	void addItem (const StdString &streamUrl, const StdString &streamId, const StdString &mediaName, float startPosition, const StdString &thumbnailUrl, int thumbnailIndex);
 
-	// Return a newly created Json object suitable for storing the window's state
-	Json *getState ();
+	// Return the screen extent rectangle for the window's add item button
+	Widget::Rectangle getAddItemButtonScreenRect ();
 
-	// Reset the window's state using data from the provided Json object, as previously obtained from the getState method
-	void setState (Json *stateObject);
+	// Return the screen extent rectangle for the window's remove button
+	Widget::Rectangle getRemoveButtonScreenRect ();
 
 	// Return a newly created CreateMediaDisplayIntent command containing the window's data fields, or NULL if the command could not be created
-	Json *getCreateCommand ();
+	Json *createCommand ();
+
+	// Return a newly created Json object suitable for storing the window's state
+	Json *createState ();
+
+	// Reset the window's fields using state data from the provided Json object
+	void readState (Json *state);
 
 	// Return a boolean value indicating if the provided Widget is a member of this class
 	static bool isWidgetType (Widget *widget);
@@ -121,22 +139,15 @@ public:
 	// Return a typecasted pointer to the provided widget, or NULL if the widget does not appear to be of the correct type
 	static StreamPlaylistWindow *castWidget (Widget *widget);
 
-	// Set minStartPositionDelta and maxStartPositionDelta fields in the provided params object
+	// Set minStartPositionDelta and maxStartPositionDelta to values referenced by the startPosition constant, or set fields in a CreateMediaDisplayIntent command
+	static void setStartPositionDelta (int startPosition, int *minStartPositionDelta, int *maxStartPositionDelta);
 	static void setStartPositionDelta (int startPosition, Json *createMediaDisplayIntentParams);
 
-	// Set minItemDisplayDuration and maxItemDisplayDuration fields in the provided params object
+	// Set minItemDisplayDuration and maxItemDisplayDuration to values referenced by the playDuration constant, or set fields in a CreateMediaDisplayIntent command
+	static void setItemDisplayDuration (int playDuration, int *minItemDisplayDuration, int *maxItemDisplayDuration);
 	static void setItemDisplayDuration (int playDuration, Json *createMediaDisplayIntentParams);
 
-	// Callback functions
-	static void freeItem (void *itemPtr);
-	static void nameLabelClicked (void *windowPtr, Widget *widgetPtr);
-	static void selectToggleStateChanged (void *windowPtr, Widget *widgetPtr);
-	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
-	static void itemListChanged (void *windowPtr, Widget *widgetPtr);
-	static void removeButtonClicked (void *windowPtr, Widget *widgetPtr);
-	static void addItemButtonClicked (void *windowPtr, Widget *widgetPtr);
-	static void addItemButtonMouseEntered (void *windowPtr, Widget *widgetPtr);
-	static void addItemButtonMouseExited (void *windowPtr, Widget *widgetPtr);
+	// Slider value name functions
 	static StdString startPositionSliderValueName (float sliderValue);
 	static StdString playDurationSliderValueName (float sliderValue);
 
@@ -151,19 +162,16 @@ protected:
 	void refreshLayout ();
 
 private:
-	// Constants to use as object field names
-	static const char *PlaylistNameKey;
-	static const char *IsSelectedKey;
-	static const char *IsExpandedKey;
-	static const char *PlayDurationKey;
-	static const char *ItemListKey;
-	static const char *IsShuffleKey;
-	static const char *StreamUrlKey;
-	static const char *StreamIdKey;
-	static const char *MediaNameKey;
-	static const char *StartPositionKey;
-	static const char *ThumbnailUrlKey;
-	static const char *ThumbnailIndexKey;
+	// Callback functions
+	static void freeItem (void *itemPtr);
+	static void nameLabelClicked (void *windowPtr, Widget *widgetPtr);
+	static void selectToggleStateChanged (void *windowPtr, Widget *widgetPtr);
+	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
+	static void itemListChanged (void *windowPtr, Widget *widgetPtr);
+	static void removeButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void addItemButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void addItemButtonMouseEntered (void *windowPtr, Widget *widgetPtr);
+	static void addItemButtonMouseExited (void *windowPtr, Widget *widgetPtr);
 
 	struct Item {
 		StdString streamUrl;
@@ -179,12 +187,12 @@ private:
 	void resetNameLabel ();
 
 	SpriteGroup *sprites;
-	float windowWidth;
 	Image *iconImage;
 	LabelWindow *nameLabel;
 	IconLabelWindow *itemCountLabel;
 	Toggle *selectToggle;
 	Toggle *expandToggle;
+	Panel *dividerPanel;
 	ToggleWindow *shuffleToggle;
 	SliderWindow *startPositionSlider;
 	SliderWindow *playDurationSlider;

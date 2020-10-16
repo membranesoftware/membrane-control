@@ -46,7 +46,9 @@ public:
 	ServerContactWindow (const StdString &displayName, const StdString &hostname, int port);
 	virtual ~ServerContactWindow ();
 
-	// Constants to use for layout types
+	static const float NameTruncateScale;
+
+	// Layout types
 	enum {
 		IdleLayout = 0,
 		ContactingLayout = 1,
@@ -56,6 +58,7 @@ public:
 
 	// Read-write data members
 	StdString itemId;
+	Widget::EventCallbackContext stateChangeCallback;
 
 	// Read-only data members
 	StdString agentDisplayName;
@@ -69,12 +72,6 @@ public:
 	// Return a typecasted pointer to the provided widget, or NULL if the widget does not appear to be of the correct type
 	static ServerContactWindow *castWidget (Widget *widget);
 
-	// Set a callback that should be invoked when the window's contact state changes
-	void setStateChangeCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Callback functions
-	static void deleteButtonClicked (void *windowPtr, Widget *widgetPtr);
-
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
@@ -86,14 +83,15 @@ protected:
 	void refreshLayout ();
 
 private:
+	// Callback functions
+	static void deleteButtonClicked (void *windowPtr, Widget *widgetPtr);
+
 	Image *iconImage;
 	Label *nameLabel;
 	Label *statusLabel;
 	TextArea *detailText;
 	ProgressBar *progressBar;
 	Button *deleteButton;
-	Widget::EventCallback stateChangeCallback;
-	void *stateChangeCallbackData;
 };
 
 #endif

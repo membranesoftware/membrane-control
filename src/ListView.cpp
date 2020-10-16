@@ -36,53 +36,66 @@
 #include "StdString.h"
 #include "HashMap.h"
 #include "Ui.h"
+#include "UiConfiguration.h"
 #include "Widget.h"
 #include "Label.h"
 #include "Panel.h"
-#include "UiConfiguration.h"
+#include "ScrollBar.h"
+#include "ScrollView.h"
 #include "ListView.h"
 
-ListView::ListView (float viewWidth, int minItemHeight, int itemFontType, const StdString &titleText, const StdString &emptyStateText)
-: Panel ()
+ListView::ListView (float viewWidth, int minViewItems, int maxViewItems, int itemFontType, const StdString &emptyStateText)
+: ScrollView ()
+, isDisabled (false)
 , focusItemIndex (-1)
 , viewWidth (viewWidth)
-, minItemHeight (minItemHeight)
+, minViewItems (minViewItems)
+, maxViewItems (maxViewItems)
 , itemFontType (itemFontType)
-, titleLabel (NULL)
+, scrollBar (NULL)
 , emptyStateLabel (NULL)
 , deleteButton (NULL)
 , isItemFocused (false)
 , lastFocusPanel (NULL)
-, listChangeCallback (NULL)
-, listChangeCallbackData (NULL)
-, itemDeleteCallback (NULL)
-, itemDeleteCallbackData (NULL)
+, focusHighlightPanel (NULL)
 {
 	UiConfiguration *uiconfig;
 	UiText *uitext;
 
+	isMouseWheelScrollEnabled = true;
+	if (minViewItems < 1) {
+		minViewItems = 1;
+	}
+	if (maxViewItems < minViewItems) {
+		maxViewItems = minViewItems;
+	}
+
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 	setFillBg (true, uiconfig->lightBackgroundColor);
-
-	if (! titleText.empty ()) {
-		titleLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (titleText, UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
-		titleLabel->setFillBg (true, uiconfig->mediumPrimaryColor);
-		titleLabel->setPadding (uiconfig->paddingSize, uiconfig->textLineHeightMargin * 2.0f);
-		titleLabel->setWindowWidth (viewWidth);
-	}
+	setBorder (true, uiconfig->darkBackgroundColor);
 
 	if (! emptyStateText.empty ()) {
 		emptyStateLabel = (Label *) addWidget (new Label (emptyStateText, UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
 		emptyStateLabel->isVisible = false;
 	}
 
+	scrollBar = (ScrollBar *) addWidget (new ScrollBar (1.0f));
+	scrollBar->positionChangeCallback = Widget::EventCallbackContext (ListView::scrollBarPositionChanged, this);
+	scrollBar->zLevel = 3;
+	scrollBar->isVisible = false;
+
 	deleteButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
-	deleteButton->setMouseClickCallback (ListView::deleteButtonClicked, this);
+	deleteButton->mouseClickCallback = Widget::EventCallbackContext (ListView::deleteButtonClicked, this);
 	deleteButton->zLevel = 2;
 	deleteButton->setImageColor (uiconfig->flatButtonTextColor);
-	deleteButton->setMouseHoverTooltip (uitext->getText (UiTextString::remove).capitalized ());
+	deleteButton->setMouseHoverTooltip (uitext->getText (UiTextString::Remove).capitalized ());
 	deleteButton->isVisible = false;
+
+	focusHighlightPanel = (Panel *) addWidget (new Panel ());
+	focusHighlightPanel->setFillBg (true, uiconfig->darkBackgroundColor);
+	focusHighlightPanel->zLevel = -1;
+	focusHighlightPanel->isVisible = false;
 
 	refreshLayout ();
 }
@@ -108,14 +121,23 @@ void ListView::setViewWidth (float fixedWidth) {
 	refreshLayout ();
 }
 
-void ListView::setListChangeCallback (Widget::EventCallback callback, void *callbackData) {
-	listChangeCallback = callback;
-	listChangeCallbackData = callbackData;
+void ListView::setDisabled (bool disabled) {
+	if (isDisabled == disabled) {
+		return;
+	}
+	isDisabled = disabled;
+	refreshLayout ();
 }
 
-void ListView::setItemDeleteCallback (Widget::EventCallback callback, void *callbackData) {
-	itemDeleteCallback = callback;
-	itemDeleteCallbackData = callbackData;
+void ListView::setEmptyStateText (const StdString &text) {
+	UiConfiguration *uiconfig;
+
+	uiconfig = &(App::instance->uiConfig);
+	if (! emptyStateLabel) {
+		emptyStateLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
+	}
+	emptyStateLabel->setText (text);
+	refreshLayout ();
 }
 
 void ListView::clearItems () {
@@ -141,8 +163,8 @@ void ListView::setItems (StringList *itemList, bool shouldSkipChangeCallback) {
 		++i;
 	}
 
-	if ((! shouldSkipChangeCallback) && listChangeCallback) {
-		listChangeCallback (listChangeCallbackData, this);
+	if ((! shouldSkipChangeCallback) && listChangeCallback.callback) {
+		listChangeCallback.callback (listChangeCallback.callbackData, this);
 	}
 }
 
@@ -211,12 +233,15 @@ void ListView::addItem (const StdString &itemText, void *itemData, Widget::FreeF
 	item.label = (Label *) panel->addWidget (new Label (itemText, itemFontType, uiconfig->primaryTextColor));
 	item.label->position.assign (uiconfig->paddingSize, uiconfig->paddingSize);
 	panel->setFixedSize (true, viewWidth, uiconfig->fonts[itemFontType]->maxLineHeight + uiconfig->paddingSize);
+	if (isDisabled) {
+		item.label->textColor.assign (uiconfig->lightPrimaryTextColor);
+	}
 
 	itemList.push_back (item);
 	refreshLayout ();
 
-	if ((! shouldSkipChangeCallback) && listChangeCallback) {
-		listChangeCallback (listChangeCallbackData, this);
+	if ((! shouldSkipChangeCallback) && listChangeCallback.callback) {
+		listChangeCallback.callback (listChangeCallback.callbackData, this);
 	}
 }
 
@@ -237,28 +262,28 @@ void ListView::removeItem (int itemIndex, bool shouldSkipChangeCallback) {
 	}
 
 	refreshLayout ();
-	if ((! shouldSkipChangeCallback) && listChangeCallback) {
-		listChangeCallback (listChangeCallbackData, this);
+	if ((! shouldSkipChangeCallback) && listChangeCallback.callback) {
+		listChangeCallback.callback (listChangeCallback.callbackData, this);
 	}
+}
+
+void ListView::scrollToBottom () {
+	setViewOrigin (0.0f, maxViewOriginY);
+	scrollBar->setPosition (viewOriginY, true);
+	scrollBar->position.assignY (viewOriginY);
 }
 
 void ListView::refreshLayout () {
 	UiConfiguration *uiconfig;
-	float x, y, h;
+	float x, y, itemh, h;
+	Panel *panel;
+	Label *label;
 	std::vector<ListView::Item>::iterator i, end;
 	int sz;
 
 	uiconfig = &(App::instance->uiConfig);
-	x = 0.0f;
-	y = 0.0f;
-	if (titleLabel) {
-		titleLabel->position.assign (x, y);
-		y += titleLabel->height;
-	}
-	else {
-		y += heightPadding;
-	}
-	x += widthPadding;
+	x = widthPadding;
+	y = heightPadding;
 
 	if (! itemList.empty ()) {
 		if (emptyStateLabel) {
@@ -267,36 +292,91 @@ void ListView::refreshLayout () {
 		i = itemList.begin ();
 		end = itemList.end ();
 		while (i != end) {
-			i->panel->position.assign (x, y);
-			y += i->panel->height;
+			panel = i->panel;
+			label = i->label;
+
+			if (isDisabled || (panel == lastFocusPanel)) {
+				label->textColor.assign (uiconfig->lightPrimaryTextColor);
+			}
+			else {
+				label->textColor.assign (uiconfig->primaryTextColor);
+			}
+
+			panel->position.assign (x, y);
+			y += panel->height;
 			++i;
 		}
 	}
 
+	itemh = uiconfig->fonts[itemFontType]->maxLineHeight + uiconfig->paddingSize;
+	sz = (int) itemList.size ();
+	if (sz < minViewItems) {
+		sz = minViewItems;
+	}
+	if (sz > maxViewItems) {
+		sz = maxViewItems;
+	}
+	h = itemh * sz;
+	h += (uiconfig->paddingSize * 2.0f);
+	setViewSize (viewWidth, h);
+
+	y -= (h - uiconfig->paddingSize);
+	if (y < 0.0f) {
+		y = 0.0f;
+	}
+	scrollBar->setMaxTrackLength (h);
+	scrollBar->setScrollBounds (itemh * sz, itemh * itemList.size ());
+
+	setVerticalScrollBounds (0.0f, y);
+	if (viewOriginY < 0.0f) {
+		setViewOrigin (0.0f, 0.0f);
+	}
+	else if (viewOriginY > y) {
+		setViewOrigin (0.0f, y);
+	}
+
+	if (scrollBar->maxScrollPosition <= 0.0f) {
+		scrollBar->isVisible = false;
+		isMouseWheelScrollEnabled = false;
+	}
+	else {
+		scrollBar->position.assign (viewWidth - scrollBar->width, viewOriginY);
+		scrollBar->isVisible = true;
+		isMouseWheelScrollEnabled = true;
+	}
+
+	if (emptyStateLabel && itemList.empty ()) {
+		emptyStateLabel->position.assign ((width / 2.0f) - (emptyStateLabel->width / 2.0f), (h / 2.0f) - (emptyStateLabel->height / 2.0f));
+		emptyStateLabel->isVisible = true;
+	}
+
 	if (isItemFocused && lastFocusPanel) {
-		deleteButton->position.assign (width - (uiconfig->paddingSize * 2.0f) - deleteButton->maxImageWidth, lastFocusPanel->position.y + (lastFocusPanel->height / 2.0f) - (deleteButton->maxImageHeight / 2.0f));
+		x = width - (uiconfig->paddingSize * 2.0f) - deleteButton->maxImageWidth;
+		if (scrollBar->isVisible) {
+			x -= scrollBar->width;
+		}
+		deleteButton->position.assign (x, lastFocusPanel->position.y + (lastFocusPanel->height / 2.0f) - (deleteButton->maxImageHeight / 2.0f));
 		deleteButton->isVisible = true;
+
+		focusHighlightPanel->position.assign (0.0f, lastFocusPanel->position.y);
+		focusHighlightPanel->setFixedSize (true, width, itemh + uiconfig->paddingSize);
+		focusHighlightPanel->isVisible = true;
 	}
 	else {
 		deleteButton->isVisible = false;
+		focusHighlightPanel->isVisible = false;
 	}
+}
 
-	h = uiconfig->fonts[itemFontType]->maxLineHeight + uiconfig->paddingSize;
-	sz = (int) itemList.size ();
-	if ((minItemHeight > 0) && (sz < minItemHeight)) {
-		sz = minItemHeight;
-	}
-	h *= sz;
-	h += uiconfig->paddingSize;
+void ListView::scrollBarPositionChanged (void *listViewPtr, Widget *widgetPtr) {
+	ListView *listview;
+	ScrollBar *scrollbar;
 
-	setFixedSize (true, viewWidth, h);
+	listview = (ListView *) listViewPtr;
+	scrollbar = (ScrollBar *) widgetPtr;
 
-	if (itemList.empty ()) {
-		if (emptyStateLabel) {
-			emptyStateLabel->position.assign ((width / 2.0f) - (emptyStateLabel->width / 2.0f), (h / 2.0f) - (emptyStateLabel->height / 2.0f));
-			emptyStateLabel->isVisible = true;
-		}
-	}
+	listview->setViewOrigin (0.0f, scrollbar->scrollPosition);
+	scrollbar->position.assignY (listview->viewOriginY);
 }
 
 void ListView::deleteButtonClicked (void *listViewPtr, Widget *widgetPtr) {
@@ -321,8 +401,8 @@ void ListView::deleteButtonClicked (void *listViewPtr, Widget *widgetPtr) {
 	}
 	view->focusItemIndex = index;
 
-	if (view->itemDeleteCallback) {
-		view->itemDeleteCallback (view->itemDeleteCallbackData, view);
+	if (view->itemDeleteCallback.callback) {
+		view->itemDeleteCallback.callback (view->itemDeleteCallback.callbackData, view);
 		return;
 	}
 
@@ -331,17 +411,25 @@ void ListView::deleteButtonClicked (void *listViewPtr, Widget *widgetPtr) {
 	view->lastFocusPanel = NULL;
 	view->focusItemIndex = -1;
 	view->refreshLayout ();
-	if (view->listChangeCallback) {
-		view->listChangeCallback (view->listChangeCallbackData, view);
+	if (view->listChangeCallback.callback) {
+		view->listChangeCallback.callback (view->listChangeCallback.callbackData, view);
 	}
 }
 
-void ListView::doProcessMouseState (const Widget::MouseState &mouseState) {
-	bool shouldrefresh, found;
+bool ListView::doProcessMouseState (const Widget::MouseState &mouseState) {
+	bool consumed, shouldrefresh, found;
+	float y1;
 	std::vector<ListView::Item>::iterator i, end;
 
+	y1 = viewOriginY;
+	consumed = ScrollView::doProcessMouseState (mouseState);
+	if (! FLOAT_EQUALS (y1, viewOriginY)) {
+		scrollBar->setPosition (viewOriginY, true);
+		scrollBar->position.assignY (viewOriginY);
+	}
+
 	shouldrefresh = false;
-	if (! mouseState.isEntered) {
+	if (isDisabled || (! mouseState.isEntered)) {
 		if (isItemFocused) {
 			isItemFocused = false;
 			lastFocusPanel = NULL;
@@ -353,7 +441,7 @@ void ListView::doProcessMouseState (const Widget::MouseState &mouseState) {
 		i = itemList.begin ();
 		end = itemList.end ();
 		while (i != end) {
-			if ((mouseState.enterDeltaY >= i->panel->position.y) && (mouseState.enterDeltaY < (i->panel->position.y + i->panel->height))) {
+			if ((mouseState.enterDeltaY >= (i->panel->position.y - viewOriginY)) && (mouseState.enterDeltaY < (i->panel->position.y - viewOriginY + i->panel->height))) {
 				found = true;
 				if ((! isItemFocused) || (i->panel != lastFocusPanel)) {
 					shouldrefresh = true;
@@ -377,7 +465,7 @@ void ListView::doProcessMouseState (const Widget::MouseState &mouseState) {
 		refreshLayout ();
 	}
 
-	Panel::doProcessMouseState (mouseState);
+	return (consumed);
 }
 
 void ListView::doRefresh () {
@@ -386,9 +474,6 @@ void ListView::doRefresh () {
 	std::vector<ListView::Item>::iterator i, end;
 
 	uiconfig = &(App::instance->uiConfig);
-	if (titleLabel) {
-		titleLabel->setWindowWidth (viewWidth);
-	}
 	h = uiconfig->fonts[itemFontType]->maxLineHeight + uiconfig->paddingSize;
 	i = itemList.begin ();
 	end = itemList.end ();

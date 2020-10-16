@@ -62,9 +62,17 @@
 #define BOOL_STRING(VAL) ((VAL) ? "true" : "false")
 #define TOSTRING_STRING(VAL) ((VAL) ? (VAL)->toString ().c_str () : "NULL")
 #define CONFIG_DEFAULT_RESOURCE_PATH "membrane-control.dat"
+#define CONFIG_PREFS_FILENAME "membranecontrol.conf"
+#define CONFIG_LOG_FILENAME "membranecontrol.log"
 
-#if PLATFORM_LINUX || PLATFORM_MACOS
+#if PLATFORM_LINUX
 #define CONFIG_NEWLINE "\n"
+#define CONFIG_APPDATA_DIRNAME ".membrane"
+#endif
+
+#if PLATFORM_MACOS
+#define CONFIG_NEWLINE "\n"
+#define CONFIG_APPDATA_DIRNAME "Membrane Control"
 #endif
 
 #if PLATFORM_WINDOWS
@@ -75,6 +83,7 @@
 #define S_ISDIR(X) ((X) && _S_IFDIR)
 #define SHUT_RDWR SD_BOTH
 #define CONFIG_NEWLINE "\r\n"
+#define CONFIG_APPDATA_DIRNAME "Membrane Control"
 #endif
 
 #endif

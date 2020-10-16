@@ -44,7 +44,6 @@
 #include "Agent.h"
 #include "LinkClient.h"
 #include "CommandList.h"
-#include "CommandStore.h"
 #include "Ui.h"
 
 class AgentControl {
@@ -52,14 +51,16 @@ public:
 	AgentControl ();
 	~AgentControl ();
 
-	static const int commandListIdleTimeout;
+	static const int CommandListIdleTimeout;
+
+	// Prefs keys
+	static const char *AgentStatusKey;
+	static const char *ServerAdminSecretsKey;
 
 	// Read-write data members
 	int agentDatagramPort;
-	StdString agentId;
 	StdString urlHostname;
 	RecordStore recordStore;
-	CommandStore commandStore;
 
 	// Start the agent control's operation. Returns a Result value.
 	int start ();
@@ -90,6 +91,9 @@ public:
 
 	// Return a boolean value indicating if the specified agent has failed contact due to missing authorization credentials
 	bool isAgentUnauthorized (const StdString &agentId);
+
+	// Return a boolean value indicating if the specified agent requires authorization for contact
+	bool isAgentAuthorized (const StdString &agentId);
 
 	// Request that the agent control maintain a link client connection to the specified agent
 	void connectLinkClient (const StdString &agentId);
@@ -180,8 +184,17 @@ public:
 	// Clear the provided list and populate it with entry names from the list of secrets
 	void getAdminSecretNames (StringList *destList);
 
+	// Find the admin secret in use for the specified agent and assign its auth values to the provided strings. If the admin secret is not found, assign default auth values to the provided strings. Returns a boolean value indicating if the authorization values were found.
+	bool getAgentAuthorization (const StdString &agentId, StdString *authorizePath = NULL, StdString *authorizeSecret = NULL, StdString *authorizeToken = NULL);
+
+	// Set an agent's authorize fields to store credentials used for the last successful authorization. An empty entryName value indicates that no authorization credentials are required for connection to the agent.
+	void setAgentAuthorization (const StdString &agentId, const StdString &entryName, const StdString &authorizeToken = StdString (""));
+
+	// Set an agent's authorize fields to store credentials used for the last successful authorization. A negative index value indicates that no authorization credentials are required for connection to the agent.
+	void setHostAuthorization (const StdString &hostname, int tcpPort, int secretIndex, const StdString &authorizeToken = StdString (""));
+
 	// Set authorization prefix fields in the provided command object using the specified secret and an optional token, then store the associated authorization path in the provided string. Returns a boolean value indicating if the authorization fields were successfully applied.
-	bool setCommandAuthorization (Json *command, int secretIndex, const StdString &authToken = StdString (""), StdString *authPath = NULL);
+	bool setCommandAuthorization (Json *command, int secretIndex, const StdString &authorizeToken = StdString (""), StdString *authorizePath = NULL);
 
 	// Return the base invoke URL associated with the provided hostname / port pair
 	StdString getHostInvokeUrl (const StdString &hostname, int tcpPort, const StdString &path = StdString ("/"));
@@ -202,7 +215,7 @@ public:
 	static StdString hashDigest (void *contextPtr);
 
 private:
-	// Constants to use as object field names
+	// Object field names
 	static const char *NameKey;
 	static const char *SecretKey;
 
@@ -221,6 +234,9 @@ private:
 	// Return an iterator positioned at the specified agentMap entry, or at the map end if the entry wasn't found. If createNew is true, create the entry if it doesn't already exist. This method should be invoked only while holding a lock on agentMapMutex.
 	std::map<StdString, Agent>::iterator findAgent (const StdString &agentId, bool createNew = false);
 	std::map<StdString, Agent>::iterator findAgent (const StdString &invokeHostname, int invokePort);
+
+	// Parse an admin secret value and store the resulting authorization values into the provided strings
+	void getAuthorizationValues (const StdString &adminSecret, StdString *authorizePath, StdString *authorizeSecret);
 
 	bool isStarted;
 	LinkClient linkClient;

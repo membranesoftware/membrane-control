@@ -80,10 +80,6 @@ public:
 	// Add the specified value as a snap position on the slider. If at least one snap position is present, changes to the slider value are rounded down to the nearest snap value.
 	void addSnapValue (float snapValue);
 
-	// Callback functions
-	static void sliderValueChanged (void *windowPtr, Widget *widgetPtr);
-	static void sliderValueHovered (void *windowPtr, Widget *widgetPtr);
-
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
@@ -92,6 +88,10 @@ protected:
 	void refreshLayout ();
 
 private:
+	// Callback functions
+	static void sliderValueChanged (void *windowPtr, Widget *widgetPtr);
+	static void sliderValueHovered (void *windowPtr, Widget *widgetPtr);
+
 	Slider *slider;
 	Image *iconImage;
 	Label *valueLabel;

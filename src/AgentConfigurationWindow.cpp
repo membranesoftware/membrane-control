@@ -55,7 +55,7 @@
 #include "TextFieldWindow.h"
 #include "AgentConfigurationWindow.h"
 
-const int AgentConfigurationWindow::mediaScanPeriods[] = { 0, 24 * 3600, 4 * 3600, 3600, 900, 60 };
+const int AgentConfigurationWindow::MediaScanPeriods[] = { 0, 24 * 3600, 4 * 3600, 3600, 900, 60 };
 
 AgentConfigurationWindow::AgentConfigurationWindow (const StdString &agentId)
 : Panel ()
@@ -64,10 +64,9 @@ AgentConfigurationWindow::AgentConfigurationWindow (const StdString &agentId)
 , iconImage (NULL)
 , titleLabel (NULL)
 , expandToggle (NULL)
+, dividerPanel (NULL)
 , actionWindow (NULL)
 , applyButton (NULL)
-, expandStateChangeCallback (NULL)
-, expandStateChangeCallbackData (NULL)
 {
 	UiConfiguration *uiconfig;
 	UiText *uitext;
@@ -78,19 +77,25 @@ AgentConfigurationWindow::AgentConfigurationWindow (const StdString &agentId)
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
 	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::ConfigurationIconSprite)));
-	titleLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::configuration).capitalized (), UiConfiguration::HeadlineFont, uiconfig->primaryTextColor));
+	titleLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::Configuration).capitalized (), UiConfiguration::HeadlineFont, uiconfig->primaryTextColor));
 
 	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
+	expandToggle->stateChangeCallback = Widget::EventCallbackContext (AgentConfigurationWindow::expandToggleStateChanged, this);
 	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
-	expandToggle->setStateChangeCallback (AgentConfigurationWindow::expandToggleStateChanged, this);
-	expandToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::expand).capitalized (), uitext->getText (UiTextString::minimize).capitalized ());
+	expandToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::Expand).capitalized (), uitext->getText (UiTextString::Minimize).capitalized ());
 	expandToggle->isVisible = false;
 
+	dividerPanel = (Panel *) addWidget (new Panel ());
+	dividerPanel->setFillBg (true, uiconfig->dividerColor);
+	dividerPanel->setFixedSize (true, 1.0f, uiconfig->headlineDividerLineWidth);
+	dividerPanel->isPanelSizeClipEnabled = true;
+	dividerPanel->isVisible = false;
+
 	applyButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::OkButtonSprite)));
-	applyButton->setMouseClickCallback (AgentConfigurationWindow::applyButtonClicked, this);
+	applyButton->mouseClickCallback = Widget::EventCallbackContext (AgentConfigurationWindow::applyButtonClicked, this);
 	applyButton->setTextColor (uiconfig->raisedButtonTextColor);
 	applyButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
-	applyButton->setMouseHoverTooltip (uitext->getText (UiTextString::apply).capitalized ());
+	applyButton->setMouseHoverTooltip (uitext->getText (UiTextString::Apply).capitalized ());
 	applyButton->isVisible = false;
 
 	refreshLayout ();
@@ -104,15 +109,11 @@ StdString AgentConfigurationWindow::toStringDetail () {
 	return (StdString (" AgentConfigurationWindow"));
 }
 
-void AgentConfigurationWindow::setExpandStateChangeCallback (Widget::EventCallback callback, void *callbackData) {
-	expandStateChangeCallback = callback;
-	expandStateChangeCallbackData = callbackData;
-}
-
 void AgentConfigurationWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallback) {
 	isExpanded = expanded;
 	if (isExpanded) {
 		expandToggle->setChecked (true, true);
+		dividerPanel->isVisible = true;
 		if (actionWindow) {
 			actionWindow->isVisible = true;
 			applyButton->isVisible = true;
@@ -123,6 +124,7 @@ void AgentConfigurationWindow::setExpanded (bool expanded, bool shouldSkipStateC
 	}
 	else {
 		expandToggle->setChecked (false, true);
+		dividerPanel->isVisible = false;
 		if (actionWindow) {
 			actionWindow->isVisible = false;
 		}
@@ -130,8 +132,8 @@ void AgentConfigurationWindow::setExpanded (bool expanded, bool shouldSkipStateC
 	}
 
 	refreshLayout ();
-	if ((! shouldSkipStateChangeCallback) && expandStateChangeCallback) {
-		expandStateChangeCallback (expandStateChangeCallbackData, this);
+	if ((! shouldSkipStateChangeCallback) && expandStateChangeCallback.callback) {
+		expandStateChangeCallback.callback (expandStateChangeCallback.callbackData, this);
 	}
 }
 
@@ -157,6 +159,9 @@ void AgentConfigurationWindow::refreshLayout () {
 	x2 = 0.0f;
 	x = x0;
 	y = y2 + uiconfig->marginSize;
+	if (dividerPanel->isVisible) {
+		dividerPanel->flowDown (0.0f, &y, &x2, &y2);
+	}
 	if (actionWindow && actionWindow->isVisible) {
 		actionWindow->flowDown (x, &y, &x2, &y2);
 		y = y2 + uiconfig->marginSize;
@@ -169,6 +174,10 @@ void AgentConfigurationWindow::refreshLayout () {
 		expandToggle->position.assignX (x + actionWindow->width - expandToggle->width);
 	}
 	resetSize ();
+
+	if (dividerPanel->isVisible) {
+		dividerPanel->setFixedSize (true, width, uiconfig->headlineDividerLineWidth);
+	}
 
 	x = width - widthPadding;
 	if (expandToggle->isVisible) {
@@ -209,7 +218,7 @@ void AgentConfigurationWindow::loadConfiguration () {
 	if (result != Result::Success) {
 		release ();
 		Log::debug ("Failed to invoke GetAgentConfiguration command; err=%i agentId=\"%s\"", result, agentId.c_str ());
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
 		return;
 	}
 	setWaiting (true);
@@ -227,13 +236,13 @@ void AgentConfigurationWindow::invokeGetAgentConfigurationComplete (void *window
 
 	if (invokeResult != Result::Success) {
 		Log::debug ("Failed to invoke GetAgentConfiguration command; err=%i agentId=\"%s\"", invokeResult, agentId.c_str ());
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::getAgentConfigurationServerContactError));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::GetAgentConfigurationServerContactError));
 	}
 	else {
 		result = window->populateConfiguration (responseCommand);
 		if (result != Result::Success) {
 			Log::debug ("Failed to invoke GetAgentConfiguration command; err=%i agentId=\"%s\"", result, agentId.c_str ());
-			App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
+			App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
 		}
 	}
 
@@ -273,81 +282,81 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 
 	toggle = new Toggle ();
 	toggle->setChecked (interface->getCommandBooleanParam (&agentConfiguration, "isEnabled", false));
-	actionWindow->addOption (uitext->getText (UiTextString::enabled).capitalized (), toggle, uitext->getText (UiTextString::agentEnabledDescription));
+	actionWindow->addOption (uitext->getText (UiTextString::Enabled).capitalized (), toggle, uitext->getText (UiTextString::AgentEnabledDescription));
 
-	textfield = new TextFieldWindow (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, uitext->getText (UiTextString::agentDisplayNamePrompt));
+	textfield = new TextFieldWindow (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, uitext->getText (UiTextString::AgentDisplayNamePrompt));
 	textfield->setPadding (uiconfig->paddingSize, 0.0f);
 	textfield->setButtonsEnabled (false, false, true, true, false);
 	textfield->setPromptErrorColor (true);
 	textfield->setValue (interface->getCommandStringParam (&agentConfiguration, "displayName", ""));
-	actionWindow->addOption (uitext->getText (UiTextString::displayName).capitalized (), textfield, uitext->getText (UiTextString::agentDisplayNameDescription));
-	actionWindow->setOptionNotEmptyString (uitext->getText (UiTextString::displayName).capitalized ());
+	actionWindow->addOption (uitext->getText (UiTextString::DisplayName).capitalized (), textfield, uitext->getText (UiTextString::AgentDisplayNameDescription));
+	actionWindow->setOptionNotEmptyString (uitext->getText (UiTextString::DisplayName).capitalized ());
 
 	if (interface->getCommandObjectParam (&agentConfiguration, "mediaServerConfiguration", &cfg)) {
 		if (interface->isWindowsPlatform (agentPlatform)) {
-			prompt = uitext->getText (UiTextString::sourceMediaPathPromptWindows);
+			prompt = uitext->getText (UiTextString::SourceMediaPathPromptWindows);
 		}
 		else {
-			prompt = uitext->getText (UiTextString::sourceMediaPathPrompt);
+			prompt = uitext->getText (UiTextString::SourceMediaPathPrompt);
 		}
 		textfield = new TextFieldWindow (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, prompt);
 		textfield->setPadding (uiconfig->paddingSize, 0.0f);
 		textfield->setButtonsEnabled (false, false, true, true, false);
 		textfield->setPromptErrorColor (true);
 		textfield->setValue (cfg.getString ("mediaPath", ""));
-		actionWindow->addOption (uitext->getText (UiTextString::sourceMediaPath).capitalized (), textfield, uitext->getText (UiTextString::sourceMediaPathDescription));
-		actionWindow->setOptionNotEmptyString (uitext->getText (UiTextString::sourceMediaPath).capitalized ());
+		actionWindow->addOption (uitext->getText (UiTextString::SourceMediaPath).capitalized (), textfield, uitext->getText (UiTextString::SourceMediaPathDescription));
+		actionWindow->setOptionNotEmptyString (uitext->getText (UiTextString::SourceMediaPath).capitalized ());
 
 		if (interface->isWindowsPlatform (agentPlatform)) {
-			prompt = uitext->getText (UiTextString::mediaDataPathPromptWindows);
+			prompt = uitext->getText (UiTextString::MediaDataPathPromptWindows);
 		}
 		else {
-			prompt = uitext->getText (UiTextString::mediaDataPathPrompt);
+			prompt = uitext->getText (UiTextString::MediaDataPathPrompt);
 		}
 		textfield = new TextFieldWindow (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, prompt);
 		textfield->setPadding (uiconfig->paddingSize, 0.0f);
 		textfield->setButtonsEnabled (false, false, true, true, false);
 		textfield->setPromptErrorColor (true);
 		textfield->setValue (cfg.getString ("dataPath", ""));
-		actionWindow->addOption (uitext->getText (UiTextString::mediaDataPath).capitalized (), textfield, uitext->getText (UiTextString::mediaDataPathDescription));
-		actionWindow->setOptionNotEmptyString (uitext->getText (UiTextString::mediaDataPath).capitalized ());
+		actionWindow->addOption (uitext->getText (UiTextString::MediaDataPath).capitalized (), textfield, uitext->getText (UiTextString::MediaDataPathDescription));
+		actionWindow->setOptionNotEmptyString (uitext->getText (UiTextString::MediaDataPath).capitalized ());
 
 		slider = new SliderWindow (new Slider (0.0f, 5.0f));
 		slider->setPadding (0.0f, 0.0f);
 		slider->setValueNameFunction (AgentConfigurationWindow::mediaScanPeriodSliderValueName);
-		numperiods = sizeof (AgentConfigurationWindow::mediaScanPeriods) / sizeof (AgentConfigurationWindow::mediaScanPeriods[0]);
+		numperiods = sizeof (AgentConfigurationWindow::MediaScanPeriods) / sizeof (AgentConfigurationWindow::MediaScanPeriods[0]);
 		for (i = 0; i < numperiods; ++i) {
 			slider->addSnapValue ((float) i);
 		}
 
 		period = cfg.getNumber ("scanPeriod", (int) 0);
 		for (i = 0; i < numperiods; ++i) {
-			if (period == AgentConfigurationWindow::mediaScanPeriods[i]) {
+			if (period == AgentConfigurationWindow::MediaScanPeriods[i]) {
 				slider->setValue ((float) i);
 				break;
 			}
 		}
-		actionWindow->addOption (uitext->getText (UiTextString::mediaScanPeriod).capitalized (), slider, uitext->getText (UiTextString::mediaScanPeriodDescription));
+		actionWindow->addOption (uitext->getText (UiTextString::MediaScanPeriod).capitalized (), slider, uitext->getText (UiTextString::MediaScanPeriodDescription));
 	}
 	else if (interface->getCommandObjectParam (&agentConfiguration, "streamServerConfiguration", &cfg)) {
 		if (interface->isWindowsPlatform (agentPlatform)) {
-			prompt = uitext->getText (UiTextString::streamDataPathPromptWindows);
+			prompt = uitext->getText (UiTextString::StreamDataPathPromptWindows);
 		}
 		else {
-			prompt = uitext->getText (UiTextString::streamDataPathPrompt);
+			prompt = uitext->getText (UiTextString::StreamDataPathPrompt);
 		}
 		textfield = new TextFieldWindow (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, prompt);
 		textfield->setPadding (uiconfig->paddingSize, 0.0f);
 		textfield->setButtonsEnabled (false, false, true, true, false);
 		textfield->setPromptErrorColor (true);
 		textfield->setValue (cfg.getString ("dataPath", ""));
-		actionWindow->addOption (uitext->getText (UiTextString::streamDataPath).capitalized (), textfield, uitext->getText (UiTextString::streamDataPathDescription));
-		actionWindow->setOptionNotEmptyString (uitext->getText (UiTextString::streamDataPath).capitalized ());
+		actionWindow->addOption (uitext->getText (UiTextString::StreamDataPath).capitalized (), textfield, uitext->getText (UiTextString::StreamDataPathDescription));
+		actionWindow->setOptionNotEmptyString (uitext->getText (UiTextString::StreamDataPath).capitalized ());
 	}
 
 	if (! actionWindow->isOptionDataValid) {
 		applyButton->setDisabled (true);
-		applyButton->setMouseHoverTooltip (StdString::createSprintf ("%s %s", uitext->getText (UiTextString::apply).capitalized ().c_str (), uitext->getText (UiTextString::actionWindowInvalidDataTooltip).c_str ()));
+		applyButton->setMouseHoverTooltip (StdString::createSprintf ("%s %s", uitext->getText (UiTextString::Apply).capitalized ().c_str (), uitext->getText (UiTextString::ActionWindowInvalidDataTooltip).c_str ()));
 	}
 
 	expandToggle->isVisible = true;
@@ -367,22 +376,22 @@ StdString AgentConfigurationWindow::mediaScanPeriodSliderValueName (float slider
 
 	uitext = &(App::instance->uiText);
 	if (FLOAT_EQUALS (sliderValue, 0.0f)) {
-		return (uitext->getText (UiTextString::mediaScanPeriodNeverDescription).capitalized ());
+		return (uitext->getText (UiTextString::MediaScanPeriodNeverDescription).capitalized ());
 	}
 	if (FLOAT_EQUALS (sliderValue, 1.0f)) {
-		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::slowest).capitalized ().c_str (), OsUtil::getDurationDisplayString (AgentConfigurationWindow::mediaScanPeriods[(int) sliderValue] * 1000).c_str ()));
+		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::Slowest).capitalized ().c_str (), OsUtil::getDurationDisplayString (AgentConfigurationWindow::MediaScanPeriods[(int) sliderValue] * 1000).c_str ()));
 	}
 	if (FLOAT_EQUALS (sliderValue, 2.0f)) {
-		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::slow).capitalized ().c_str (), OsUtil::getDurationDisplayString (AgentConfigurationWindow::mediaScanPeriods[(int) sliderValue] * 1000).c_str ()));
+		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::Slow).capitalized ().c_str (), OsUtil::getDurationDisplayString (AgentConfigurationWindow::MediaScanPeriods[(int) sliderValue] * 1000).c_str ()));
 	}
 	if (FLOAT_EQUALS (sliderValue, 3.0f)) {
-		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::medium).capitalized ().c_str (), OsUtil::getDurationDisplayString (AgentConfigurationWindow::mediaScanPeriods[(int) sliderValue] * 1000).c_str ()));
+		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::Medium).capitalized ().c_str (), OsUtil::getDurationDisplayString (AgentConfigurationWindow::MediaScanPeriods[(int) sliderValue] * 1000).c_str ()));
 	}
 	if (FLOAT_EQUALS (sliderValue, 4.0f)) {
-		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::fast).capitalized ().c_str (), OsUtil::getDurationDisplayString (AgentConfigurationWindow::mediaScanPeriods[(int) sliderValue] * 1000).c_str ()));
+		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::Fast).capitalized ().c_str (), OsUtil::getDurationDisplayString (AgentConfigurationWindow::MediaScanPeriods[(int) sliderValue] * 1000).c_str ()));
 	}
 	if (FLOAT_EQUALS (sliderValue, 5.0f)) {
-		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::fastest).capitalized ().c_str (), OsUtil::getDurationDisplayString (AgentConfigurationWindow::mediaScanPeriods[(int) sliderValue] * 1000).c_str ()));
+		return (StdString::createSprintf ("%s - %s", uitext->getText (UiTextString::Fastest).capitalized ().c_str (), OsUtil::getDurationDisplayString (AgentConfigurationWindow::MediaScanPeriods[(int) sliderValue] * 1000).c_str ()));
 	}
 
 	return (StdString (""));
@@ -395,8 +404,8 @@ void AgentConfigurationWindow::expandToggleStateChanged (void *windowPtr, Widget
 	window = (AgentConfigurationWindow *) windowPtr;
 	toggle = (Toggle *) widgetPtr;
 	window->setExpanded (toggle->isChecked, true);
-	if (window->expandStateChangeCallback) {
-		window->expandStateChangeCallback (window->expandStateChangeCallbackData, window);
+	if (window->expandStateChangeCallback.callback) {
+		window->expandStateChangeCallback.callback (window->expandStateChangeCallback.callbackData, window);
 	}
 }
 
@@ -411,11 +420,11 @@ void AgentConfigurationWindow::actionOptionChanged (void *windowPtr, Widget *wid
 
 	if (! action->isOptionDataValid) {
 		window->applyButton->setDisabled (true);
-		window->applyButton->setMouseHoverTooltip (StdString::createSprintf ("%s %s", uitext->getText (UiTextString::apply).capitalized ().c_str (), uitext->getText (UiTextString::actionWindowInvalidDataTooltip).c_str ()));
+		window->applyButton->setMouseHoverTooltip (StdString::createSprintf ("%s %s", uitext->getText (UiTextString::Apply).capitalized ().c_str (), uitext->getText (UiTextString::ActionWindowInvalidDataTooltip).c_str ()));
 	}
 	else {
 		window->applyButton->setDisabled (false);
-		window->applyButton->setMouseHoverTooltip (uitext->getText (UiTextString::apply).capitalized ());
+		window->applyButton->setMouseHoverTooltip (uitext->getText (UiTextString::Apply).capitalized ());
 	}
 }
 
@@ -438,29 +447,29 @@ void AgentConfigurationWindow::applyButtonClicked (void *windowPtr, Widget *widg
 
 	params = new Json ();
 	agentconfig = new Json ();
-	agentconfig->set ("isEnabled", action->getBooleanValue (uitext->getText (UiTextString::enabled), true));
-	agentconfig->set ("displayName", action->getStringValue (uitext->getText (UiTextString::displayName), ""));
+	agentconfig->set ("isEnabled", action->getBooleanValue (uitext->getText (UiTextString::Enabled), true));
+	agentconfig->set ("displayName", action->getStringValue (uitext->getText (UiTextString::DisplayName), ""));
 	if (interface->getCommandObjectParam (&(window->agentConfiguration), "mediaServerConfiguration", NULL)) {
 		cfg = new Json ();
-		cfg->set ("mediaPath", action->getStringValue (uitext->getText (UiTextString::sourceMediaPath), ""));
-		cfg->set ("dataPath", action->getStringValue (uitext->getText (UiTextString::mediaDataPath), ""));
+		cfg->set ("mediaPath", action->getStringValue (uitext->getText (UiTextString::SourceMediaPath), ""));
+		cfg->set ("dataPath", action->getStringValue (uitext->getText (UiTextString::MediaDataPath), ""));
 
 		period = 0;
-		numperiods = sizeof (AgentConfigurationWindow::mediaScanPeriods) / sizeof (AgentConfigurationWindow::mediaScanPeriods[0]);
-		index = action->getNumberValue (uitext->getText (UiTextString::mediaScanPeriod), (int) -1);
+		numperiods = sizeof (AgentConfigurationWindow::MediaScanPeriods) / sizeof (AgentConfigurationWindow::MediaScanPeriods[0]);
+		index = action->getNumberValue (uitext->getText (UiTextString::MediaScanPeriod), (int) -1);
 		if ((index >= 0) && (index < numperiods)) {
-			period = AgentConfigurationWindow::mediaScanPeriods[index];
+			period = AgentConfigurationWindow::MediaScanPeriods[index];
 		}
 		cfg->set ("scanPeriod", period);
 		agentconfig->set ("mediaServerConfiguration", cfg);
 
 		cfg = new Json ();
-		cfg->set ("dataPath", action->getStringValue (uitext->getText (UiTextString::mediaDataPath), ""));
+		cfg->set ("dataPath", action->getStringValue (uitext->getText (UiTextString::MediaDataPath), ""));
 		agentconfig->set ("streamServerConfiguration", cfg);
 	}
 	else if (interface->getCommandObjectParam (&(window->agentConfiguration), "streamServerConfiguration", NULL)) {
 		cfg = new Json ();
-		cfg->set ("dataPath", action->getStringValue (uitext->getText (UiTextString::streamDataPath), ""));
+		cfg->set ("dataPath", action->getStringValue (uitext->getText (UiTextString::StreamDataPath), ""));
 		agentconfig->set ("streamServerConfiguration", cfg);
 	}
 	params->set ("agentConfiguration", agentconfig);
@@ -470,7 +479,7 @@ void AgentConfigurationWindow::applyButtonClicked (void *windowPtr, Widget *widg
 	if (result != Result::Success) {
 		window->release ();
 		Log::debug ("Failed to invoke UpdateAgentConfiguration command; err=%i agentId=\"%s\"", result, window->agentId.c_str ());
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
 		return;
 	}
 	window->setWaiting (true);
@@ -489,15 +498,15 @@ void AgentConfigurationWindow::invokeUpdateAgentConfigurationComplete (void *win
 	interface = &(App::instance->systemInterface);
 	if (invokeResult != Result::Success) {
 		Log::debug ("Failed to invoke UpdateAgentConfiguration command; err=%i agentId=\"%s\"", invokeResult, agentId.c_str ());
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::serverContactError));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::ServerContactError));
 	}
 	else {
 		if ((! responseCommand) || (interface->getCommandId (responseCommand) != SystemInterface::CommandId_AgentConfiguration)) {
 			Log::debug ("Failed to invoke UpdateAgentConfiguration command; err=\"Invalid response data\" agentId=\"%s\"", agentId.c_str ());
-			App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
+			App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
 		}
 		else {
-			App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::updateAgentConfigurationMessage));
+			App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::UpdateAgentConfigurationMessage));
 			App::instance->agentControl.refreshAgentStatus (window->agentId);
 		}
 	}

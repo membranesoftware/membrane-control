@@ -62,10 +62,10 @@ HyperlinkWindow::HyperlinkWindow (const StdString &linkText, const StdString &li
 	maxLineHeight = label->maxLineHeight + uiconfig->textUnderlineMargin;
 	labelWidth = label->width;
 	labelHeight = label->height;
-	setMouseClickCallback (HyperlinkWindow::windowClicked, this);
-	setMouseEnterCallback (HyperlinkWindow::windowMouseEntered, this);
-	setMouseExitCallback (HyperlinkWindow::windowMouseExited, this);
-	setMouseHoverTooltip (uitext->getText (UiTextString::hyperlinkTooltip));
+	mouseClickCallback = Widget::EventCallbackContext (HyperlinkWindow::windowClicked, this);
+	mouseEnterCallback = Widget::EventCallbackContext (HyperlinkWindow::windowMouseEntered, this);
+	mouseExitCallback = Widget::EventCallbackContext (HyperlinkWindow::windowMouseExited, this);
+	setMouseHoverTooltip (uitext->getText (UiTextString::HyperlinkTooltip));
 
 	refreshLayout ();
 }
@@ -116,10 +116,10 @@ void HyperlinkWindow::windowClicked (void *windowPtr, Widget *widgetPtr) {
 
 	result = OsUtil::openUrl (window->url);
 	if (result != Result::Success) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::openHelpUrlError));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::OpenHelpUrlError));
 	}
 	else {
-		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::launchedWebBrowser).capitalized ().c_str (), window->url.c_str ()));
+		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::LaunchedWebBrowser).capitalized ().c_str (), window->url.c_str ()));
 	}
 }
 

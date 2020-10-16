@@ -55,8 +55,6 @@ Toggle::Toggle (Sprite *uncheckedButtonSprite, Sprite *checkedButtonSprite)
 , isFocused (false)
 , uncheckedButton (NULL)
 , checkedButton (NULL)
-, stateChangeCallback (NULL)
-, stateChangeCallbackData (NULL)
 {
 	UiConfiguration *uiconfig;
 
@@ -79,11 +77,11 @@ Toggle::Toggle (Sprite *uncheckedButtonSprite, Sprite *checkedButtonSprite)
 	checkedButton->isFocusDropShadowDisabled = true;
 	checkedButton->isVisible = false;
 
-	setMouseEnterCallback (Toggle::mouseEntered, this);
-	setMouseExitCallback (Toggle::mouseExited, this);
-	setMousePressCallback (Toggle::mousePressed, this);
-	setMouseReleaseCallback (Toggle::mouseReleased, this);
-	setMouseClickCallback (Toggle::mouseClicked, this);
+	mouseEnterCallback = Widget::EventCallbackContext (Toggle::mouseEntered, this);
+	mouseExitCallback = Widget::EventCallbackContext (Toggle::mouseExited, this);
+	mousePressCallback = Widget::EventCallbackContext (Toggle::mousePressed, this);
+	mouseReleaseCallback = Widget::EventCallbackContext (Toggle::mouseReleased, this);
+	mouseClickCallback = Widget::EventCallbackContext (Toggle::mouseClicked, this);
 
 	refreshLayout ();
 }
@@ -123,8 +121,8 @@ void Toggle::setChecked (bool checked, bool shouldSkipChangeCallback) {
 		uncheckedButton->isVisible = true;
 	}
 	refreshLayout ();
-	if (stateChangeCallback && (! shouldSkipChangeCallback)) {
-		stateChangeCallback (stateChangeCallbackData, this);
+	if (stateChangeCallback.callback && (! shouldSkipChangeCallback)) {
+		stateChangeCallback.callback (stateChangeCallback.callbackData, this);
 	}
 }
 
@@ -151,11 +149,6 @@ void Toggle::setInverseColor (bool inverse) {
 void Toggle::setImageColor (const Color &imageColor) {
 	uncheckedButton->setImageColor (imageColor);
 	checkedButton->setImageColor (imageColor);
-}
-
-void Toggle::setStateChangeCallback (Widget::EventCallback callback, void *callbackData) {
-	stateChangeCallback = callback;
-	stateChangeCallbackData = callbackData;
 }
 
 void Toggle::setStateMouseHoverTooltips (const StdString &uncheckedTooltip, const StdString &checkedTooltip, int alignment) {

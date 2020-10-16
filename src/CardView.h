@@ -45,7 +45,7 @@
 
 class CardView : public ScrollView {
 public:
-	// Constants to use for row item detail types
+	// Row item detail types
 	enum {
 		LowDetail = 0,
 		MediumDetail = 1,
@@ -56,14 +56,14 @@ public:
 	~CardView ();
 
 	typedef bool (*MatchFunction) (void *data, Widget *widget);
-	static const float smallItemScale;
-	static const int animateScaleDuration;
+	static const float SmallItemScale;
+	static const int AnimateScaleDuration;
 
 	// Read-only data members
 	float cardAreaWidth;
 
-	// Set the view's size
-	void setViewSize (float viewWidth, float viewHeight);
+	// Set the size of the viewable area
+	virtual void setViewSize (float viewWidth, float viewHeight);
 
 	// Set the size of margin space that should be inserted between items in the view
 	void setItemMarginSize (float marginSize);
@@ -145,8 +145,8 @@ protected:
 	// Execute subclass-specific operations to update object state as appropriate for an elapsed millisecond time period
 	virtual void doUpdate (int msElapsed);
 
-	// Execute operations appropriate when the widget receives new mouse state
-	virtual void doProcessMouseState (const Widget::MouseState &mouseState);
+	// Execute operations appropriate when the widget receives new mouse state and return a boolean value indicating if mouse wheel events were consumed and should no longer be processed
+	virtual bool doProcessMouseState (const Widget::MouseState &mouseState);
 
 	// Update the widget as appropriate for a received keypress event and return a boolean value indicating if the event was consumed and should no longer be processed
 	virtual bool doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown);

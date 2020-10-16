@@ -53,18 +53,18 @@ public:
 
 	virtual ~StdString ();
 
-	static const int maxSprintfLength;
+	static const int MaxSprintfLength;
 
-	// Set the string's content using a format string. If the final length is greater than maxSprintfLength, the content is truncated to fit.
+	// Set the string's content using a format string. If the final length is greater than MaxSprintfLength, the content is truncated to fit.
 	void sprintf (const char *str, ...) __attribute__((format(printf, 2, 3)));
 
-	// Set the string's content using a format string and an arg list. If the final length is greater than maxSprintfLength, the content is truncated to fit.
+	// Set the string's content using a format string and an arg list. If the final length is greater than MaxSprintfLength, the content is truncated to fit.
 	void vsprintf (const char *str, va_list ap);
 
-	// Append to the string's content using a format string. If the final length of the string to append is greater than maxSprintfLength, the content is truncated to fit.
+	// Append to the string's content using a format string. If the final length of the string to append is greater than MaxSprintfLength, the content is truncated to fit.
 	void appendSprintf (const char *str, ...) __attribute__((format(printf, 2, 3)));
 
-	// Append to the string's content using a format string and an arg list. If the final length is greater than maxSprintfLength, the content is truncated to fit.
+	// Append to the string's content using a format string and an arg list. If the final length is greater than MaxSprintfLength, the content is truncated to fit.
 	void appendVsprintf (const char *str, va_list ap);
 
 	// Return a boolean value indicating if the string is equal to the provided value
@@ -113,8 +113,14 @@ public:
 	// Remove all instances of oldText and replace them with newText
 	void replace (const StdString &oldText, const StdString &newText);
 
+	// Replace the portion of the string that starts at pos and spans len
+	void replace (size_t pos, size_t len, const StdString &str);
+	void replace (size_t pos, size_t len, size_t n, char c);
+
 	// Return a string resulting from the specified replace operation
-	StdString replaced (const StdString &oldText, const StdString &newText);
+	StdString replaced (const StdString &oldText, const StdString &newText) const;
+	StdString replaced (size_t pos, size_t len, const StdString &str) const;
+	StdString replaced (size_t pos, size_t len, size_t n, char c) const;
 
 	// URL decode the string's content and assign it to the resulting value. Returns a Result value.
 	int urlDecode ();
@@ -150,8 +156,8 @@ public:
 	void assignHex (const unsigned char *hexData, int hexDataLength);
 
 	// Split the string by the specified delimiter and store the resulting parts into the provided list, clearing the list before doing so
-	void split (const char *delimiter, std::list<StdString> *destList);
-	void split (const StdString &delimiter, std::list<StdString> *destList);
+	void split (const char *delimiter, std::list<StdString> *destList) const;
+	void split (const StdString &delimiter, std::list<StdString> *destList) const;
 
 	// Overwrite all characters in the string and clear its contents
 	void wipe ();

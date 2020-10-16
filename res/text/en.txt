@@ -1,438 +1,447 @@
-windowTitle Membrane Control
-shuttingDownApp Shutting down Membrane Control
-ok ok
-yes yes
-no no
-cancel cancel
-confirm confirm
-edit edit
-help help
-remove remove
-rename rename
-name name
-password password
-passwordLocked password locked
-address address
-version version
-platform platform
-uptime uptime
-status status
-active active
-inactive inactive
-playing playing
-showing showing
-exit exit
-select select
-clear clear
-settings settings
-about about
-checkForUpdates check for updates
-sendFeedback send feedback
-windowSize window size
-textSize text size
-showClock show clock
-showInterfaceAnimations show interface animations
-media media
-mediaFile media file
-mediaFiles media files
-videoStream video stream
-videoStreams video streams
-videoQuality video quality
-storage storage
-webKiosk web kiosk
-webKiosks web kiosks
-createPlaylist create playlist
-runPlaylist run playlist
-deletePlaylist delete playlist
-addPlaylistItems add playlist items
-playAll play all
-cache cache
-shuffle shuffle
-startPosition start position
-playDuration play duration
-display display
-displayName display name
-online online
-offline offline
-complete complete
-contacting contacting
-monitors monitors
-server server
-servers servers
-removeServer remove server
-removeAttachedServerDescription Membrane Control will no longer contact this server or show it on the interface.
-removeUnattachedServerDescription Membrane Control will no longer show this server on the interface.
-attachServerTooltip Stay connected to this server
-detachServerTooltip Do not connect to this server
-updateServerTooltip Download a newer version of this server
-tasks tasks
-playlist playlist
-playlists playlists
-speed speed
-smallest smallest
-small small
-medium medium
-large large
-largest largest
-slowest slowest
-slow slow
-fast fast
-fastest fastest
-never never
-play play
-stop stop
-pause pause
-resume resume
-enabled enabled
-disabled disabled
-learnMore learn more
-searchForHelp search for help
-startedCreatingStream started creating stream
-removedStream removed stream
-create create
-open open
-openHelp open help
-loading loading
-openAdminConsole open admin console
-mainMenu main menu
-bitrate bitrate
-frameSize frame size
-fileSize file size
-duration duration
-frameRate frame rate
-playStreams play streams
-manageStreams manage streams
-managePlaylists manage playlists
-configureStream configure stream
-streamServer stream server
-configure configure
-configuration configuration
-save save
-apply apply
-websiteList website list
-addWebsite add website
-showWebsite show website
-browseWebsite browse website
-viewWebsites view websites
-serverUiDescription Connect to Membrane Server applications running on this computer or on the network.
-mediaUiDescription Browse videos from a media server. Watch video streams in a browser or on Raspberry Pi monitors.
-webKioskUiDescription Track your favorite websites by launching browser applications on Raspberry Pi monitors.
-selectPlayPosition select play position
-enterAddressPrompt (Enter server address)
-enterUrlPrompt (Enter website address)
-enterWebPlaylistNamePrompt (Enter playlist name)
-enterPlaylistNamePrompt (Enter playlist name)
-enterSearchKeyPrompt (Enter search filter)
-enterStoredCommandNamePrompt (Enter a name for this command)
-emptyWebPlaylistAddressList (Addresses in this list are shown on the kiosk display)
-selectedToggleTooltip Selected (Click to unselect)
-unselectedToggleTooltip Unselected (Click to select)
-expand expand
-minimize minimize
-expandAll expand all
-minimizeAll minimize all
-mainMenuTooltip View the main action menu
-moreActionsTooltip View more actions
-textFieldEnterTooltip <Enter> Confirm field text
-textFieldPasteTooltip Paste text from the clipboard into this field
-textFieldClearTooltip Remove all text from this field
-textFieldRandomizeTooltip Set field text to a randomly generated value
-textFieldVisibilityToggleTooltip Show or hide field text
-serverConnected server connected
-serversConnected servers connected
-mediaServerConnected media server connected
-mediaServersConnected media servers connected
-videoFileInCatalog video file in catalog
-videoFilesInCatalog video files in catalog
-monitorConnected monitor connected
-monitorsConnected monitors connected
-videoStreamPlayable video stream playable
-videoStreamsPlayable video streams playable
-webPlaylistItem site in this playlist
-webPlaylistItems sites in this playlist
-streamPlaylistItem clip in this playlist
-streamPlaylistItems clips in this playlist
-uiLaunchOpenButtonTooltip Open this interface
-serverUiHelpTitle Servers
-serverUiHelpText This interface finds and displays Membrane Server applications running on this computer or other computers. Connecting to a server here makes it available for use in other interfaces, as launched from the main menu.
-serverUiHelpAction1Text No Membrane Servers are in contact.\n\n- Check if Membrane Server is installed and running, and that its computer is connected to the network.\n\n- Click the broadcast button in the bottom right corner to discover any servers available on the local network.\n- Click the address button to directly contact a server by name.
-serverUiHelpAction2Text - The bottom toolbar shows controls for finding a server by broadcast or direct address.\n\n- Membrane Control maintains connections to attached servers. Unattach a server to disable control connections while keeping it visible here.
-serverUiAttachedAgentsTitle Attached servers
-serverUiUnattachedAgentsTitle Unattached servers
-serverUiEmptyAgentStatusTitle No servers contacted
-serverUiEmptyAgentStatusText1 To find Membrane Servers on the network:\n\n- Click the broadcast button in the bottom right corner to discover any servers available on the local network.\n- Click the address button to directly contact a server by name.
-serverUiEmptyAgentStatusText2 To find Membrane Servers on the network:\n\n- Click the broadcast button in the bottom right corner to discover any servers available on the local network.\n- Click the address button to directly contact a server by name.\n- Activate one of the items in the unattached servers list.
-serverUiAddressTooltip <F1> Enter an address to contact a Membrane Server on the network
-serverUiBroadcastTooltip <F2> Scan for Membrane Servers on the local network
-serverUiContactingAgentMessage Attempting server contact
-serverUiContactingAgentDescription Contacting
-serverUiUnauthorizedErrorTitle Password required
-serverUiUnauthorizedErrorText To connect, create a server password entry matching the one previously used to configure this server.
-serverUiFailedContactErrorTitle Connection not available
-serverUiFailedContactErrorText A network connection to this server could not be established.
-sourceMediaPath source media path
-sourceMediaPathDescription The directory path where the server finds media files.
-sourceMediaPathPrompt (example: /media)
-sourceMediaPathPromptWindows (example: C:\media)
-mediaDataPath media data path
-mediaDataPathDescription The directory path where the server writes data required for processing media files.
-mediaDataPathPrompt (example: /media_data)
-mediaDataPathPromptWindows (example: C:\media_data)
-mediaScanPeriod media scan period
-mediaScanPeriodDescription How often the server scans the source media path for new files.
-mediaScanPeriodNeverDescription Never - scan on request only
-scanForMedia scan for media
-scanForMediaStartedMessage Command sent: <Scan for media> (this may take some time)
-streamDataPath stream data path
-streamDataPathDescription The directory path where the server writes data required for streaming media functions.
-streamDataPathPrompt (example: /stream_data)
-streamDataPathPromptWindows (example: C:\stream_data)
-agentEnabledDescription The server does not respond to commands unless enabled.
-agentDisplayNameDescription The name to show for this server in control interfaces.
-agentDisplayNamePrompt (Enter a name)
-mediaUiShowMediaWithoutStreamsAction Show playable media only
-mediaUiSearchTooltip Show only media items matching this search key
-mediaUiSortTooltip Select sort and filter options
-mediaUiEmptyAgentStatusTitle No media library available
-mediaUiEmptyAgentStatusText Return to the main menu and open "Servers" to contact a computer running Membrane Media Library.
-mediaUiEmptyMediaStatusTitle No media files available
-mediaUiEmptyMediaStatusText Media files from Membrane Media Library appear in this list.
-mediaUiEmptyMediaStreamStatusTitle No playable media available
-mediaUiEmptyMediaStreamStatusText Media files are available, but none have playback streams and the "Show playable media only" option is enabled.
-mediaUiHelpTitle Media
-mediaUiHelpText This interface shows video files available from Membrane Media Library applications running on connected servers. Controls are provided for stream management, video playback, and playlist creation.
-mediaUiHelpAction1Text No Membrane Media Library applications have been contacted. Return to the main menu and open "Servers" to find a media library.
-mediaUiHelpAction2Text Browse videos and view thumbnail images from their timelines.
-mediaUiHelpAction3Text Process video files into streams for playback on screens running the Membrane Monitor application.
-mediaUiHelpAction4Text No media files are available. Execute Membrane Media Library's "Scan for media" command to find new videos in its media directory.
-mediaUiNoMediaSelectedPrompt (Select a media file)
-mediaUiNoStreamableMediaSelectedPrompt (Select a media file with an available stream)
-mediaUiNoMonitorSelectedPrompt (Select a monitor)
-mediaUiNoPlaylistSelectedPrompt (Select a playlist)
-mediaUiEmptyPlaylistSelectedPrompt (Select a playlist containing at least one item)
-mediaUiCreatePlaylistTooltip Create a new playlist
-mediaUiWritePlaylistTooltip <F3> Play the selected playlist on all selected monitors
-mediaUiPlayTooltip <F4> Play the selected video on all selected monitors
-mediaUiStopTooltip <F1> Clear all selected monitors
-mediaUiPauseTooltip <F2> Pause or resume playback on all selected monitors
-mediaUiBrowserPlayTooltip Launch a browser window playing this video
-mediaUiConfigureStreamTooltip Prepare playback streams for all selected videos
-mediaUiAddCacheStreamTooltip Transfer all selected streams to the cache of all selected monitors
-mediaUiDeleteStreamTooltip Delete playback streams for all selected videos
-mediaUiSelectAllTooltip Select / unselect all videos
-mediaItemUiHelpTitle Media file
-mediaItemUiHelpText This interface shows thumbnail images from a media file's timeline.
-mediaItemUiConfigureStreamTooltip Prepare a playback stream for this video
-thumbnailImageSizeTooltip Set the display size for thumbnail images
-uiBackTooltip Return to the previous screen
-exitTooltip Close this application
-moreHelpTopics more help topics
-reloadTooltip Refresh server state
-mainUiHelpTitle Membrane Control
-mainUiHelpText This application connects to other computers running Membrane Server, allowing you to access and control any resources they offer. The main menu shows Membrane Control's primary functions, each of which can be launched using its "OPEN" button.
-mainUiServersHelpActionText No Membrane Servers have been contacted. Open the "Servers" interface to locate other computers offering this service on the network.
-mainUiNextBannerTooltip Show the next news item
-openHelpUrlError An error occurred in launching the web browser. For help, see: https://membranesoftware.com/
-openAboutUrlError An error occurred in launching the web browser. For information, see: https://membranesoftware.com/i/about-membrane-control
-openFeedbackUrlError An error occurred in launching the web browser. To send feedback, see: https://membranesoftware.com/contact
-openUpdateUrlError An error occurred in launching the web browser. For software updates, see: https://membranesoftware.com/
-launchedWebBrowser launched web browser
-launchWebBrowserError An error occurred in launching the web browser.
-sentBroadcast Network broadcast sent. Any server that responds will be shown in the top row.
-invokeGetStatusAddressEmptyError Enter a server address in the bottom toolbar to attempt contact.
-invokeGetStatusAddressParseError The provided server address doesn't use the correct format.
-internalError An unexpected internal error prevented this operation from succeeding. Our apologies.
-serverContactError Unable to contact the remote server. Check if network connections are available and try again.
-invokeClearDisplayMessage Command sent: <Clear>
-invokePauseMediaMessage Command sent: <Pause / resume>
-invokeCreateWebPlaylistMessage Command sent: <Run website playlist>
-invokeShowWebUrlMessage Command sent: <Show website>
-webKioskUiHelpTitle Web kiosk
-webKioskUiHelpText This interface commands Membrane Monitor applications to behave as web kiosks. Select servers or playlists using the star icons in their upper right corners, then use the bottom toolbar to execute commands.
-webKioskUiHelpAction1Text No Membrane Monitor applications are connected. To find one, return to the main menu and open the "Servers" interface.
-webKioskUiHelpAction2Text - Create and edit playlists capable of running on monitors to show a set of sites.\n\n- Enter a website address and add it to a playlist, launch a web browser to view it, or command a web kiosk to display it.\n\n- Write a playlist to one or more monitors, causing them to cycle through the listed sites with an optional shuffle.
-webKioskUiBrowseUrlTooltip Launch a browser viewing this website
-webKioskUiShowUrlTooltip <F3> Show this website on all selected monitors
-webKioskUiAddPlaylistTooltip Create a new website playlist
-webKioskUiClearDisplayTooltip <F1> Clear all selected monitors
-webKioskUiWritePlaylistTooltip <F2> Run the selected playlist on all selected monitors
-webKioskUiNoAgentSelectedPrompt (Select a web kiosk)
-webKioskUiNoPlaylistSelectedPrompt (Select a playlist)
-webKioskUiEmptyPlaylistSelectedPrompt (Select a playlist containing at least one item)
-webKioskUiNoAddressEnteredPrompt (Enter a website address)
-websiteAddedMessage Website added to playlist
-webPlaylistCreatedMessage Created playlist
-webPlaylistSpeedTooltip Length of time to show each item
-shuffleTooltip Shuffle playback order
-clickRenameTooltip (Click to rename)
-hyperlinkTooltip Open this site using the system's web browser
-actionWindowInvalidDataTooltip (items in red need changes)
-serverAdminUiEmptyTaskListTitle No tasks
-serverAdminUiEmptyTaskListText Jobs from the server's task queue appear in this list.
-serverAdminUiHelpTitle Server console
-serverAdminUiHelpText This interface shows details about a Membrane Server application and any in-progress tasks from its queue.
-serverAdminUiHelpAction1Text Click the lock button to set the server's password to any of the items in the server passwords list. If a password is set, the server will not accept commands unless the correct password is present in the list.
-serverAdminUiLockTooltip Set the server's admin password
-serverAdminUiEmptyAdminPasswordText (No password)
-serverAdminUiAdminPasswordDescription If a password is set, the server will not accept commands unless the correct password is present in the server passwords list.
-serverAdminUiSetPasswordCompleteMessage Admin password changed.
-emptyStreamPlaylistText (Items in this list are played on monitors)
-invokeCreateCacheStreamMessage Command sent: <Transfer stream to cache>
-invokeConfigureMediaStreamMessage Command sent: <Configure media stream>
-streamPlaylistCreatedMessage Created playlist
-streamItemAddedMessage Added playlist item
-streamItemsAddedMessage Added playlist items
-invokePlayMediaMessage Command sent: <Play video stream>
-invokeCreateStreamPlaylistMessage Command sent: <Run playlist>
-invokeRemoveStreamMessage Command sent: <Delete stream>
-streamItemUiHelpTitle Video stream
-streamItemUiHelpText This interface shows thumbnail images from a video stream's timeline.
-streamItemUiHelpAction1Text Click a thumbnail image or the timeline bar to select a stream position and return to the previous screen.
-getAgentConfigurationServerContactError Unable to read configuration values from the remote server. Check if network connections are available and try again.
-updateAgentConfigurationMessage Server configuration updated.
-monitorCacheUiHelpTitle Video monitor
-monitorCacheUiHelpText This interface manages the video cache storage of the selected Membrane Monitor application. Use the bottom toolbar to execute commands.
-monitorCacheUiHelpAction1Text No streams are cached on this monitor. Return to the previous screen and select a stream for transfer. Streams stored this way can be played by the monitor without network access.
-monitorCacheUiHelpAction2Text Click a video stream's thumbnail to select it. View the stream's timeline images to choose a play position.
-monitorCacheUiEmptyStreamStatusTitle No video streams in cache
-monitorCacheUiEmptyStreamStatusText Streams from Membrane Monitor's cache appear in this list.
-monitorCacheUiNoStreamSelectedPrompt (Select a video stream)
-monitorCacheUiNoStreamAvailablePrompt (No video streams in cache)
-monitorCacheUiPlayTooltip <F4> Play the selected stream
-monitorCacheUiPauseTooltip <F2> Pause or resume playback
-monitorCacheUiWritePlaylistTooltip <F3> Play all cache streams on loop
-monitorCacheUiStopTooltip <F1> Clear the monitor
-monitorCacheUiWritePlaylistMessage Command sent: <Loop cache videos>
-viewTimelineImagesTooltip View timeline images
-monitorActivityIconTooltip Status of the monitor's screen
-storageTooltip Available data storage
-cachedStream cached stream
-cachedStreams cached streams
-taskInProgress task in progress
-tasksInProgress tasks in progress
-removeMedia remove media
-removeStream remove stream
-deleteStream delete stream
-deleteStreamTitle Remove selected streams?
-deleteStreamDescription Playback of these videos will no longer be available.
-deleteStreamByteCountTooltip Total storage used by these streams
-deleteStreamItemCountTooltip stream to remove
-deleteStreamItemsCountTooltip streams to remove
-cacheStream cache stream
-cacheStreams cache streams
-cacheStreamsDescription Copy streams to selected monitors, allowing them to be played when the media library is not available.
-cacheStreamItemCountTooltip stream to copy
-cacheStreamItemsCountTooltip streams to copy
-cacheStreamByteCountTooltip Total size of streams to copy
-cacheStreamDeleteDescription Delete video stream? Playback will no longer be available.
-cacheStreamDeleteByteCountTooltip Stream size
-mediaStreaming media streaming
-serversHelpTitle Connecting to servers with Membrane Control
-membraneSoftwareOverviewHelpTitle Membrane Software overview
-serverPasswords server passwords
-addAdminPasswordTooltip Create a new admin password
-createAdminPassword create admin password
-setAdminPassword set admin password
-adminPasswordNamePrompt (Enter a name)
-adminPasswordPrompt (Enter a password)
-emptyAdminSecretListText (No passwords stored)
-normalVideoQualityDescription Normal
-compressedVideoQualityDescription High-compression
-lowVideoQualityDescription Low
-lowestVideoQualityDescription Lowest
-videoQualityDescription High-compression: less storage space consumed, slower stream creation time. Low/Lowest: grainier picture, much less storage space consumed, faster stream creation time.
-firstLaunchBannerMessage Welcome to Membrane Control. Need information to get started?
-helpKeyBannerMessage Press Ctrl-h to open Membrane Control's help window.
-freeApplicationBannerMessage Membrane Control is free to download, requires no signup or account creation, and contains no ads or in-app purchases. Tell your friends!
-membraneSoftwareBannerMessage This application is brought to you by Membrane Software, creator of free applications for the computer users of the world.
-donateBannerMessage Membrane Control is supported by donations from users like you. If you get utility and enjoyment from this application, please think about contributing money to support its development. Any amount helps!
-mouseHoverBannerMessage Buttons show description text when the mouse pointer hovers over them.
-imageLongPressBannerMessage Click and hold a thumbnail or screenshot image to zoom in on it.
-mediaAttributesTooltip Video attributes
-toolbarModeButtonTooltip Select control mode
-streamIconTooltip Playback stream available
-createStreamUnavailableTooltip Stream creation not available
-removeMediaActionText This video is no longer available from the media library and can't be processed to create playback streams. Remove record?
-viewMonitorCacheTooltip View the monitor's cache of stored videos
-cameras cameras
-cameraUiDescription Command cameras and view captured images.
-cameraUiNoCameraSelectedPrompt (Select a camera)
-cameraUiConfigureTimelapseTooltip Configure timelapse capture for all selected cameras
-cameraUiAutoReloadTooltip If enabled: Periodically refresh camera images
-cameraUiClearTimelapseTooltip Stop timelapse capture and clear all stored images for all selected cameras
-cameraUiHelpTitle Cameras
-cameraUiHelpText This interface shows connected camera servers, with controls to configure timelapse capture and clear stored timelapse images.
-cameraUiHelpAction1Text No Membrane Camera applications have been contacted. Return to the main menu and open "Servers" to find a camera.
-cameraUiEmptyAgentStatusTitle No camera available
-cameraUiEmptyAgentStatusText Return to the main menu and open "Servers" to contact a computer running Membrane Camera.
-setTimelapse set timelapse
-clearTimelapse clear timelapse
-timelapseImages timelapse images
-cameraConnected camera connected
-camerasConnected cameras connected
-enableCapture enable capture
-enableCaptureDescription The camera does not capture timelapse images unless enabled.
-imageQuality image quality
-imageQualityDescription Higher quality images show more detail but consume more storage space and load more slowly.
-normalImageQualityDescription Normal
-highImageQualityDescription High
-lowImageQualityDescription Low
-lowestImageQualityDescription Lowest
-capturePeriod capture period
-capturePeriodDescription The camera waits for this amount of time between image captures.
-disableCameraTimelapseMessage Command sent: <Stop timelapse>
-configureCameraTimelapseMessage Command sent: <Set timelapse>
-clearCameraTimelapseMessage Command sent: <Clear timelapse>
-cameraActivityIconTooltip Camera status
-before before
-after after
-captureTimespanTooltip Time range of available images
-selectedCaptureTimespanTooltip Time range of displayed images
-sortCaptureImagesTooltip Select increasing or decreasing time range
-sortByName sort by name
-sortByNewest sort by newest
-continuous continuous
-cameraTimelineUiHelpTitle Timelapse images
-cameraTimelineUiHelpText This interface shows timelapse images stored on a camera. Click the bottom bar to select a time position for images to display.
-playCaptureTooltip Play timelapse images in sequence
-commands commands
-commandUiDescription Store commonly used commands for easy execution.
-clearMonitors clear monitors
-playMedia play media
-runMediaPlaylist run media playlist
-runWebsitePlaylist run website playlist
-storedCommand stored command
-storedCommands stored commands
-recentCommand recent command
-recentCommands recent commands
-unknownServer unknown server
-unknownServers unknown servers
-commandUiEmptyStatusTitle No recent commands
-commandUiEmptyStatusText Commands executed on other interfaces appear here and can be stored as shortcuts.
-storedCommandFailedExecutionError Server connections to execute this command could not be established.
-storedCommandExecutedMessage Command executed
-commandDetails command details
-executeCommand execute command
-deleteCommand delete command
-saveCommandTooltip Save as a stored command
-commandUiHelpTitle Commands
-commandUiHelpText This interface shows recently executed commands and allows them to be stored as shortcuts.
-commandUiHelpActionText - Actions executed on other interfaces, such as Media or Web Kiosk, show up here as recent commands and can be saved for reuse.\n\n- Not every action is eligible to be stored, but many commonly used ones are. These include: Clear monitors, Show website, Play media, Run playlist
-mediaServerCatalogTooltip (Click the link to open the stream catalog in a browser)
-removePlaylistDescription Delete this playlist?
-monitorSelected monitor selected
-monitorsSelected monitors selected
-configureStreamByteCountTooltip Estimated storage required for streams
-configureStreamItemCountTooltip stream to create
-configureStreamItemsCountTooltip streams to create
-streamPlaylistZeroStartPositionDescription 00:00:00
-streamPlaylistNearBeginningStartPositionDescription Near beginning
-streamPlaylistMiddleStartPositionDescription Near middle
-streamPlaylistNearEndPositionDescription Near end
-streamPlaylistFullRangePositionDescription Anywhere
-streamPlaylistVeryShortPlayDurationDescription 15s-45s
-streamPlaylistShortPlayDurationDescription 1m-3m
-streamPlaylistMediumPlayDurationDescription 5m-15m
-streamPlaylistLongPlayDurationDescription 30m-60m
-streamPlaylistVeryLongPlayDurationDescription 2h-4h
-streamPlaylistFullPlayDurationDescription Until end
+WindowTitle Membrane Control
+ShuttingDownApp Shutting down Membrane Control
+Ok ok
+Yes yes
+No no
+Cancel cancel
+Confirm confirm
+Edit edit
+Help help
+Remove remove
+Rename rename
+Name name
+Password password
+PasswordLocked password locked
+Address address
+Version version
+Platform platform
+Uptime uptime
+Status status
+Active active
+Inactive inactive
+Playing playing
+Showing showing
+Exit exit
+Select select
+Clear clear
+Settings settings
+About about
+CheckForUpdates check for updates
+SendFeedback send feedback
+WindowSize window size
+TextSize text size
+ShowClock show clock
+ShowInterfaceAnimations show interface animations
+Media media
+MediaFile media file
+MediaFiles media files
+VideoStream video stream
+VideoStreams video streams
+VideoQuality video quality
+Storage storage
+WebKiosk web kiosk
+RunPlaylist run playlist
+DeletePlaylist delete playlist
+AddPlaylistItems add playlist items
+PlayAll play all
+Cache cache
+Shuffle shuffle
+StartPosition start position
+PlayDuration play duration
+Display display
+DisplayName display name
+Online online
+Offline offline
+Complete complete
+Contacting contacting
+Monitors monitors
+Server server
+Servers servers
+RemoveServer remove server
+RemoveAttachedServerDescription Membrane Control will no longer contact this server or show it on the interface.
+RemoveUnattachedServerDescription Membrane Control will no longer show this server on the interface.
+AttachServerTooltip Stay connected to this server
+DetachServerTooltip Do not connect to this server
+UpdateServerTooltip Download a newer version of this server
+Tasks tasks
+Playlist playlist
+Playlists playlists
+Smallest smallest
+Small small
+Medium medium
+Large large
+Largest largest
+Slowest slowest
+Slow slow
+Fast fast
+Fastest fastest
+Lowest lowest
+Highest highest
+Never never
+Play play
+Stop stop
+Pause pause
+Resume resume
+Enabled enabled
+Disabled disabled
+None none
+And and
+LearnMore learn more
+SearchForHelp search for help
+StartedCreatingStream started creating stream
+RemovedStream removed stream
+Create create
+Open open
+OpenHelp open help
+Loading loading
+OpenAdminConsole open admin console
+MainMenu main menu
+Bitrate bitrate
+FileSize file size
+Duration duration
+PlayStreams play streams
+ManageStreams manage streams
+ConfigureStream configure stream
+Configure configure
+Configuration configuration
+Apply apply
+WebsiteList website list
+AddWebsite add website
+ShowWebsite show website
+BrowseWebsite browse website
+ServerUiDescription Connect to Membrane Server applications running on this computer or on the network.
+MediaUiDescription Browse videos from a media server. Watch video streams in a browser or on Raspberry Pi monitors.
+WebKioskUiDescription Track your favorite websites by launching browser applications on Raspberry Pi monitors.
+SelectPlayPosition select play position
+EnterAddressPrompt (Enter server address)
+EnterUrlPrompt (Enter website address)
+EnterPlaylistNamePrompt (Enter playlist name)
+EnterSearchKeyPrompt (Enter search filter)
+EmptyWebPlaylistAddressListPrompt (Addresses in this list are shown on monitors)
+SelectedToggleTooltip Selected (Click to unselect)
+UnselectedToggleTooltip Unselected (Click to select)
+Expand expand
+Minimize minimize
+ExpandAll expand all
+MinimizeAll minimize all
+MainMenuTooltip View the main action menu
+MoreActionsTooltip View more actions
+TextFieldEnterTooltip <Enter> Confirm field text
+TextFieldPasteTooltip Paste text from the clipboard into this field
+TextFieldClearTooltip Remove all text from this field
+TextFieldRandomizeTooltip Set field text to a randomly generated value
+TextFieldVisibilityToggleTooltip Show or hide field text
+ServerConnected server connected
+ServersConnected servers connected
+MediaServerConnected media server connected
+MediaServersConnected media servers connected
+VideoFileInCatalog video file in catalog
+VideoFilesInCatalog video files in catalog
+MonitorConnected monitor connected
+MonitorsConnected monitors connected
+VideoStreamPlayable video stream playable
+VideoStreamsPlayable video streams playable
+WebPlaylistItem site in this playlist
+WebPlaylistItems sites in this playlist
+StreamPlaylistItem clip in this playlist
+StreamPlaylistItems clips in this playlist
+UiLaunchOpenButtonTooltip Open this interface
+ServerUiHelpTitle Servers
+ServerUiHelpText This interface finds and displays Membrane Server applications running on this computer or other computers. Connecting to a server here makes it available for use in other interfaces, as launched from the main menu.
+ServerUiHelpAction1Text No Membrane Servers are in contact.\n\n- Check if Membrane Server is installed and running, and that its computer is connected to the network.\n\n- Click the broadcast button in the bottom right corner to discover any servers available on the local network.\n- Click the address button to directly contact a server by name.
+ServerUiHelpAction2Text - The bottom toolbar shows controls for finding a server by broadcast or direct address.\n\n- Membrane Control maintains connections to attached servers. Unattach a server to disable control connections while keeping it visible here.
+ServerUiAttachedAgentsTitle Attached servers
+ServerUiUnattachedAgentsTitle Unattached servers
+ServerUiEmptyAgentStatusTitle No servers contacted
+ServerUiEmptyAgentStatusText1 To find Membrane Servers on the network:\n\n- Click the broadcast button in the bottom right corner to discover any servers available on the local network.\n- Click the address button to directly contact a server by name.
+ServerUiEmptyAgentStatusText2 To find Membrane Servers on the network:\n\n- Click the broadcast button in the bottom right corner to discover any servers available on the local network.\n- Click the address button to directly contact a server by name.\n- Activate one of the items in the unattached servers list.
+ServerUiAddressTooltip <F1> Enter an address to contact a Membrane Server on the network
+ServerUiBroadcastTooltip <F2> Scan for Membrane Servers on the local network
+ServerUiContactingAgentMessage Attempting server contact
+ServerUiContactingAgentDescription Contacting
+ServerUiUnauthorizedErrorTitle Password required
+ServerUiUnauthorizedErrorText To connect, create a server password entry matching the one previously used to configure this server.
+ServerUiFailedContactErrorTitle Connection not available
+ServerUiFailedContactErrorText A network connection to this server could not be established.
+AuthorizeIconTooltip Server requires password for control connections
+SourceMediaPath source media path
+SourceMediaPathDescription The directory path where the server finds media files.
+SourceMediaPathPrompt (example: /media)
+SourceMediaPathPromptWindows (example: C:\media)
+MediaDataPath media data path
+MediaDataPathDescription The directory path where the server writes data required for processing media files.
+MediaDataPathPrompt (example: /media_data)
+MediaDataPathPromptWindows (example: C:\media_data)
+MediaScanPeriod media scan period
+MediaScanPeriodDescription How often the server scans the source media path for new files.
+MediaScanPeriodNeverDescription Never - scan on request only
+ScanForMedia scan for media
+ScanForMediaStartedMessage Command sent: <Scan for media> (this may take some time)
+StreamDataPath stream data path
+StreamDataPathDescription The directory path where the server writes data required for streaming media functions.
+StreamDataPathPrompt (example: /stream_data)
+StreamDataPathPromptWindows (example: C:\stream_data)
+AgentEnabledDescription The server does not respond to commands unless enabled.
+AgentDisplayNameDescription The name to show for this server in control interfaces.
+AgentDisplayNamePrompt (Enter a name)
+NoMonitorSelectedPrompt (Select a monitor)
+NoPlaylistSelectedPrompt (Select a playlist)
+EmptyPlaylistSelectedPrompt (Select a playlist containing at least one item)
+MediaUiAgentRowHeaderText Media libraries, monitors
+MediaUiShowMediaWithoutStreamsAction Show playable media only
+MediaUiSearchTooltip Show only media items matching this search key
+MediaUiSortTooltip Select sort and filter options
+MediaUiEmptyAgentStatusTitle No media library available
+MediaUiEmptyAgentStatusText Return to the main menu and open "Servers" to contact a computer running Membrane Media Library.
+MediaUiEmptyMediaStatusTitle No media files available
+MediaUiEmptyMediaStatusText Media files from Membrane Media Library appear in this list.
+MediaUiEmptyMediaStreamStatusTitle No playable media available
+MediaUiEmptyMediaStreamStatusText Media files are available, but none have playback streams and the "Show playable media only" option is enabled.
+MediaUiHelpTitle Media
+MediaUiHelpText This interface shows videos available from connected Membrane Media Library servers. Controls are provided for stream management, playlist creation, and video playback.
+MediaUiHelpAction1Text No Membrane Media Library applications have been contacted. Return to the main menu and open "Servers" to find a media library.
+MediaUiHelpAction2Text Browse videos and view thumbnail images from their timelines. Enter a search string to filter videos by name.
+MediaUiHelpAction3Text Use the bottom toolbar "Configure stream" command to prepare video streams for playback on screens running Membrane Monitor.
+MediaUiHelpAction4Text No media files are available. Execute Membrane Media Library's "Scan for media" command to find new videos in its media directory.
+MediaUiNoMediaSelectedPrompt (Select a media file)
+MediaUiNoStreamableMediaSelectedPrompt (Select a media file with an available stream)
+MediaUiCreatePlaylistTooltip Create a new playlist
+MediaUiWritePlaylistTooltip <F3> Play the selected playlist on all selected monitors
+MediaUiPlayTooltip <F4> Play the selected video on all selected monitors
+MediaUiStopTooltip <F1> Clear all selected monitors
+MediaUiPauseTooltip <F2> Pause or resume playback on all selected monitors
+MediaUiBrowserPlayTooltip Launch a browser window playing this video
+MediaUiConfigureStreamTooltip Prepare playback streams for all selected videos
+MediaUiAddCacheStreamTooltip Transfer all selected streams to the cache of all selected monitors
+MediaUiDeleteStreamTooltip Delete playback streams for all selected videos
+MediaUiSelectAllTooltip Select / unselect all videos
+MediaItemUiHelpTitle Media file
+MediaItemUiHelpText This interface shows thumbnail images from a media file's timeline.
+MediaItemUiHelpAction1Text Configure a stream for this video to prepare it for playback in a browser or on a Membrane Monitor screen.
+MediaItemUiHelpAction2Text This video is no longer available from the media library and can't be processed to create playback streams.
+MediaItemUiConfigureStreamTooltip Prepare a playback stream for this video
+ThumbnailImageSizeTooltip Set the display size for thumbnail images
+UiBackTooltip Return to the previous screen
+ExitTooltip Close this application
+MoreHelpTopics more help topics
+ReloadTooltip Refresh server state
+MainUiHelpTitle Membrane Control
+MainUiHelpText This application connects to other computers running Membrane Server, allowing you to access and control any resources they offer. The main menu shows Membrane Control's primary functions, each of which can be launched using its open button.
+MainUiServersHelpActionText No Membrane Servers have been contacted. Open the "Servers" interface to locate other computers offering this service on the network.
+MainUiNextBannerTooltip Show the next news item
+OpenHelpUrlError An error occurred in launching the web browser. For help, see: https://membranesoftware.com/
+OpenAboutUrlError An error occurred in launching the web browser. For information, see: https://membranesoftware.com/i/about-membrane-control
+OpenFeedbackUrlError An error occurred in launching the web browser. To send feedback, see: https://membranesoftware.com/contact
+OpenUpdateUrlError An error occurred in launching the web browser. For software updates, see: https://membranesoftware.com/
+LaunchedWebBrowser launched web browser
+LaunchWebBrowserError An error occurred in launching the web browser.
+SentBroadcast Network broadcast sent. Any server that responds will be shown in the top row.
+InvokeGetStatusAddressEmptyError Enter a server address in the bottom toolbar to attempt contact.
+InvokeGetStatusAddressParseError The provided server address doesn't use the correct format.
+InternalError An unexpected internal error prevented this operation from succeeding. Our apologies.
+ServerContactError Unable to contact the remote server. Check if network connections are available and try again.
+InvokeClearDisplayMessage Command sent: <Clear>
+InvokePauseMediaMessage Command sent: <Pause / resume>
+InvokeCreateWebPlaylistMessage Command sent: <Run website playlist>
+InvokeShowWebUrlMessage Command sent: <Show website>
+WebKioskUiHelpTitle Web kiosk
+WebKioskUiHelpText This interface commands Membrane Monitor applications to behave as web kiosks. Select servers or playlists using the star icons in their upper right corners, then use the bottom toolbar to execute commands.
+WebKioskUiHelpAction1Text No Membrane Monitor applications are connected. To find one, return to the main menu and open the "Servers" interface.
+WebKioskUiHelpAction2Text - Create and edit playlists capable of running on monitors to show a set of sites.\n\n- Enter a website address and add it to a playlist, launch a web browser to view it, or command a web kiosk to display it.\n\n- Run a playlist on one or more monitors, causing them to cycle through the listed sites with an optional shuffle.
+WebKioskUiBrowseUrlTooltip Launch a browser viewing this website
+WebKioskUiShowUrlTooltip <F3> Show this website on all selected monitors
+WebKioskUiAddPlaylistTooltip Create a new website playlist
+WebKioskUiClearDisplayTooltip <F1> Clear all selected monitors
+WebKioskUiWritePlaylistTooltip <F2> Run the selected playlist on all selected monitors
+WebKioskUiNoAddressEnteredPrompt (Enter a website address)
+WebsiteAddedMessage Website added to playlist
+PlaylistSpeedTooltip Length of time to show each item
+ShuffleTooltip Shuffle playback order
+ClickRenameTooltip (Click to rename)
+HyperlinkTooltip Open this site using the system's web browser
+ActionWindowInvalidDataTooltip (items in red need changes)
+ServerAdminUiEmptyTaskListTitle No tasks
+ServerAdminUiEmptyTaskListText Jobs from the server's task queue appear in this list.
+ServerAdminUiHelpTitle Server console
+ServerAdminUiHelpText This interface shows details about a connected Membrane Server application and lists any tasks running or waiting to run.
+ServerAdminUiHelpAction1Text Open the Configuration window to manage the server's settings.
+ServerAdminUiHelpAction2Text Click the lock button to secure the server using any of the items in the server passwords list. A secured server will not accept commands unless its password is present in the list.
+ServerAdminUiLockTooltip Set the server's admin password
+ServerAdminUiEmptyAdminPasswordText (No password)
+ServerAdminUiAdminPasswordDescription If a password is set, the server will not accept commands unless the correct password is present in the server passwords list.
+ServerAdminUiSetPasswordCompleteMessage Admin password changed.
+EmptyStreamPlaylistText (Streams in this list are played on monitors)
+InvokeCreateCacheStreamMessage Command sent: <Transfer stream to cache>
+InvokeConfigureMediaStreamMessage Command sent: <Configure media stream>
+AddedPlaylistItem Added playlist item
+AddedPlaylistItems Added playlist items
+InvokePlayMediaMessage Command sent: <Play video stream>
+InvokeCreateStreamPlaylistMessage Command sent: <Run playlist>
+InvokeRemoveStreamMessage Command sent: <Delete stream>
+StreamItemUiHelpTitle Video stream
+StreamItemUiHelpText This interface shows thumbnail images from a video stream's timeline.
+StreamItemUiHelpAction1Text Click the timeline bar to view thumbnails at that stream position.
+StreamItemUiHelpAction2Text To select a play position and return to the previous screen, click the star button followed by a thumbnail image.
+StreamItemUiSelectTooltip <Tab> Select play position and return to previous screen
+GetAgentConfigurationServerContactError Unable to read configuration values from the remote server. Check if network connections are available and try again.
+UpdateAgentConfigurationMessage Server configuration updated.
+MonitorCacheUiHelpTitle Video monitor
+MonitorCacheUiHelpText This interface shows cache videos from Membrane Monitor. Use the bottom toolbar to execute playback commands.
+MonitorCacheUiHelpAction1Text No streams are cached on this monitor. Return to the previous screen and select a stream for transfer. Streams stored this way can be played by the monitor without network access.
+MonitorCacheUiHelpAction2Text Click a video stream's thumbnail to select it. View the stream's timeline images to choose a play position.
+MonitorCacheUiEmptyStreamStatusTitle No video streams in cache
+MonitorCacheUiEmptyStreamStatusText Streams from Membrane Monitor's cache appear in this list.
+MonitorCacheUiNoStreamSelectedPrompt (Select a video stream)
+MonitorCacheUiNoStreamAvailablePrompt (No video streams in cache)
+MonitorCacheUiPlayTooltip <F4> Play the selected stream
+MonitorCacheUiPauseTooltip <F2> Pause or resume playback
+MonitorCacheUiWritePlaylistTooltip <F3> Play all cache streams on loop
+MonitorCacheUiStopTooltip <F1> Clear the monitor
+MonitorCacheUiWritePlaylistMessage Command sent: <Loop cache videos>
+ViewTimelineImagesTooltip View timeline images
+MonitorActivityIconTooltip Status of the monitor's screen
+StorageTooltip Available data storage
+CachedStream cached stream
+CachedStreams cached streams
+TaskInProgress task in progress
+TasksInProgress tasks in progress
+RemoveMedia remove media
+RemoveStream remove stream
+DeleteStream delete stream
+DeleteStreamTitle Remove selected streams?
+DeleteStreamDescription Playback of these videos will no longer be available.
+DeleteStreamByteCountTooltip Total storage used by these streams
+DeleteStreamItemCountTooltip stream to remove
+DeleteStreamItemsCountTooltip streams to remove
+CacheStream cache stream
+CacheStreams cache streams
+CacheStreamsDescription Copy streams to selected monitors, allowing them to be played when the media library is not available.
+CacheStreamItemCountTooltip stream to copy
+CacheStreamItemsCountTooltip streams to copy
+CacheStreamByteCountTooltip Total size of streams to copy
+CacheStreamDeleteDescription Delete video stream? Playback will no longer be available.
+CacheStreamDeleteByteCountTooltip Stream size
+MediaStreaming media streaming
+ServersHelpTitle Connecting to servers with Membrane Control
+MembraneSoftwareOverviewHelpTitle Membrane Software overview
+ServerPasswords server passwords
+PasswordStored password stored
+PasswordsStored passwords stored
+AddAdminPasswordTooltip Create a new admin password
+CreateAdminPassword create admin password
+SetAdminPassword set admin password
+AdminPasswordNamePrompt (Enter a name)
+AdminPasswordPrompt (Enter a password)
+EmptyAdminSecretListText (No passwords stored)
+NormalVideoQualityDescription Normal
+CompressedVideoQualityDescription High-compression
+LowVideoQualityDescription Low
+LowestVideoQualityDescription Lowest
+VideoQualityDescription High-compression: less storage space consumed, slower stream creation time. Low/Lowest: grainier picture, much less storage space consumed, faster stream creation time.
+FirstLaunchBannerMessage Welcome to Membrane Control. Need information to get started?
+HelpKeyBannerMessage Press Ctrl-h to open Membrane Control's help window.
+FreeApplicationBannerMessage Membrane Control is free to download, requires no signup or account creation, and contains no ads or in-app purchases. Tell your friends!
+MembraneSoftwareBannerMessage This application is brought to you by Membrane Software, creator of free applications for the computer users of the world.
+DonateBannerMessage Membrane Control is supported by donations from users like you. If you get utility and enjoyment from this application, please think about contributing money to support its development. Any amount helps!
+MouseHoverBannerMessage Buttons show description text when the mouse pointer hovers over them.
+ImageLongPressBannerMessage Click and hold a thumbnail or screenshot image to zoom in on it.
+MediaAttributesTooltip Video attributes
+ToolbarModeButtonTooltip <Tab> Select control mode
+StreamIconTooltip Playback stream available
+CreateStreamUnavailableTooltip Stream creation not available
+RemoveMediaActionText This video is no longer available from the media library and can't be processed to create playback streams. Remove record?
+ViewMonitorCacheTooltip View the monitor's cache of stored videos
+NoCameraSelectedPrompt (Select a camera)
+NoCaptureSelectedPrompt (Select a timelapse image)
+Cameras cameras
+CameraUiAgentRowHeaderText Cameras, monitors
+CameraUiDescription Command cameras and view captured images.
+CameraUiAddPlaylistTooltip Create a new camera playlist
+CameraUiConfigureCameraTooltip Configure capture settings for all selected cameras
+CameraUiShowCameraImageTooltip <F4> Command selected monitors to show selected timelapse images
+CameraUiShowCapturePlaylistTooltip <F3> Command selected monitors to show latest images from the selected timelapse playlist
+CameraUiPlayCameraStreamTooltip <F2> Command selected monitors to show live video streams from selected cameras
+CameraUiAutoReloadOffTooltip Timelapse images: refresh paused (click to enable)
+CameraUiAutoReloadOnTooltip Timelapse images: refresh active (click to disable)
+CameraUiClearTimelapseTooltip Stop timelapse capture and clear stored images for all selected cameras
+CameraUiClearDisplayTooltip <F1> Clear all selected monitors
+CameraUiHelpTitle Cameras
+CameraUiHelpText This interface configures and controls Membrane Camera servers. View timelapse images, create timelapse playlists, and show stored images or live video on Membrane Monitor.
+CameraUiHelpAction1Text No Membrane Camera applications have been contacted. Return to the main menu and open "Servers" to find a camera.
+CameraUiHelpAction2Text Select cameras and monitors using the star icons in their upper right corners, then use the bottom toolbar to execute commands.
+CameraUiHelpAction3Text Run a playlist on one or more monitors, causing them to cycle through the latest timelapse images from the listed cameras with an optional shuffle.
+CameraUiEmptyAgentStatusTitle No camera available
+CameraUiEmptyAgentStatusText Return to the main menu and open "Servers" to contact a computer running Membrane Camera.
+ConfigureCamera configure camera
+ClearTimelapse clear timelapse
+TimelapseImages timelapse images
+CameraConnected camera connected
+CamerasConnected cameras connected
+EnableTimelapse enable timelapse
+CaptureQuality capture quality
+CaptureQualityDescription Higher quality images and video show more detail but consume more storage space and load more slowly.
+NormalImageQualityDescription Normal
+HighImageQualityDescription High
+LowImageQualityDescription Low
+LowestImageQualityDescription Lowest
+CapturePeriod capture period
+CapturePeriodDescription Wait this long between image captures
+ImageFlip image flip
+Horizontal horizontal
+Vertical vertical
+HorizontalAbbreviation H
+VerticalAbbreviation V
+ConfigureCameraMessage Command sent: <Configure camera>
+ClearCameraTimelapseMessage Command sent: <Clear timelapse>
+ShowCameraImageMessage Command sent: <Show camera image>
+PlayCameraStreamMessage Command sent: <Play camera video>
+ShowCapturePlaylistMessage Command sent: <Show timelapse playlist>
+CameraActivityIconTooltip Camera status
+Before before
+After after
+CaptureTimespanTooltip Time range of available images
+SelectedCaptureTimespanTooltip Time range of displayed images
+SortCaptureImagesTooltip Select increasing or decreasing time range
+SortByName sort by name
+SortByNewest sort by newest
+Continuous continuous
+CameraTimelineUiHelpTitle Timelapse images
+CameraTimelineUiHelpText This interface shows timelapse images stored on Membrane Camera. Use the bottom toolbar to select a time range for images to display.
+CameraTimelineUiHelpAction1Text Click the play button to view a slideshow at the selected time position.
+CameraTimelineUiHelpAction2Text To select a time position and return to the previous screen, click the star button followed by a timelapse image.
+CameraTimelineUiSelectTooltip <Tab> Select target image and return to previous screen
+PlayCaptureTooltip Play timelapse images in sequence
+SelectTargetImage select target image
+MediaServerCatalogTooltip (Click the link to open the stream catalog in a browser)
+RemovePlaylistDescription Delete this playlist?
+MonitorSelected monitor selected
+MonitorsSelected monitors selected
+ConfigureStreamByteCountTooltip Estimated storage required for streams
+ConfigureStreamItemCountTooltip stream to create
+ConfigureStreamItemsCountTooltip streams to create
+StreamPlaylistZeroStartPositionDescription 00:00:00
+StreamPlaylistNearBeginningStartPositionDescription Near beginning
+StreamPlaylistMiddleStartPositionDescription Near middle
+StreamPlaylistNearEndPositionDescription Near end
+StreamPlaylistFullRangePositionDescription Anywhere
+StreamPlaylistVeryShortPlayDurationDescription 15s-45s
+StreamPlaylistShortPlayDurationDescription 1m-3m
+StreamPlaylistMediumPlayDurationDescription 5m-15m
+StreamPlaylistLongPlayDurationDescription 30m-60m
+StreamPlaylistVeryLongPlayDurationDescription 2h-4h
+StreamPlaylistFullPlayDurationDescription Until end
+ShowImage show image
+ShowLiveVideo show live video
+PlayingLiveCamera playing live camera
+ManageCameras manage cameras
+ViewCameraImages view camera images
+ClearTimelapseActionText Stored images will be deleted from all selected cameras.
+TimelapseList timelapse list
+CreatedPlaylist created playlist
+EmptyCaptureListPrompt (Monitors show latest images from timelapses in this list)
+CapturePlaylistItem timelapse in this playlist
+CapturePlaylistItems timelapses in this playlist
+AddTimelapses add timelapses
+CapturingImages capturing images
+ShowingLiveVideo showing live video
+ShowingImage showing image

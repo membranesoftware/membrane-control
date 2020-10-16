@@ -43,20 +43,21 @@ public:
 	CameraTimelineWindow (float barWidth);
 	virtual ~CameraTimelineWindow ();
 
+	// Read-write data members
+	Widget::EventCallbackContext positionHoverCallback;
+	Widget::EventCallbackContext positionClickCallback;
+
 	// Read-only data members
 	bool isDisabled;
 	int64_t startTime;
 	int64_t endTime;
 	int64_t highlightTime;
 	int64_t selectTime;
-	float hoverPosition;
+	float hoverPosition; // A negative value indicates that the mouse is positioned outside the timeline bar
 	float clickPosition;
 
-	// Set a callback that should be invoked when the mouse hovers on a timeline position. The hoverPosition field stores the hovered value, with a negative value indicating that the mouse is outside the timeline bar.
-	void setPositionHoverCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback that should be invoked when the mouse clicks on a timeline position, with the clickPosition field storing the clicked value
-	void setPositionClickCallback (Widget::EventCallback callback, void *callbackData);
+	// Set the width of the window's timeline bar
+	void setBarWidth (float barWidthValue);
 
 	// Set the window's disabled state, appropriate for use when the window becomes unavailable for interaction
 	void setDisabled (bool disabled);
@@ -74,8 +75,8 @@ protected:
 	// Reset the panel's widget layout as appropriate for its content and configuration
 	void refreshLayout ();
 
-	// Execute operations appropriate when the widget receives new mouse state
-	void doProcessMouseState (const Widget::MouseState &mouseState);
+	// Execute operations appropriate when the widget receives new mouse state and return a boolean value indicating if mouse wheel events were consumed and should no longer be processed
+	virtual bool doProcessMouseState (const Widget::MouseState &mouseState);
 
 private:
 	float barWidth;
@@ -86,10 +87,6 @@ private:
 	Panel *highlightMarker;
 	LabelWindow *selectTimeLabel;
 	Panel *selectMarker;
-	Widget::EventCallback positionHoverCallback;
-	void *positionHoverCallbackData;
-	Widget::EventCallback positionClickCallback;
-	void *positionClickCallbackData;
 };
 
 #endif

@@ -46,6 +46,9 @@ public:
 	ComboBox ();
 	~ComboBox ();
 
+	// Read-write data members
+	Widget::EventCallbackContext valueChangeCallback;
+
 	// Read-only data members
 	StdString selectedItemValue;
 	StdString selectedItemData;
@@ -53,17 +56,15 @@ public:
 	bool isInverseColor;
 	bool hasItemData;
 
-	// Set a callback that should be invoked when the combo box's value changes
-	void setValueChangeCallback (Widget::EventCallback callback, void *callbackData);
-
 	// Set the combo box's disabled state, appropriate for use when the combo box becomes unavailable for interaction
 	void setDisabled (bool disabled);
 
 	// Set the combo box's inverse color state. If enabled, the combo box renders using an inverse color scheme.
 	void setInverseColor (bool inverse);
 
-	// Add an item to the combo box. If a non-empty itemData string is provided, the combo box provides it in place of itemValue when reporting its value.
-	void addItem (const StdString &itemValue, const StdString &itemData = StdString (""));
+	// Add an item to the combo box. If itemData is provided, the combo box provides it in place of itemValue when reporting its value.
+	void addItem (const StdString &itemValue);
+	void addItem (const StdString &itemValue, const StdString &itemData);
 
 	// Add a set of items to the combo box. If a HashMap is provided, it is treated as mapping itemName to itemData strings.
 	void addItems (StringList *nameList);
@@ -81,18 +82,15 @@ public:
 	// Expand the combo box, causing its parent UI to populate an item panel
 	void expand ();
 
-	// Clear a previously enabled expand state, optionally setting the combo box's current value in the process
-	void unexpand (const StdString &value = StdString (""));
-
-	// Callback functions
-	static void expandItemClicked (void *comboBoxPtr, Widget *labelWindowPtr);
+	// Clear a previously enabled expand state. If value is provided, set the matching item as the combo box's selected value.
+	void unexpand ();
 
 protected:
 	// Execute operations to update object state as appropriate for an elapsed millisecond time period
 	virtual void doUpdate (int msElapsed);
 
-	// Execute operations appropriate when the widget receives new mouse state
-	virtual void doProcessMouseState (const Widget::MouseState &mouseState);
+	// Execute operations appropriate when the widget receives new mouse state and return a boolean value indicating if mouse wheel events were consumed and should no longer be processed
+	virtual bool doProcessMouseState (const Widget::MouseState &mouseState);
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
 	virtual void refreshLayout ();
@@ -105,13 +103,19 @@ private:
 		Item (): label (NULL) { }
 	};
 
+	// Callback functions
+	static void expandItemClicked (void *comboBoxPtr, Widget *widgetPtr);
+	static void scrollBarPositionChanged (void *comboBoxPtr, Widget *widgetPtr);
+	static void scrollBarUpdated (void *comboBoxPtr, int msElapsed, Widget *widgetPtr);
+
+	// Set the combo box's value to the item matching the provided LabelWindow's text and invoke any configured change callback unless shouldSkipChangeCallback is true
+	void setValue (LabelWindow *choiceLabel, bool shouldSkipChangeCallback = false);
+
 	// Set the combo box's focus state
 	void setFocused (bool focused);
 
-	Widget::EventCallback valueChangeCallback;
-	void *valueChangeCallbackData;
 	std::list<ComboBox::Item> itemList;
-	WidgetHandle expandPanel;
+	WidgetHandle expandView;
 	bool isExpanded;
 	float expandScreenX, expandScreenY;
 	bool isFocused;

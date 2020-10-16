@@ -64,9 +64,6 @@ public:
 	// Add a link item to the window's topic list
 	void addTopicLink (const StdString &linkText, const StdString &linkUrl);
 
-	// Callback functions
-	static void closeButtonClicked (void *windowPtr, Widget *widgetPtr);
-
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
@@ -78,6 +75,9 @@ protected:
 	void refreshLayout ();
 
 private:
+	// Callback functions
+	static void closeButtonClicked (void *windowPtr, Widget *widgetPtr);
+
 	ImageWindow *headerImage;
 	bool isHeaderImageLoaded;
 	LabelWindow *titleLabel;

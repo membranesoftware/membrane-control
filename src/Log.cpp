@@ -50,7 +50,7 @@
 #include "OsUtil.h"
 #include "Log.h"
 
-const char *Log::levelNames[Log::LevelCount] = { "ERR", "WARNING", "NOTICE", "INFO", "DEBUG", "DEBUG1", "DEBUG2", "DEBUG3", "DEBUG4" };
+const char *Log::LevelNames[Log::LevelCount] = { "ERR", "WARNING", "NOTICE", "INFO", "DEBUG", "DEBUG1", "DEBUG2", "DEBUG3", "DEBUG4" };
 
 Log::Log ()
 : writeLevel (Log::ErrLevel)
@@ -81,7 +81,7 @@ int Log::setLevelByName (const char *name) {
 
 	rval = Result::InvalidParamError;
 	for (i = 0; i < Log::LevelCount; ++i) {
-		if (! strcmp (name, Log::levelNames[i])) {
+		if (! strcmp (name, Log::LevelNames[i])) {
 			setLevel (i);
 			rval = Result::Success;
 			break;
@@ -190,7 +190,7 @@ void Log::voutput (int level, const char *str, va_list args) {
 	now = OsUtil::getTime ();
 	text.appendSprintf ("[%s]", OsUtil::getTimestampString (now, true).c_str ());
 	if (level != Log::NoLevel) {
-		text.appendSprintf ("[%s]", Log::levelNames[level]);
+		text.appendSprintf ("[%s]", Log::LevelNames[level]);
 	}
 	text.append (" ");
 

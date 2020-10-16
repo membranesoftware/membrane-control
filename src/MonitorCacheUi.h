@@ -36,14 +36,13 @@
 #include "Json.h"
 #include "WidgetHandle.h"
 #include "Toolbar.h"
-#include "CardView.h"
 #include "HelpWindow.h"
 #include "StreamWindow.h"
 #include "Ui.h"
 
 class MonitorCacheUi : public Ui {
 public:
-	// Constants to use for sprite indexes
+	// Sprite indexes
 	enum {
 		BreadcrumbIconSprite = 0,
 		PlayButtonSprite = 1,
@@ -52,12 +51,18 @@ public:
 		PauseButtonSprite = 4
 	};
 
-	// Constants to use for card view row numbers
+	// Card view row numbers
 	enum {
 		AgentRow = 0,
 		StreamRow = 1,
 		EmptyStreamRow = 2
 	};
+
+	// Prefs keys
+	static const char *ImageSizeKey;
+	static const char *ExpandedAgentKey;
+	static const char *StartPositionKey;
+	static const char *PlayDurationKey;
 
 	MonitorCacheUi (const StdString &agentId, const StdString &agentName);
 	~MonitorCacheUi ();
@@ -74,31 +79,6 @@ public:
 
 	// Execute actions appropriate for a command received from an agent control link client
 	void handleLinkClientCommand (const StdString &agentId, int commandId, Json *command);
-
-	// Callback functions
-	static void imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void smallImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void mediumImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void reloadButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void processStreamItem (void *uiPtr, Json *record, const StdString &recordId);
-	static void monitorScreenshotLoaded (void *uiPtr, Widget *widgetPtr);
-	static void monitorExpandStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void streamWindowImageClicked (void *uiPtr, Widget *widgetPtr);
-	static void streamWindowViewButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void streamWindowRemoveButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void streamWindowRemoveActionClosed (void *uiPtr, Widget *widgetPtr);
-	static void streamItemUiThumbnailClicked (void *uiPtr, Widget *widgetPtr);
-	static void unselectStreamWindow (void *uiPtr, Widget *widgetPtr);
-	static void commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr);
-	static void commandButtonMouseExited (void *uiPtr, Widget *widgetPtr);
-	static void stopButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void pauseButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void playButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void playAllButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void playAllActionClosed (void *uiPtr, Widget *widgetPtr);
-	static void appendPlaylistItem (void *jsonListPtr, Widget *widgetPtr);
-	static void removeStreamComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
 
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
@@ -125,31 +105,49 @@ protected:
 	// Update subclass-specific interface state as appropriate when the Ui becomes active
 	void doResume ();
 
-	// Execute subclass-specific operations to refresh the interface's layout as appropriate for the current set of UiConfiguration values
-	void doRefresh ();
-
 	// Update subclass-specific interface state as appropriate when the Ui becomes inactive
 	void doPause ();
 
 	// Update subclass-specific interface state as appropriate for an elapsed millisecond time period
 	void doUpdate (int msElapsed);
 
-	// Reload subclass-specific interface resources as needed to account for a new application window size
-	void doResize ();
-
 	// Execute subclass-specific operations to sync state with records present in the application's RecordStore object, which has been locked prior to invocation
 	void doSyncRecordStore ();
+	static void doSyncRecordStore_processStreamItem (void *uiPtr, Json *record, const StdString &recordId);
 
 private:
+	// Callback functions
+	static void imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void smallImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void mediumImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void reloadButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void monitorScreenshotLoaded (void *uiPtr, Widget *widgetPtr);
+	static void monitorExpandStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void streamWindowImageClicked (void *uiPtr, Widget *widgetPtr);
+	static void streamWindowViewButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void streamWindowRemoveButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void streamWindowRemoveActionClosed (void *uiPtr, Widget *widgetPtr);
+	static void streamItemUiThumbnailClicked (void *uiPtr, Widget *widgetPtr);
+	static void unselectStreamWindow (void *uiPtr, Widget *widgetPtr);
+	static void commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr);
+	static void commandButtonMouseExited (void *uiPtr, Widget *widgetPtr);
+	static void stopButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void pauseButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void playButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void playAllButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void playAllActionClosed (void *uiPtr, Widget *widgetPtr);
+	static void removeStreamComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
+
 	// Set the interface's selected StreamWindow item
 	void setSelectedStream (StreamWindow *streamWindow);
 
-	CardView *cardView;
 	Button *stopButton;
 	Button *pauseButton;
 	Button *playButton;
 	Button *playAllButton;
 	WidgetHandle emptyStreamWindow;
+	WidgetHandle targetStreamWindow;
 	WidgetHandle selectedStreamWindow;
 	WidgetHandle commandPopup;
 	WidgetHandle commandButton;

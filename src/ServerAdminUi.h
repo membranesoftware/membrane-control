@@ -41,15 +41,20 @@
 #include "Button.h"
 #include "AdminSecretWindow.h"
 #include "HelpWindow.h"
-#include "CardView.h"
 #include "Ui.h"
 
 class ServerAdminUi : public Ui {
 public:
-	// Constants to use for sprite indexes
+	// Sprite indexes
 	enum {
-		BreadcrumbIconSprite = 0,
-		LockButtonSprite = 1
+		LockButtonSprite = 0
+	};
+
+	// Card view row numbers
+	enum {
+		ServerRow = 0,
+		ServerPasswordsRow = 1,
+		TaskRow = 2
 	};
 
 	ServerAdminUi (const StdString &agentId, const StdString &agentDisplayName);
@@ -60,16 +65,6 @@ public:
 
 	// Execute operations appropriate when an agent control link client becomes connected
 	void handleLinkClientConnect (const StdString &agentId);
-
-	// Callback functions
-	static void cardExpandStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void serverStatusChanged (void *uiPtr, Widget *widgetPtr);
-	static void adminSecretAddButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void adminSecretAddActionClosed (void *uiPtr, Widget *widgetPtr);
-	static void lockButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void setAdminPasswordActionClosed (void *uiPtr, Widget *widgetPtr);
-	static void processTaskItem (void *uiPtr, Json *record, const StdString &recordId);
-	static void setAdminSecretComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
 
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
@@ -87,9 +82,6 @@ protected:
 	// Add subclass-specific items to the provided secondary toolbar object
 	void doAddSecondaryToolbarItems (Toolbar *toolbar);
 
-	// Execute subclass-specific operations to refresh the interface's layout as appropriate for the current set of UiConfiguration values
-	void doRefresh ();
-
 	// Update subclass-specific interface state as appropriate when the Ui becomes inactive
 	void doPause ();
 
@@ -99,22 +91,29 @@ protected:
 	// Update subclass-specific interface state as appropriate when the Ui becomes active
 	void doResume ();
 
-	// Reload subclass-specific interface resources as needed to account for a new application window size
-	void doResize ();
-
 	// Execute subclass-specific operations to sync state with records present in the application's RecordStore object, which has been locked prior to invocation
 	void doSyncRecordStore ();
 
 private:
+	// Callback functions
+	static void cardExpandStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void serverStatusChanged (void *uiPtr, Widget *widgetPtr);
+	static void adminSecretAddButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void adminSecretAddActionClosed (void *uiPtr, Widget *widgetPtr);
+	static void lockButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void setAdminPasswordActionClosed (void *uiPtr, Widget *widgetPtr);
+	static void processTaskItem (void *uiPtr, Json *record, const StdString &recordId);
+	static void setAdminSecretComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
+
 	StdString agentId;
 	StdString agentDisplayName;
 	StringList watchIdList;
-	CardView *cardView;
 	Button *lockButton;
 	AdminSecretWindow *adminSecretWindow;
 	WidgetHandle emptyTaskWindow;
 	int taskCount;
 	StdString emptyPasswordName;
+	StdString lastSecretName;
 };
 
 #endif

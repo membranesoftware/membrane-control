@@ -63,7 +63,7 @@ public:
 	void advanceRead (int advanceSize);
 
 protected:
-	static const int defaultSizeIncrement;
+	static const int DefaultSizeIncrement;
 
 	int size;
 	int sizeIncrement;

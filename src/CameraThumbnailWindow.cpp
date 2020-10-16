@@ -57,8 +57,6 @@ CameraThumbnailWindow::CameraThumbnailWindow (const StdString &agentId, const St
 , windowWidth (0.0f)
 , thumbnailImage (NULL)
 , timestampLabel (NULL)
-, loadCallback (NULL)
-, loadCallbackData (NULL)
 {
 	UiConfiguration *uiconfig;
 
@@ -67,9 +65,9 @@ CameraThumbnailWindow::CameraThumbnailWindow (const StdString &agentId, const St
 	setFillBg (true, uiconfig->mediumBackgroundColor);
 
 	thumbnailImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
+	thumbnailImage->loadCallback = Widget::EventCallbackContext (CameraThumbnailWindow::thumbnailImageLoaded, this);
+	thumbnailImage->mouseLongPressCallback = Widget::EventCallbackContext (CameraThumbnailWindow::thumbnailImageLongPressed, this);
 	thumbnailImage->setLoadSprite (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
-	thumbnailImage->setMouseLongPressCallback (CameraThumbnailWindow::thumbnailImageLongPressed, this);
-	thumbnailImage->setLoadCallback (CameraThumbnailWindow::thumbnailImageLoaded, this);
 
 	timestampLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->inverseTextColor)));
 	timestampLabel->zLevel = 1;
@@ -95,11 +93,6 @@ bool CameraThumbnailWindow::isWidgetType (Widget *widget) {
 
 CameraThumbnailWindow *CameraThumbnailWindow::castWidget (Widget *widget) {
 	return (CameraThumbnailWindow::isWidgetType (widget) ? (CameraThumbnailWindow *) widget : NULL);
-}
-
-void CameraThumbnailWindow::setLoadCallback (Widget::EventCallback callback, void *callbackData) {
-	loadCallback = callback;
-	loadCallbackData = callbackData;
 }
 
 void CameraThumbnailWindow::setLayout (int layoutType, float maxPanelWidth) {
@@ -186,7 +179,7 @@ void CameraThumbnailWindow::setHighlighted (bool highlighted) {
 	refreshLayout ();
 }
 
-void CameraThumbnailWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
+bool CameraThumbnailWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 	Panel::doProcessMouseState (mouseState);
 	if (layout == CardView::LowDetail) {
 		if (mouseState.isEntered) {
@@ -196,6 +189,8 @@ void CameraThumbnailWindow::doProcessMouseState (const Widget::MouseState &mouse
 			timestampLabel->isVisible = false;
 		}
 	}
+
+	return (false);
 }
 
 void CameraThumbnailWindow::thumbnailImageLoaded (void *windowPtr, Widget *widgetPtr) {
@@ -204,8 +199,8 @@ void CameraThumbnailWindow::thumbnailImageLoaded (void *windowPtr, Widget *widge
 	window = (CameraThumbnailWindow *) windowPtr;
 	window->refreshLayout ();
 	window->shouldRefreshTexture = true;
-	if (window->loadCallback) {
-		window->loadCallback (window->loadCallbackData, window);
+	if (window->loadCallback.callback) {
+		window->loadCallback.callback (window->loadCallback.callbackData, window);
 	}
 }
 

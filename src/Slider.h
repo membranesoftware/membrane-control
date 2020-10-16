@@ -43,6 +43,10 @@ public:
 	Slider (float minValue = 0.0f, float maxValue = 1.0f);
 	virtual ~Slider ();
 
+	// Read-write data members
+	Widget::EventCallbackContext valueChangeCallback;
+	Widget::EventCallbackContext valueHoverCallback;
+
 	// Read-only data members
 	bool isDisabled;
 	bool isInverseColor;
@@ -66,12 +70,6 @@ public:
 	// Set the slider's value, optionally skipping any configured value change callback
 	void setValue (float sliderValue, bool shouldSkipChangeCallback = false);
 
-	// Set a callback function that should be invoked when the slider's value changes
-	void setValueChangeCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback function that should be invoked when a slider hover value becomes available
-	void setValueHoverCallback (Widget::EventCallback callback, void *callbackData);
-
 	// Add the specified value as a snap position on the slider. If at least one snap position is present, changes to the slider value are rounded down to the nearest snap value.
 	void addSnapValue (float snapValue);
 
@@ -85,8 +83,8 @@ protected:
 	// Add subclass-specific draw commands for execution by the App. If targetTexture is non-NULL, it has been set as the render target and draw commands should adjust coordinates as appropriate.
 	virtual void doDraw (SDL_Texture *targetTexture, float originX, float originY);
 
-	// Execute operations appropriate when the widget receives new mouse state
-	virtual void doProcessMouseState (const Widget::MouseState &mouseState);
+	// Execute operations appropriate when the widget receives new mouse state and return a boolean value indicating if mouse wheel events were consumed and should no longer be processed
+	virtual bool doProcessMouseState (const Widget::MouseState &mouseState);
 
 	// Execute operations appropriate when the widget's input state is reset
 	virtual void doResetInputState ();
@@ -119,10 +117,6 @@ private:
 	float hoverSize;
 	Color hoverColor;
 	std::list<float> snapValueList;
-	Widget::EventCallback valueChangeCallback;
-	void *valueChangeCallbackData;
-	Widget::EventCallback valueHoverCallback;
-	void *valueHoverCallbackData;
 };
 
 #endif

@@ -49,6 +49,8 @@ TextField::TextField (float fieldWidth, const StdString &promptText)
 , isInverseColor (false)
 , isPromptErrorColor (false)
 , isObscured (false)
+, isOvertype (false)
+, cursorPosition (0)
 , promptLabel (NULL)
 , valueLabel (NULL)
 , cursorPanel (NULL)
@@ -83,8 +85,8 @@ TextField::TextField (float fieldWidth, const StdString &promptText)
 	valueLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, normalValueTextColor), widthPadding, heightPadding);
 
 	cursorPanel = (Panel *) addWidget (new Panel ());
-	cursorPanel->setFixedSize (true, valueLabel->maxGlyphWidth * 0.9f, valueLabel->maxLineHeight);
-	cursorPanel->setFillBg (true, normalValueTextColor);
+	cursorPanel->setFixedSize (true, uiconfig->textFieldInsertCursorWidth, valueLabel->maxLineHeight);
+	cursorPanel->setFillBg (true, uiconfig->darkPrimaryColor);
 	cursorPanel->zLevel = 1;
 	cursorPanel->isVisible = false;
 
@@ -202,8 +204,20 @@ void TextField::setObscured (bool enable) {
 	else {
 		valueLabel->setObscured (false);
 	}
-
 	refreshLayout ();
+}
+
+void TextField::setOvertype (bool enable) {
+	if (isOvertype == enable) {
+		return;
+	}
+	isOvertype = enable;
+	if (isOvertype) {
+		cursorPanel->setFixedSize (true, valueLabel->maxGlyphWidth * App::instance->uiConfig.textFieldOvertypeCursorScale, valueLabel->maxLineHeight);
+	}
+	else {
+		cursorPanel->setFixedSize (true, App::instance->uiConfig.textFieldInsertCursorWidth, valueLabel->maxLineHeight);
+	}
 }
 
 StdString TextField::getValue () {
@@ -212,10 +226,12 @@ StdString TextField::getValue () {
 
 void TextField::setValue (const StdString &valueText, bool shouldSkipChangeCallback, bool shouldSkipEditCallback) {
 	if (valueText.equals (valueLabel->text)) {
+		refreshLayout ();
 		return;
 	}
 
 	valueLabel->setText (valueText);
+	clipCursorPosition ();
 	refreshLayout ();
 	if ((! shouldSkipChangeCallback) && valueChangeCallback.callback) {
 		valueChangeCallback.callback (valueChangeCallback.callbackData, this);
@@ -227,17 +243,29 @@ void TextField::setValue (const StdString &valueText, bool shouldSkipChangeCallb
 
 void TextField::appendClipboardText () {
 	char *text;
+	int textlen;
 	StdString val;
 
-	if (SDL_HasClipboardText ()) {
-		text = SDL_GetClipboardText ();
-		if (text) {
-			val = valueLabel->text;
-			val.append (text);
-			SDL_free (text);
-			setValue (val, false, isKeyFocused);
-		}
+	if (! SDL_HasClipboardText ()) {
+		return;
 	}
+	text = SDL_GetClipboardText ();
+	if (! text) {
+		return;
+	}
+
+	textlen = (int) StdString (text).length ();
+	clipCursorPosition ();
+	val.assign (valueLabel->text);
+	if (isOvertype) {
+		val.replace ((size_t) cursorPosition, (size_t) textlen, text);
+	}
+	else {
+		val.insert ((size_t) cursorPosition, text);
+	}
+	SDL_free (text);
+	cursorPosition += textlen;
+	setValue (val, false, isKeyFocused);
 }
 
 void TextField::setFieldWidth (float widthValue) {
@@ -252,29 +280,29 @@ void TextField::setLineWidth (int lineLength) {
 
 void TextField::refreshLayout () {
 	UiConfiguration *uiconfig;
-	float x, y, w;
+	float x, y, cursorx, dx;
 
 	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
-	valueLabel->position.assign (x, valueLabel->getLinePosition (y - (heightPadding / 2.0f)));
+
 	if (promptLabel) {
 		promptLabel->position.assign (x + (promptLabel->spaceWidth * 2.0f), promptLabel->getLinePosition (y - (heightPadding / 2.0f)));
 	}
 
-	if (! valueLabel->text.empty ()) {
-		x += valueLabel->width;
-		w = valueLabel->spaceWidth;
-		w /= 2.0f;
-		if (w < 2.0f) {
-			w = 2.0f;
-		}
-		else if (w > 5.0f) {
-			w = 5.0f;
-		}
-		x += w;
+	if (valueLabel->text.empty () || (cursorPosition <= 0)) {
+		cursorx = 0.0f;
+		dx = 0.0f;
 	}
-	cursorPanel->position.assign (x, (height / 2.0f) - (cursorPanel->height / 2.0f));
+	else {
+		cursorx = valueLabel->getCharacterPosition (cursorPosition);
+		dx = fieldWidth - (widthPadding * 2.0f) - (cursorx + cursorPanel->width);
+		if (dx >= 0.0f) {
+			dx = 0.0f;
+		}
+	}
+	valueLabel->position.assign (x + dx, valueLabel->getLinePosition (y - (heightPadding / 2.0f)));
+	cursorPanel->position.assign (x + cursorx + dx, (height / 2.0f) - (cursorPanel->height / 2.0f));
 
 	if (isKeyFocused) {
 		bgColor.translate (editBgColor, uiconfig->shortColorTranslateDuration);
@@ -343,37 +371,87 @@ bool TextField::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool i
 		return (false);
 	}
 
-	if (keycode == SDLK_BACKSPACE) {
-		val = valueLabel->text;
-		len = val.length ();
-		if (len > 0) {
-			val.erase (len - 1, 1);
-			setValue (val, false, true);
+	switch (keycode) {
+		case SDLK_ESCAPE: {
+			setValue (lastValue, false, true);
+			setKeyFocus (false);
+			return (true);
 		}
-		return (true);
+		case SDLK_RETURN: {
+			setKeyFocus (false);
+			return (true);
+		}
+		case SDLK_LEFT: {
+			if (cursorPosition > 0) {
+				--cursorPosition;
+				refreshLayout ();
+			}
+			return (true);
+		}
+		case SDLK_RIGHT: {
+			if (cursorPosition < (int) valueLabel->text.length ()) {
+				++cursorPosition;
+				refreshLayout ();
+			}
+			return (true);
+		}
+		case SDLK_HOME: {
+			if (cursorPosition != 0) {
+				cursorPosition = 0;
+				refreshLayout ();
+			}
+			return (true);
+		}
+		case SDLK_END: {
+			len = (int) valueLabel->text.length ();
+			if (cursorPosition != len) {
+				cursorPosition = len;
+				refreshLayout ();
+			}
+			return (true);
+		}
+		case SDLK_INSERT: {
+			setOvertype (! isOvertype);
+			return (true);
+		}
+		case SDLK_BACKSPACE: {
+			clipCursorPosition ();
+			val.assign (valueLabel->text);
+			len = val.length ();
+			if ((len > 0) && (cursorPosition > 0)) {
+				val.erase (cursorPosition - 1, 1);
+				--cursorPosition;
+				setValue (val, false, true);
+			}
+			return (true);
+		}
+		case SDLK_DELETE: {
+			clipCursorPosition ();
+			val.assign (valueLabel->text);
+			if (cursorPosition < (int) val.length ()) {
+				val.erase ((size_t) cursorPosition, 1);
+				setValue (val, false, true);
+			}
+			return (true);
+		}
 	}
 
 	if (isControlDown && (keycode == SDLK_v)) {
 		appendClipboardText ();
 		return (true);
 	}
-
-	if (keycode == SDLK_ESCAPE) {
-		setValue (lastValue, false, true);
-		setKeyFocus (false);
-		return (true);
-	}
-
-	if (keycode == SDLK_RETURN) {
-		setKeyFocus (false);
-		return (true);
-	}
-
 	if (! isControlDown) {
 		c = App::instance->input.getKeyCharacter (keycode, isShiftDown);
 		if (c > 0) {
-			val = valueLabel->text;
-			val.append (1, c);
+			clipCursorPosition ();
+			val.assign (valueLabel->text);
+			if (isOvertype) {
+				val.replace ((size_t) cursorPosition, 1, 1, c);
+			}
+			else {
+				val.insert ((size_t) cursorPosition, 1, c);
+			}
+			++cursorPosition;
 			setValue (val, false, true);
 			return (true);
 		}
@@ -387,10 +465,15 @@ void TextField::doUpdate (int msElapsed) {
 
 	Panel::doUpdate (msElapsed);
 	uiconfig = &(App::instance->uiConfig);
+
 	if (isKeyFocused && (! isDisabled) && (uiconfig->blinkDuration > 0)) {
 		cursorClock -= msElapsed;
 		if (cursorClock <= 0) {
 			cursorPanel->isVisible = (! cursorPanel->isVisible);
+			if (cursorPanel->isVisible) {
+				clipCursorPosition ();
+				refreshLayout ();
+			}
 			cursorClock %= uiconfig->blinkDuration;
 			cursorClock += uiconfig->blinkDuration;
 		}
@@ -400,9 +483,9 @@ void TextField::doUpdate (int msElapsed) {
 	}
 }
 
-void TextField::doProcessMouseState (const Widget::MouseState &mouseState) {
+bool TextField::doProcessMouseState (const Widget::MouseState &mouseState) {
 	if (isDisabled) {
-		return;
+		return (false);
 	}
 
 	if (mouseState.isEntered) {
@@ -414,6 +497,8 @@ void TextField::doProcessMouseState (const Widget::MouseState &mouseState) {
 	else {
 		setFocused (false);
 	}
+
+	return (false);
 }
 
 void TextField::setFocused (bool enable) {
@@ -431,6 +516,8 @@ void TextField::setKeyFocus (bool enable) {
 	if (enable) {
 		isKeyFocused = true;
 		lastValue.assign (valueLabel->text);
+		cursorPosition = (int) valueLabel->text.length ();
+		setOvertype (false);
 	}
 	else {
 		isKeyFocused = false;
@@ -441,4 +528,16 @@ void TextField::setKeyFocus (bool enable) {
 		}
 	}
 	refreshLayout ();
+}
+
+void TextField::clipCursorPosition () {
+	int len;
+
+	if (cursorPosition < 0) {
+		cursorPosition = 0;
+	}
+	len = (int) valueLabel->text.length ();
+	if (cursorPosition > len) {
+		cursorPosition = len;
+	}
 }

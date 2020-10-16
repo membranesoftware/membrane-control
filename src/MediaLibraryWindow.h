@@ -44,7 +44,7 @@
 
 class MediaLibraryWindow : public Panel {
 public:
-	static const float textTruncateScale; // portion of total window width, from 0.0f to 1.0f
+	static const float TextTruncateScale; // portion of total window width, from 0.0f to 1.0f
 
 	MediaLibraryWindow (const StdString &agentId);
 	virtual ~MediaLibraryWindow ();
@@ -59,8 +59,9 @@ public:
 	StdString agentName;
 	StdString htmlCatalogPath;
 	int agentTaskCount;
-	float menuPositionX;
-	float menuPositionY;
+
+	// Return the screen extent rectangle for the window's menu button
+	Widget::Rectangle getMenuButtonScreenRect ();
 
 	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
 	void syncRecordStore ();
@@ -74,11 +75,6 @@ public:
 	// Set the window's expand state, then execute any expand state change callback that might be configured unless shouldSkipStateChangeCallback is true
 	void setExpanded (bool expanded, bool shouldSkipStateChangeCallback = false);
 
-	// Callback functions
-	static void menuButtonClicked (void *windowPtr, Widget *widgetPtr);
-	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
-	static void catalogLinkClicked (void *windowPtr, Widget *widgetPtr);
-
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
@@ -87,9 +83,15 @@ protected:
 	void refreshLayout ();
 
 private:
+	// Callback functions
+	static void menuButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
+	static void catalogLinkClicked (void *windowPtr, Widget *widgetPtr);
+
 	Image *iconImage;
 	Label *nameLabel;
 	Label *descriptionLabel;
+	Panel *dividerPanel;
 	IconLabelWindow *catalogLinkIcon;
 	IconLabelWindow *taskCountIcon;
 	IconLabelWindow *storageIcon;

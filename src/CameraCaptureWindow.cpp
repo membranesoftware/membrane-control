@@ -38,30 +38,36 @@
 #include "OsUtil.h"
 #include "SystemInterface.h"
 #include "UiConfiguration.h"
+#include "SpriteGroup.h"
 #include "Widget.h"
 #include "Panel.h"
 #include "Label.h"
 #include "Image.h"
 #include "Button.h"
-#include "TextArea.h"
+#include "Toggle.h"
 #include "Json.h"
 #include "ImageWindow.h"
-#include "CardView.h"
+#include "CameraUi.h"
 #include "CameraCaptureWindow.h"
 
-CameraCaptureWindow::CameraCaptureWindow (Json *agentStatus)
+CameraCaptureWindow::CameraCaptureWindow (Json *agentStatus, int captureId, SpriteGroup *cameraUiSpriteGroup)
 : Panel ()
-, captureWidth (0)
-, captureHeight (0)
-, captureTime (0)
-, thumbnailImage (NULL)
+, captureId (captureId)
+, lastCaptureWidth (0)
+, lastCaptureHeight (0)
+, lastCaptureTime (0)
+, displayCaptureWidth (0)
+, displayCaptureHeight (0)
+, displayCaptureTime (0)
+, selectedTime (-1)
+, isSelected (false)
+, sprites (cameraUiSpriteGroup)
+, iconImage (NULL)
 , nameLabel (NULL)
-, detailText (NULL)
-, mouseoverLabel (NULL)
-, detailNameLabel (NULL)
+, timeLabel (NULL)
+, thumbnailImage (NULL)
+, selectToggle (NULL)
 , viewButton (NULL)
-, viewButtonClickCallback (NULL)
-, viewButtonClickCallbackData (NULL)
 {
 	SystemInterface *interface;
 	UiConfiguration *uiconfig;
@@ -74,62 +80,49 @@ CameraCaptureWindow::CameraCaptureWindow (Json *agentStatus)
 	uitext = &(App::instance->uiText);
 
 	setFillBg (true, uiconfig->mediumBackgroundColor);
+	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
+	setCornerRadius (uiconfig->cornerRadius);
 	agentId = interface->getCommandAgentId (agentStatus);
 	agentName = interface->getCommandAgentName (agentStatus);
+	captureName.assign (agentName);
 	if (interface->getCommandObjectParam (agentStatus, "cameraServerStatus", &serverstatus)) {
 		captureImagePath = serverstatus.getString ("captureImagePath", "");
-		captureWidth = serverstatus.getNumber ("lastCaptureWidth", (int) 0);
-		captureHeight = serverstatus.getNumber ("lastCaptureHeight", (int) 0);
-		captureTime = serverstatus.getNumber ("lastCaptureTime", (int64_t) 0);
+		lastCaptureWidth = serverstatus.getNumber ("lastCaptureWidth", (int) 0);
+		lastCaptureHeight = serverstatus.getNumber ("lastCaptureHeight", (int) 0);
+		lastCaptureTime = serverstatus.getNumber ("lastCaptureTime", (int64_t) 0);
+		displayCaptureWidth = lastCaptureWidth;
+		displayCaptureHeight = lastCaptureHeight;
+		displayCaptureTime = lastCaptureTime;
 	}
 
-	thumbnailImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
-	thumbnailImage->setLoadSprite (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
-	thumbnailImage->setMouseLongPressCallback (CameraCaptureWindow::thumbnailImageLongPressed, this);
+	iconImage = (Image *) addWidget (new Image (sprites->getSprite (CameraUi::TimelapseIconSprite)));
 
 	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::BodyFont, uiconfig->primaryTextColor));
 	nameLabel->isInputSuspended = true;
-	if (captureTime <= 0) {
-		nameLabel->setText (agentName);
-	}
-	else {
-		nameLabel->setText (StdString::createSprintf ("%s, %s", agentName.c_str (), OsUtil::getTimestampDisplayString (captureTime).c_str ()));
+
+	timeLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	timeLabel->isInputSuspended = true;
+	if (displayCaptureTime > 0) {
+		timeLabel->setText (OsUtil::getTimestampDisplayString (displayCaptureTime));
 	}
 
-	detailText = (TextArea *) addWidget (new TextArea (UiConfiguration::CaptionFont, uiconfig->inverseTextColor));
-	detailText->setPadding (uiconfig->paddingSize, uiconfig->paddingSize / 2.0f);
-	detailText->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
-	if (captureTime <= 0) {
-		detailText->setText (StdString (""));
-	}
-	else {
-		detailText->setText (OsUtil::getTimestampDisplayString (captureTime));
-	}
-	detailText->zLevel = 2;
-	detailText->isInputSuspended = true;
-	detailText->isVisible = false;
+	thumbnailImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
+	thumbnailImage->mouseLongPressCallback = Widget::EventCallbackContext (CameraCaptureWindow::thumbnailImageLongPressed, this);
+	thumbnailImage->loadCallback = Widget::EventCallbackContext (CameraCaptureWindow::thumbnailImageLoaded, this);
+	thumbnailImage->setLoadSprite (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
 
-	mouseoverLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (agentName, UiConfiguration::CaptionFont, uiconfig->inverseTextColor)));
-	mouseoverLabel->zLevel = 1;
-	mouseoverLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
-	mouseoverLabel->isTextureTargetDrawEnabled = false;
-	mouseoverLabel->isInputSuspended = true;
-	mouseoverLabel->isVisible = false;
-
-	detailNameLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (agentName, UiConfiguration::HeadlineFont, uiconfig->inverseTextColor)));
-	detailNameLabel->zLevel = 1;
-	detailNameLabel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	detailNameLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
-	detailNameLabel->isInputSuspended = true;
-	detailNameLabel->isVisible = false;
+	selectToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::StarOutlineButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::StarButtonSprite)));
+	selectToggle->stateChangeCallback = Widget::EventCallbackContext (CameraCaptureWindow::selectToggleStateChanged, this);
+	selectToggle->setImageColor (uiconfig->flatButtonTextColor);
+	selectToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::UnselectedToggleTooltip), uitext->getText (UiTextString::SelectedToggleTooltip));
 
 	viewButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::ImageButtonSprite)));
+	viewButton->mouseClickCallback = Widget::EventCallbackContext (CameraCaptureWindow::viewButtonClicked, this);
 	viewButton->zLevel = 3;
 	viewButton->isTextureTargetDrawEnabled = false;
 	viewButton->setImageColor (uiconfig->flatButtonTextColor);
 	viewButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
-	viewButton->setMouseHoverTooltip (uitext->getText (UiTextString::viewTimelineImagesTooltip));
-	viewButton->setMouseClickCallback (CameraCaptureWindow::viewButtonClicked, this);
+	viewButton->setMouseHoverTooltip (uitext->getText (UiTextString::ViewTimelineImagesTooltip));
 }
 
 CameraCaptureWindow::~CameraCaptureWindow () {
@@ -148,88 +141,107 @@ CameraCaptureWindow *CameraCaptureWindow::castWidget (Widget *widget) {
 	return (CameraCaptureWindow::isWidgetType (widget) ? (CameraCaptureWindow *) widget : NULL);
 }
 
-void CameraCaptureWindow::setViewButtonClickCallback (Widget::EventCallback callback, void *callbackData) {
-	viewButtonClickCallback = callback;
-	viewButtonClickCallbackData = callbackData;
+void CameraCaptureWindow::setSelected (bool selected, bool shouldSkipStateChangeCallback) {
+	UiConfiguration *uiconfig;
+
+	if (selected == isSelected) {
+		return;
+	}
+	uiconfig = &(App::instance->uiConfig);
+	isSelected = selected;
+	selectToggle->setChecked (isSelected, shouldSkipStateChangeCallback);
+	if (isSelected) {
+		setCornerRadius (0, uiconfig->cornerRadius, 0, uiconfig->cornerRadius);
+	}
+	else {
+		setCornerRadius (uiconfig->cornerRadius);
+	}
+	refreshLayout ();
+}
+
+void CameraCaptureWindow::setSelectedTimestamp (int64_t timestamp) {
+	UiConfiguration *uiconfig;
+	Json *params;
+
+	uiconfig = &(App::instance->uiConfig);
+	if (selectedTime == timestamp) {
+		return;
+	}
+	selectedTime = timestamp;
+	if (selectedTime != displayCaptureTime) {
+		displayCaptureTime = selectedTime;
+		timeLabel->setText (OsUtil::getTimestampDisplayString (selectedTime));
+		timeLabel->textColor.assign (uiconfig->primaryTextColor);
+		timeLabel->textColor.translate (uiconfig->lightPrimaryTextColor, uiconfig->longColorTranslateDuration);
+		if (! captureImagePath.empty ()) {
+			thumbnailImage->setLoadSprite (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
+			params = new Json ();
+			if (selectedTime >= 0) {
+				params->set ("imageTime", selectedTime);
+			}
+			thumbnailImage->setImageUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetCaptureImage, SystemInterface::Constant_Camera, params), captureImagePath));
+		}
+	}
 }
 
 void CameraCaptureWindow::setLayout (int layoutType, float maxPanelWidth) {
+	UiConfiguration *uiconfig;
 	float w, h;
 
-	if ((layoutType == layout) || (captureWidth <= 0) || (maxPanelWidth < 1.0f)) {
+	if ((layoutType == layout) || (displayCaptureWidth <= 0) || (maxPanelWidth < 1.0f)) {
 		return;
 	}
 
+	uiconfig = &(App::instance->uiConfig);
 	layout = layoutType;
 	w = maxPanelWidth;
-	h = captureHeight;
+	h = displayCaptureHeight;
 	h *= maxPanelWidth;
-	h /= captureWidth;
+	h /= displayCaptureWidth;
 	w = floorf (w);
 	h = floorf (h);
 	thumbnailImage->setWindowSize (w, h);
-	if (hasCaptureImage ()) {
+	if (hasCaptureImage () && thumbnailImage->isImageUrlEmpty ()) {
 		thumbnailImage->setImageUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetCaptureImage, SystemInterface::Constant_Camera), captureImagePath));
 	}
 	thumbnailImage->reload ();
 
-	if (layout == CardView::HighDetail) {
-		nameLabel->setFont (UiConfiguration::BodyFont);
-	}
-	else {
-		nameLabel->setFont (UiConfiguration::CaptionFont);
-	}
-
+	w = maxPanelWidth - selectToggle->width - iconImage->width - (uiconfig->marginSize * 2.0f);
+	nameLabel->setText (Label::getTruncatedText (agentName, UiConfiguration::BodyFont, w, Label::DotTruncateSuffix));
 	refreshLayout ();
 }
 
 void CameraCaptureWindow::refreshLayout () {
 	UiConfiguration *uiconfig;
-	float x, y;
+	float x, y, x0, y0, x2, y2;
 
 	uiconfig = &(App::instance->uiConfig);
-	x = 0.0f;
-	y = 0.0f;
-	thumbnailImage->position.assign (x, y);
-	mouseoverLabel->isVisible = false;
+	x0 = widthPadding;
+	y0 = heightPadding;
+	x = x0;
+	y = y0;
+	x2 = 0.0f;
+	y2 = 0.0f;
 
-	switch (layout) {
-		case CardView::LowDetail: {
-			nameLabel->isVisible = false;
-			detailNameLabel->isVisible = false;
-			detailText->isVisible = false;
-			mouseoverLabel->position.assign (0.0f, 0.0f);
+	iconImage->flowRight (&x, y, &x2, &y2);
+	nameLabel->flowDown (x, &y, &x2, &y2);
+	timeLabel->flowDown (x, &y, &x2, &y2);
+	iconImage->centerVertical (y0, y2);
+	y = y0;
+	selectToggle->flowRight (&x, y, &x2, &y2);
 
-			setFixedSize (true, thumbnailImage->width, thumbnailImage->height);
-			viewButton->position.assign (thumbnailImage->position.x + thumbnailImage->width - viewButton->width - uiconfig->dropShadowWidth, thumbnailImage->position.y, thumbnailImage->height - viewButton->height);
-			break;
-		}
-		case CardView::MediumDetail: {
-			detailNameLabel->isVisible = false;
-			detailText->isVisible = false;
-			x += uiconfig->paddingSize;
-			y += thumbnailImage->height + uiconfig->marginSize;
-			nameLabel->position.assign (x, y);
-			nameLabel->isVisible = true;
-			viewButton->position.assign (thumbnailImage->position.x + thumbnailImage->width - viewButton->width - uiconfig->dropShadowWidth, thumbnailImage->position.y, thumbnailImage->height - viewButton->height);
+	x = x0;
+	y = y2 + uiconfig->marginSize;
+	thumbnailImage->flowDown (x, &y, &x2, &y2);
+	viewButton->flowDown (x, &y, &x2, &y2);
 
-			resetSize ();
-			setFixedSize (true, thumbnailImage->width, maxWidgetY + uiconfig->paddingSize);
-			break;
-		}
-		case CardView::HighDetail: {
-			nameLabel->isVisible = false;
+	resetSize ();
 
-			detailNameLabel->position.assign (thumbnailImage->position.x, thumbnailImage->position.y);
-			detailNameLabel->isVisible = true;
+	x = width - widthPadding;
+	selectToggle->flowLeft (&x);
 
-			detailText->position.assign (x, thumbnailImage->position.y + thumbnailImage->height - detailText->height);
-			detailText->isVisible = true;
-			setFixedSize (true, thumbnailImage->width, thumbnailImage->height);
-			viewButton->position.assign (thumbnailImage->position.x + thumbnailImage->width - viewButton->width - uiconfig->dropShadowWidth, thumbnailImage->position.y, thumbnailImage->height - viewButton->height);
-			break;
-		}
-	}
+	x = width - widthPadding;
+	viewButton->flowLeft (&x);
 }
 
 void CameraCaptureWindow::syncRecordStore () {
@@ -246,28 +258,29 @@ void CameraCaptureWindow::syncRecordStore () {
 	}
 	if (interface->getCommandObjectParam (agentstatus, "cameraServerStatus", &serverstatus)) {
 		captureImagePath = serverstatus.getString ("captureImagePath", "");
-		captureWidth = serverstatus.getNumber ("lastCaptureWidth", (int) 0);
-		captureHeight = serverstatus.getNumber ("lastCaptureHeight", (int) 0);
+		lastCaptureWidth = serverstatus.getNumber ("lastCaptureWidth", (int) 0);
+		lastCaptureHeight = serverstatus.getNumber ("lastCaptureHeight", (int) 0);
 
 		t = serverstatus.getNumber ("lastCaptureTime", (int64_t) 0);
-		if (t <= 0) {
-			nameLabel->setText (agentName);
-			detailText->setText (StdString (""));
-		}
-		else {
-			nameLabel->setText (StdString::createSprintf ("%s, %s", agentName.c_str (), OsUtil::getTimestampDisplayString (t).c_str ()));
-			detailText->setText (OsUtil::getTimestampDisplayString (t));
-			if (t != captureTime) {
-				thumbnailImage->setLoadSprite (NULL);
-				thumbnailImage->reload ();
+		if (t > 0) {
+			if ((selectedTime < 0) && (t != lastCaptureTime)) {
+				displayCaptureWidth = lastCaptureWidth;
+				displayCaptureHeight = lastCaptureHeight;
+				displayCaptureTime = t;
+
+				if (! captureImagePath.empty ()) {
+					thumbnailImage->setLoadSprite (NULL);
+					thumbnailImage->setImageUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetCaptureImage, SystemInterface::Constant_Camera), captureImagePath));
+					thumbnailImage->reload ();
+				}
 			}
 		}
-		captureTime = t;
+		lastCaptureTime = t;
 	}
 }
 
 bool CameraCaptureWindow::hasCaptureImage () {
-	return ((! captureImagePath.empty ()) && (captureWidth > 0) && (captureHeight > 0) && (captureTime > 0));
+	return ((! captureImagePath.empty ()) && (displayCaptureWidth > 0) && (displayCaptureHeight > 0) && (displayCaptureTime > 0));
 }
 
 void CameraCaptureWindow::reloadCaptureImage () {
@@ -276,24 +289,12 @@ void CameraCaptureWindow::reloadCaptureImage () {
 	}
 }
 
-void CameraCaptureWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
-	Panel::doProcessMouseState (mouseState);
-	if (layout == CardView::LowDetail) {
-		if (mouseState.isEntered) {
-			mouseoverLabel->isVisible = true;
-		}
-		else {
-			mouseoverLabel->isVisible = false;
-		}
-	}
-}
-
 void CameraCaptureWindow::viewButtonClicked (void *windowPtr, Widget *widgetPtr) {
 	CameraCaptureWindow *window;
 
 	window = (CameraCaptureWindow *) windowPtr;
-	if (window->viewButtonClickCallback) {
-		window->viewButtonClickCallback (window->viewButtonClickCallbackData, window);
+	if (window->viewButtonClickCallback.callback) {
+		window->viewButtonClickCallback.callback (window->viewButtonClickCallback.callbackData, window);
 	}
 }
 
@@ -302,4 +303,45 @@ void CameraCaptureWindow::thumbnailImageLongPressed (void *windowPtr, Widget *wi
 
 	image = (ImageWindow *) widgetPtr;
 	App::instance->uiStack.showImageDialog (image->imageUrl);
+}
+
+void CameraCaptureWindow::thumbnailImageLoaded (void *windowPtr, Widget *widgetPtr) {
+	CameraCaptureWindow *window;
+	ImageWindow *image;
+	UiConfiguration *uiconfig;
+	StdString text;
+
+	window = (CameraCaptureWindow *) windowPtr;
+	image = (ImageWindow *) widgetPtr;
+	uiconfig = &(App::instance->uiConfig);
+	window->displayCaptureWidth = image->imageLoadSourceWidth;
+	window->displayCaptureHeight = image->imageLoadSourceHeight;
+
+	text = OsUtil::getTimestampDisplayString (window->displayCaptureTime);
+	if (! text.equals (window->timeLabel->text)) {
+		window->timeLabel->setText (text);
+		window->timeLabel->textColor.assign (uiconfig->primaryTextColor);
+		window->timeLabel->textColor.translate (uiconfig->lightPrimaryTextColor, uiconfig->longColorTranslateDuration);
+	}
+}
+
+void CameraCaptureWindow::selectToggleStateChanged (void *windowPtr, Widget *widgetPtr) {
+	CameraCaptureWindow *window;
+	Toggle *toggle;
+	UiConfiguration *uiconfig;
+
+	window = (CameraCaptureWindow *) windowPtr;
+	toggle = (Toggle *) widgetPtr;
+	uiconfig = &(App::instance->uiConfig);
+
+	window->isSelected = toggle->isChecked;
+	if (window->isSelected) {
+		window->setCornerRadius (0, uiconfig->cornerRadius, 0, uiconfig->cornerRadius);
+	}
+	else {
+		window->setCornerRadius (uiconfig->cornerRadius);
+	}
+	if (window->selectStateChangeCallback.callback) {
+		window->selectStateChangeCallback.callback (window->selectStateChangeCallback.callbackData, window);
+	}
 }

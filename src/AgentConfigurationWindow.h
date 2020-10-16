@@ -47,15 +47,15 @@ public:
 	AgentConfigurationWindow (const StdString &agentId);
 	virtual ~AgentConfigurationWindow ();
 
-	static const int mediaScanPeriods[]; // seconds
+	static const int MediaScanPeriods[]; // seconds
+
+	// Read-write data members
+	Widget::EventCallbackContext expandStateChangeCallback;
 
 	// Read-only data members
 	StdString agentId;
 	Json agentConfiguration;
 	bool isExpanded;
-
-	// Set a callback that should be invoked when the expand toggle's checked state changes
-	void setExpandStateChangeCallback (Widget::EventCallback callback, void *callbackData);
 
 	// Set the window's expand state, then execute any expand state change callback that might be configured unless shouldSkipStateChangeCallback is true
 	void setExpanded (bool expanded, bool shouldSkipStateChangeCallback = false);
@@ -66,14 +66,6 @@ public:
 	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
 	void syncRecordStore ();
 
-	// Callback functions
-	static void applyButtonClicked (void *windowPtr, Widget *widgetPtr);
-	static void actionOptionChanged (void *windowPtr, Widget *widgetPtr);
-	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
-	static void invokeGetAgentConfigurationComplete (void *windowPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
-	static void invokeUpdateAgentConfigurationComplete (void *windowPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
-	static StdString mediaScanPeriodSliderValueName (float sliderValue);
-
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
@@ -82,6 +74,14 @@ protected:
 	void refreshLayout ();
 
 private:
+	// Callback functions
+	static void applyButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void actionOptionChanged (void *windowPtr, Widget *widgetPtr);
+	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
+	static void invokeGetAgentConfigurationComplete (void *windowPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
+	static void invokeUpdateAgentConfigurationComplete (void *windowPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
+	static StdString mediaScanPeriodSliderValueName (float sliderValue);
+
 	// Populate widgets as appropriate for fields in an AgentConfiguration command and return a Result value
 	int populateConfiguration (Json *command);
 
@@ -89,10 +89,9 @@ private:
 	Image *iconImage;
 	Label *titleLabel;
 	Toggle *expandToggle;
+	Panel *dividerPanel;
 	ActionWindow *actionWindow;
 	Button *applyButton;
-	Widget::EventCallback expandStateChangeCallback;
-	void *expandStateChangeCallbackData;
 };
 
 #endif

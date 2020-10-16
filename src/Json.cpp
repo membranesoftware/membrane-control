@@ -52,14 +52,18 @@ Json::Json ()
 }
 
 Json::~Json () {
-	clear ();
+	unassign ();
 }
 
 void Json::freeObject (void *jsonPtr) {
 	delete ((Json *) jsonPtr);
 }
 
-void Json::clear () {
+bool Json::isAssigned () {
+	return (json ? true : false);
+}
+
+void Json::unassign () {
 	if (json) {
 		if (shouldFreeJson) {
 			if (isJsonBuilder) {
@@ -76,23 +80,19 @@ void Json::clear () {
 }
 
 void Json::resetBuilder () {
-	clear ();
+	unassign ();
 	json = json_object_new (0);
 	shouldFreeJson = true;
 	isJsonBuilder = true;
 }
 
 void Json::setEmpty () {
-	clear ();
+	unassign ();
 	resetBuilder ();
 }
 
-void Json::setJsonValue (Json *value) {
-	setJsonValue (value->json, value->isJsonBuilder);
-}
-
 void Json::setJsonValue (json_value *value, bool isJsonBuilder) {
-	clear ();
+	unassign ();
 	json = value;
 	this->isJsonBuilder = isJsonBuilder;
 }
@@ -301,7 +301,7 @@ bool Json::parse (const char *data, const int dataLength) {
 		return (false);
 	}
 
-	clear ();
+	unassign ();
 	json = value;
 	shouldFreeJson = true;
 	isJsonBuilder = false;
@@ -310,6 +310,23 @@ bool Json::parse (const char *data, const int dataLength) {
 
 bool Json::parse (const StdString &data) {
 	return (parse (data.c_str (), data.length ()));
+}
+
+void Json::assign (Json *otherJson) {
+	if (! otherJson) {
+		unassign ();
+		return;
+	}
+
+	if (otherJson->json) {
+		setJsonValue (otherJson->json, otherJson->isJsonBuilder);
+		otherJson->json = NULL;
+		shouldFreeJson = true;
+	}
+	else {
+		unassign ();
+	}
+	delete (otherJson);
 }
 
 void Json::copyValue (Json *sourceJson) {
@@ -383,7 +400,10 @@ json_value *Json::copyJsonValue (json_value *sourceValue) {
 }
 
 bool Json::deepEquals (Json *other) {
-	if (! other->json) {
+	if ((! json) && (! other->json)) {
+		return (true);
+	}
+	if ((! json) || (! other->json)) {
 		return (false);
 	}
 
@@ -1044,7 +1064,6 @@ bool Json::getArrayObject (const StdString &key, int index, Json *destJson) {
 					}
 
 					if (destJson) {
-						// TODO: Possibly copy this item to enable clearing of its "parent" pointer, found to cause toString operations with this item to append extra content
 						destJson->setJsonValue (item, isJsonBuilder);
 					}
 					return (true);
@@ -1121,8 +1140,13 @@ void Json::set (const char *key, const bool value) {
 }
 
 void Json::set (const StdString &key, Json *value) {
-	jsonObjectPush (key.c_str (), value->json);
-	value->json = NULL;
+	if (value->json) {
+		jsonObjectPush (key.c_str (), value->json);
+		value->json = NULL;
+	}
+	else {
+		jsonObjectPush (key.c_str (), json_object_new (0));
+	}
 	delete (value);
 }
 
@@ -1247,18 +1271,24 @@ void Json::set (const char *key, std::list<bool> *value) {
 void Json::set (const StdString &key, std::vector<Json *> *value) {
 	json_value *a;
 	std::vector<Json *>::iterator i, end;
+	Json *item;
 
 	a = json_array_new (0);
 	i = value->begin ();
 	end = value->end ();
 	while (i != end) {
-		json_array_push (a, (*i)->json);
-		(*i)->json = NULL;
-		delete (*i);
+		item = *i;
+		if (! item->json) {
+			item->setEmpty ();
+		}
+		json_array_push (a, item->json);
+		item->json = NULL;
+		delete (item);
 		++i;
 	}
 
 	jsonObjectPush (key.c_str (), a);
+	value->clear ();
 }
 
 void Json::set (const char *key, std::vector<Json *> *value) {
@@ -1268,21 +1298,53 @@ void Json::set (const char *key, std::vector<Json *> *value) {
 void Json::set (const StdString &key, std::list<Json *> *value) {
 	json_value *a;
 	std::list<Json *>::iterator i, end;
+	Json *item;
 
 	a = json_array_new (0);
 	i = value->begin ();
 	end = value->end ();
 	while (i != end) {
-		json_array_push (a, (*i)->json);
-		(*i)->json = NULL;
-		delete (*i);
+		item = *i;
+		if (! item->json) {
+			item->setEmpty ();
+		}
+		json_array_push (a, item->json);
+		item->json = NULL;
+		delete (item);
 		++i;
 	}
 
 	jsonObjectPush (key.c_str (), a);
+	value->clear ();
 }
 
 void Json::set (const char *key, std::list<Json *> *value) {
+	set (StdString (key), value);
+}
+
+void Json::set (const StdString &key, JsonList *value) {
+	json_value *a;
+	JsonList::iterator i, end;
+	Json *item;
+
+	a = json_array_new (0);
+	i = value->begin ();
+	end = value->end ();
+	while (i != end) {
+		item = *i;
+		if (! item->json) {
+			item->setEmpty ();
+		}
+		json_array_push (a, item->json);
+		item->json = NULL;
+		++i;
+	}
+
+	jsonObjectPush (key.c_str (), a);
+	value->clear ();
+}
+
+void Json::set (const char *key, JsonList *value) {
 	set (StdString (key), value);
 }
 
@@ -1323,7 +1385,7 @@ StdString Json::toString () {
 	int len;
 
 	if (! json) {
-		return (StdString ("{}"));
+		return (StdString (""));
 	}
 
 	// TODO: Possibly employ a locking mechanism here (json_measure_ex modifies json data structures while measuring)
@@ -1347,4 +1409,71 @@ StdString Json::toString () {
 	free (buf);
 
 	return (s);
+}
+
+JsonList::JsonList ()
+: std::list<Json *> ()
+{
+
+}
+
+JsonList::~JsonList () {
+	clear ();
+}
+
+void JsonList::clear () {
+	JsonList::iterator i, iend;
+
+	i = begin ();
+	iend = end ();
+	while (i != iend) {
+		delete (*i);
+		++i;
+	}
+	std::list<Json *>::clear ();
+}
+
+StdString JsonList::toString () {
+	JsonList::iterator i, iend;
+	StdString s;
+	bool first;
+
+	s.assign ("[");
+	first = true;
+	i = begin ();
+	iend = end ();
+	while (i != iend) {
+		if (first) {
+			first = false;
+		}
+		else {
+			s.append (",");
+		}
+		s.append ((*i)->toString ());
+		++i;
+	}
+	s.append ("]");
+
+	return (s);
+}
+
+void JsonList::copyValues (JsonList *sourceList) {
+	JsonList::iterator i, iend;
+
+	clear ();
+	i = sourceList->begin ();
+	iend = sourceList->end ();
+	while (i != iend) {
+		push_back ((*i)->copy ());
+		++i;
+	}
+}
+
+JsonList *JsonList::copy () {
+	JsonList *j;
+
+	j = new JsonList ();
+	j->copyValues (this);
+
+	return (j);
 }

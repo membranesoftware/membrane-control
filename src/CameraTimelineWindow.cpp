@@ -63,10 +63,6 @@ CameraTimelineWindow::CameraTimelineWindow (float barWidth)
 , highlightMarker (NULL)
 , selectTimeLabel (NULL)
 , selectMarker (NULL)
-, positionHoverCallback (NULL)
-, positionHoverCallbackData (NULL)
-, positionClickCallback (NULL)
-, positionClickCallbackData (NULL)
 {
 	UiConfiguration *uiconfig;
 
@@ -114,14 +110,9 @@ CameraTimelineWindow::~CameraTimelineWindow () {
 
 }
 
-void CameraTimelineWindow::setPositionHoverCallback (Widget::EventCallback callback, void *callbackData) {
-	positionHoverCallback = callback;
-	positionHoverCallbackData = callbackData;
-}
-
-void CameraTimelineWindow::setPositionClickCallback (Widget::EventCallback callback, void *callbackData) {
-	positionClickCallback = callback;
-	positionClickCallbackData = callbackData;
+void CameraTimelineWindow::setBarWidth (float barWidthValue) {
+	barWidth = barWidthValue;
+	refreshLayout ();
 }
 
 void CameraTimelineWindow::setDisabled (bool disabled) {
@@ -253,34 +244,36 @@ void CameraTimelineWindow::setSelectedTime (int64_t selectTimeValue, bool isSpan
 	refreshLayout ();
 }
 
-void CameraTimelineWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
+bool CameraTimelineWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 	Panel::doProcessMouseState (mouseState);
 
 	if (isDisabled) {
-		return;
+		return (false);
 	}
 
 	if (mouseState.isEntered) {
 		if (! FLOAT_EQUALS (hoverPosition, mouseState.enterDeltaX)) {
 			hoverPosition = mouseState.enterDeltaX;
-			if (positionHoverCallback) {
-				positionHoverCallback (positionHoverCallbackData, this);
+			if (positionHoverCallback.callback) {
+				positionHoverCallback.callback (positionHoverCallback.callbackData, this);
 			}
 		}
 
 		if (mouseState.isLeftClicked) {
 			clickPosition = mouseState.enterDeltaX;
-			if (positionClickCallback) {
-				positionClickCallback (positionClickCallbackData, this);
+			if (positionClickCallback.callback) {
+				positionClickCallback.callback (positionClickCallback.callbackData, this);
 			}
 		}
 	}
 	else {
 		if (hoverPosition >= 0.0f) {
 			hoverPosition = -1.0f;
-			if (positionHoverCallback) {
-				positionHoverCallback (positionHoverCallbackData, this);
+			if (positionHoverCallback.callback) {
+				positionHoverCallback.callback (positionHoverCallback.callbackData, this);
 			}
 		}
 	}
+
+	return (false);
 }

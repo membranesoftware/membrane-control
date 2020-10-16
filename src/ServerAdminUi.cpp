@@ -61,7 +61,6 @@ ServerAdminUi::ServerAdminUi (const StdString &agentId, const StdString &agentDi
 : Ui ()
 , agentId (agentId)
 , agentDisplayName (agentDisplayName)
-, cardView (NULL)
 , lockButton (NULL)
 , adminSecretWindow (NULL)
 , taskCount (0)
@@ -78,16 +77,17 @@ StdString ServerAdminUi::getSpritePath () {
 }
 
 Widget *ServerAdminUi::createBreadcrumbWidget () {
-	return (new Chip (agentDisplayName, sprites.getSprite (ServerAdminUi::BreadcrumbIconSprite)));
+	return (new Chip (Label::getTruncatedText (agentDisplayName, UiConfiguration::CaptionFont, ((float) App::instance->windowWidth) * 0.5f, Label::DotTruncateSuffix), App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::SettingsBoxButtonSprite)));
 }
 
 void ServerAdminUi::setHelpWindowContent (HelpWindow *helpWindow) {
 	UiText *uitext;
 
 	uitext = &(App::instance->uiText);
-	helpWindow->setHelpText (uitext->getText (UiTextString::serverAdminUiHelpTitle), uitext->getText (UiTextString::serverAdminUiHelpText));
-	helpWindow->addAction (uitext->getText (UiTextString::serverAdminUiHelpAction1Text), uitext->getText (UiTextString::learnMore).capitalized (), App::getHelpUrl ("server-passwords"));
-	helpWindow->addTopicLink (uitext->getText (UiTextString::searchForHelp).capitalized (), App::getHelpUrl (""));
+	helpWindow->setHelpText (uitext->getText (UiTextString::ServerAdminUiHelpTitle), uitext->getText (UiTextString::ServerAdminUiHelpText));
+	helpWindow->addAction (uitext->getText (UiTextString::ServerAdminUiHelpAction1Text));
+	helpWindow->addAction (uitext->getText (UiTextString::ServerAdminUiHelpAction2Text), uitext->getText (UiTextString::LearnMore).capitalized (), App::getHelpUrl ("server-passwords"));
+	helpWindow->addTopicLink (uitext->getText (UiTextString::SearchForHelp).capitalized (), App::getHelpUrl (""));
 }
 
 int ServerAdminUi::doLoad () {
@@ -95,16 +95,14 @@ int ServerAdminUi::doLoad () {
 
 	uitext = &(App::instance->uiText);
 
-	cardView = (CardView *) addWidget (new CardView (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight));
-	cardView->isKeyboardScrollEnabled = true;
-	cardView->setRowHeader (2, createRowHeaderPanel (uitext->getText (UiTextString::tasks).capitalized ()));
-	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
+	cardView->setRowHeader (ServerAdminUi::TaskRow, createRowHeaderPanel (uitext->getText (UiTextString::Tasks).capitalized ()));
 
+	cardView->setRowHeader (ServerAdminUi::ServerPasswordsRow, createRowHeaderPanel (uitext->getText (UiTextString::ServerPasswords).capitalized ()));
 	adminSecretWindow = new AdminSecretWindow ();
-	adminSecretWindow->setAddButtonClickCallback (ServerAdminUi::adminSecretAddButtonClicked, this);
-	adminSecretWindow->setExpandStateChangeCallback (ServerAdminUi::cardExpandStateChanged, this);
+	adminSecretWindow->addButtonClickCallback = Widget::EventCallbackContext (ServerAdminUi::adminSecretAddButtonClicked, this);
+	adminSecretWindow->expandStateChangeCallback = Widget::EventCallbackContext (ServerAdminUi::cardExpandStateChanged, this);
 	adminSecretWindow->setExpanded (false);
-	cardView->addItem (adminSecretWindow, StdString (""), 1);
+	cardView->addItem (adminSecretWindow, StdString (""), ServerAdminUi::ServerPasswordsRow);
 
 	App::instance->shouldSyncRecordStore = true;
 
@@ -120,32 +118,19 @@ void ServerAdminUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
 
 	uitext = &(App::instance->uiText);
 	lockButton = new Button (sprites.getSprite (ServerAdminUi::LockButtonSprite));
+	lockButton->mouseClickCallback = Widget::EventCallbackContext (ServerAdminUi::lockButtonClicked, this);
 	lockButton->setInverseColor (true);
-	lockButton->setMouseClickCallback (ServerAdminUi::lockButtonClicked, this);
-	lockButton->setMouseHoverTooltip (uitext->getText (UiTextString::serverAdminUiLockTooltip), Widget::LeftAlignment);
+	lockButton->setMouseHoverTooltip (uitext->getText (UiTextString::ServerAdminUiLockTooltip), Widget::LeftAlignment);
 	toolbar->addRightItem (lockButton);
 }
 
 void ServerAdminUi::doResume () {
 	App::instance->setNextBackgroundTexturePath ("ui/ServerAdminUi/bg");
 	App::instance->agentControl.connectLinkClient (agentId);
-
-	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
-	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
-}
-
-void ServerAdminUi::doRefresh () {
-	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
-	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 }
 
 void ServerAdminUi::doPause () {
 	App::instance->agentControl.disconnectLinkClient (agentId);
-}
-
-void ServerAdminUi::doResize () {
-	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
-	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 }
 
 void ServerAdminUi::doUpdate (int msElapsed) {
@@ -173,14 +158,14 @@ void ServerAdminUi::doSyncRecordStore () {
 		record = store->findRecord (agentId, SystemInterface::CommandId_AgentStatus);
 		if (record) {
 			serverwindow = new ServerWindow (agentId);
-			serverwindow->setExpandStateChangeCallback (ServerAdminUi::cardExpandStateChanged, this);
-			serverwindow->setStatusChangeCallback (ServerAdminUi::serverStatusChanged, this);
+			serverwindow->expandStateChangeCallback = Widget::EventCallbackContext (ServerAdminUi::cardExpandStateChanged, this);
+			serverwindow->statusChangeCallback = Widget::EventCallbackContext (ServerAdminUi::serverStatusChanged, this);
 			serverwindow->setExpanded (true, true);
-			cardView->addItem (serverwindow, agentId, 0);
+			cardView->addItem (serverwindow, agentId, ServerAdminUi::ServerRow);
 
 			configwindow = new AgentConfigurationWindow (agentId);
-			configwindow->setExpandStateChangeCallback (ServerAdminUi::cardExpandStateChanged, this);
-			cardView->addItem (configwindow, StdString (""), 0);
+			configwindow->expandStateChangeCallback = Widget::EventCallbackContext (ServerAdminUi::cardExpandStateChanged, this);
+			cardView->addItem (configwindow, StdString (""), ServerAdminUi::ServerRow);
 			configwindow->loadConfiguration ();
 		}
 	}
@@ -203,10 +188,10 @@ void ServerAdminUi::doSyncRecordStore () {
 	}
 	else {
 		if (! iconcardwindow) {
-			iconcardwindow = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::InfoIconSprite), uitext->getText (UiTextString::serverAdminUiEmptyTaskListTitle), StdString (""), uitext->getText (UiTextString::serverAdminUiEmptyTaskListText));
+			iconcardwindow = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::InfoIconSprite), uitext->getText (UiTextString::ServerAdminUiEmptyTaskListTitle), StdString (""), uitext->getText (UiTextString::ServerAdminUiEmptyTaskListText));
 			emptyTaskWindow.assign (iconcardwindow);
 			iconcardwindow->itemId.assign (cardView->getAvailableItemId ());
-			cardView->addItem (iconcardwindow, iconcardwindow->itemId, 2);
+			cardView->addItem (iconcardwindow, iconcardwindow->itemId, ServerAdminUi::TaskRow);
 		}
 	}
 
@@ -224,7 +209,7 @@ void ServerAdminUi::processTaskItem (void *uiPtr, Json *record, const StdString 
 		++(ui->taskCount);
 		if (! ui->cardView->contains (recordId)) {
 			window = new TaskWindow (recordId);
-			ui->cardView->addItem (window, recordId, 2);
+			ui->cardView->addItem (window, recordId, ServerAdminUi::TaskRow);
 			ui->watchIdList.push_back (recordId);
 		}
 	}
@@ -234,6 +219,7 @@ void ServerAdminUi::cardExpandStateChanged (void *uiPtr, Widget *widgetPtr) {
 	ServerAdminUi *ui;
 
 	ui = (ServerAdminUi *) uiPtr;
+	ui->clearPopupWidgets ();
 	ui->cardView->refresh ();
 }
 
@@ -248,28 +234,18 @@ void ServerAdminUi::adminSecretAddButtonClicked (void *uiPtr, Widget *widgetPtr)
 	ServerAdminUi *ui;
 	AdminSecretWindow *target;
 	ActionWindow *action;
-	bool show;
 
 	ui = (ServerAdminUi *) uiPtr;
 	target = (AdminSecretWindow *) widgetPtr;
 
-	show = true;
-	if (ActionWindow::isWidgetType (ui->actionWidget.widget) && (ui->actionTarget.widget == target)) {
-		show = false;
-	}
-	ui->clearPopupWidgets ();
-	if (! show) {
+	if (ui->clearActionPopup (widgetPtr, ServerAdminUi::adminSecretAddButtonClicked)) {
 		return;
 	}
 
 	action = target->createAddActionWindow ();
-	action->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
 	action->closeCallback = Widget::EventCallbackContext (ServerAdminUi::adminSecretAddActionClosed, ui);
 
-	App::instance->rootPanel->addWidget (action);
-	ui->actionWidget.assign (action);
-	ui->actionTarget.assign (target);
-	action->position.assign (target->screenX + target->width, target->screenY + target->height - action->height);
+	ui->showActionPopup (action, widgetPtr, ServerAdminUi::adminSecretAddButtonClicked, widgetPtr->getScreenRect (), Ui::RightOfAlignment, Ui::BottomEdgeAlignment);
 }
 
 void ServerAdminUi::adminSecretAddActionClosed (void *uiPtr, Widget *widgetPtr) {
@@ -301,26 +277,20 @@ void ServerAdminUi::lockButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	StringList items;
 	StringList::iterator i, end;
 	HashMap map;
-	bool show;
 
 	ui = (ServerAdminUi *) uiPtr;
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 
-	show = true;
-	if (ActionWindow::isWidgetType (ui->actionWidget.widget) && (ui->actionTarget.widget == widgetPtr)) {
-		show = false;
-	}
-	ui->clearPopupWidgets ();
-	if (! show) {
+	if (ui->clearActionPopup (widgetPtr, ServerAdminUi::lockButtonClicked)) {
 		return;
 	}
 
 	action = new ActionWindow ();
 	action->setInverseColor (true);
 	action->setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
-	action->setTitleText (uitext->getText (UiTextString::setAdminPassword).capitalized ());
-	action->setConfirmTooltipText (uitext->getText (UiTextString::apply).capitalized ());
+	action->setTitleText (uitext->getText (UiTextString::SetAdminPassword).capitalized ());
+	action->setConfirmTooltipText (uitext->getText (UiTextString::Apply).capitalized ());
 	action->closeCallback = Widget::EventCallbackContext (ServerAdminUi::setAdminPasswordActionClosed, ui);
 
 	App::instance->agentControl.getAdminSecretNames (&items);
@@ -333,7 +303,7 @@ void ServerAdminUi::lockButtonClicked (void *uiPtr, Widget *widgetPtr) {
 			break;
 		}
 	}
-	combobox->addItem (uitext->getText (UiTextString::serverAdminUiEmptyAdminPasswordText), ui->emptyPasswordName);
+	combobox->addItem (uitext->getText (UiTextString::ServerAdminUiEmptyAdminPasswordText), ui->emptyPasswordName);
 
 	if (! items.empty ()) {
 		i = items.begin ();
@@ -345,21 +315,17 @@ void ServerAdminUi::lockButtonClicked (void *uiPtr, Widget *widgetPtr) {
 		map.sort (HashMap::sortAscending);
 		combobox->addItems (&map);
 	}
-	action->addOption (uitext->getText (UiTextString::password).capitalized (), combobox, uitext->getText (UiTextString::serverAdminUiAdminPasswordDescription));
-	action->setOptionNotEmptyString (uitext->getText (UiTextString::password).capitalized ());
+	action->addOption (uitext->getText (UiTextString::Password).capitalized (), combobox, uitext->getText (UiTextString::ServerAdminUiAdminPasswordDescription));
+	action->setOptionNotEmptyString (uitext->getText (UiTextString::Password).capitalized ());
 
-	App::instance->rootPanel->addWidget (action);
-	ui->actionWidget.assign (action);
-	ui->actionTarget.assign (widgetPtr);
-	action->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
-	action->position.assign (widgetPtr->screenX + widgetPtr->width - action->width, widgetPtr->screenY - action->height);
+	ui->showActionPopup (action, widgetPtr, ServerAdminUi::lockButtonClicked, widgetPtr->getScreenRect (), Ui::RightEdgeAlignment, Ui::TopOfAlignment);
 }
 
 void ServerAdminUi::setAdminPasswordActionClosed (void *uiPtr, Widget *widgetPtr) {
 	ServerAdminUi *ui;
 	UiText *uitext;
 	ActionWindow *action;
-	StdString name, secret;
+	StdString adminsecret;
 	Json *params;
 	int result;
 
@@ -370,20 +336,20 @@ void ServerAdminUi::setAdminPasswordActionClosed (void *uiPtr, Widget *widgetPtr
 		return;
 	}
 
-	name = action->getStringValue (uitext->getText (UiTextString::password).capitalized (), "");
-	if (name.empty ()) {
+	ui->lastSecretName = action->getStringValue (uitext->getText (UiTextString::Password).capitalized (), "");
+	if (ui->lastSecretName.empty ()) {
 		return;
 	}
-	if (! name.equals (ui->emptyPasswordName)) {
-		secret = App::instance->agentControl.getAdminSecret (name);
+	if (! ui->lastSecretName.equals (ui->emptyPasswordName)) {
+		adminsecret = App::instance->agentControl.getAdminSecret (ui->lastSecretName);
 	}
 
 	params = new Json ();
-	params->set ("secret", secret);
+	params->set ("secret", adminsecret);
 	ui->retain ();
 	result = App::instance->agentControl.invokeCommand (ui->agentId, App::instance->createCommand (SystemInterface::Command_SetAdminSecret, SystemInterface::Constant_DefaultCommandType, params), ServerAdminUi::setAdminSecretComplete, ui);
 	if (result != Result::Success) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
 		ui->release ();
 	}
 }
@@ -391,14 +357,21 @@ void ServerAdminUi::setAdminPasswordActionClosed (void *uiPtr, Widget *widgetPtr
 void ServerAdminUi::setAdminSecretComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand) {
 	ServerAdminUi *ui;
 	SystemInterface *interface;
+	StdString secretname;
 
 	ui = (ServerAdminUi *) uiPtr;
 	interface = &(App::instance->systemInterface);
 	if (responseCommand && (interface->getCommandId (responseCommand) == SystemInterface::CommandId_CommandResult) && interface->getCommandBooleanParam (responseCommand, "success", false)) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::serverAdminUiSetPasswordCompleteMessage));
+		secretname.assign (ui->lastSecretName);
+		ui->lastSecretName.assign ("");
+		if (secretname.equals (ui->emptyPasswordName)) {
+			secretname.assign ("");
+		}
+		App::instance->agentControl.setAgentAuthorization (agentId, secretname);
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::ServerAdminUiSetPasswordCompleteMessage));
 	}
 	else {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
 	}
 	ui->release ();
 }

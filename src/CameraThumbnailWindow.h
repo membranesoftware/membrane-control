@@ -42,14 +42,14 @@ public:
 	CameraThumbnailWindow (const StdString &agentId, const StdString &captureImagePath, int64_t thumbnailTimestamp);
 	virtual ~CameraThumbnailWindow ();
 
+	// Read-write data members
+	Widget::EventCallbackContext loadCallback;
+
 	// Read-only data members
 	StdString agentId;
 	StdString captureImagePath;
 	int64_t thumbnailTimestamp;
 	bool isHighlighted;
-
-	// Set a callback that should be invoked after the window's image content successfully loads
-	void setLoadCallback (Widget::EventCallback callback, void *callbackData);
 
 	// Set the layout type that should be used to arrange the panel's widgets, as specified by a CardView detail constant
 	void setLayout (int layoutType, float maxPanelWidth);
@@ -66,26 +66,24 @@ public:
 	// Return a typecasted pointer to the provided widget, or NULL if the widget does not appear to be of the correct type
 	static CameraThumbnailWindow *castWidget (Widget *widget);
 
-	// Callback functions
-	static void thumbnailImageLoaded (void *windowPtr, Widget *widgetPtr);
-	static void thumbnailImageLongPressed (void *windowPtr, Widget *widgetPtr);
-
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
 
-	// Execute operations appropriate when the widget receives new mouse state
-	void doProcessMouseState (const Widget::MouseState &mouseState);
+	// Execute operations appropriate when the widget receives new mouse state and return a boolean value indicating if mouse wheel events were consumed and should no longer be processed
+	virtual bool doProcessMouseState (const Widget::MouseState &mouseState);
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
 	void refreshLayout ();
 
 private:
+	// Callback functions
+	static void thumbnailImageLoaded (void *windowPtr, Widget *widgetPtr);
+	static void thumbnailImageLongPressed (void *windowPtr, Widget *widgetPtr);
+
 	float windowWidth;
 	ImageWindow *thumbnailImage;
 	LabelWindow *timestampLabel;
-	Widget::EventCallback loadCallback;
-	void *loadCallbackData;
 };
 
 #endif

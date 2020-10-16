@@ -43,15 +43,15 @@ public:
 	ScrollBar (float maxScrollTrackLength);
 	virtual ~ScrollBar ();
 
+	// Read-write data members
+	Widget::EventCallbackContext positionChangeCallback;
+
 	// Read-only data members
 	float scrollPosition;
 	float maxScrollPosition;
 
 	// Set the scrollbar's position and invoke any configured change callback unless shouldSkipCallback is true
 	void setPosition (float positionValue, bool shouldSkipCallback = false);
-
-	// Set a callback function that should be invoked when the scroll bar's position changes
-	void setPositionChangeCallback (Widget::EventCallback callback, void *callbackData);
 
 	// Set the maximum track length of the scrollbar
 	void setMaxTrackLength (float maxScrollTrackLength);
@@ -63,8 +63,8 @@ protected:
 	// Execute subclass-specific operations to update object state as appropriate for an elapsed millisecond time period
 	virtual void doUpdate (int msElapsed);
 
-	// Execute operations appropriate when the widget receives new mouse state
-	virtual void doProcessMouseState (const Widget::MouseState &mouseState);
+	// Execute operations appropriate when the widget receives new mouse state and return a boolean value indicating if mouse wheel events were consumed and should no longer be processed
+	virtual bool doProcessMouseState (const Widget::MouseState &mouseState);
 
 	// Execute operations appropriate when the widget's input state is reset
 	virtual void doResetInputState ();
@@ -82,8 +82,6 @@ private:
 	Panel *arrowPanel;
 	Image *upArrowImage;
 	Image *downArrowImage;
-	Widget::EventCallback positionChangeCallback;
-	void *positionChangeCallbackData;
 	bool isFollowingMouse;
 };
 

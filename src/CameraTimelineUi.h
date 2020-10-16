@@ -34,14 +34,13 @@
 
 #include <queue>
 #include "StdString.h"
-#include "CardView.h"
 #include "Button.h"
 #include "HelpWindow.h"
 #include "Ui.h"
 
 class CameraTimelineUi : public Ui {
 public:
-	// Constants to use for sprite indexes
+	// Sprite indexes
 	enum {
 		TimeIconSprite = 0,
 		SelectedTimespanIconSprite = 1,
@@ -49,14 +48,20 @@ public:
 		StopButtonSprite = 3
 	};
 
-	// Constants to use for card view row numbers
+	// Card view row numbers
 	enum {
 		InfoRow = 0,
 		ImageRow = 1
 	};
 
+	// Prefs keys
+	static const char *ImageSizeKey;
+
 	CameraTimelineUi (const StdString &agentId, const StdString &agentName);
 	~CameraTimelineUi ();
+
+	// Read-write data members
+	Widget::EventCallbackContext thumbnailClickCallback;
 
 	// Read-only data members
 	StdString agentId;
@@ -71,18 +76,6 @@ public:
 
 	// Execute actions appropriate for a command received from an agent control link client
 	void handleLinkClientCommand (const StdString &agentId, int commandId, Json *command);
-
-	// Callback functions
-	static void imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void smallImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void mediumImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void thumbnailImageLoaded (void *uiPtr, Widget *widgetPtr);
-	static void timelineWindowPositionHovered (void *uiPtr, Widget *widgetPtr);
-	static void timelineWindowPositionClicked (void *uiPtr, Widget *widgetPtr);
-	static void sortToggleStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void playToggleStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void capturePlayThumbnailImageLoaded (void *uiPtr, Widget *widgetPtr);
 
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
@@ -103,9 +96,6 @@ protected:
 	// Add subclass-specific items to the provided secondary toolbar object
 	void doAddSecondaryToolbarItems (Toolbar *toolbar);
 
-	// Execute subclass-specific operations to refresh the interface's layout as appropriate for the current set of UiConfiguration values
-	void doRefresh ();
-
 	// Update subclass-specific interface state as appropriate when the Ui becomes active
 	void doResume ();
 
@@ -119,16 +109,34 @@ protected:
 	void doSyncRecordStore ();
 
 private:
-	static const int pageSize;
-	static const int capturePlayPeriod;
+	// Callback functions
+	static void imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void smallImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void mediumImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void thumbnailImageLoaded (void *uiPtr, Widget *widgetPtr);
+	static void thumbnailImageClicked (void *uiPtr, Widget *widgetPtr);
+	static void thumbnailImageMouseEntered (void *uiPtr, Widget *widgetPtr);
+	static void thumbnailImageMouseExited (void *uiPtr, Widget *widgetPtr);
+	static void timelineWindowPositionHovered (void *uiPtr, Widget *widgetPtr);
+	static void timelineWindowPositionClicked (void *uiPtr, Widget *widgetPtr);
+	static void sortToggleStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void playToggleStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void capturePlayThumbnailImageLoaded (void *uiPtr, Widget *widgetPtr);
+	static void selectToggleStateChanged (void *uiPtr, Widget *widgetPtr);
 
-	CardView *cardView;
+	static const float TimelineWindowScale;
+	static const int PageSize;
+	static const int CapturePlayPeriod;
+
 	int cardDetail;
 	bool isSortDescending;
 	WidgetHandle sortToggle;
+	WidgetHandle selectToggle;
 	WidgetHandle timelineWindow;
 	WidgetHandle cameraDetailWindow;
 	WidgetHandle capturePlayWindow;
+	WidgetHandle commandCaption;
 	bool isFindingCaptureImages;
 	bool isPlayingCapture;
 	std::queue<int64_t> capturePlayTimes;
@@ -139,6 +147,7 @@ private:
 	int64_t selectedTime;
 	int64_t displayStartTime;
 	int64_t displayEndTime;
+	bool isSelectingCaptureImage;
 };
 
 #endif

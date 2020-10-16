@@ -44,6 +44,7 @@
 #include "Chip.h"
 #include "Json.h"
 #include "Menu.h"
+#include "Label.h"
 #include "Slider.h"
 #include "MonitorWindow.h"
 #include "IconCardWindow.h"
@@ -57,11 +58,15 @@
 #include "StreamItemUi.h"
 #include "MonitorCacheUi.h"
 
+const char *MonitorCacheUi::ImageSizeKey = "MonitorCache_ImageSize";
+const char *MonitorCacheUi::ExpandedAgentKey = "MonitorCache_ExpandedAgent";
+const char *MonitorCacheUi::StartPositionKey = "MonitorCache_StartPosition";
+const char *MonitorCacheUi::PlayDurationKey = "MonitorCache_PlayDuration";
+
 MonitorCacheUi::MonitorCacheUi (const StdString &agentId, const StdString &agentName)
 : Ui ()
 , agentId (agentId)
 , agentName (agentName)
-, cardView (NULL)
 , stopButton (NULL)
 , pauseButton (NULL)
 , playButton (NULL)
@@ -83,45 +88,46 @@ StdString MonitorCacheUi::getSpritePath () {
 }
 
 Widget *MonitorCacheUi::createBreadcrumbWidget () {
-	return (new Chip (agentName, sprites.getSprite (MonitorCacheUi::BreadcrumbIconSprite)));
+	return (new Chip (Label::getTruncatedText (agentName, UiConfiguration::CaptionFont, ((float) App::instance->windowWidth) * 0.5f, Label::DotTruncateSuffix), sprites.getSprite (MonitorCacheUi::BreadcrumbIconSprite)));
 }
 
 void MonitorCacheUi::setHelpWindowContent (HelpWindow *helpWindow) {
 	UiText *uitext;
 
 	uitext = &(App::instance->uiText);
-	helpWindow->setHelpText (uitext->getText (UiTextString::monitorCacheUiHelpTitle), uitext->getText (UiTextString::monitorCacheUiHelpText));
+	helpWindow->setHelpText (uitext->getText (UiTextString::MonitorCacheUiHelpTitle), uitext->getText (UiTextString::MonitorCacheUiHelpText));
 	if ((streamCount <= 0) && (streamSetSize == 0)) {
-		helpWindow->addAction (uitext->getText (UiTextString::monitorCacheUiHelpAction1Text));
+		helpWindow->addAction (uitext->getText (UiTextString::MonitorCacheUiHelpAction1Text));
 	}
 	else {
-		helpWindow->addAction (uitext->getText (UiTextString::monitorCacheUiHelpAction2Text));
+		helpWindow->addAction (uitext->getText (UiTextString::MonitorCacheUiHelpAction2Text));
 	}
 
-	helpWindow->addTopicLink (uitext->getText (UiTextString::searchForHelp).capitalized (), App::getHelpUrl (""));
+	helpWindow->addTopicLink (uitext->getText (UiTextString::SearchForHelp).capitalized (), App::getHelpUrl (""));
 }
 
 int MonitorCacheUi::doLoad () {
 	UiText *uitext;
+	HashMap *prefs;
 
 	uitext = &(App::instance->uiText);
 	streamSetSize = -1;
-	cardDetail = App::instance->prefsMap.find (App::MonitorCacheUiImageSizeKey, (int) CardView::MediumDetail);
+	prefs = App::instance->lockPrefs ();
+	cardDetail = prefs->find (MonitorCacheUi::ImageSizeKey, (int) CardView::MediumDetail);
+	App::instance->unlockPrefs ();
 
-	cardView = (CardView *) addWidget (new CardView (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight));
-	cardView->isKeyboardScrollEnabled = true;
-	cardView->setRowHeader (MonitorCacheUi::StreamRow, createRowHeaderPanel (uitext->getText (UiTextString::videoStreams).capitalized ()));
-	cardView->setRowHeader (MonitorCacheUi::EmptyStreamRow, createRowHeaderPanel (uitext->getText (UiTextString::videoStreams).capitalized ()));
+	cardView->setRowHeader (MonitorCacheUi::StreamRow, createRowHeaderPanel (uitext->getText (UiTextString::VideoStreams).capitalized ()));
+	cardView->setRowHeader (MonitorCacheUi::EmptyStreamRow, createRowHeaderPanel (uitext->getText (UiTextString::VideoStreams).capitalized ()));
 	cardView->setRowItemMarginSize (MonitorCacheUi::StreamRow, 0.0f);
 	cardView->setRowSelectionAnimated (MonitorCacheUi::StreamRow, true);
 	cardView->setRowDetail (MonitorCacheUi::StreamRow, cardDetail);
-	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 
 	return (Result::Success);
 }
 
 void MonitorCacheUi::doUnload () {
 	emptyStreamWindow.destroyAndClear ();
+	targetStreamWindow.clear ();
 	selectedStreamWindow.clear ();
 	commandPopup.destroyAndClear ();
 	commandButton.clear ();
@@ -131,15 +137,15 @@ void MonitorCacheUi::doAddMainToolbarItems (Toolbar *toolbar) {
 	Button *button;
 
 	button = new Button (App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::SelectImageSizeButtonSprite));
+	button->mouseClickCallback = Widget::EventCallbackContext (MonitorCacheUi::imageSizeButtonClicked, this);
 	button->setInverseColor (true);
-	button->setMouseClickCallback (MonitorCacheUi::imageSizeButtonClicked, this);
-	button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::thumbnailImageSizeTooltip));
+	button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::ThumbnailImageSizeTooltip));
 	toolbar->addRightItem (button);
 
 	button = new Button (App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::ReloadButtonSprite));
+	button->mouseClickCallback = Widget::EventCallbackContext (MonitorCacheUi::reloadButtonClicked, this);
 	button->setInverseColor (true);
-	button->setMouseClickCallback (MonitorCacheUi::reloadButtonClicked, this);
-	button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::reloadTooltip));
+	button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::ReloadTooltip));
 	toolbar->addRightItem (button);
 }
 
@@ -149,39 +155,39 @@ void MonitorCacheUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
 	uitext = &(App::instance->uiText);
 
 	playButton = new Button (sprites.getSprite (MonitorCacheUi::PlayButtonSprite));
+	playButton->mouseClickCallback = Widget::EventCallbackContext (MonitorCacheUi::playButtonClicked, this);
+	playButton->mouseEnterCallback = Widget::EventCallbackContext (MonitorCacheUi::commandButtonMouseEntered, this);
+	playButton->mouseExitCallback = Widget::EventCallbackContext (MonitorCacheUi::commandButtonMouseExited, this);
 	playButton->setInverseColor (true);
-	playButton->setMouseClickCallback (MonitorCacheUi::playButtonClicked, this);
-	playButton->setMouseEnterCallback (MonitorCacheUi::commandButtonMouseEntered, this);
-	playButton->setMouseExitCallback (MonitorCacheUi::commandButtonMouseExited, this);
 	playButton->shortcutKey = SDLK_F4;
-	playButton->setMouseHoverTooltip (uitext->getText (UiTextString::monitorCacheUiPlayTooltip), Widget::LeftAlignment);
+	playButton->setMouseHoverTooltip (uitext->getText (UiTextString::MonitorCacheUiPlayTooltip), Widget::LeftAlignment);
 	toolbar->addRightItem (playButton);
 
 	playAllButton = new Button (sprites.getSprite (MonitorCacheUi::WritePlaylistButtonSprite));
+	playAllButton->mouseClickCallback = Widget::EventCallbackContext (MonitorCacheUi::playAllButtonClicked, this);
+	playAllButton->mouseEnterCallback = Widget::EventCallbackContext (MonitorCacheUi::commandButtonMouseEntered, this);
+	playAllButton->mouseExitCallback = Widget::EventCallbackContext (MonitorCacheUi::commandButtonMouseExited, this);
 	playAllButton->setInverseColor (true);
-	playAllButton->setMouseClickCallback (MonitorCacheUi::playAllButtonClicked, this);
-	playAllButton->setMouseEnterCallback (MonitorCacheUi::commandButtonMouseEntered, this);
-	playAllButton->setMouseExitCallback (MonitorCacheUi::commandButtonMouseExited, this);
 	playAllButton->shortcutKey = SDLK_F3;
-	playAllButton->setMouseHoverTooltip (uitext->getText (UiTextString::monitorCacheUiWritePlaylistTooltip), Widget::LeftAlignment);
+	playAllButton->setMouseHoverTooltip (uitext->getText (UiTextString::MonitorCacheUiWritePlaylistTooltip), Widget::LeftAlignment);
 	toolbar->addRightItem (playAllButton);
 
 	pauseButton = new Button (sprites.getSprite (MonitorCacheUi::PauseButtonSprite));
+	pauseButton->mouseClickCallback = Widget::EventCallbackContext (MonitorCacheUi::pauseButtonClicked, this);
+	pauseButton->mouseEnterCallback = Widget::EventCallbackContext (MonitorCacheUi::commandButtonMouseEntered, this);
+	pauseButton->mouseExitCallback = Widget::EventCallbackContext (MonitorCacheUi::commandButtonMouseExited, this);
 	pauseButton->setInverseColor (true);
-	pauseButton->setMouseClickCallback (MonitorCacheUi::pauseButtonClicked, this);
-	pauseButton->setMouseEnterCallback (MonitorCacheUi::commandButtonMouseEntered, this);
-	pauseButton->setMouseExitCallback (MonitorCacheUi::commandButtonMouseExited, this);
 	pauseButton->shortcutKey = SDLK_F2;
-	pauseButton->setMouseHoverTooltip (uitext->getText (UiTextString::monitorCacheUiPauseTooltip), Widget::LeftAlignment);
+	pauseButton->setMouseHoverTooltip (uitext->getText (UiTextString::MonitorCacheUiPauseTooltip), Widget::LeftAlignment);
 	toolbar->addRightItem (pauseButton);
 
 	stopButton = new Button (sprites.getSprite (MonitorCacheUi::StopButtonSprite));
+	stopButton->mouseClickCallback = Widget::EventCallbackContext (MonitorCacheUi::stopButtonClicked, this);
+	stopButton->mouseEnterCallback = Widget::EventCallbackContext (MonitorCacheUi::commandButtonMouseEntered, this);
+	stopButton->mouseExitCallback = Widget::EventCallbackContext (MonitorCacheUi::commandButtonMouseExited, this);
 	stopButton->setInverseColor (true);
-	stopButton->setMouseClickCallback (MonitorCacheUi::stopButtonClicked, this);
-	stopButton->setMouseEnterCallback (MonitorCacheUi::commandButtonMouseEntered, this);
-	stopButton->setMouseExitCallback (MonitorCacheUi::commandButtonMouseExited, this);
 	stopButton->shortcutKey = SDLK_F1;
-	stopButton->setMouseHoverTooltip (uitext->getText (UiTextString::monitorCacheUiStopTooltip), Widget::LeftAlignment);
+	stopButton->setMouseHoverTooltip (uitext->getText (UiTextString::MonitorCacheUiStopTooltip), Widget::LeftAlignment);
 	toolbar->addRightItem (stopButton);
 }
 
@@ -192,25 +198,21 @@ void MonitorCacheUi::doClearPopupWidgets () {
 
 void MonitorCacheUi::doResume () {
 	App::instance->setNextBackgroundTexturePath ("ui/MonitorCacheUi/bg");
-	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
-	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
-}
-
-void MonitorCacheUi::doRefresh () {
-	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
-	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 }
 
 void MonitorCacheUi::doPause () {
+	HashMap *prefs;
 	MonitorWindow *monitor;
 
 	monitor = MonitorWindow::castWidget (cardView->getItem (agentId));
+	prefs = App::instance->lockPrefs ();
 	if (monitor && monitor->isExpanded) {
-		App::instance->prefsMap.insert (App::MonitorCacheUiExpandedAgentKey, true);
+		prefs->insert (MonitorCacheUi::ExpandedAgentKey, true);
 	}
 	else {
-		App::instance->prefsMap.remove (App::MonitorCacheUiExpandedAgentKey);
+		prefs->remove (MonitorCacheUi::ExpandedAgentKey);
 	}
+	App::instance->unlockPrefs ();
 }
 
 void MonitorCacheUi::doUpdate (int msElapsed) {
@@ -220,6 +222,7 @@ void MonitorCacheUi::doUpdate (int msElapsed) {
 	emptyStreamWindow.compact ();
 	commandPopup.compact ();
 
+	targetStreamWindow.compact ();
 	selectedStreamWindow.compact ();
 	stream = StreamWindow::castWidget (selectedStreamWindow.widget);
 	if (stream && (! stream->isSelected)) {
@@ -235,13 +238,9 @@ void MonitorCacheUi::doUpdate (int msElapsed) {
 	}
 }
 
-void MonitorCacheUi::doResize () {
-	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
-	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
-}
-
 void MonitorCacheUi::doSyncRecordStore () {
 	RecordStore *store;
+	HashMap *prefs;
 	MonitorWindow *monitor;
 	IconCardWindow *icon;
 	UiConfiguration *uiconfig;
@@ -258,22 +257,26 @@ void MonitorCacheUi::doSyncRecordStore () {
 			monitor->setStorageDisplayEnabled (true);
 			monitor->screenshotLoadCallback = Widget::EventCallbackContext (MonitorCacheUi::monitorScreenshotLoaded, this);
 			monitor->expandStateChangeCallback = Widget::EventCallbackContext (MonitorCacheUi::monitorExpandStateChanged, this);
-			if (App::instance->prefsMap.find (App::MonitorCacheUiExpandedAgentKey, false)) {
+
+			prefs = App::instance->lockPrefs ();
+			if (prefs->find (MonitorCacheUi::ExpandedAgentKey, false)) {
 				monitor->setExpanded (true, true);
 			}
+			App::instance->unlockPrefs ();
+
 			cardView->addItem (monitor, agentId, MonitorCacheUi::AgentRow);
 			addLinkAgent (agentId);
 		}
 	}
 
 	streamCount = 0;
-	store->processCommandRecords (SystemInterface::CommandId_StreamItem, MonitorCacheUi::processStreamItem, this);
+	store->processCommandRecords (SystemInterface::CommandId_StreamItem, MonitorCacheUi::doSyncRecordStore_processStreamItem, this);
 
 	icon = (IconCardWindow *) emptyStreamWindow.widget;
 	if ((streamCount <= 0) && (streamSetSize == 0)) {
 		if (! icon) {
-			icon = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::LargeStreamIconSprite), uitext->getText (UiTextString::monitorCacheUiEmptyStreamStatusTitle), StdString (""), uitext->getText (UiTextString::monitorCacheUiEmptyStreamStatusText));
-			icon->setLink (uitext->getText (UiTextString::learnMore).capitalized (), App::getHelpUrl ("media-streaming"));
+			icon = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::LargeStreamIconSprite), uitext->getText (UiTextString::MonitorCacheUiEmptyStreamStatusTitle), StdString (""), uitext->getText (UiTextString::MonitorCacheUiEmptyStreamStatusText));
+			icon->setLink (uitext->getText (UiTextString::LearnMore).capitalized (), App::getHelpUrl ("media-streaming"));
 			emptyStreamWindow.assign (icon);
 
 			icon->itemId.assign (cardView->getAvailableItemId ());
@@ -291,6 +294,28 @@ void MonitorCacheUi::doSyncRecordStore () {
 	cardView->refresh ();
 }
 
+void MonitorCacheUi::doSyncRecordStore_processStreamItem (void *uiPtr, Json *record, const StdString &recordId) {
+	MonitorCacheUi *ui;
+	SystemInterface *interface;
+	StreamWindow *stream;
+
+	ui = (MonitorCacheUi *) uiPtr;
+	interface = &(App::instance->systemInterface);
+	if (! ui->agentId.equals (interface->getCommandAgentId (record))) {
+		return;
+	}
+
+	++(ui->streamCount);
+	if (! ui->cardView->contains (recordId)) {
+		stream = new StreamWindow (record);
+		stream->streamImageClickCallback = Widget::EventCallbackContext (MonitorCacheUi::streamWindowImageClicked, ui);
+		stream->viewButtonClickCallback = Widget::EventCallbackContext (MonitorCacheUi::streamWindowViewButtonClicked, ui);
+		stream->removeButtonClickCallback = Widget::EventCallbackContext (MonitorCacheUi::streamWindowRemoveButtonClicked, ui);
+		stream->sortKey.assign (stream->streamName);
+		ui->cardView->addItem (stream, recordId, MonitorCacheUi::StreamRow);
+	}
+}
+
 void MonitorCacheUi::monitorScreenshotLoaded (void *uiPtr, Widget *widgetPtr) {
 	MonitorCacheUi *ui;
 
@@ -302,6 +327,7 @@ void MonitorCacheUi::monitorExpandStateChanged (void *uiPtr, Widget *widgetPtr) 
 	MonitorCacheUi *ui;
 
 	ui = (MonitorCacheUi *) uiPtr;
+	ui->clearPopupWidgets ();
 	ui->cardView->refresh ();
 }
 
@@ -348,37 +374,29 @@ void MonitorCacheUi::imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	MonitorCacheUi *ui;
 	UiConfiguration *uiconfig;
 	UiText *uitext;
-	Menu *action;
-	bool show;
+	Menu *menu;
 
 	ui = (MonitorCacheUi *) uiPtr;
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 
-	show = true;
-	if (Menu::isWidgetType (ui->actionWidget.widget) && (ui->actionTarget.widget == widgetPtr)) {
-		show = false;
-	}
-
-	ui->clearPopupWidgets ();
-	if (! show) {
+	App::instance->uiStack.suspendMouseHover ();
+	if (ui->clearActionPopup (widgetPtr, MonitorCacheUi::imageSizeButtonClicked)) {
 		return;
 	}
 
-	App::instance->uiStack.suspendMouseHover ();
-	action = (Menu *) App::instance->rootPanel->addWidget (new Menu ());
-	action->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
-	action->isClickDestroyEnabled = true;
-	action->addItem (uitext->getText (UiTextString::small).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::SmallSizeButtonSprite), MonitorCacheUi::smallImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::LowDetail);
-	action->addItem (uitext->getText (UiTextString::medium).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::MediumSizeButtonSprite), MonitorCacheUi::mediumImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::MediumDetail);
-	action->addItem (uitext->getText (UiTextString::large).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::LargeSizeButtonSprite), MonitorCacheUi::largeImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::HighDetail);
-	action->position.assign (widgetPtr->position.x + widgetPtr->width - action->width, widgetPtr->position.y + widgetPtr->height);
-	ui->actionWidget.assign (action);
-	ui->actionTarget.assign (widgetPtr);
+	menu = new Menu ();
+	menu->isClickDestroyEnabled = true;
+	menu->addItem (uitext->getText (UiTextString::Small).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::SmallSizeButtonSprite), MonitorCacheUi::smallImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::LowDetail);
+	menu->addItem (uitext->getText (UiTextString::Medium).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::MediumSizeButtonSprite), MonitorCacheUi::mediumImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::MediumDetail);
+	menu->addItem (uitext->getText (UiTextString::Large).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::LargeSizeButtonSprite), MonitorCacheUi::largeImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::HighDetail);
+
+	ui->showActionPopup (menu, widgetPtr, MonitorCacheUi::imageSizeButtonClicked, widgetPtr->getScreenRect (), Ui::RightEdgeAlignment, Ui::BottomOfAlignment);
 }
 
 void MonitorCacheUi::smallImageSizeActionClicked (void *uiPtr, Widget *widgetPtr) {
 	MonitorCacheUi *ui;
+	HashMap *prefs;
 	int detail;
 
 	ui = (MonitorCacheUi *) uiPtr;
@@ -388,11 +406,14 @@ void MonitorCacheUi::smallImageSizeActionClicked (void *uiPtr, Widget *widgetPtr
 	}
 	ui->cardDetail = detail;
 	ui->cardView->setRowDetail (MonitorCacheUi::StreamRow, ui->cardDetail);
-	App::instance->prefsMap.insert (App::MonitorCacheUiImageSizeKey, ui->cardDetail);
+	prefs = App::instance->lockPrefs ();
+	prefs->insert (MonitorCacheUi::ImageSizeKey, ui->cardDetail);
+	App::instance->unlockPrefs ();
 }
 
 void MonitorCacheUi::mediumImageSizeActionClicked (void *uiPtr, Widget *widgetPtr) {
 	MonitorCacheUi *ui;
+	HashMap *prefs;
 	int detail;
 
 	ui = (MonitorCacheUi *) uiPtr;
@@ -402,11 +423,14 @@ void MonitorCacheUi::mediumImageSizeActionClicked (void *uiPtr, Widget *widgetPt
 	}
 	ui->cardDetail = detail;
 	ui->cardView->setRowDetail (MonitorCacheUi::StreamRow, ui->cardDetail);
-	App::instance->prefsMap.insert (App::MonitorCacheUiImageSizeKey, ui->cardDetail);
+	prefs = App::instance->lockPrefs ();
+	prefs->insert (MonitorCacheUi::ImageSizeKey, ui->cardDetail);
+	App::instance->unlockPrefs ();
 }
 
 void MonitorCacheUi::largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr) {
 	MonitorCacheUi *ui;
+	HashMap *prefs;
 	int detail;
 
 	ui = (MonitorCacheUi *) uiPtr;
@@ -416,7 +440,9 @@ void MonitorCacheUi::largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr
 	}
 	ui->cardDetail = detail;
 	ui->cardView->setRowDetail (MonitorCacheUi::StreamRow, ui->cardDetail);
-	App::instance->prefsMap.insert (App::MonitorCacheUiImageSizeKey, ui->cardDetail);
+	prefs = App::instance->lockPrefs ();
+	prefs->insert (MonitorCacheUi::ImageSizeKey, ui->cardDetail);
+	App::instance->unlockPrefs ();
 }
 
 void MonitorCacheUi::reloadButtonClicked (void *uiPtr, Widget *widgetPtr) {
@@ -429,28 +455,6 @@ void MonitorCacheUi::reloadButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	params = new Json ();
 	params->set ("maxResults", 0);
 	App::instance->agentControl.writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindItems, SystemInterface::Constant_Monitor, params), ui->agentId);
-}
-
-void MonitorCacheUi::processStreamItem (void *uiPtr, Json *record, const StdString &recordId) {
-	MonitorCacheUi *ui;
-	SystemInterface *interface;
-	StreamWindow *stream;
-
-	ui = (MonitorCacheUi *) uiPtr;
-	interface = &(App::instance->systemInterface);
-	if (! ui->agentId.equals (interface->getCommandAgentId (record))) {
-		return;
-	}
-
-	++(ui->streamCount);
-	if (! ui->cardView->contains (recordId)) {
-		stream = new StreamWindow (record);
-		stream->streamImageClickCallback = Widget::EventCallbackContext (MonitorCacheUi::streamWindowImageClicked, ui);
-		stream->viewButtonClickCallback = Widget::EventCallbackContext (MonitorCacheUi::streamWindowViewButtonClicked, ui);
-		stream->removeButtonClickCallback = Widget::EventCallbackContext (MonitorCacheUi::streamWindowRemoveButtonClicked, ui);
-		stream->sortKey.assign (stream->streamName);
-		ui->cardView->addItem (stream, recordId, MonitorCacheUi::StreamRow);
-	}
 }
 
 void MonitorCacheUi::streamWindowImageClicked (void *uiPtr, Widget *widgetPtr) {
@@ -479,9 +483,9 @@ void MonitorCacheUi::streamWindowViewButtonClicked (void *uiPtr, Widget *widgetP
 	}
 
 	ui = (MonitorCacheUi *) uiPtr;
-	ui->actionTarget.assign (target);
-	itemui = new StreamItemUi (target->streamId, target->streamName, App::instance->uiText.getText (UiTextString::selectPlayPosition).capitalized ());
-	itemui->setThumbnailClickCallback (MonitorCacheUi::streamItemUiThumbnailClicked, ui);
+	ui->targetStreamWindow.assign (target);
+	itemui = new StreamItemUi (target->streamId, target->streamName);
+	itemui->thumbnailClickCallback = Widget::EventCallbackContext (MonitorCacheUi::streamItemUiThumbnailClicked, ui);
 	App::instance->uiStack.pushUi (itemui);
 }
 
@@ -492,52 +496,31 @@ void MonitorCacheUi::streamWindowRemoveButtonClicked (void *uiPtr, Widget *widge
 	StreamWindow *stream;
 	ActionWindow *action;
 	IconLabelWindow *icon;
-	float x, y;
-	bool show;
 
 	ui = (MonitorCacheUi *) uiPtr;
+
+	App::instance->uiStack.suspendMouseHover ();
+	if (ui->clearActionPopup (widgetPtr, MonitorCacheUi::streamWindowRemoveButtonClicked)) {
+		return;
+	}
+
 	uiconfig = &(App::instance->uiConfig);
 	uitext = &(App::instance->uiText);
 	stream = (StreamWindow *) widgetPtr;
 
-	App::instance->uiStack.suspendMouseHover ();
-	show = true;
-	if (ActionWindow::isWidgetType (ui->actionWidget.widget) && (ui->actionTarget.widget == widgetPtr)) {
-		show = false;
-	}
-
-	ui->clearPopupWidgets ();
-	if (! show) {
-		return;
-	}
-
-	action = (ActionWindow *) App::instance->rootPanel->addWidget (new ActionWindow ());
-	action->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
+	action = new ActionWindow ();
 	action->setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
 	action->setInverseColor (true);
 	action->setTitleText (stream->streamName);
-	action->setDescriptionText (uitext->getText (UiTextString::cacheStreamDeleteDescription));
+	action->setDescriptionText (uitext->getText (UiTextString::CacheStreamDeleteDescription));
 	action->closeCallback = Widget::EventCallbackContext (MonitorCacheUi::streamWindowRemoveActionClosed, ui);
 
 	icon = new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::StorageIconSprite), OsUtil::getByteCountDisplayString (stream->streamSize), UiConfiguration::CaptionFont, uiconfig->primaryTextColor);
 	icon->setFillBg (true, uiconfig->lightBackgroundColor);
-	icon->setMouseHoverTooltip (uitext->getText (UiTextString::cacheStreamDeleteByteCountTooltip));
+	icon->setMouseHoverTooltip (uitext->getText (UiTextString::CacheStreamDeleteByteCountTooltip));
 	action->setFooterPanel (icon);
 
-	x = stream->screenX + stream->width;
-	if ((x + action->width) >= (float) App::instance->windowWidth) {
-		x = stream->screenX + stream->width - action->width;
-		y = stream->screenY + stream->height;
-	}
-	else {
-		y = stream->screenY + stream->height - action->height;
-	}
-	if ((y + action->height) >= (float) App::instance->windowHeight) {
-		y = ((float) App::instance->windowHeight) - action->height;
-	}
-	action->position.assign (x, y);
-	ui->actionWidget.assign (action);
-	ui->actionTarget.assign (stream);
+	ui->showActionPopup (action, widgetPtr, MonitorCacheUi::streamWindowRemoveButtonClicked, widgetPtr->getScreenRect (), Ui::LeftOfAlignment, Ui::BottomEdgeAlignment);
 }
 
 void MonitorCacheUi::streamWindowRemoveActionClosed (void *uiPtr, Widget *widgetPtr) {
@@ -552,7 +535,7 @@ void MonitorCacheUi::streamWindowRemoveActionClosed (void *uiPtr, Widget *widget
 	if (! action->isConfirmed) {
 		return;
 	}
-	stream = StreamWindow::castWidget (ui->actionTarget.widget);
+	stream = StreamWindow::castWidget (ui->targetStreamWindow.widget);
 	if (! stream) {
 		return;
 	}
@@ -565,7 +548,7 @@ void MonitorCacheUi::streamWindowRemoveActionClosed (void *uiPtr, Widget *widget
 	if (result != Result::Success) {
 		ui->release ();
 		Log::debug ("Failed to invoke RemoveStream command; err=%i agentId=\"%s\"", result, stream->agentId.c_str ());
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
 		return;
 	}
 }
@@ -591,12 +574,12 @@ void MonitorCacheUi::removeStreamComplete (void *uiPtr, int invokeResult, const 
 		if (! agentname.empty ()) {
 			text.appendSprintf ("%s: ", agentname.c_str ());
 		}
-		text.append (uitext->getText (UiTextString::removedStream).capitalized ());
+		text.append (uitext->getText (UiTextString::RemovedStream).capitalized ());
 		App::instance->uiStack.showSnackbar (text);
 		App::instance->agentControl.refreshAgentStatus (agentId);
 	}
 	else {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
 	}
 	ui->release ();
 }
@@ -608,7 +591,7 @@ void MonitorCacheUi::streamItemUiThumbnailClicked (void *uiPtr, Widget *widgetPt
 
 	ui = (MonitorCacheUi *) uiPtr;
 	thumbnail = MediaThumbnailWindow::castWidget (widgetPtr);
-	target = StreamWindow::castWidget (ui->actionTarget.widget);
+	target = StreamWindow::castWidget (ui->targetStreamWindow.widget);
 	if ((! thumbnail) || (! target)) {
 		return;
 	}
@@ -668,22 +651,22 @@ void MonitorCacheUi::commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr) 
 
 	label = NULL;
 	if (button == ui->stopButton) {
-		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::stop).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
+		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::Stop).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
 	}
 	else if (button == ui->pauseButton) {
-		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (StdString::createSprintf ("%s / %s", uitext->getText (UiTextString::pause).capitalized ().c_str (), uitext->getText (UiTextString::resume).c_str ()), UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
+		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (StdString::createSprintf ("%s / %s", uitext->getText (UiTextString::Pause).capitalized ().c_str (), uitext->getText (UiTextString::Resume).c_str ()), UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
 	}
 	else if (button == ui->playButton) {
-		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::play).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
+		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::Play).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
 
 		stream = StreamWindow::castWidget (ui->selectedStreamWindow.widget);
 		if (! stream) {
-			text.assign (uitext->getText (UiTextString::monitorCacheUiNoStreamSelectedPrompt));
+			text.assign (uitext->getText (UiTextString::MonitorCacheUiNoStreamSelectedPrompt));
 			color.assign (uiconfig->errorTextColor);
 		}
 		else {
 			text.assign (stream->streamName);
-			Label::truncateText (&text, UiConfiguration::CaptionFont, App::instance->rootPanel->width * 0.20f, StdString ("..."));
+			Label::truncateText (&text, UiConfiguration::CaptionFont, App::instance->rootPanel->width * 0.20f, Label::DotTruncateSuffix);
 			text.appendSprintf (" %s", OsUtil::getDurationString ((stream->displayTimestamp > 0.0f) ? (int64_t) stream->displayTimestamp : 0, OsUtil::HoursUnit).c_str ());
 			color.assign (uiconfig->primaryTextColor);
 		}
@@ -692,14 +675,14 @@ void MonitorCacheUi::commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr) 
 		icon->setRightAligned (true);
 	}
 	else if (button == ui->playAllButton) {
-		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::playAll).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
+		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::PlayAll).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
 
 		if (ui->streamCount <= 0) {
-			text.assign (uitext->getText (UiTextString::monitorCacheUiNoStreamAvailablePrompt));
+			text.assign (uitext->getText (UiTextString::MonitorCacheUiNoStreamAvailablePrompt));
 			color.assign (uiconfig->errorTextColor);
 		}
 		else {
-			text.assign (uitext->getCountText (ui->streamCount, UiTextString::videoStream, UiTextString::videoStreams));
+			text.assign (uitext->getCountText (ui->streamCount, UiTextString::VideoStream, UiTextString::VideoStreams));
 			color.assign (uiconfig->primaryTextColor);
 		}
 		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite), text, UiConfiguration::CaptionFont, color));
@@ -736,14 +719,13 @@ void MonitorCacheUi::stopButtonClicked (void *uiPtr, Widget *widgetPtr) {
 
 	ui = (MonitorCacheUi *) uiPtr;
 	command = App::instance->createCommand (SystemInterface::Command_ClearDisplay, SystemInterface::Constant_Monitor);
-	App::instance->agentControl.commandStore.readRecentCommand (ui->agentId, command);
 	result = App::instance->agentControl.invokeCommand (ui->agentId, command);
 	if (result != Result::Success) {
 		Log::debug ("Failed to invoke ClearDisplay command; err=%i agentId=\"%s\"", result, ui->agentId.c_str ());
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
 	}
 	else {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::invokeClearDisplayMessage));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InvokeClearDisplayMessage));
 	}
 
 	App::instance->agentControl.refreshAgentStatus (ui->agentId);
@@ -756,14 +738,13 @@ void MonitorCacheUi::pauseButtonClicked (void *uiPtr, Widget *widgetPtr) {
 
 	ui = (MonitorCacheUi *) uiPtr;
 	command = App::instance->createCommand (SystemInterface::Command_PauseMedia, SystemInterface::Constant_Monitor);
-	App::instance->agentControl.commandStore.readRecentCommand (ui->agentId, command);
 	result = App::instance->agentControl.invokeCommand (ui->agentId, command);
 	if (result != Result::Success) {
 		Log::debug ("Failed to invoke PauseMedia command; err=%i agentId=\"%s\"", result, ui->agentId.c_str ());
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
 	}
 	else {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::invokePauseMediaMessage));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InvokePauseMediaMessage));
 	}
 
 	App::instance->agentControl.refreshAgentStatus (ui->agentId);
@@ -787,10 +768,10 @@ void MonitorCacheUi::playButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	result = App::instance->agentControl.invokeCommand (ui->agentId, App::instance->createCommand (SystemInterface::Command_PlayCacheStream, SystemInterface::Constant_Monitor, params));
 	if (result != Result::Success) {
 		Log::debug ("Failed to invoke PlayCacheStream command; err=%i agentId=\"%s\"", result, ui->agentId.c_str ());
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
 	}
 	else {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::invokePlayMediaMessage));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InvokePlayMediaMessage));
 	}
 
 	App::instance->agentControl.refreshAgentStatus (ui->agentId);
@@ -800,11 +781,11 @@ void MonitorCacheUi::playAllButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	MonitorCacheUi *ui;
 	UiConfiguration *uiconfig;
 	UiText *uitext;
+	HashMap *prefs;
 	ActionWindow *action;
 	Slider *slider;
 	SliderWindow *sliderwindow;
-	int i;
-	bool show;
+	int i, startposition, playduration;
 
 	ui = (MonitorCacheUi *) uiPtr;
 	uiconfig = &(App::instance->uiConfig);
@@ -814,21 +795,19 @@ void MonitorCacheUi::playAllButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	}
 
 	App::instance->uiStack.suspendMouseHover ();
-	show = true;
-	if (ActionWindow::isWidgetType (ui->actionWidget.widget) && (ui->actionTarget.widget == widgetPtr)) {
-		show = false;
-	}
-
-	ui->clearPopupWidgets ();
-	if (! show) {
+	if (ui->clearActionPopup (widgetPtr, MonitorCacheUi::playAllButtonClicked)) {
 		return;
 	}
 
-	action = (ActionWindow *) App::instance->rootPanel->addWidget (new ActionWindow ());
-	action->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
+	prefs = App::instance->lockPrefs ();
+	startposition = prefs->find (MonitorCacheUi::StartPositionKey, (int) StreamPlaylistWindow::ZeroStartPosition);
+	playduration = prefs->find (MonitorCacheUi::PlayDurationKey, (int) StreamPlaylistWindow::MediumPlayDuration);
+	App::instance->unlockPrefs ();
+
+	action = new ActionWindow ();
 	action->setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
 	action->setInverseColor (true);
-	action->setTitleText (uitext->getText (UiTextString::playAll).capitalized ());
+	action->setTitleText (uitext->getText (UiTextString::PlayAll).capitalized ());
 	action->closeCallback = Widget::EventCallbackContext (MonitorCacheUi::playAllActionClosed, ui);
 
 	slider = new Slider (0.0f, (float) (StreamPlaylistWindow::StartPositionCount - 1));
@@ -837,8 +816,8 @@ void MonitorCacheUi::playAllButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	}
 	sliderwindow = new SliderWindow (slider);
 	sliderwindow->setValueNameFunction (StreamPlaylistWindow::startPositionSliderValueName);
-	sliderwindow->setValue (App::instance->prefsMap.find (App::MonitorCacheUiStartPositionKey, (int) StreamPlaylistWindow::ZeroStartPosition));
-	action->addOption (uitext->getText (UiTextString::startPosition).capitalized (), sliderwindow);
+	sliderwindow->setValue (startposition);
+	action->addOption (uitext->getText (UiTextString::StartPosition).capitalized (), sliderwindow);
 
 	slider = new Slider (0.0f, (float) (StreamPlaylistWindow::PlayDurationCount - 1));
 	for (i = 0; i < StreamPlaylistWindow::PlayDurationCount; ++i) {
@@ -846,74 +825,51 @@ void MonitorCacheUi::playAllButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	}
 	sliderwindow = new SliderWindow (slider);
 	sliderwindow->setValueNameFunction (StreamPlaylistWindow::playDurationSliderValueName);
-	sliderwindow->setValue (App::instance->prefsMap.find (App::MonitorCacheUiPlayDurationKey, (int) StreamPlaylistWindow::MediumPlayDuration));
-	action->addOption (uitext->getText (UiTextString::playDuration).capitalized (), sliderwindow);
+	sliderwindow->setValue (playduration);
+	action->addOption (uitext->getText (UiTextString::PlayDuration).capitalized (), sliderwindow);
 
-	action->position.assign (widgetPtr->screenX + widgetPtr->width - action->width, widgetPtr->screenY - action->height);
-	ui->actionWidget.assign (action);
-	ui->actionTarget.assign (widgetPtr);
+	ui->showActionPopup (action, widgetPtr, MonitorCacheUi::playAllButtonClicked, widgetPtr->getScreenRect (), Ui::RightEdgeAlignment, Ui::TopOfAlignment);
 }
 
 void MonitorCacheUi::playAllActionClosed (void *uiPtr, Widget *widgetPtr) {
 	MonitorCacheUi *ui;
 	ActionWindow *action;
 	UiText *uitext;
-	std::list<Json *> items;
+	HashMap *prefs;
 	Json *params, *command;
-	int result, opt;
+	int result, startposition, playduration;
 
 	ui = (MonitorCacheUi *) uiPtr;
 	action = (ActionWindow *) widgetPtr;
 	if ((! action->isConfirmed) || (ui->streamCount <= 0)) {
 		return;
 	}
-	ui->cardView->processItems (MonitorCacheUi::appendPlaylistItem, &items);
-	if (items.empty ()) {
-		return;
-	}
 
 	uitext = &(App::instance->uiText);
 	params = new Json ();
-	params->set ("items", &items);
-	params->set ("displayName", "Loop");
+	params->set ("displayName", uitext->getText (UiTextString::Cache).capitalized ());
 	params->set ("isShuffle", true);
 
-	opt = action->getNumberValue (uitext->getText (UiTextString::startPosition).capitalized (), (int) StreamPlaylistWindow::ZeroStartPosition);
-	StreamPlaylistWindow::setStartPositionDelta (opt, params);
-	App::instance->prefsMap.insert (App::MonitorCacheUiStartPositionKey, opt);
+	startposition = action->getNumberValue (uitext->getText (UiTextString::StartPosition).capitalized (), (int) StreamPlaylistWindow::ZeroStartPosition);
+	StreamPlaylistWindow::setStartPositionDelta (startposition, params);
 
-	opt = action->getNumberValue (uitext->getText (UiTextString::playDuration).capitalized (), (int) StreamPlaylistWindow::MediumPlayDuration);
-	StreamPlaylistWindow::setItemDisplayDuration (opt, params);
-	App::instance->prefsMap.insert (App::MonitorCacheUiPlayDurationKey, opt);
+	playduration = action->getNumberValue (uitext->getText (UiTextString::PlayDuration).capitalized (), (int) StreamPlaylistWindow::MediumPlayDuration);
+	StreamPlaylistWindow::setItemDisplayDuration (playduration, params);
 
-	command = App::instance->createCommand (SystemInterface::Command_CreateMediaDisplayIntent, SystemInterface::Constant_Monitor, params);
-	App::instance->agentControl.commandStore.readRecentCommand (ui->agentId, command);
+	command = App::instance->createCommand (SystemInterface::Command_CreateStreamCacheDisplayIntent, SystemInterface::Constant_Monitor, params);
 	result = App::instance->agentControl.invokeCommand (ui->agentId, command);
 	if (result != Result::Success) {
 		Log::debug ("Failed to invoke CreateMediaDisplayIntent command; err=%i agentId=\"%s\"", result, ui->agentId.c_str ());
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::internalError));
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
 	}
 	else {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::monitorCacheUiWritePlaylistMessage));
+		prefs = App::instance->lockPrefs ();
+		prefs->insert (MonitorCacheUi::StartPositionKey, startposition);
+		prefs->insert (MonitorCacheUi::PlayDurationKey, playduration);
+		App::instance->unlockPrefs ();
+
+		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::MonitorCacheUiWritePlaylistMessage));
 	}
 
 	App::instance->agentControl.refreshAgentStatus (ui->agentId);
-}
-
-void MonitorCacheUi::appendPlaylistItem (void *jsonListPtr, Widget *widgetPtr) {
-	StreamWindow *stream;
-	std::list<Json *> *items;
-	Json *obj;
-
-	items = (std::list<Json *> *) jsonListPtr;
-	stream = StreamWindow::castWidget (widgetPtr);
-	if (! stream) {
-		return;
-	}
-
-	obj = new Json ();
-	obj->set ("mediaName", stream->streamName);
-	obj->set ("streamId", stream->streamId);
-
-	items->push_back (obj);
 }

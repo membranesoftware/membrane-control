@@ -45,10 +45,10 @@ public:
 	Network ();
 	~Network ();
 
-	static const int defaultRequestThreadCount;
-	static const int maxDatagramSize;
+	static const int DefaultRequestThreadCount;
+	static const int MaxDatagramSize;
 
-	// Constants to use for HTTP status codes
+	// HTTP status codes
 	enum {
 		HttpOkCode = 200,
 		HttpUnauthorizedCode = 401
@@ -67,7 +67,7 @@ public:
 	int httpRequestThreadCount;
 
 	// Initialize networking functionality and acquire resources as needed. Returns a Result value.
-	int start (int requestThreadCount = Network::defaultRequestThreadCount);
+	int start (int requestThreadCount = Network::DefaultRequestThreadCount);
 
 	// Stop the networking engine and release acquired resources
 	void stop ();

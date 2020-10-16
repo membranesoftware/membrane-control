@@ -46,13 +46,12 @@
 
 class UiLaunchWindow : public Panel {
 public:
-	// Constants to use for UI types
+	// UI types
 	enum {
 		ServerUi = 0,
 		MediaUi = 1,
 		WebKioskUi = 2,
-		CameraUi = 3,
-		CommandUi = 4
+		CameraUi = 3
 	};
 
 	UiLaunchWindow (int uiType, SpriteGroup *mainUiSpriteGroup);
@@ -60,16 +59,12 @@ public:
 
 	// Read-write data members
 	StdString itemId;
+	Widget::EventCallbackContext expandStateChangeCallback;
+	Widget::EventCallbackContext openCallback;
 
 	// Read-only data members
 	int uiType;
 	bool isExpanded;
-
-	// Set a callback that should be invoked when the expand toggle's checked state changes
-	void setExpandStateChangeCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a function that should be invoked when the window's open action is clicked
-	void setOpenCallback (Widget::EventCallback callback, void *callbackData);
 
 	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
 	void syncRecordStore ();
@@ -83,12 +78,6 @@ public:
 	// Return a typecasted pointer to the provided widget, or NULL if the widget does not appear to be of the correct type
 	static UiLaunchWindow *castWidget (Widget *widget);
 
-	// Callback functions
-	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
-	static void openButtonClicked (void *windowPtr, Widget *widgetPtr);
-	static void addMediaCount (void *sumPtr, Json *record, const StdString &recordId);
-	static void addStreamCount (void *sumPtr, Json *record, const StdString &recordId);
-
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
@@ -97,6 +86,12 @@ protected:
 	void refreshLayout ();
 
 private:
+	// Callback functions
+	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
+	static void openButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void addMediaCount (void *sumPtr, Json *record, const StdString &recordId);
+	static void addStreamCount (void *sumPtr, Json *record, const StdString &recordId);
+
 	// Return the total of all mediaCount fields on MediaServer agents
 	int countMediaItems (RecordStore *store);
 
@@ -106,15 +101,12 @@ private:
 	SpriteGroup *sprites;
 	Image *iconImage;
 	Label *nameLabel;
+	Panel *dividerPanel;
 	TextArea *descriptionText;
 	std::vector<IconLabelWindow *> countIcons;
 	std::vector<IconLabelWindow *> noteIcons;
 	Toggle *expandToggle;
 	Button *openButton;
-	Widget::EventCallback expandStateChangeCallback;
-	void *expandStateChangeCallbackData;
-	Widget::EventCallback openCallback;
-	void *openCallbackData;
 };
 
 #endif

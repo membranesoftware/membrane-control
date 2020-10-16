@@ -58,8 +58,16 @@ Input::Input ()
 , keyRepeatStartTime (0)
 {
 	keyPressListMutex = SDL_CreateMutex ();
+}
 
-	// Only keycodes with entries in keyDownMap are tracked for input state
+Input::~Input () {
+	if (keyPressListMutex) {
+		SDL_DestroyMutex (keyPressListMutex);
+		keyPressListMutex = NULL;
+	}
+}
+
+int Input::start () {
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_a, false));
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_b, false));
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_c, false));
@@ -123,30 +131,24 @@ Input::Input ()
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_PAGEDOWN, false));
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_HOME, false));
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_END, false));
+	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_INSERT, false));
+	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_DELETE, false));
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_F1, false));
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_F2, false));
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_F3, false));
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_F4, false));
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_F5, false));
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_F6, false));
-
 #if PLATFORM_MACOS
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_LGUI, false));
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_RGUI, false));
 #endif
-}
-
-Input::~Input () {
-	if (keyPressListMutex) {
-		SDL_DestroyMutex (keyPressListMutex);
-		keyPressListMutex = NULL;
-	}
-}
-
-int Input::start () {
-	// TODO: Execute startup actions here (none required for now)
 
 	return (Result::Success);
+}
+
+void Input::stop () {
+	keyDownMap.clear ();
 }
 
 void Input::pollEvents () {

@@ -49,16 +49,13 @@ public:
 	void setMessageText (const StdString &messageText);
 
 	// Set the state of the snackbar's action button
-	void setActionButtonEnabled (bool enable, const StdString &buttonText = StdString (""), Widget::EventCallback buttonClickCallback = NULL, void *buttonClickCallbackData = NULL);
+	void setActionButtonEnabled (bool enable, const StdString &buttonText = StdString (""), Widget::EventCallbackContext buttonClickCallback = Widget::EventCallbackContext ());
 
 	// Start the snackbar's scroll animation and run it over the specified number of milliseconds
 	void startScroll (int duration);
 
 	// Start the snackbar's timeout, causing it to hide itself when the specified number of milliseconds elapses
 	void startTimeout (int timeout);
-
-	// Callback functions
-	static void backgroundPanelClicked (void *windowPtr, Widget *widgetPtr);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
@@ -67,13 +64,16 @@ protected:
 	// Execute operations to update object state as appropriate for an elapsed millisecond time period
 	void doUpdate (int msElapsed);
 
-	// Execute operations appropriate when the widget receives new mouse state
-	void doProcessMouseState (const Widget::MouseState &mouseState);
+	// Execute operations appropriate when the widget receives new mouse state and return a boolean value indicating if mouse wheel events were consumed and should no longer be processed
+	virtual bool doProcessMouseState (const Widget::MouseState &mouseState);
 
 	// Reset the panel's widget layout as appropriate for its content and configuration
 	void refreshLayout ();
 
 private:
+	// Callback functions
+	static void backgroundPanelClicked (void *windowPtr, Widget *widgetPtr);
+
 	Panel *backgroundPanel;
 	Label *messageLabel;
 	Button *actionButton;

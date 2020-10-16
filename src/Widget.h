@@ -40,9 +40,15 @@
 class Widget {
 public:
 	typedef void (*FreeFunction) (void *data);
-	typedef void (*UpdateCallback) (int msElapsed, Widget *widget);
+	typedef void (*UpdateCallback) (void *data, int msElapsed, Widget *widget);
 	typedef void (*EventCallback) (void *data, Widget *widget);
 	typedef bool (*KeyEventCallback) (void *data, SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
+	struct UpdateCallbackContext {
+		Widget::UpdateCallback callback;
+		void *callbackData;
+		UpdateCallbackContext (): callback (NULL), callbackData (NULL) { }
+		UpdateCallbackContext (Widget::UpdateCallback callback, void *callbackData): callback (callback), callbackData (callbackData) { }
+	};
 	struct EventCallbackContext {
 		Widget::EventCallback callback;
 		void *callbackData;
@@ -55,11 +61,19 @@ public:
 		KeyEventCallbackContext (): callback (NULL), callbackData (NULL) { }
 		KeyEventCallbackContext (Widget::KeyEventCallback callback, void *callbackData): callback (callback), callbackData (callbackData) { }
 	};
+	struct Rectangle {
+		float x;
+		float y;
+		float w;
+		float h;
+		Rectangle (): x (0.0f), y (0.0f), w (0.0f), h (0.0f) { }
+		Rectangle (float x, float y, float w, float h): x (x), y (y), w (w), h (h) { }
+	};
 
 	Widget ();
 	virtual ~Widget ();
 
-	static const int minZLevel;
+	static const int MinZLevel;
 
 	// Read-write data members
 	uint64_t id;
@@ -67,10 +81,19 @@ public:
 	bool isVisible;
 	bool isTextureTargetDrawEnabled;
 	bool isInputSuspended;
+	bool isPanelSizeClipEnabled;
 	Position position;
 	int zLevel;
 	bool isMouseHoverEnabled;
 	StdString sortKey;
+	Widget::EventCallbackContext mouseEnterCallback;
+	Widget::EventCallbackContext mouseExitCallback;
+	Widget::EventCallbackContext mousePressCallback;
+	Widget::EventCallbackContext mouseReleaseCallback;
+	Widget::EventCallbackContext mouseClickCallback;
+	Widget::EventCallbackContext mouseLongPressCallback;
+	Widget::KeyEventCallbackContext keyEventCallback;
+	Widget::UpdateCallbackContext updateCallback;
 
 	// Read-only data members
 	int classId;
@@ -125,8 +148,8 @@ public:
 		bool isLongPressed;
 		MouseState (): positionDeltaX (0), positionDeltaY (0), wheelUp (0), wheelDown (0), isEntered (false), enterDeltaX (0.0f), enterDeltaY (0.0f), isLeftClicked (false), isLeftClickReleased (false), isLeftClickEntered (false), isLongPressed (false) { }
 	};
-	// Update the widget as appropriate for the specified mouse state
-	void processMouseState (const Widget::MouseState &mouseState);
+	// Update the widget as appropriate for the specified mouse state and return a boolean value indicating if mouse wheel events were consumed and should no longer be processed
+	bool processMouseState (const Widget::MouseState &mouseState);
 
 	// Set the widget to display the specified tooltip text on mouse hover
 	enum {
@@ -146,44 +169,20 @@ public:
 	// Set the widget's key focus mode, indicating whether it should handle keypress events with edit focus
 	virtual void setKeyFocus (bool enable);
 
-	// Set the callback function that should be invoked on mouse enter events
-	void setMouseEnterCallback (Widget::EventCallback fn, void *data);
-
 	// Invoke the widget's mouse enter callback
 	void mouseEnter ();
-
-	// Set the callback function that should be invoked on mouse exit events
-	void setMouseExitCallback (Widget::EventCallback fn, void *data);
 
 	// Invoke the widget's mouse exit callback
 	void mouseExit ();
 
-	// Set the callback function that should be invoked on mouse press events
-	void setMousePressCallback (Widget::EventCallback fn, void *data);
-
 	// Invoke the widget's mouse press callback
 	void mousePress ();
-
-	// Set the callback function that should be invoked on mouse release events
-	void setMouseReleaseCallback (Widget::EventCallback fn, void *data);
 
 	// Invoke the widget's mouse release callback
 	void mouseRelease ();
 
-	// Set the callback function that should be invoked on mouse click events
-	void setMouseClickCallback (Widget::EventCallback fn, void *data);
-
 	// Invoke the widget's mouse click callback
 	void mouseClick ();
-
-	// Set the callback function that should be invoked on mouse long press events
-	void setMouseLongPressCallback (Widget::EventCallback fn, void *data);
-
-	// Set the callback function that should be invoked on keyboard events
-	void setKeyEventCallback (Widget::KeyEventCallback fn, void *data);
-
-	// Set the callback function that should be invoked on each state update
-	void setUpdateCallback (Widget::UpdateCallback fn);
 
 	// Assign the widget's position to the provided x/y values, then reset positionX as appropriate for a rightward flow. If rightExtent and bottomExtent are provided, update them with the widget's right (x plus width) and bottom (y plus height) extents if greater.
 	virtual void flowRight (float *positionX, float positionY, float *rightExtent = NULL, float *bottomExtent = NULL);
@@ -196,6 +195,9 @@ public:
 
 	// Assign the widget's y position to a centered value within the provided vertical extents
 	virtual void centerVertical (float topExtent, float bottomExtent);
+
+	// Return a Rectangle struct containing the widget's screen extent values
+	Widget::Rectangle getScreenRect ();
 
 	// Callback functions
 	static bool compareZLevel (Widget *first, Widget *second);
@@ -213,8 +215,8 @@ protected:
 	// Execute operations appropriate when the widget's input state is reset
 	virtual void doResetInputState ();
 
-	// Execute operations appropriate when the widget receives new mouse state
-	virtual void doProcessMouseState (const Widget::MouseState &mouseState);
+	// Execute operations appropriate when the widget receives new mouse state and return a boolean value indicating if mouse wheel events were consumed and should no longer be processed
+	virtual bool doProcessMouseState (const Widget::MouseState &mouseState);
 
 	// Update the widget as appropriate for a received keypress event and return a boolean value indicating if the event was consumed and should no longer be processed
 	virtual bool doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
@@ -227,21 +229,6 @@ protected:
 	Position fixedCenterPosition;
 	bool isMouseEntered;
 	bool isMousePressed;
-	Widget::EventCallback mouseEnterCallback;
-	void *mouseEnterCallbackData;
-	Widget::EventCallback mouseExitCallback;
-	void *mouseExitCallbackData;
-	Widget::EventCallback mousePressCallback;
-	void *mousePressCallbackData;
-	Widget::EventCallback mouseReleaseCallback;
-	void *mouseReleaseCallbackData;
-	Widget::EventCallback mouseClickCallback;
-	void *mouseClickCallbackData;
-	Widget::EventCallback mouseLongPressCallback;
-	void *mouseLongPressCallbackData;
-	Widget::KeyEventCallback keyEventCallback;
-	void *keyEventCallbackData;
-	Widget::UpdateCallback updateCallback;
 
 private:
 	int refcount;

@@ -48,6 +48,17 @@ public:
 	ServerWindow (const StdString &agentId);
 	virtual ~ServerWindow ();
 
+	static const float ExpandedNameTruncateScale;
+	static const float UnexpandedNameTruncateScale;
+
+	// Read-write data members
+	Widget::EventCallbackContext expandStateChangeCallback;
+	Widget::EventCallbackContext statusChangeCallback;
+	Widget::EventCallbackContext checkForUpdatesClickCallback;
+	Widget::EventCallbackContext adminClickCallback;
+	Widget::EventCallbackContext detachClickCallback;
+	Widget::EventCallbackContext removeClickCallback;
+
 	// Read-only data members
 	bool isExpanded;
 	StdString agentId;
@@ -58,26 +69,11 @@ public:
 	bool isAgentDisabled;
 	int agentTaskCount;
 
-	// Set a callback that should be invoked when the expand toggle's checked state changes
-	void setExpandStateChangeCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback that should be invoked when the window's displayed server status changes
-	void setStatusChangeCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback that should be invoked when the window's check for updates button is pressed
-	void setCheckForUpdatesClickCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback that should be invoked when the window's admin button is pressed
-	void setAdminClickCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback that should be invoked when the window's detach button is pressed
-	void setDetachClickCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set a callback that should be invoked when the window's remove button is pressed
-	void setRemoveClickCallback (Widget::EventCallback callback, void *callbackData);
-
 	// Set the window's expand state, then execute any expand state change callback that might be configured unless shouldSkipStateChangeCallback is true
 	void setExpanded (bool expanded, bool shouldSkipStateChangeCallback = false);
+
+	// Return the screen extent rectangle for the window's remove button
+	Widget::Rectangle getRemoveButtonScreenRect ();
 
 	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
 	void syncRecordStore ();
@@ -87,13 +83,6 @@ public:
 
 	// Return a typecasted pointer to the provided widget, or NULL if the widget does not appear to be of the correct type
 	static ServerWindow *castWidget (Widget *widget);
-
-	// Callback functions
-	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
-	static void checkForUpdatesButtonClicked (void *windowPtr, Widget *widgetPtr);
-	static void adminButtonClicked (void *windowPtr, Widget *widgetPtr);
-	static void detachButtonClicked (void *windowPtr, Widget *widgetPtr);
-	static void removeButtonClicked (void *windowPtr, Widget *widgetPtr);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
@@ -106,8 +95,18 @@ protected:
 	void refreshLayout ();
 
 private:
+	// Callback functions
+	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
+	static void checkForUpdatesButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void adminButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void detachButtonClicked (void *windowPtr, Widget *widgetPtr);
+	static void removeButtonClicked (void *windowPtr, Widget *widgetPtr);
+
 	// Reset the visibility of window controls as appropriate for server state
 	void resetVisibility ();
+
+	// Reset the text shown by the name label, truncating it as needed to fit in its available space
+	void resetNameLabel ();
 
 	// Reset status icons to show the specified sprite and color
 	void setStatusIcons (int spriteType, int textString, const Color &color);
@@ -115,8 +114,10 @@ private:
 	Image *iconImage;
 	Label *nameLabel;
 	Label *descriptionLabel;
+	Panel *dividerPanel;
 	IconLabelWindow *statusIcon;
 	Image *unexpandedStatusIcon;
+	Image *authorizeIcon;
 	IconLabelWindow *storageIcon;
 	IconLabelWindow *mediaCountIcon;
 	IconLabelWindow *streamCountIcon;
@@ -127,18 +128,6 @@ private:
 	Button *adminButton;
 	Button *detachButton;
 	Button *removeButton;
-	Widget::EventCallback expandStateChangeCallback;
-	void *expandStateChangeCallbackData;
-	Widget::EventCallback statusChangeCallback;
-	void *statusChangeCallbackData;
-	Widget::EventCallback checkForUpdatesClickCallback;
-	void *checkForUpdatesClickCallbackData;
-	Widget::EventCallback adminClickCallback;
-	void *adminClickCallbackData;
-	Widget::EventCallback detachClickCallback;
-	void *detachClickCallbackData;
-	Widget::EventCallback removeClickCallback;
-	void *removeClickCallbackData;
 	int statusSpriteType;
 	int statusTextString;
 	Color statusColor;

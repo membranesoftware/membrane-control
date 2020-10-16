@@ -259,81 +259,63 @@ StdString Agent::getApplicationNewsUrl () {
 	return (App::getApplicationNewsUrl (StdString::createSprintf ("%s_%s_%s", version.c_str (), platform.c_str (), OsUtil::getEnvLanguage ("en").c_str ())));
 }
 
-StdString Agent::toPrefsJsonString () {
-	Json *obj;
-	StdString s;
+Json *Agent::createState () {
+	Json *state;
 
-	obj = new Json ();
-
-	obj->set (Agent::AgentIdKey, id);
+	state = new Json ();
+	state->set (Agent::AgentIdKey, id);
 	if (! invokeHostname.empty ()) {
-		obj->set (Agent::InvokeHostnameKey, invokeHostname);
+		state->set (Agent::InvokeHostnameKey, invokeHostname);
 	}
 	if (invokeTcpPort1 > 0) {
-		obj->set (Agent::InvokeTcpPort1Key, invokeTcpPort1);
+		state->set (Agent::InvokeTcpPort1Key, invokeTcpPort1);
 	}
 	if (invokeTcpPort2 > 0) {
-		obj->set (Agent::InvokeTcpPort2Key, invokeTcpPort2);
+		state->set (Agent::InvokeTcpPort2Key, invokeTcpPort2);
 	}
 	if (! linkPath.empty ()) {
-		obj->set (Agent::LinkPathKey, linkPath);
+		state->set (Agent::LinkPathKey, linkPath);
 	}
 	if (! displayName.empty ()) {
-		obj->set (Agent::DisplayNameKey, displayName);
+		state->set (Agent::DisplayNameKey, displayName);
 	}
 	if (! applicationName.empty ()) {
-		obj->set (Agent::ApplicationNameKey, applicationName);
+		state->set (Agent::ApplicationNameKey, applicationName);
 	}
 	if (serverType >= 0) {
-		obj->set (Agent::ServerTypeKey, serverType);
+		state->set (Agent::ServerTypeKey, serverType);
 	}
 	if (! urlHostname.empty ()) {
-		obj->set (Agent::UrlHostnameKey, urlHostname);
+		state->set (Agent::UrlHostnameKey, urlHostname);
 	}
 	if (tcpPort1 > 0) {
-		obj->set (Agent::TcpPort1Key, tcpPort1);
+		state->set (Agent::TcpPort1Key, tcpPort1);
 	}
 	if (tcpPort2 > 0) {
-		obj->set (Agent::TcpPort2Key, tcpPort2);
+		state->set (Agent::TcpPort2Key, tcpPort2);
 	}
-	obj->set (Agent::IsAttachedKey, isAttached);
+	state->set (Agent::IsAttachedKey, isAttached);
 
-	s = obj->toString ();
-	delete (obj);
-
-	return (s);
+	return (state);
 }
 
-int Agent::readPrefsJson (const StdString &prefsJson) {
-	Json *obj;
-	int result;
-
-	obj = new Json ();
-	result = Result::Success;
-	if (! obj->parse (prefsJson)) {
-		result = Result::JsonParseFailedError;
-	}
-	else {
-		id = obj->getString (Agent::AgentIdKey, "");
-		if (id.empty ()) {
-			result = Result::MalformedDataError;
-		}
+int Agent::readState (Json *state) {
+	id = state->getString (Agent::AgentIdKey, "");
+	if (id.empty ()) {
+		return (Result::MalformedDataError);
 	}
 
-	if (result == Result::Success) {
-		isAttached = obj->getBoolean (Agent::IsAttachedKey, false);
-		invokeHostname = obj->getString (Agent::InvokeHostnameKey, "");
-		invokeTcpPort1 = obj->getNumber (Agent::InvokeTcpPort1Key, (int) 0);
-		invokeTcpPort2 = obj->getNumber (Agent::InvokeTcpPort2Key, (int) 0);
-		linkPath = obj->getString (Agent::LinkPathKey, "");
-		displayName = obj->getString (Agent::DisplayNameKey, "");
-		applicationName = obj->getString (Agent::ApplicationNameKey, "");
-		serverType = obj->getNumber (Agent::ServerTypeKey, (int) -1);
-		urlHostname = obj->getString (Agent::UrlHostnameKey, "");
-		tcpPort1 = obj->getNumber (Agent::TcpPort1Key, (int) 0);
-		tcpPort2 = obj->getNumber (Agent::TcpPort2Key, (int) 0);
-	}
-	delete (obj);
+	isAttached = state->getBoolean (Agent::IsAttachedKey, false);
+	invokeHostname = state->getString (Agent::InvokeHostnameKey, "");
+	invokeTcpPort1 = state->getNumber (Agent::InvokeTcpPort1Key, (int) 0);
+	invokeTcpPort2 = state->getNumber (Agent::InvokeTcpPort2Key, (int) 0);
+	linkPath = state->getString (Agent::LinkPathKey, "");
+	displayName = state->getString (Agent::DisplayNameKey, "");
+	applicationName = state->getString (Agent::ApplicationNameKey, "");
+	serverType = state->getNumber (Agent::ServerTypeKey, (int) -1);
+	urlHostname = state->getString (Agent::UrlHostnameKey, "");
+	tcpPort1 = state->getNumber (Agent::TcpPort1Key, (int) 0);
+	tcpPort2 = state->getNumber (Agent::TcpPort2Key, (int) 0);
 
-	return (result);
+	return (Result::Success);
 }

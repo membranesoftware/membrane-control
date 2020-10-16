@@ -60,8 +60,8 @@ SliderWindow::SliderWindow (Slider *slider)
 	addWidget (slider);
 	valueLabel = (Label *) addWidget (new Label (StdString::createSprintf ("%.2f", slider->value), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
 
-	slider->setValueChangeCallback (SliderWindow::sliderValueChanged, this);
-	slider->setValueHoverCallback (SliderWindow::sliderValueHovered, this);
+	slider->valueChangeCallback = Widget::EventCallbackContext (SliderWindow::sliderValueChanged, this);
+	slider->valueHoverCallback = Widget::EventCallbackContext (SliderWindow::sliderValueHovered, this);
 
 	refreshLayout ();
 }
@@ -147,6 +147,15 @@ void SliderWindow::setValueNameFunction (SliderWindow::ValueNameFunction fn) {
 void SliderWindow::setValue (float sliderValue, bool shouldSkipChangeCallback) {
 	slider->setValue (sliderValue, shouldSkipChangeCallback);
 	value = slider->value;
+	if (shouldSkipChangeCallback) {
+		if (valueNameFunction) {
+			valueLabel->setText (valueNameFunction (slider->value));
+		}
+		else {
+			valueLabel->setText (StdString::createSprintf ("%.2f", slider->value));
+		}
+		refreshLayout ();
+	}
 }
 
 void SliderWindow::setTrackWidthScale (float scale) {
@@ -172,11 +181,11 @@ void SliderWindow::sliderValueChanged (void *windowPtr, Widget *widgetPtr) {
 	else {
 		window->valueLabel->setText (StdString::createSprintf ("%.2f", slider->value));
 	}
+	window->refreshLayout ();
 
 	if (window->valueChangeCallback.callback) {
 		window->valueChangeCallback.callback (window->valueChangeCallback.callbackData, window);
 	}
-	window->refreshLayout ();
 }
 
 void SliderWindow::sliderValueHovered (void *windowPtr, Widget *widgetPtr) {

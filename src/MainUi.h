@@ -39,52 +39,46 @@
 #include "HashMap.h"
 #include "SequenceList.h"
 #include "WidgetHandle.h"
-#include "CardView.h"
 #include "HelpWindow.h"
 #include "Ui.h"
 
 class MainUi : public Ui {
 public:
-	static const int uiLaunchWindowTypes[];
-	static const StdString announcementIconType;
-	static const StdString updateIconType;
-	static const StdString textMessageIconType;
-	static const StdString videoMessageIconType;
-	static const StdString openUrlActionType;
-	static const StdString helpActionType;
+	static const int UiLaunchWindowTypes[];
+	static const StdString AnnouncementIconType;
+	static const StdString UpdateIconType;
+	static const StdString TextMessageIconType;
+	static const StdString VideoMessageIconType;
+	static const StdString OpenUrlActionType;
+	static const StdString HelpActionType;
 
-	// Constants to use for sprite indexes
+	// Sprite indexes
 	enum {
 		UiIconSprite = 0,
-		OpenButtonSprite = 1,
+		ConnectionIconSprite = 1,
 		TextMessageIconSprite = 2,
 		VideoMessageIconSprite = 3,
 		AnnouncementIconSprite = 4,
 		NextItemButtonSprite = 5,
-		UpdateIconSprite = 6,
-		ConnectionIconSprite = 7
+		UpdateIconSprite = 6
 	};
 
-	// Constants to use for card view row numbers
+	// Card view row numbers
 	enum {
 		UnexpandedUiRow = 0,
 		ExpandedUiRow = 1
 	};
+
+	// Prefs keys
+	static const char *ExpandedUiTypesKey;
+	static const char *ShortcutUiTypeKey;
+	static const char *ApplicationNewsItemsKey;
 
 	MainUi ();
 	~MainUi ();
 
 	// Set fields in the provided HelpWindow widget as appropriate for the UI's help content
 	void setHelpWindowContent (HelpWindow *helpWindow);
-
-	// Callback functions
-	static void appendExpandedUiType (void *stringListPtr, Widget *widgetPtr);
-	static void helpActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void uiExpandStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void uiOpenClicked (void *uiPtr, Widget *widgetPtr);
-	static void nextBannerButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void getApplicationNewsComplete (void *uiPtr, const StdString &targetUrl, int statusCode, SharedBuffer *responseData);
-	static void openUrlActionClicked (void *uiPtr, Widget *widgetPtr);
 
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
@@ -105,9 +99,6 @@ protected:
 	// Remove and destroy any subclass-specific popup widgets that have been created by the UI
 	void doClearPopupWidgets ();
 
-	// Execute subclass-specific operations to refresh the interface's layout as appropriate for the current set of UiConfiguration values
-	void doRefresh ();
-
 	// Update subclass-specific interface state as appropriate when the Ui becomes inactive
 	void doPause ();
 
@@ -124,6 +115,15 @@ protected:
 	void doSyncRecordStore ();
 
 private:
+	// Callback functions
+	static void appendExpandedUiType (void *stringListPtr, Widget *widgetPtr);
+	static void helpActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void uiExpandStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void uiOpenClicked (void *uiPtr, Widget *widgetPtr);
+	static void nextBannerButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void getApplicationNewsComplete (void *uiPtr, const StdString &targetUrl, int statusCode, SharedBuffer *responseData);
+	static void openUrlActionClicked (void *uiPtr, Widget *widgetPtr);
+
 	struct Banner {
 		StdString messageText;
 		StdString iconType;
@@ -142,7 +142,6 @@ private:
 	std::map<StdString, Widget::EventCallback> bannerActionCallbackMap;
 	SequenceList<MainUi::Banner> bannerList;
 	MainUi::Banner activeBanner;
-	CardView *cardView;
 	WidgetHandle bannerWindow;
 	WidgetHandle bannerActionButton;
 	int bannerClock;

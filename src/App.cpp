@@ -48,15 +48,15 @@
 #include "MainUi.h"
 #include "App.h"
 
-const int App::defaultMinFrameDelay = 20;
-const int App::windowWidths[] = { 768, 1024, 1280, 1600, 1920 };
-const int App::windowHeights[] = { 432, 576, 720, 900, 1080 };
-const int App::windowSizeCount = 5;
-const float App::fontScales[] = { 0.66f, 0.8f, 1.0f, 1.25f, 1.5f };
-const int App::fontScaleCount = 5;
-const int App::maxCornerRadius = 16;
-const StdString App::serverUrl = StdString ("https://membranesoftware.com/");
-const int64_t App::defaultServerTimeout = 180;
+const int App::DefaultMinFrameDelay = 20;
+const int App::WindowWidths[] = { 768, 1024, 1280, 1600, 1920 };
+const int App::WindowHeights[] = { 432, 576, 720, 900, 1080 };
+const int App::WindowSizeCount = 5;
+const float App::FontScales[] = { 0.66f, 0.8f, 1.0f, 1.25f, 1.5f };
+const int App::FontScaleCount = 5;
+const int App::MaxCornerRadius = 16;
+const StdString App::ServerUrl = StdString ("https://membranesoftware.com/");
+const int64_t App::DefaultServerTimeout = 180;
 
 const char *App::NetworkThreadsKey = "NetworkThreads";
 const char *App::WindowWidthKey = "WindowWidth";
@@ -66,37 +66,7 @@ const char *App::HttpsKey = "Https";
 const char *App::ShowInterfaceAnimationsKey = "ShowInterfaceAnimations";
 const char *App::ShowClockKey = "ShowClock";
 const char *App::IsFirstLaunchCompleteKey = "IsFirstLaunchComplete";
-const char *App::AgentStatusKey = "AgentStatus";
-const char *App::StoredCommandsKey = "StoredCommands";
-const char *App::MonitorImageSizeKey = "Monitor_ImageSize";
-const char *App::ServerAdminSecretsKey = "ServerAdminSecrets";
 const char *App::ServerTimeoutKey = "ServerTimeout";
-const char *App::ServerUiUnexpandedAgentsKey = "Server_UnexpandedAgents";
-const char *App::WebKioskUiSelectedAgentsKey = "WebKiosk_SelectedAgents";
-const char *App::WebKioskUiExpandedAgentsKey = "WebKiosk_ExpandedAgents";
-const char *App::WebKioskUiPlaylistsKey = "WebKiosk_Playlists";
-const char *App::MainUiExpandedUiTypesKey = "Main_ExpandedUiTypes";
-const char *App::MainUiApplicationNewsItemsKey = "Main_ApplicationNewsItems";
-const char *App::MediaUiImageSizeKey = "Media_ImageSize";
-const char *App::MediaUiSortOrderKey = "Media_SortOrder";
-const char *App::MediaUiSelectedAgentsKey = "Media_SelectedAgents";
-const char *App::MediaUiExpandedAgentsKey = "Media_ExpandedAgents";
-const char *App::MediaUiPlaylistsKey = "Media_Playlists";
-const char *App::MediaUiToolbarModeKey = "Media_ToolbarMode";
-const char *App::MediaItemUiVideoQualityKey = "MediaItem_VideoQuality";
-const char *App::MediaUiVideoQualityKey = "Media_VideoQuality";
-const char *App::MediaUiShowMediaWithoutStreamsKey = "Media_ShowWithoutStreams";
-const char *App::MediaItemUiImageSizeKey = "MediaItem_ImageSize";
-const char *App::StreamItemUiImageSizeKey = "StreamItem_ImageSize";
-const char *App::MonitorCacheUiImageSizeKey = "MonitorCache_ImageSize";
-const char *App::MonitorCacheUiExpandedAgentKey = "MonitorCache_ExpandedAgent";
-const char *App::MonitorCacheUiStartPositionKey = "MonitorCache_StartPosition";
-const char *App::MonitorCacheUiPlayDurationKey = "MonitorCache_PlayDuration";
-const char *App::CameraUiSelectedAgentsKey = "Camera_SelectedAgents";
-const char *App::CameraUiExpandedAgentsKey = "Camera_ExpandedAgents";
-const char *App::CameraUiImageSizeKey = "Camera_ImageSize";
-const char *App::CameraUiAutoReloadKey = "Camera_AutoReload";
-const char *App::CameraTimelineUiImageSizeKey = "CameraTimeline_ImageSize";
 
 App *App::instance = NULL;
 
@@ -120,13 +90,10 @@ App::App ()
 : shouldRefreshUi (false)
 , shouldSyncRecordStore (false)
 , isInterfaceAnimationEnabled (false)
+, isMainToolbarClockEnabled (false)
 , nextFontScale (1.0f)
 , nextWindowWidth (0)
 , nextWindowHeight (0)
-#if ENABLE_TEST_KEYS
-, isUiPaused (false)
-, isUiPauseKeyPressed (false)
-#endif
 , isShuttingDown (false)
 , isShutdown (false)
 , startTime (0)
@@ -140,8 +107,8 @@ App::App ()
 , displayVdpi (0.0f)
 , windowWidth (0)
 , windowHeight (0)
-, minDrawFrameDelay (App::defaultMinFrameDelay)
-, minUpdateFrameDelay (App::defaultMinFrameDelay)
+, minDrawFrameDelay (0)
+, minUpdateFrameDelay (0)
 , fontScale (1.0f)
 , imageScale (0)
 , drawCount (0)
@@ -150,6 +117,7 @@ App::App ()
 , updateThread (NULL)
 , uniqueIdMutex (NULL)
 , nextUniqueId (1)
+, prefsMapMutex (NULL)
 , roundedCornerSprite (NULL)
 , renderTaskMutex (NULL)
 , isSuspendingUpdate (false)
@@ -165,6 +133,7 @@ App::App ()
 , backgroundCrossFadeAlpha (0.0f)
 {
 	uniqueIdMutex = SDL_CreateMutex ();
+	prefsMapMutex = SDL_CreateMutex ();
 	renderTaskMutex = SDL_CreateMutex ();
 	updateMutex = SDL_CreateMutex ();
 	updateCond = SDL_CreateCond ();
@@ -185,6 +154,11 @@ App::~App () {
 	if (uniqueIdMutex) {
 		SDL_DestroyMutex (uniqueIdMutex);
 		uniqueIdMutex = NULL;
+	}
+
+	if (prefsMapMutex) {
+		SDL_DestroyMutex (prefsMapMutex);
+		prefsMapMutex = NULL;
 	}
 
 	if (renderTaskMutex) {
@@ -216,8 +190,8 @@ int App::getImageScale (int w, int h) {
 	}
 
 	result = 0;
-	for (i = 0; i < App::windowSizeCount; ++i) {
-		if (w >= App::windowWidths[i]) {
+	for (i = 0; i < App::WindowSizeCount; ++i) {
+		if (w >= App::WindowWidths[i]) {
 			result = i;
 		}
 	}
@@ -234,6 +208,12 @@ int App::run () {
 	double fps;
 	Ui *ui;
 
+	if (minDrawFrameDelay <= 0) {
+		minDrawFrameDelay = App::DefaultMinFrameDelay;
+	}
+	if (minUpdateFrameDelay <= 0) {
+		minUpdateFrameDelay = App::DefaultMinFrameDelay;
+	}
 	prng.seed ((uint32_t) (OsUtil::getTime () & 0xFFFFFFFF));
 	prefsMap.clear ();
 	if (prefsPath.empty ()) {
@@ -265,7 +245,7 @@ int App::run () {
 		return (result);
 	}
 
-	result = uiText.load (OsUtil::getEnvLanguage (UiText::defaultLanguage));
+	result = uiText.load (OsUtil::getEnvLanguage (UiText::DefaultLanguage));
 	if (result != Result::Success) {
 		Log::err ("Failed to load text resources; err=%i", result);
 		return (result);
@@ -278,7 +258,7 @@ int App::run () {
 	}
 
 	network.httpUserAgent.sprintf ("Membrane Control/%s_%s", BUILD_ID, PLATFORM_ID);
-	result = network.start (prefsMap.find (App::NetworkThreadsKey, Network::defaultRequestThreadCount));
+	result = network.start (prefsMap.find (App::NetworkThreadsKey, Network::DefaultRequestThreadCount));
 	if (result != Result::Success) {
 		Log::err ("Failed to acquire application network resources; err=%i", result);
 		return (result);
@@ -309,17 +289,17 @@ int App::run () {
 	imageScale = getImageScale (windowWidth, windowHeight);
 	if (imageScale < 0) {
 		imageScale = 0;
-		windowWidth = App::windowWidths[0];
-		windowHeight = App::windowHeights[0];
+		windowWidth = App::WindowWidths[0];
+		windowHeight = App::WindowHeights[0];
 		result = SDL_GetDisplayUsableBounds (0, &rect);
 		if (result != 0) {
 			Log::warning ("Failed to determine display usable bounds: %s", SDL_GetError ());
 		}
 		else {
-			for (i = 0; i < App::windowSizeCount; ++i) {
-				if ((rect.w >= App::windowWidths[i]) && (rect.h >= App::windowHeights[i])) {
-					windowWidth = App::windowWidths[i];
-					windowHeight = App::windowHeights[i];
+			for (i = 0; i < App::WindowSizeCount; ++i) {
+				if ((rect.w >= App::WindowWidths[i]) && (rect.h >= App::WindowHeights[i])) {
+					windowWidth = App::WindowWidths[i];
+					windowHeight = App::WindowHeights[i];
 				}
 			}
 			imageScale = getImageScale (windowWidth, windowHeight);
@@ -344,6 +324,7 @@ int App::run () {
 	if (isTextureRenderEnabled) {
 		isInterfaceAnimationEnabled = prefsMap.find (App::ShowInterfaceAnimationsKey, true);
 	}
+	isMainToolbarClockEnabled = prefsMap.find (App::ShowClockKey, false);
 
 	clipRect.x = 0;
 	clipRect.y = 0;
@@ -352,13 +333,13 @@ int App::run () {
 	nextWindowWidth = windowWidth;
 	nextWindowHeight = windowHeight;
 
-	i = prefsMap.find (App::FontScaleKey, App::fontScaleCount / 2);
-	if ((i >= 0) && (i < App::fontScaleCount)) {
-		fontScale = App::fontScales[i];
+	i = prefsMap.find (App::FontScaleKey, App::FontScaleCount / 2);
+	if ((i >= 0) && (i < App::FontScaleCount)) {
+		fontScale = App::FontScales[i];
 		nextFontScale = fontScale;
 	}
 
-	SDL_SetWindowTitle (window, uiText.getText (UiTextString::windowTitle).c_str ());
+	SDL_SetWindowTitle (window, uiText.getText (UiTextString::WindowTitle).c_str ());
 
 	startTime = OsUtil::getTime ();
 	uiConfig.resetScale ();
@@ -378,7 +359,7 @@ int App::run () {
 
 	SDL_VERSION (&version1);
 	SDL_GetVersion (&version2);
-	Log::info ("Application started; buildId=\"%s\" sdlBuildVersion=%i.%i.%i sdlLinkVersion=%i.%i.%i windowSize=%ix%i windowFlags=0x%x renderFlags=0x%x isTextureRenderEnabled=%s diagonalDpi=%.2f horizontalDpi=%.2f verticalDpi=%.2f imageScale=%i minDrawFrameDelay=%i minUpdateFrameDelay=%i lang=%s", BUILD_ID, version1.major, version1.minor, version1.patch, version2.major, version2.minor, version2.patch, windowWidth, windowHeight, (unsigned int) SDL_GetWindowFlags (window), (unsigned int) renderinfo.flags, BOOL_STRING (isTextureRenderEnabled), displayDdpi, displayHdpi, displayVdpi, imageScale, minDrawFrameDelay, minUpdateFrameDelay, OsUtil::getEnvLanguage ("").c_str ());
+	Log::info ("Application started; buildId=\"%s\" sdlBuildVersion=%i.%i.%i sdlLinkVersion=%i.%i.%i windowSize=%ix%i windowFlags=0x%x renderFlags=0x%x isTextureRenderEnabled=%s diagonalDpi=%.2f horizontalDpi=%.2f verticalDpi=%.2f imageScale=%i minDrawFrameDelay=%i minUpdateFrameDelay=%i lang=%s pid=%i", BUILD_ID, version1.major, version1.minor, version1.patch, version2.major, version2.minor, version2.patch, windowWidth, windowHeight, (unsigned int) SDL_GetWindowFlags (window), (unsigned int) renderinfo.flags, BOOL_STRING (isTextureRenderEnabled), displayDdpi, displayHdpi, displayVdpi, imageScale, minDrawFrameDelay, minUpdateFrameDelay, OsUtil::getEnvLanguage ("").c_str (), OsUtil::getProcessId ());
 
 	while (true) {
 		if (isShutdown) {
@@ -387,20 +368,6 @@ int App::run () {
 
 		t1 = OsUtil::getTime ();
 		input.pollEvents ();
-#if ENABLE_TEST_KEYS
-		if (! isUiPauseKeyPressed) {
-			if (input.isKeyDown (SDLK_p) && input.isControlDown ()) {
-				isUiPaused = (! isUiPaused);
-				isUiPauseKeyPressed = true;
-				Log::info ("Application pause key pressed; isUiPaused=%s", BOOL_STRING (isUiPaused));
-			}
-		}
-		else {
-			if (!(input.isKeyDown (SDLK_p) && input.isControlDown ())) {
-				isUiPauseKeyPressed = false;
-			}
-		}
-#endif
 
 		if (! FLOAT_EQUALS (fontScale, nextFontScale)) {
 			if (uiConfig.reloadFonts (nextFontScale) != Result::Success) {
@@ -409,9 +376,11 @@ int App::run () {
 			else {
 				shouldRefreshUi = true;
 				fontScale = nextFontScale;
-				for (i = 0; i < App::fontScaleCount; ++i) {
-					if (FLOAT_EQUALS (fontScale, App::fontScales[i])) {
+				for (i = 0; i < App::FontScaleCount; ++i) {
+					if (FLOAT_EQUALS (fontScale, App::FontScales[i])) {
+						SDL_LockMutex (prefsMapMutex);
 						prefsMap.insert (App::FontScaleKey, i);
+						SDL_UnlockMutex (prefsMapMutex);
 						break;
 					}
 				}
@@ -459,7 +428,7 @@ int App::run () {
 	resource.compact ();
 	resource.close ();
 
-	writePrefsMap ();
+	writePrefs ();
 
 	SDL_DestroyRenderer (render);
 	render = NULL;
@@ -472,7 +441,7 @@ int App::run () {
 	if (elapsed > 1000) {
 		fps /= ((double) elapsed) / 1000.0f;
 	}
-	Log::info ("Application ended; updateCount=%lli drawCount=%lli runtime=%.3fs FPS=%f", (long long) updateCount, (long long) drawCount, ((double) elapsed) / 1000.0f, fps);
+	Log::info ("Application ended; updateCount=%lli drawCount=%lli runtime=%.3fs FPS=%f pid=%i", (long long) updateCount, (long long) drawCount, ((double) elapsed) / 1000.0f, fps, OsUtil::getProcessId ());
 
 	return (Result::Success);
 }
@@ -483,7 +452,7 @@ void App::populateWidgets () {
 		rootPanel->retain ();
 		rootPanel->id = getUniqueId ();
 		rootPanel->setFixedSize (true, windowWidth, windowHeight);
-		rootPanel->setKeyEventCallback (App::keyEvent, NULL);
+		rootPanel->keyEventCallback = Widget::KeyEventCallbackContext (App::keyEvent, NULL);
 	}
 	uiStack.populateWidgets ();
 }
@@ -516,7 +485,7 @@ void App::populateRoundedCornerSprite () {
 	minalpha = 0.1f;
 	opacity = 8.0f;
 	radius = 1;
-	while (radius <= App::maxCornerRadius) {
+	while (radius <= App::MaxCornerRadius) {
 		w = (radius * 2) + 1;
 		h = (radius * 2) + 1;
 		pixels = (Uint32 *) malloc (w * h * sizeof (Uint32));
@@ -582,7 +551,7 @@ void App::populateRoundedCornerSprite () {
 }
 
 SDL_Texture *App::getRoundedCornerTexture (int radius, int *textureWidth, int *textureHeight) {
-	if ((radius <= 0) || (radius > App::maxCornerRadius)) {
+	if ((radius <= 0) || (radius > App::MaxCornerRadius)) {
 		return (NULL);
 	}
 
@@ -604,6 +573,16 @@ void App::shutdown () {
 	}
 	agentControl.stop ();
 	network.stop ();
+	input.stop ();
+}
+
+HashMap *App::lockPrefs () {
+	SDL_LockMutex (prefsMapMutex);
+	return (&prefsMap);
+}
+
+void App::unlockPrefs () {
+	SDL_UnlockMutex (prefsMapMutex);
 }
 
 void App::datagramReceived (void *callbackData, const char *messageData, int messageLength, const char *sourceAddress, int sourcePort) {
@@ -780,7 +759,7 @@ void App::update (int msElapsed) {
 	}
 	rootPanel->update (msElapsed, 0.0f, 0.0f);
 
-	writePrefsMap ();
+	writePrefs ();
 	++updateCount;
 
 	SDL_LockMutex (updateMutex);
@@ -848,26 +827,22 @@ void App::unsuspendUpdate () {
 	SDL_UnlockMutex (updateMutex);
 }
 
-void App::pushClipRect (const SDL_Rect *rect) {
+void App::pushClipRect (const SDL_Rect *rect, bool disableIntersection) {
 	int x, y, w, h, diff;
 
-	if (clipRectStack.empty ()) {
-		clipRect = *rect;
-	}
-	else {
-		x = rect->x;
-		y = rect->y;
-		w = rect->w;
-		h = rect->h;
-
+	x = rect->x;
+	y = rect->y;
+	w = rect->w;
+	h = rect->h;
+	if ((! clipRectStack.empty ()) && (! disableIntersection)) {
 		diff = x - clipRect.x;
 		if (diff < 0) {
-			w -= diff;
+			w += diff;
 			x = clipRect.x;
 		}
 		diff = y - clipRect.y;
 		if (diff < 0) {
-			h -= diff;
+			h += diff;
 			y = clipRect.y;
 		}
 		diff = (x + w) - (clipRect.x + clipRect.w);
@@ -885,12 +860,12 @@ void App::pushClipRect (const SDL_Rect *rect) {
 		if (h < 0) {
 			h = 0;
 		}
-
-		clipRect.x = x;
-		clipRect.y = y;
-		clipRect.w = w;
-		clipRect.h = h;
 	}
+
+	clipRect.x = x;
+	clipRect.y = y;
+	clipRect.w = w;
+	clipRect.h = h;
 	SDL_RenderSetClipRect (render, &clipRect);
 	clipRectStack.push (clipRect);
 }
@@ -936,13 +911,14 @@ void App::addRenderTask (RenderTaskFunction fn, void *fnData) {
 	SDL_UnlockMutex (renderTaskMutex);
 }
 
-void App::writePrefsMap () {
+void App::writePrefs () {
 	int result;
 
 	if (isPrefsWriteDisabled) {
 		return;
 	}
 
+	SDL_LockMutex (prefsMapMutex);
 	if (prefsMap.isWriteDirty) {
 		result = prefsMap.write (prefsPath);
 		if (result != Result::Success) {
@@ -950,6 +926,7 @@ void App::writePrefsMap () {
 			isPrefsWriteDisabled = true;
 		}
 	}
+	SDL_UnlockMutex (prefsMapMutex);
 }
 
 void App::resizeWindow () {
@@ -990,21 +967,23 @@ void App::resizeWindow () {
 	shouldRefreshUi = true;
 	unsuspendUpdate ();
 
+	SDL_LockMutex (prefsMapMutex);
 	prefsMap.insert (App::WindowWidthKey, windowWidth);
 	prefsMap.insert (App::WindowHeightKey, windowHeight);
+	SDL_UnlockMutex (prefsMapMutex);
 }
 
 int App::getRandomInt (int i1, int i2) {
 	return (prng.getRandomValue (i1, i2));
 }
 
-const char RANDOM_STRING_CHARS[] = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
+static const char getRandomString_chars[] = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
 StdString App::getRandomString (int stringLength) {
 	StdString s;
 	int i;
 
 	for (i = 0; i < stringLength; ++i) {
-		s.append (1, RANDOM_STRING_CHARS[getRandomInt (0, sizeof (RANDOM_STRING_CHARS) - 1)]);
+		s.append (1, getRandomString_chars[getRandomInt (0, sizeof (getRandomString_chars) - 1)]);
 	}
 
 	return (s);
@@ -1094,9 +1073,7 @@ SystemInterface::Prefix App::createCommandPrefix () {
 	SystemInterface::Prefix prefix;
 
 	prefix.createTime = OsUtil::getTime ();
-	prefix.agentId.assign (agentControl.agentId);
-
-	// TODO: Possibly assign values to these fields
+	prefix.agentId.assign ("");
 	prefix.userId.assign ("");
 	prefix.priority = 0;
 	prefix.startTime = 0;
@@ -1106,7 +1083,7 @@ SystemInterface::Prefix App::createCommandPrefix () {
 }
 
 StdString App::getHelpUrl (const StdString &topicId) {
-	return (StdString::createSprintf ("%si/%s", App::serverUrl.c_str (), topicId.urlEncoded ().c_str ()));
+	return (StdString::createSprintf ("%si/%s", App::ServerUrl.c_str (), topicId.urlEncoded ().c_str ()));
 }
 
 StdString App::getHelpUrl (const char *topicId) {
@@ -1114,41 +1091,71 @@ StdString App::getHelpUrl (const char *topicId) {
 }
 
 StdString App::getApplicationUrl (const StdString &applicationId) {
-	return (StdString::createSprintf ("%s%s", App::serverUrl.c_str (), applicationId.urlEncoded ().c_str ()));
+	return (StdString::createSprintf ("%s%s", App::ServerUrl.c_str (), applicationId.urlEncoded ().c_str ()));
 }
 
 StdString App::getFeatureUrl (const StdString &featureId) {
-	return (StdString::createSprintf ("%sfeature/%s", App::serverUrl.c_str (), featureId.urlEncoded ().c_str ()));
+	return (StdString::createSprintf ("%sfeature/%s", App::ServerUrl.c_str (), featureId.urlEncoded ().c_str ()));
 }
 
 StdString App::getFeedbackUrl (bool shouldIncludeVersion) {
 	if (! shouldIncludeVersion) {
-		return (StdString::createSprintf ("%scontact", App::serverUrl.c_str ()));
+		return (StdString::createSprintf ("%scontact", App::ServerUrl.c_str ()));
 	}
 
-	return (StdString::createSprintf ("%scontact/%s", App::serverUrl.c_str (), StdString (BUILD_ID).urlEncoded ().c_str ()));
+	return (StdString::createSprintf ("%scontact/%s", App::ServerUrl.c_str (), StdString (BUILD_ID).urlEncoded ().c_str ()));
 }
 
 StdString App::getUpdateUrl (const StdString &applicationId) {
 	if (! applicationId.empty ()) {
-		return (StdString::createSprintf ("%supdate/%s", App::serverUrl.c_str (), applicationId.urlEncoded ().c_str ()));
+		return (StdString::createSprintf ("%supdate/%s", App::ServerUrl.c_str (), applicationId.urlEncoded ().c_str ()));
 	}
 
-	return (StdString::createSprintf ("%supdate/%s_%s", App::serverUrl.c_str (), StdString (BUILD_ID).urlEncoded ().c_str (), StdString (PLATFORM_ID).urlEncoded ().c_str ()));
+	return (StdString::createSprintf ("%supdate/%s_%s", App::ServerUrl.c_str (), StdString (BUILD_ID).urlEncoded ().c_str (), StdString (PLATFORM_ID).urlEncoded ().c_str ()));
 }
 
 bool App::isUpdateUrl (const StdString &url) {
-	return (url.startsWith (StdString::createSprintf ("%supdate/", App::serverUrl.c_str ())));
+	return (url.startsWith (StdString::createSprintf ("%supdate/", App::ServerUrl.c_str ())));
 }
 
 StdString App::getApplicationNewsUrl (const StdString &applicationId) {
 	if (! applicationId.empty ()) {
-		return (StdString::createSprintf ("%sapplication-news/%s", App::serverUrl.c_str (), applicationId.urlEncoded ().c_str ()));
+		return (StdString::createSprintf ("%sapplication-news/%s", App::ServerUrl.c_str (), applicationId.urlEncoded ().c_str ()));
 	}
 
-	return (StdString::createSprintf ("%sapplication-news/%s_%s_%s", App::serverUrl.c_str (), StdString (BUILD_ID).urlEncoded ().c_str (), StdString (PLATFORM_ID).urlEncoded ().c_str (), OsUtil::getEnvLanguage ("en").urlEncoded ().c_str ()));
+	return (StdString::createSprintf ("%sapplication-news/%s_%s_%s", App::ServerUrl.c_str (), StdString (BUILD_ID).urlEncoded ().c_str (), StdString (PLATFORM_ID).urlEncoded ().c_str (), OsUtil::getEnvLanguage ("en").urlEncoded ().c_str ()));
 }
 
 StdString App::getDonateUrl () {
-	return (StdString::createSprintf ("%scontribute", App::serverUrl.c_str ()));
+	return (StdString::createSprintf ("%scontribute", App::ServerUrl.c_str ()));
+}
+
+bool App::transferJsonListPrefs (HashMap *prefs, const char *prefsKey, JsonList *items) {
+	Json *state;
+	StringList s;
+	StringList::iterator i, end;
+	bool result;
+
+	prefs->find (prefsKey, &s);
+	if (s.empty ()) {
+		return (false);
+	}
+
+	result = false;
+	i = s.begin ();
+	end = s.end ();
+	while (i != end) {
+		state = new Json ();
+		if (state->parse (*i)) {
+			items->push_back (state);
+			result = true;
+		}
+		else {
+			delete (state);
+		}
+		++i;
+	}
+	prefs->remove (prefsKey);
+
+	return (result);
 }

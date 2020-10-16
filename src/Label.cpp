@@ -42,7 +42,8 @@
 #include "Widget.h"
 #include "Label.h"
 
-static const char OBSCURE_CHARACTER = '*';
+const char Label::ObscureCharacter = '*';
+const StdString Label::DotTruncateSuffix = StdString ("...");
 
 Label::Label (const StdString &text, int fontType, const Color &color)
 : Widget ()
@@ -101,6 +102,59 @@ float Label::getLinePosition (float targetY) {
 	y = targetY + maxLineHeight - maxCharacterHeight + descenderHeight;
 
 	return (y);
+}
+
+float Label::getCharacterPosition (int position) {
+	float x;
+	char *buf, c, lastc;
+	int textlen, i, kerning;
+	Font::Glyph *glyph;
+
+	if ((position <= 0) || (! textFont)) {
+		return (0.0f);
+	}
+	buf = (char *) text.c_str ();
+	textlen = (int) text.length ();
+	if (position >= textlen) {
+		x = width;
+		c = isObscured ? Label::ObscureCharacter : buf[textlen - 1];
+		x += textFont->getKerning (c, c);
+		if (x < (width + 2.0f)) {
+			x = width + 2.0f;
+		}
+		return (x);
+	}
+
+	lastc = 0;
+	x = 0.0f;
+	i = 0;
+	while (i < position) {
+		c = isObscured ? Label::ObscureCharacter : buf[i];
+		glyph = textFont->getGlyph (c);
+		if (i > 0) {
+			kerning = textFont->getKerning (lastc, c);
+			x += kerning;
+		}
+		lastc = c;
+
+		if (! glyph) {
+			if (i < (textlen - 1)) {
+				x += textFont->spaceWidth;
+			}
+		}
+		else {
+			if (i == (textlen - 1)) {
+				x += glyph->leftBearing;
+				x += glyph->width;
+			}
+			else {
+				x += glyph->advanceWidth;
+			}
+		}
+		++i;
+	}
+
+	return (x);
 }
 
 void Label::setUnderlined (bool enable) {
@@ -270,7 +324,7 @@ void Label::setText (const StdString &labelText, int fontType, bool forceFontRel
 	maxbearing = -1;
 	buf = (char *) text.c_str ();
 	for (i = 0; i < textlen; ++i) {
-		c = isObscured ? OBSCURE_CHARACTER : buf[i];
+		c = isObscured ? Label::ObscureCharacter : buf[i];
 		glyph = textFont->getGlyph (c);
 		glyphList.push_back (glyph);
 
@@ -310,7 +364,7 @@ void Label::setText (const StdString &labelText, int fontType, bool forceFontRel
 
 	maxh = 0;
 	for (i = 0; i < textlen; ++i) {
-		c = isObscured ? OBSCURE_CHARACTER : buf[i];
+		c = isObscured ? Label::ObscureCharacter : buf[i];
 		glyph = textFont->getGlyph (c);
 		if (glyph) {
 			h = maxGlyphTopBearing - glyph->topBearing + glyph->height;

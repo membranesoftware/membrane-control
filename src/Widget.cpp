@@ -39,7 +39,7 @@
 #include "UiConfiguration.h"
 #include "Widget.h"
 
-const int Widget::minZLevel = -10;
+const int Widget::MinZLevel = -10;
 
 Widget::Widget ()
 : id (0)
@@ -47,6 +47,7 @@ Widget::Widget ()
 , isVisible (true)
 , isTextureTargetDrawEnabled (true)
 , isInputSuspended (false)
+, isPanelSizeClipEnabled (false)
 , zLevel (0)
 , isMouseHoverEnabled (false)
 , classId (-1)
@@ -61,21 +62,6 @@ Widget::Widget ()
 , isFixedCenter (false)
 , isMouseEntered (false)
 , isMousePressed (false)
-, mouseEnterCallback (NULL)
-, mouseEnterCallbackData (NULL)
-, mouseExitCallback (NULL)
-, mouseExitCallbackData (NULL)
-, mousePressCallback (NULL)
-, mousePressCallbackData (NULL)
-, mouseReleaseCallback (NULL)
-, mouseReleaseCallbackData (NULL)
-, mouseClickCallback (NULL)
-, mouseClickCallbackData (NULL)
-, mouseLongPressCallback (NULL)
-, mouseLongPressCallbackData (NULL)
-, keyEventCallback (NULL)
-, keyEventCallbackData (NULL)
-, updateCallback (NULL)
 , refcount (0)
 , refcountMutex (NULL)
 {
@@ -135,11 +121,6 @@ void Widget::setMouseHoverTooltip (const StdString &text, int alignment) {
 void Widget::update (int msElapsed, float originX, float originY) {
 	float x, y;
 
-#if ENABLE_TEST_KEYS
-	if (App::instance->isUiPaused) {
-		return;
-	}
-#endif
 
 	if (destroyClock > 0) {
 		destroyClock -= msElapsed;
@@ -171,8 +152,8 @@ void Widget::update (int msElapsed, float originX, float originY) {
 		}
 	}
 
-	if (updateCallback) {
-		updateCallback (msElapsed, this);
+	if (updateCallback.callback) {
+		updateCallback.callback (updateCallback.callbackData, msElapsed, this);
 	}
 }
 
@@ -241,17 +222,12 @@ void Widget::setKeyFocus (bool enable) {
 }
 
 bool Widget::processKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown) {
-#if ENABLE_TEST_KEYS
-	if (App::instance->isUiPaused) {
-		return (false);
-	}
-#endif
 
 	if (isInputSuspended) {
 		return (false);
 	}
 
-	if (keyEventCallback && keyEventCallback (keyEventCallbackData, keycode, isShiftDown, isControlDown)) {
+	if (keyEventCallback.callback && keyEventCallback.callback (keyEventCallback.callbackData, keycode, isShiftDown, isControlDown)) {
 		return (true);
 	}
 
@@ -268,114 +244,70 @@ Widget *Widget::findWidget (float screenPositionX, float screenPositionY, bool r
 	return (NULL);
 }
 
-void Widget::processMouseState (const Widget::MouseState &mouseState) {
-#if ENABLE_TEST_KEYS
-	if (App::instance->isUiPaused) {
-		return;
-	}
-#endif
-
+bool Widget::processMouseState (const Widget::MouseState &mouseState) {
 	if (isInputSuspended) {
-		return;
+		return (false);
 	}
 
 	if (mouseState.isEntered) {
 		if (! isMouseEntered) {
 			isMouseEntered = true;
-			if (mouseEnterCallback) {
-				mouseEnterCallback (mouseEnterCallbackData, this);
+			if (mouseEnterCallback.callback) {
+				mouseEnterCallback.callback (mouseEnterCallback.callbackData, this);
 			}
 		}
 
 		if (mouseState.isLeftClicked) {
 			if (! isMousePressed) {
 				isMousePressed = true;
-				if (mousePressCallback) {
-					mousePressCallback (mousePressCallbackData, this);
+				if (mousePressCallback.callback) {
+					mousePressCallback.callback (mousePressCallback.callbackData, this);
 				}
 			}
 		}
 
 		if (isMousePressed && mouseState.isLeftClickReleased) {
 			isMousePressed = false;
-			if (mouseReleaseCallback) {
-				mouseReleaseCallback (mouseReleaseCallbackData, this);
+			if (mouseReleaseCallback.callback) {
+				mouseReleaseCallback.callback (mouseReleaseCallback.callbackData, this);
 			}
 
 			if (mouseState.isLeftClickEntered) {
-				if (mouseClickCallback) {
-					mouseClickCallback (mouseClickCallbackData, this);
+				if (mouseClickCallback.callback) {
+					mouseClickCallback.callback (mouseClickCallback.callbackData, this);
 				}
 			}
 		}
 
 		if (isMousePressed && mouseState.isLongPressed) {
-			if (mouseLongPressCallback) {
+			if (mouseLongPressCallback.callback) {
 				isMousePressed = false;
-				mouseLongPressCallback (mouseLongPressCallbackData, this);
+				mouseLongPressCallback.callback (mouseLongPressCallback.callbackData, this);
 			}
 		}
 	}
 	else {
 		if (isMousePressed) {
 			isMousePressed = false;
-			if (mouseReleaseCallback) {
-				mouseReleaseCallback (mouseReleaseCallbackData, this);
+			if (mouseReleaseCallback.callback) {
+				mouseReleaseCallback.callback (mouseReleaseCallback.callbackData, this);
 			}
 		}
 
 		if (isMouseEntered) {
 			isMouseEntered = false;
-			if (mouseExitCallback) {
-				mouseExitCallback (mouseExitCallbackData, this);
+			if (mouseExitCallback.callback) {
+				mouseExitCallback.callback (mouseExitCallback.callbackData, this);
 			}
 		}
 	}
 
-	doProcessMouseState (mouseState);
+	return (doProcessMouseState (mouseState));
 }
 
-void Widget::doProcessMouseState (const Widget::MouseState &mouseState) {
+bool Widget::doProcessMouseState (const Widget::MouseState &mouseState) {
 	// Default implementation does nothing
-}
-
-void Widget::setMouseEnterCallback (Widget::EventCallback fn, void *data) {
-	mouseEnterCallback = fn;
-	mouseEnterCallbackData = data;
-}
-
-void Widget::setMouseExitCallback (Widget::EventCallback fn, void *data) {
-	mouseExitCallback = fn;
-	mouseExitCallbackData = data;
-}
-
-void Widget::setMousePressCallback (Widget::EventCallback fn, void *data) {
-	mousePressCallback = fn;
-	mousePressCallbackData = data;
-}
-
-void Widget::setMouseReleaseCallback (Widget::EventCallback fn, void *data) {
-	mouseReleaseCallback = fn;
-	mouseReleaseCallbackData = data;
-}
-
-void Widget::setMouseClickCallback (Widget::EventCallback fn, void *data) {
-	mouseClickCallback = fn;
-	mouseClickCallbackData = data;
-}
-
-void Widget::setMouseLongPressCallback (Widget::EventCallback fn, void *data) {
-	mouseLongPressCallback = fn;
-	mouseLongPressCallbackData = data;
-}
-
-void Widget::setKeyEventCallback (Widget::KeyEventCallback fn, void *data) {
-	keyEventCallback = fn;
-	keyEventCallbackData = data;
-}
-
-void Widget::setUpdateCallback (Widget::UpdateCallback fn) {
-	updateCallback = fn;
+	return (false);
 }
 
 bool Widget::compareZLevel (Widget *first, Widget *second) {
@@ -383,32 +315,32 @@ bool Widget::compareZLevel (Widget *first, Widget *second) {
 }
 
 void Widget::mouseEnter () {
-	if (mouseEnterCallback) {
-		mouseEnterCallback (mouseEnterCallbackData, this);
+	if (mouseEnterCallback.callback) {
+		mouseEnterCallback.callback (mouseEnterCallback.callbackData, this);
 	}
 }
 
 void Widget::mouseExit () {
-	if (mouseExitCallback) {
-		mouseExitCallback (mouseExitCallbackData, this);
+	if (mouseExitCallback.callback) {
+		mouseExitCallback.callback (mouseExitCallback.callbackData, this);
 	}
 }
 
 void Widget::mousePress () {
-	if (mousePressCallback) {
-		mousePressCallback (mousePressCallbackData, this);
+	if (mousePressCallback.callback) {
+		mousePressCallback.callback (mousePressCallback.callbackData, this);
 	}
 }
 
 void Widget::mouseRelease () {
-	if (mouseReleaseCallback) {
-		mouseReleaseCallback (mouseReleaseCallbackData, this);
+	if (mouseReleaseCallback.callback) {
+		mouseReleaseCallback.callback (mouseReleaseCallback.callbackData, this);
 	}
 }
 
 void Widget::mouseClick () {
-	if (mouseClickCallback) {
-		mouseClickCallback (mouseClickCallbackData, this);
+	if (mouseClickCallback.callback) {
+		mouseClickCallback.callback (mouseClickCallback.callbackData, this);
 	}
 }
 
@@ -465,4 +397,17 @@ void Widget::flowLeft (float *positionX) {
 
 void Widget::centerVertical (float topExtent, float bottomExtent) {
 	position.assignY (topExtent + ((bottomExtent - topExtent) / 2.0f) - (height / 2.0f));
+}
+
+Widget::Rectangle Widget::getScreenRect () {
+	Widget::Rectangle rect;
+
+	if (hasScreenPosition) {
+		rect.x = screenX;
+		rect.y = screenY;
+		rect.w = width;
+		rect.h = height;
+	}
+
+	return (rect);
 }

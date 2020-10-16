@@ -45,7 +45,7 @@
 
 class MonitorWindow : public Panel {
 public:
-	static const float screenshotImageScale; // portion of total window width, from 0.0f to 1.0f
+	static const float ScreenshotImageScale; // portion of total window width, from 0.0f to 1.0f
 
 	MonitorWindow (const StdString &agentId);
 	virtual ~MonitorWindow ();
@@ -77,7 +77,7 @@ public:
 	void setStorageDisplayEnabled (bool enable);
 
 	// Add an action button to the window
-	void addActionButton (Sprite *sprite, Widget::EventCallback clickCallback = NULL, void *clickCallbackData = NULL, const StdString &tooltipText = StdString (""));
+	void addActionButton (Sprite *sprite, const StdString &tooltipText = StdString (""), Widget::EventCallbackContext clickCallback = Widget::EventCallbackContext ());
 
 	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
 	void syncRecordStore ();
@@ -94,13 +94,6 @@ public:
 	// Set the window's expand state, then execute any expand state change callback that might be configured unless shouldSkipStateChangeCallback is true
 	void setExpanded (bool expanded, bool shouldSkipStateChangeCallback = false);
 
-	// Callback functions
-	static void screenshotImageLoaded (void *windowPtr, Widget *widgetPtr);
-	static void screenshotImageLongPressed (void *windowPtr, Widget *widgetPtr);
-	static void selectToggleStateChanged (void *windowPtr, Widget *widgetPtr);
-	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
-	static void actionButtonClicked (void *windowPtr, Widget *widgetPtr);
-
 protected:
 	// Return a string that should be included as part of the toString method's output
 	StdString toStringDetail ();
@@ -109,9 +102,17 @@ protected:
 	void refreshLayout ();
 
 private:
+	// Callback functions
+	static void screenshotImageLoaded (void *windowPtr, Widget *widgetPtr);
+	static void screenshotImageLongPressed (void *windowPtr, Widget *widgetPtr);
+	static void selectToggleStateChanged (void *windowPtr, Widget *widgetPtr);
+	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
+	static void actionButtonClicked (void *windowPtr, Widget *widgetPtr);
+
 	Image *iconImage;
 	Label *nameLabel;
 	Label *descriptionLabel;
+	Panel *dividerPanel;
 	ImageWindow *screenshotImage;
 	IconLabelWindow *statusIcon;
 	IconLabelWindow *taskCountIcon;

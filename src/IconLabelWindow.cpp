@@ -51,8 +51,6 @@ IconLabelWindow::IconLabelWindow (Sprite *iconSprite, const StdString &iconText,
 , isRightAligned (false)
 , isTextChangeHighlightEnabled (false)
 , progressBar (NULL)
-, textClickCallback (NULL)
-, textClickCallbackData (NULL)
 {
 	UiConfiguration *uiconfig;
 
@@ -61,7 +59,7 @@ IconLabelWindow::IconLabelWindow (Sprite *iconSprite, const StdString &iconText,
 
 	normalTextColor.assign (iconTextColor);
 	label = (Label *) addWidget (new Label (iconText, iconFontType, normalTextColor));
-	label->setMouseClickCallback (IconLabelWindow::labelClicked, this);
+	label->mouseClickCallback = Widget::EventCallbackContext (IconLabelWindow::labelClicked, this);
 
 	image = (Image *) addWidget (new Image (iconSprite));
 
@@ -87,17 +85,12 @@ void IconLabelWindow::setText (const StdString &text) {
 	refreshLayout ();
 }
 
-void IconLabelWindow::setTextClickCallback (Widget::EventCallback callback, void *callbackData) {
-	textClickCallback = callback;
-	textClickCallbackData = callbackData;
-}
-
 void IconLabelWindow::labelClicked (void *windowPtr, Widget *widgetPtr) {
 	IconLabelWindow *window;
 
 	window = (IconLabelWindow *) windowPtr;
-	if (window->textClickCallback) {
-		window->textClickCallback (window->textClickCallbackData, window);
+	if (window->textClickCallback.callback) {
+		window->textClickCallback.callback (window->textClickCallback.callbackData, window);
 	}
 }
 
@@ -197,10 +190,12 @@ void IconLabelWindow::refreshLayout () {
 
 	if (isRightAligned) {
 		label->flowRight (&x, y, &x2, &y2);
+		x -= (uiconfig->marginSize / 2.0f);
 		image->flowRight (&x, y, &x2, &y2);
 	}
 	else {
 		image->flowRight (&x, y, &x2, &y2);
+		x -= (uiconfig->marginSize / 2.0f);
 		label->flowRight (&x, y, &x2, &y2);
 	}
 

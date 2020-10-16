@@ -66,14 +66,14 @@
 #include "Ipv4Address.h"
 #include "Network.h"
 
-const int Network::defaultRequestThreadCount = 8;
-const int Network::maxDatagramSize = 1500; // bytes
+const int Network::DefaultRequestThreadCount = 8;
+const int Network::MaxDatagramSize = 1500; // bytes
 
 Network::Network ()
 : isStarted (false)
 , isStopped (false)
 , datagramPort (0)
-, httpRequestThreadCount (Network::defaultRequestThreadCount)
+, httpRequestThreadCount (Network::DefaultRequestThreadCount)
 , datagramSendThread (NULL)
 , datagramReceiveThread (NULL)
 , datagramSendMutex (NULL)
@@ -176,7 +176,7 @@ int Network::start (int requestThreadCount) {
 
 	if (requestThreadCount <= 0) {
 		Log::warning ("Invalid preferences value %s %i, ignored", App::NetworkThreadsKey, requestThreadCount);
-		requestThreadCount = Network::defaultRequestThreadCount;
+		requestThreadCount = Network::DefaultRequestThreadCount;
 	}
 	httpRequestThreadCount = requestThreadCount;
 
@@ -576,7 +576,7 @@ int Network::runDatagramReceiveThread (void *networkPtr) {
 	struct sockaddr_in srcaddr;
 	socklen_t addrlen;
 	int msglen;
-	char buf[Network::maxDatagramSize], host[NI_MAXHOST];
+	char buf[Network::MaxDatagramSize], host[NI_MAXHOST];
 	std::list<Network::DatagramCallbackContext>::iterator i, end;
 
 	network = (Network *) networkPtr;

@@ -59,9 +59,9 @@ SnackbarWindow::SnackbarWindow (float maxWidth)
 	uiconfig = &(App::instance->uiConfig);
 
 	backgroundPanel = (Panel *) addWidget (new Panel ());
+	backgroundPanel->mouseClickCallback = Widget::EventCallbackContext (SnackbarWindow::backgroundPanelClicked, this);
 	backgroundPanel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
 	backgroundPanel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->overlayWindowAlpha));
-	backgroundPanel->setMouseClickCallback (SnackbarWindow::backgroundPanelClicked, this);
 
 	messageLabel = (Label *) backgroundPanel->addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->inverseTextColor));
 	messageLabel->zLevel = 1;
@@ -93,10 +93,10 @@ void SnackbarWindow::setMessageText (const StdString &messageText) {
 	refreshLayout ();
 }
 
-void SnackbarWindow::setActionButtonEnabled (bool enable, const StdString &buttonText, Widget::EventCallback buttonClickCallback, void *buttonClickCallbackData) {
-	if (enable && (! buttonText.empty ()) && buttonClickCallback) {
+void SnackbarWindow::setActionButtonEnabled (bool enable, const StdString &buttonText, Widget::EventCallbackContext buttonClickCallback) {
+	if (enable && (! buttonText.empty ()) && buttonClickCallback.callback) {
 		actionButton->setText (buttonText);
-		actionButton->setMouseClickCallback (buttonClickCallback, buttonClickCallbackData);
+		actionButton->mouseClickCallback = buttonClickCallback;
 		actionButton->isVisible = true;
 	}
 	else {
@@ -187,7 +187,7 @@ void SnackbarWindow::refreshLayout () {
 	setFixedSize (true, w, backgroundPanel->height);
 }
 
-void SnackbarWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
+bool SnackbarWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 	Panel::doProcessMouseState (mouseState);
 
 	if (mouseState.isEntered) {
@@ -196,4 +196,6 @@ void SnackbarWindow::doProcessMouseState (const Widget::MouseState &mouseState) 
 	else {
 		isTimeoutSuspended = false;
 	}
+
+	return (false);
 }

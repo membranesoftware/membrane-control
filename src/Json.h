@@ -40,6 +40,8 @@
 #include "json-parser.h"
 #include "json-builder.h"
 
+class JsonList;
+
 class Json {
 public:
 	Json ();
@@ -48,9 +50,11 @@ public:
 	// Free the provided Json object pointer
 	static void freeObject (void *jsonPtr);
 
-	// Reassign the Json object's underlying json_value pointer, clearing any pointer that might already be present
-	void setJsonValue (Json *value);
-	void setJsonValue (json_value *value, bool isJsonBuilder);
+	// Return a boolean value indicating whether the Json object holds a value
+	bool isAssigned ();
+
+	// Clear any stored json pointer, leaving the Json object with an unassigned value
+	void unassign ();
 
 	// Reassign the Json object to a newly created empty object, clearing any pointer that might already be present
 	void setEmpty ();
@@ -61,6 +65,9 @@ public:
 
 	// Return a JSON string containing object fields
 	StdString toString ();
+
+	// Replace the Json object's content with another object's json pointer and free the other object
+	void assign (Json *otherJson);
 
 	// Replace the Json object's content with a copy of the provided source object
 	void copyValue (Json *sourceJson);
@@ -186,6 +193,8 @@ public:
 	void set (const char *key, std::vector<Json *> *value);
 	void set (const StdString &key, std::list<Json *> *value);
 	void set (const char *key, std::list<Json *> *value);
+	void set (const StdString &key, JsonList *value);
+	void set (const char *key, JsonList *value);
 
 	// Set a string value in the map using a format string
 	void setSprintf (const StdString &key, const char *str, ...) __attribute__((format(printf, 3, 4)));
@@ -196,14 +205,14 @@ public:
 	void setNull (const char *key);
 
 private:
-	// Clear the json pointer
-	void clear ();
-
 	// Set the json value to a newly created builder object
 	void resetBuilder ();
 
 	// Use the json_object_push method to set a key in the json object, creating the object if needed
 	void jsonObjectPush (const json_char *name, json_value *value);
+
+	// Reassign the json pointer, clearing any pointer that might already be present
+	void setJsonValue (json_value *value, bool isJsonBuilder);
 
 	// Return a newly created json_value object containing a copy of the provided source value's data
 	json_value *copyJsonValue (json_value *sourceValue);
@@ -214,6 +223,25 @@ private:
 	json_value *json;
 	bool shouldFreeJson;
 	bool isJsonBuilder;
+};
+
+// Json list class that extends std::list<Json *> and frees all contained Json objects when destroyed
+class JsonList : public std::list<Json *> {
+public:
+	JsonList ();
+	virtual ~JsonList ();
+
+	// Remove all elements from the list and free all contained Json objects
+	void clear ();
+
+	// Return a string containing the list as a JSON array
+	StdString toString ();
+
+	// Remove all elements from the list and add copies of all objects in sourceList
+	void copyValues (JsonList *sourceList);
+
+	// Return a newly created JsonList object with contents copied from this object
+	JsonList *copy ();
 };
 
 #endif

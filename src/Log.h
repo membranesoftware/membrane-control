@@ -38,7 +38,7 @@
 
 class Log {
 public:
-	// Constants to use for log levels
+	// Log levels
 	enum {
 		ErrLevel = 0,
 		WarningLevel = 1,
@@ -60,7 +60,7 @@ public:
 	int writeLevel;
 	StdString outputFilename;
 
-	static const char *levelNames[];
+	static const char *LevelNames[];
 
 	// Set the log's level, causing it to write messages of that level and below
 	void setLevel (int level);

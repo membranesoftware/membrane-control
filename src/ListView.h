@@ -37,25 +37,31 @@
 #include "StringList.h"
 #include "Button.h"
 #include "Label.h"
-#include "LabelWindow.h"
 #include "Panel.h"
+#include "ScrollBar.h"
+#include "ScrollView.h"
 
-class ListView : public Panel {
+class ListView : public ScrollView {
 public:
-	ListView (float viewWidth, int minItemHeight = 0, int itemFontType = UiConfiguration::BodyFont, const StdString &titleText = StdString (""), const StdString &emptyStateText = StdString (""));
+	ListView (float viewWidth, int minViewItems = 4, int maxViewItems = 4, int itemFontType = UiConfiguration::BodyFont, const StdString &emptyStateText = StdString (""));
 	~ListView ();
 
+	// Read-write data members
+	Widget::EventCallbackContext listChangeCallback;
+	Widget::EventCallbackContext itemDeleteCallback;
+
 	// Read-only data members
+	bool isDisabled;
 	int focusItemIndex;
 
-	// Set the view's width
+	// Set the width of the viewable area
 	void setViewWidth (float fixedWidth);
 
-	// Set a callback that should be invoked when the list content changes
-	void setListChangeCallback (Widget::EventCallback callback, void *callbackData);
+	// Set the view's disabled state, appropriate for use when it becomes unavailable for interaction
+	void setDisabled (bool disabled);
 
-	// Set a callback that should be invoked when an item delete button is pressed, replacing the default click handler that removes the focused item
-	void setItemDeleteCallback (Widget::EventCallback callback, void *callbackData);
+	// Set the view's empty state text
+	void setEmptyStateText (const StdString &text);
 
 	// Remove all items from the view
 	void clearItems ();
@@ -84,12 +90,12 @@ public:
 	// Remove the item with the specified index
 	void removeItem (int itemIndex, bool shouldSkipChangeCallback = false);
 
-	// Callback functions
-	static void deleteButtonClicked (void *listViewPtr, Widget *widgetPtr);
+	// Scroll the view to show the last item
+	void scrollToBottom ();
 
 protected:
-	// Execute operations appropriate when the widget receives new mouse state
-	virtual void doProcessMouseState (const Widget::MouseState &mouseState);
+	// Execute operations appropriate when the widget receives new mouse state and return a boolean value indicating if mouse wheel events were consumed and should no longer be processed
+	virtual bool doProcessMouseState (const Widget::MouseState &mouseState);
 
 	// Execute subclass-specific operations to refresh the widget's layout as appropriate for the current set of UiConfiguration values
 	virtual void doRefresh ();
@@ -110,19 +116,21 @@ private:
 	// Free objects associated with a list item
 	void freeItem (std::vector<ListView::Item>::iterator item);
 
+	// Callback functions
+	static void scrollBarPositionChanged (void *listViewPtr, Widget *widgetPtr);
+	static void deleteButtonClicked (void *listViewPtr, Widget *widgetPtr);
+
 	float viewWidth;
-	int minItemHeight;
+	int minViewItems;
+	int maxViewItems;
 	int itemFontType;
 	std::vector<ListView::Item> itemList;
-	LabelWindow *titleLabel;
+	ScrollBar *scrollBar;
 	Label *emptyStateLabel;
 	Button *deleteButton;
 	bool isItemFocused;
 	Panel *lastFocusPanel;
-	Widget::EventCallback listChangeCallback;
-	void *listChangeCallbackData;
-	Widget::EventCallback itemDeleteCallback;
-	void *itemDeleteCallbackData;
+	Panel *focusHighlightPanel;
 };
 
 #endif

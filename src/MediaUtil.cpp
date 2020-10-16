@@ -36,38 +36,38 @@
 #include "SystemInterface.h"
 #include "MediaUtil.h"
 
-const float MediaUtil::aspectRatioMatchEpsilon = 0.1f;
+const float MediaUtil::AspectRatioMatchEpsilon = 0.1f;
 
 StdString MediaUtil::getAspectRatioDisplayString (int width, int height) {
 	return (MediaUtil::getAspectRatioDisplayString ((float) width / (float) height));
 }
 
 StdString MediaUtil::getAspectRatioDisplayString (float ratio) {
-	if (fabs (ratio - (16.0f / 9.0f)) <= MediaUtil::aspectRatioMatchEpsilon) {
+	if (fabs (ratio - (16.0f / 9.0f)) <= MediaUtil::AspectRatioMatchEpsilon) {
 		return (StdString ("16:9"));
 	}
-	if (fabs (ratio - (4.0f / 3.0f)) <= MediaUtil::aspectRatioMatchEpsilon) {
+	if (fabs (ratio - (4.0f / 3.0f)) <= MediaUtil::AspectRatioMatchEpsilon) {
 		return (StdString ("4:3"));
 	}
-	if (fabs (ratio - (3.0f / 2.0f)) <= MediaUtil::aspectRatioMatchEpsilon) {
+	if (fabs (ratio - (3.0f / 2.0f)) <= MediaUtil::AspectRatioMatchEpsilon) {
 		return (StdString ("3:2"));
 	}
-	if (fabs (ratio - (5.0f / 3.0f)) <= MediaUtil::aspectRatioMatchEpsilon) {
+	if (fabs (ratio - (5.0f / 3.0f)) <= MediaUtil::AspectRatioMatchEpsilon) {
 		return (StdString ("5:3"));
 	}
-	if (fabs (ratio - (5.0f / 4.0f)) <= MediaUtil::aspectRatioMatchEpsilon) {
+	if (fabs (ratio - (5.0f / 4.0f)) <= MediaUtil::AspectRatioMatchEpsilon) {
 		return (StdString ("5:4"));
 	}
-	if (fabs (ratio - (8.0f / 5.0f)) <= MediaUtil::aspectRatioMatchEpsilon) {
+	if (fabs (ratio - (8.0f / 5.0f)) <= MediaUtil::AspectRatioMatchEpsilon) {
 		return (StdString ("8:5"));
 	}
-	if (fabs (ratio - 1.0f) <= MediaUtil::aspectRatioMatchEpsilon) {
+	if (fabs (ratio - 1.0f) <= MediaUtil::AspectRatioMatchEpsilon) {
 		return (StdString ("1:1"));
 	}
-	if (fabs (ratio - 1.85f) <= MediaUtil::aspectRatioMatchEpsilon) {
+	if (fabs (ratio - 1.85f) <= MediaUtil::AspectRatioMatchEpsilon) {
 		return (StdString ("1.85:1"));
 	}
-	if (fabs (ratio - 3.0f) <= MediaUtil::aspectRatioMatchEpsilon) {
+	if (fabs (ratio - 3.0f) <= MediaUtil::AspectRatioMatchEpsilon) {
 		return (StdString ("3:1"));
 	}
 
@@ -147,16 +147,16 @@ StdString MediaUtil::getStreamProfileDescription (int streamProfile) {
 	uitext = &(App::instance->uiText);
 	switch (streamProfile) {
 		case SystemInterface::Constant_DefaultStreamProfile: {
-			return (uitext->getText (UiTextString::normalVideoQualityDescription));
+			return (uitext->getText (UiTextString::NormalVideoQualityDescription));
 		}
 		case SystemInterface::Constant_CompressedStreamProfile: {
-			return (uitext->getText (UiTextString::compressedVideoQualityDescription));
+			return (uitext->getText (UiTextString::CompressedVideoQualityDescription));
 		}
 		case SystemInterface::Constant_LowQualityStreamProfile: {
-			return (uitext->getText (UiTextString::lowVideoQualityDescription));
+			return (uitext->getText (UiTextString::LowVideoQualityDescription));
 		}
 		case SystemInterface::Constant_LowestQualityStreamProfile: {
-			return (uitext->getText (UiTextString::lowestVideoQualityDescription));
+			return (uitext->getText (UiTextString::LowestVideoQualityDescription));
 		}
 	}
 
@@ -167,13 +167,13 @@ int MediaUtil::getStreamProfile (const StdString &description) {
 	UiText *uitext;
 
 	uitext = &(App::instance->uiText);
-	if (description.equals (uitext->getText (UiTextString::compressedVideoQualityDescription))) {
+	if (description.equals (uitext->getText (UiTextString::CompressedVideoQualityDescription))) {
 		return (SystemInterface::Constant_CompressedStreamProfile);
 	}
-	if (description.equals (uitext->getText (UiTextString::lowVideoQualityDescription))) {
+	if (description.equals (uitext->getText (UiTextString::LowVideoQualityDescription))) {
 		return (SystemInterface::Constant_LowQualityStreamProfile);
 	}
-	if (description.equals (uitext->getText (UiTextString::lowestVideoQualityDescription))) {
+	if (description.equals (uitext->getText (UiTextString::LowestVideoQualityDescription))) {
 		return (SystemInterface::Constant_LowestQualityStreamProfile);
 	}
 

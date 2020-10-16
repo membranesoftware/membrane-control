@@ -44,9 +44,13 @@ public:
 	ToggleWindow (Toggle *toggle);
 	virtual ~ToggleWindow ();
 
+	// Read-write data members
+	Widget::EventCallbackContext stateChangeCallback;
+
 	// Read-only data members
 	bool isChecked;
 	bool isRightAligned;
+	bool isInverseColor;
 
 	// Set the toggle to show a text label
 	void setText (const StdString &text);
@@ -57,22 +61,14 @@ public:
 	// Set the window's right-aligned option. If enabled, the window places the toggle on the right side instead of the left side.
 	void setRightAligned (bool enable);
 
+	// Set the window's inverse color state. If enabled, the window uses an inverse color scheme.
+	void setInverseColor (bool inverse);
+
 	// Set the draw color for the toggle's button images
 	void setImageColor (const Color &imageColor);
 
-	// Set a callback that should be invoked when the toggle button's checked state changes
-	void setStateChangeCallback (Widget::EventCallback callback, void *callbackData);
-
-	// Set the toggle's checked state
-	void setChecked (bool checked);
-
-	// Callback functions
-	static void mouseEntered (void *windowPtr, Widget *widgetPtr);
-	static void mouseExited (void *windowPtr, Widget *widgetPtr);
-	static void mousePressed (void *windowPtr, Widget *widgetPtr);
-	static void mouseReleased (void *windowPtr, Widget *widgetPtr);
-	static void mouseClicked (void *windowPtr, Widget *widgetPtr);
-	static void toggleStateChanged (void *windowPtr, Widget *widgetPtr);
+	// Set the toggle's checked state and invoke any configured change callback unless shouldSkipChangeCallback is true
+	void setChecked (bool checked, bool shouldSkipChangeCallback = false);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
@@ -82,11 +78,17 @@ protected:
 	void refreshLayout ();
 
 private:
+	// Callback functions
+	static void mouseEntered (void *windowPtr, Widget *widgetPtr);
+	static void mouseExited (void *windowPtr, Widget *widgetPtr);
+	static void mousePressed (void *windowPtr, Widget *widgetPtr);
+	static void mouseReleased (void *windowPtr, Widget *widgetPtr);
+	static void mouseClicked (void *windowPtr, Widget *widgetPtr);
+	static void toggleStateChanged (void *windowPtr, Widget *widgetPtr);
+
 	Toggle *toggle;
 	Label *label;
 	Image *iconImage;
-	Widget::EventCallback stateChangeCallback;
-	void *stateChangeCallbackData;
 };
 
 #endif

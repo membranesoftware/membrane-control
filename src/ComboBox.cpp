@@ -41,6 +41,8 @@
 #include "Label.h"
 #include "LabelWindow.h"
 #include "Panel.h"
+#include "ScrollView.h"
+#include "ScrollBar.h"
 #include "UiConfiguration.h"
 #include "ComboBox.h"
 
@@ -49,8 +51,6 @@ ComboBox::ComboBox ()
 , isDisabled (false)
 , isInverseColor (false)
 , hasItemData (false)
-, valueChangeCallback (NULL)
-, valueChangeCallbackData (NULL)
 , isExpanded (false)
 , expandScreenX (0.0f)
 , expandScreenY (0.0f)
@@ -63,7 +63,7 @@ ComboBox::ComboBox ()
 	uiconfig = &(App::instance->uiConfig);
 
 	normalBgColor.assign (uiconfig->lightBackgroundColor);
-	normalBorderColor.assign (uiconfig->mediumBackgroundColor);
+	normalBorderColor.assign (uiconfig->darkBackgroundColor);
 	focusBgColor.assign (uiconfig->darkBackgroundColor);
 	focusBorderColor.assign (uiconfig->lightBackgroundColor);
 	disabledBgColor.assign (uiconfig->darkBackgroundColor);
@@ -77,12 +77,7 @@ ComboBox::ComboBox ()
 }
 
 ComboBox::~ComboBox () {
-	expandPanel.destroyAndClear ();
-}
-
-void ComboBox::setValueChangeCallback (Widget::EventCallback callback, void *callbackData) {
-	valueChangeCallback = callback;
-	valueChangeCallbackData = callbackData;
+	expandView.destroyAndClear ();
 }
 
 void ComboBox::setDisabled (bool disabled) {
@@ -110,7 +105,7 @@ void ComboBox::setInverseColor (bool inverse) {
 	isInverseColor = inverse;
 	if (isInverseColor) {
 		normalBgColor.assign (uiconfig->darkInverseBackgroundColor);
-		normalBorderColor.assign (uiconfig->mediumInverseBackgroundColor);
+		normalBorderColor.assign (uiconfig->lightInverseBackgroundColor);
 		focusBgColor.assign (uiconfig->lightInverseBackgroundColor);
 		focusBorderColor.assign (uiconfig->darkInverseBackgroundColor);
 		disabledBgColor.assign (uiconfig->lightInverseBackgroundColor);
@@ -121,7 +116,7 @@ void ComboBox::setInverseColor (bool inverse) {
 	}
 	else {
 		normalBgColor.assign (uiconfig->lightBackgroundColor);
-		normalBorderColor.assign (uiconfig->mediumBackgroundColor);
+		normalBorderColor.assign (uiconfig->darkBackgroundColor);
 		focusBgColor.assign (uiconfig->darkBackgroundColor);
 		focusBorderColor.assign (uiconfig->lightBackgroundColor);
 		disabledBgColor.assign (uiconfig->darkBackgroundColor);
@@ -165,8 +160,8 @@ void ComboBox::setValue (const StdString &value, bool shouldSkipChangeCallback) 
 
 	if (found) {
 		refreshLayout ();
-		if (valueChangeCallback && (! shouldSkipChangeCallback)) {
-			valueChangeCallback (valueChangeCallbackData, this);
+		if (valueChangeCallback.callback && (! shouldSkipChangeCallback)) {
+			valueChangeCallback.callback (valueChangeCallback.callbackData, this);
 		}
 	}
 }
@@ -195,8 +190,8 @@ void ComboBox::setValueByItemData (const StdString &itemData, bool shouldSkipCha
 
 	if (found) {
 		refreshLayout ();
-		if (valueChangeCallback && (! shouldSkipChangeCallback)) {
-			valueChangeCallback (valueChangeCallbackData, this);
+		if (valueChangeCallback.callback && (! shouldSkipChangeCallback)) {
+			valueChangeCallback.callback (valueChangeCallback.callbackData, this);
 		}
 	}
 }
@@ -209,33 +204,54 @@ StdString ComboBox::getValue () {
 	return (selectedItemValue);
 }
 
-void ComboBox::addItem (const StdString &itemValue, const StdString &itemData) {
+void ComboBox::addItem (const StdString &itemValue) {
+	UiConfiguration *uiconfig;
 	ComboBox::Item item;
-	LabelWindow *labelwindow;
-	Label *label;
+	LabelWindow *label;
 
-	label = new Label (itemValue, UiConfiguration::CaptionFont, normalItemTextColor);
+	uiconfig = &(App::instance->uiConfig);
+	label = (LabelWindow *) addWidget (new LabelWindow (new Label (Label::getTruncatedText (itemValue, UiConfiguration::CaptionFont, uiconfig->comboBoxLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, Label::DotTruncateSuffix), UiConfiguration::CaptionFont, normalItemTextColor)));
+	label->setFillBg (true, normalBgColor);
+	label->setBorder (true, normalBorderColor);
 	if (label->width > maxTextWidth) {
 		maxTextWidth = label->width;
 	}
-
-	labelwindow = (LabelWindow *) addWidget (new LabelWindow (label));
-	labelwindow->setFillBg (true, normalBgColor);
-	labelwindow->setBorder (true, normalBorderColor);
 	if (! selectedItemLabel) {
-		selectedItemLabel = labelwindow;
+		selectedItemLabel = label;
+		selectedItemValue.assign (itemValue);
+		selectedItemData.assign ("");
+	}
+
+	item.value.assign (itemValue);
+	item.itemData.assign ("");
+	item.label = label;
+	itemList.push_back (item);
+	refreshLayout ();
+}
+
+void ComboBox::addItem (const StdString &itemValue, const StdString &itemData) {
+	UiConfiguration *uiconfig;
+	ComboBox::Item item;
+	LabelWindow *label;
+
+	uiconfig = &(App::instance->uiConfig);
+	label = (LabelWindow *) addWidget (new LabelWindow (new Label (Label::getTruncatedText (itemValue, UiConfiguration::CaptionFont, uiconfig->comboBoxLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, Label::DotTruncateSuffix), UiConfiguration::CaptionFont, normalItemTextColor)));
+	label->setFillBg (true, normalBgColor);
+	label->setBorder (true, normalBorderColor);
+	if (label->width > maxTextWidth) {
+		maxTextWidth = label->width;
+	}
+	if (! selectedItemLabel) {
+		selectedItemLabel = label;
 		selectedItemValue.assign (itemValue);
 		selectedItemData.assign (itemData);
 	}
 
 	item.value.assign (itemValue);
 	item.itemData.assign (itemData);
-	item.label = labelwindow;
+	item.label = label;
 	itemList.push_back (item);
-
-	if (! itemData.empty ()) {
-		hasItemData = true;
-	}
+	hasItemData = true;
 	refreshLayout ();
 }
 
@@ -267,7 +283,6 @@ void ComboBox::refreshLayout () {
 	std::list<ComboBox::Item>::iterator i, end;
 	LabelWindow *label;
 	float x, y;
-	bool show;
 
 	uiconfig = &(App::instance->uiConfig);
 	if (isDisabled) {
@@ -289,14 +304,11 @@ void ComboBox::refreshLayout () {
 	end = itemList.end ();
 	while (i != end) {
 		label = i->label;
-		label->setWindowWidth (maxTextWidth + (uiconfig->paddingSize * 2.0f), true);
-
-		show = false;
-		if (label == selectedItemLabel) {
-			show = true;
+		if (label != selectedItemLabel) {
+			label->isVisible = false;
 		}
-
-		if (show) {
+		else {
+			label->setWindowWidth (maxTextWidth + (uiconfig->paddingSize * 2.0f), true);
 			label->position.assign (x, y);
 			if (isDisabled) {
 				label->bgColor.translate (disabledBgColor, uiconfig->shortColorTranslateDuration);
@@ -316,10 +328,6 @@ void ComboBox::refreshLayout () {
 			y += label->height;
 			label->isVisible = true;
 		}
-		else {
-			label->isVisible = false;
-		}
-
 		++i;
 	}
 
@@ -334,13 +342,13 @@ void ComboBox::setFocused (bool focused) {
 	refreshLayout ();
 }
 
-void ComboBox::doProcessMouseState (const Widget::MouseState &mouseState) {
-	Panel *panel;
+bool ComboBox::doProcessMouseState (const Widget::MouseState &mouseState) {
+	ScrollView *scrollview;
 	bool shouldunexpand;
 	int x, y, x1, x2, y1, y2;
 
 	if (isDisabled) {
-		return;
+		return (false);
 	}
 
 	if (isExpanded) {
@@ -352,14 +360,14 @@ void ComboBox::doProcessMouseState (const Widget::MouseState &mouseState) {
 				shouldunexpand = true;
 			}
 
-			panel = (Panel *) expandPanel.widget;
-			if ((! shouldunexpand) && panel) {
+			scrollview = (ScrollView *) expandView.widget;
+			if ((! shouldunexpand) && scrollview) {
 				x = App::instance->input.mouseX;
 				y = App::instance->input.mouseY;
-				x1 = (int) panel->screenX;
-				y1 = (int) panel->screenY;
-				x2 = x1 + (int) panel->width;
-				y2 = y1 + (int) panel->height;
+				x1 = (int) scrollview->screenX;
+				y1 = (int) scrollview->screenY;
+				x2 = x1 + (int) scrollview->width;
+				y2 = y1 + (int) scrollview->height;
 				if ((x < x1) || (x > x2) || (y < y1) || (y > y2)) {
 					shouldunexpand = true;
 				}
@@ -369,21 +377,25 @@ void ComboBox::doProcessMouseState (const Widget::MouseState &mouseState) {
 				unexpand ();
 			}
 		}
-		return;
+		return (false);
 	}
 
 	setFocused (mouseState.isEntered);
 	if (mouseState.isEntered && mouseState.isLeftClicked) {
 		expand ();
 	}
+
+	return (false);
 }
 
 void ComboBox::expand () {
 	UiConfiguration *uiconfig;
-	Panel *panel;
 	std::list<ComboBox::Item>::iterator i, end;
+	ScrollView *scrollview;
+	ScrollBar *scrollbar;
 	LabelWindow *label;
-	float x, y;
+	float x, y, w, h;
+	int count;
 
 	if (isExpanded || isDisabled) {
 		return;
@@ -394,66 +406,145 @@ void ComboBox::expand () {
 	}
 
 	uiconfig = &(App::instance->uiConfig);
-	panel = new Panel ();
-	panel->setFillBg (true, normalBgColor);
-	panel->setBorder (true, normalBorderColor);
+	scrollview = new ScrollView ();
+	scrollview->setFillBg (true, normalBgColor);
+	scrollview->setBorder (true, normalBorderColor);
+	scrollview->setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
 
-	// TODO: Add scrolling for cases when there are many options to choose from
-
+	count = 0;
 	x = 0.0f;
 	y = 0.0f;
+	w = maxTextWidth + (uiconfig->paddingSize * 2.0f);
+	h = 0.0f;
 	i = itemList.begin ();
 	end = itemList.end ();
 	while (i != end) {
 		if (i->label != selectedItemLabel) {
-			label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (i->value, UiConfiguration::CaptionFont, normalItemTextColor)), x, y);
+			label = (LabelWindow *) scrollview->addWidget (new LabelWindow (new Label (i->label->getText (), UiConfiguration::CaptionFont, normalItemTextColor)), x, y);
+			label->mouseClickCallback = Widget::EventCallbackContext (ComboBox::expandItemClicked, this);
 			label->setFillBg (true, normalBgColor);
-			label->setWindowWidth (maxTextWidth + (uiconfig->paddingSize * 2.0f), true);
+			label->setWindowWidth (w);
 			label->setMouseoverHighlight (true, normalItemTextColor, normalBgColor, focusItemTextColor, focusBgColor, uiconfig->shortColorTranslateDuration);
-			label->setMouseClickCallback (ComboBox::expandItemClicked, this);
 			y += label->height;
+			if (count < uiconfig->comboBoxExpandViewItems) {
+				h = y;
+			}
+			++count;
 		}
 
 		++i;
 	}
-	panel->refresh ();
-	expandPanel.assign (panel);
+
+	scrollview->setViewSize (w, h);
+	scrollview->setVerticalScrollBounds (0.0f, y - h);
+	if (count > uiconfig->comboBoxExpandViewItems) {
+		scrollview->isMouseWheelScrollEnabled = true;
+		scrollbar = (ScrollBar *) scrollview->addWidget (new ScrollBar (h));
+		scrollbar->positionChangeCallback = Widget::EventCallbackContext (ComboBox::scrollBarPositionChanged, this);
+		scrollbar->updateCallback = Widget::UpdateCallbackContext (ComboBox::scrollBarUpdated, this);
+		scrollbar->zLevel = 1;
+		scrollbar->setScrollBounds (h, y);
+		scrollbar->position.assign (w - scrollbar->width, 0.0f);
+	}
+	scrollview->refresh ();
+	expandView.assign (scrollview);
 	expandScreenX = screenX;
 	expandScreenY = screenY;
 
-	y = expandScreenY + height;
-	if ((y + panel->height) >= App::instance->windowHeight) {
-		y = expandScreenY - panel->height;
+	x = screenX;
+	y = screenY + height;
+	if ((y + scrollview->height) >= App::instance->windowHeight) {
+		y = screenY - scrollview->height;
 	}
-	App::instance->rootPanel->addWidget (panel, expandScreenX, y, App::instance->rootPanel->maxWidgetZLevel + 1);
+	App::instance->rootPanel->addWidget (scrollview, x, y, App::instance->rootPanel->maxWidgetZLevel + 1);
 
 	isExpanded = true;
 }
 
-void ComboBox::unexpand (const StdString &value) {
-	if (! value.empty ()) {
-		setValue (value);
+void ComboBox::scrollBarPositionChanged (void *comboBoxPtr, Widget *widgetPtr) {
+	ComboBox *combobox;
+	ScrollBar *scrollbar;
+	ScrollView *scrollview;
+
+	combobox = (ComboBox *) comboBoxPtr;
+	scrollbar = (ScrollBar *) widgetPtr;
+	scrollview = (ScrollView *) combobox->expandView.widget;
+	if (! scrollview) {
+		return;
 	}
+
+	scrollview->setViewOrigin (0.0f, scrollbar->scrollPosition);
+	scrollbar->position.assignY (scrollview->viewOriginY);
+}
+
+void ComboBox::scrollBarUpdated (void *comboBoxPtr, int msElapsed, Widget *widgetPtr) {
+	ComboBox *combobox;
+	ScrollBar *scrollbar;
+	ScrollView *scrollview;
+
+	combobox = (ComboBox *) comboBoxPtr;
+	scrollbar = (ScrollBar *) widgetPtr;
+	scrollview = (ScrollView *) combobox->expandView.widget;
+	if (! scrollview) {
+		return;
+	}
+
+	scrollbar->setPosition (scrollview->viewOriginY, true);
+	scrollbar->position.assignY (scrollview->viewOriginY);
+}
+
+void ComboBox::unexpand () {
 	isExpanded = false;
-	expandPanel.destroyAndClear ();
+	expandView.destroyAndClear ();
 }
 
 void ComboBox::doUpdate (int msElapsed) {
 	Panel::doUpdate (msElapsed);
 	if (isExpanded) {
-		expandPanel.compact ();
-		if ((! expandPanel.widget) || (! FLOAT_EQUALS (screenX, expandScreenX)) || (! FLOAT_EQUALS (screenY, expandScreenY))) {
+		expandView.compact ();
+		if ((! expandView.widget) || (! FLOAT_EQUALS (screenX, expandScreenX)) || (! FLOAT_EQUALS (screenY, expandScreenY))) {
 			unexpand ();
 		}
 	}
 }
 
-void ComboBox::expandItemClicked (void *comboBoxPtr, Widget *labelWindowPtr) {
+void ComboBox::expandItemClicked (void *comboBoxPtr, Widget *widgetPtr) {
 	LabelWindow *label;
 	ComboBox *combobox;
 
 	combobox = (ComboBox *) comboBoxPtr;
-	label = (LabelWindow *) labelWindowPtr;
+	label = (LabelWindow *) widgetPtr;
 
-	combobox->unexpand (label->getText ());
+	combobox->setValue (label);
+	combobox->unexpand ();
+}
+
+void ComboBox::setValue (LabelWindow *choiceLabel, bool shouldSkipChangeCallback) {
+	StdString choicetext;
+	std::list<ComboBox::Item>::iterator i, end;
+	bool found;
+
+	// TODO: Fix incorrect item choice in cases where multiple item labels hold the same text (i.e. similar item values truncated to identical choice label text)
+
+	choicetext = choiceLabel->getText ();
+	found = false;
+	i = itemList.begin ();
+	end = itemList.end ();
+	while (i != end) {
+		if (choicetext.equals (i->label->getText ())) {
+			selectedItemLabel = i->label;
+			selectedItemValue.assign (i->value);
+			selectedItemData.assign (i->itemData);
+			found = true;
+			break;
+		}
+		++i;
+	}
+
+	if (found) {
+		refreshLayout ();
+		if (valueChangeCallback.callback && (! shouldSkipChangeCallback)) {
+			valueChangeCallback.callback (valueChangeCallback.callbackData, this);
+		}
+	}
 }

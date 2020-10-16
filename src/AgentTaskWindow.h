@@ -40,7 +40,7 @@
 
 class AgentTaskWindow : public Panel {
 public:
-	static const float textTruncateScale; // portion of total window width, from 0.0f to 1.0f
+	static const float TextTruncateScale; // portion of total window width, from 0.0f to 1.0f
 
 	AgentTaskWindow (const StdString &agentId);
 	virtual ~AgentTaskWindow ();

@@ -37,7 +37,7 @@
 #include "Buffer.h"
 #include "StdString.h"
 
-const int StdString::maxSprintfLength = (64 * 1024); // bytes
+const int StdString::MaxSprintfLength = (64 * 1024); // bytes
 
 StdString::StdString ()
 : std::string ()
@@ -69,7 +69,7 @@ StdString::~StdString () {
 
 void StdString::sprintf (const char *str, ...) {
 	va_list ap;
-	char buf[StdString::maxSprintfLength];
+	char buf[StdString::MaxSprintfLength];
 
 	va_start (ap, str);
 	vsnprintf (buf, sizeof (buf), str, ap);
@@ -78,7 +78,7 @@ void StdString::sprintf (const char *str, ...) {
 }
 
 void StdString::vsprintf (const char *str, va_list ap) {
-	char buf[StdString::maxSprintfLength];
+	char buf[StdString::MaxSprintfLength];
 
 	vsnprintf (buf, sizeof (buf), str, ap);
 	assign (buf);
@@ -86,7 +86,7 @@ void StdString::vsprintf (const char *str, va_list ap) {
 
 void StdString::appendSprintf (const char *str, ...) {
 	va_list ap;
-	char buf[StdString::maxSprintfLength];
+	char buf[StdString::MaxSprintfLength];
 
 	va_start (ap, str);
 	vsnprintf (buf, sizeof (buf), str, ap);
@@ -95,7 +95,7 @@ void StdString::appendSprintf (const char *str, ...) {
 }
 
 void StdString::appendVsprintf (const char *str, va_list ap) {
-	char buf[StdString::maxSprintfLength];
+	char buf[StdString::MaxSprintfLength];
 
 	vsnprintf (buf, sizeof (buf), str, ap);
 	append (buf);
@@ -259,11 +259,37 @@ void StdString::replace (const StdString &oldText, const StdString &newText) {
 	}
 }
 
-StdString StdString::replaced (const StdString &oldText, const StdString &newText) {
+void StdString::replace (size_t pos, size_t len, const StdString &str) {
+	std::string::replace (pos, len, str);
+}
+
+void StdString::replace (size_t pos, size_t len, size_t n, char c) {
+	std::string::replace (pos, len, n, c);
+}
+
+StdString StdString::replaced (const StdString &oldText, const StdString &newText) const {
 	StdString s;
 
 	s.assign (c_str ());
 	s.replace (oldText, newText);
+
+	return (s);
+}
+
+StdString StdString::replaced (size_t pos, size_t len, const StdString &str) const {
+	StdString s;
+
+	s.assign (c_str ());
+	s.replace (pos, len, str);
+
+	return (s);
+}
+
+StdString StdString::replaced (size_t pos, size_t len, size_t n, char c) const {
+	StdString s;
+
+	s.assign (c_str ());
+	s.replace (pos, len, n, c);
 
 	return (s);
 }
@@ -453,7 +479,7 @@ StdString StdString::idTranslated () const {
 
 StdString StdString::createSprintf (const char *str, ...) {
 	va_list ap;
-	char buf[StdString::maxSprintfLength];
+	char buf[StdString::MaxSprintfLength];
 
 	va_start (ap, str);
 	vsnprintf (buf, sizeof (buf), str, ap);
@@ -660,11 +686,11 @@ void StdString::wipe () {
 	clear ();
 }
 
-void StdString::split (const char *delimiter, std::list<StdString> *destList) {
+void StdString::split (const char *delimiter, std::list<StdString> *destList) const {
 	split (StdString (delimiter), destList);
 }
 
-void StdString::split (const StdString &delimiter, std::list<StdString> *destList) {
+void StdString::split (const StdString &delimiter, std::list<StdString> *destList) const {
 	size_t curpos, pos, delimlen, len;
 
 	if (! destList) {

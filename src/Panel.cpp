@@ -42,7 +42,7 @@
 #include "ProgressBar.h"
 #include "Panel.h"
 
-const int Panel::longPressDuration = 1000;
+const int Panel::LongPressDuration = 1000;
 
 Panel::Panel ()
 : Widget ()
@@ -73,7 +73,6 @@ Panel::Panel ()
 , isDropShadowed (false)
 , dropShadowWidth (0.0f)
 , isFixedSize (false)
-, isMouseDragScrollEnabled (false)
 , isWaiting (false)
 , layout (-1)
 , isAnimating (false)
@@ -501,12 +500,12 @@ void Panel::processInput () {
 		}
 	}
 
-	if (keyEventCallback && (keyevents.size () > 0)) {
+	if (keyEventCallback.callback && (keyevents.size () > 0)) {
 		isconsumed = false;
 		j = keyevents.begin ();
 		jend = keyevents.end ();
 		while (j != jend) {
-			if (keyEventCallback (keyEventCallbackData, *j, isshiftdown, iscontroldown)) {
+			if (keyEventCallback.callback (keyEventCallback.callbackData, *j, isshiftdown, iscontroldown)) {
 				isconsumed = true;
 			}
 			++j;
@@ -555,7 +554,7 @@ void Panel::processInput () {
 				}
 			}
 			else if (isleftdown) {
-				if ((lastMouseDownX >= 0) && (lastMouseDownY >= 0) && (lastMouseDownTime > 0) && (lastMouseDownX >= (int) widget->screenX) && (lastMouseDownX <= (int) (widget->screenX + widget->width)) && (lastMouseDownY >= (int) widget->screenY) && (lastMouseDownY <= (int) (widget->screenY + widget->height)) && ((OsUtil::getTime () - lastMouseDownTime) >= Panel::longPressDuration)) {
+				if ((lastMouseDownX >= 0) && (lastMouseDownY >= 0) && (lastMouseDownTime > 0) && (lastMouseDownX >= (int) widget->screenX) && (lastMouseDownX <= (int) (widget->screenX + widget->width)) && (lastMouseDownY >= (int) widget->screenY) && (lastMouseDownY <= (int) (widget->screenY + widget->height)) && ((OsUtil::getTime () - lastMouseDownTime) >= Panel::LongPressDuration)) {
 					mousestate.isLongPressed = true;
 					lastMouseDownTime = 0;
 				}
@@ -567,7 +566,10 @@ void Panel::processInput () {
 			mousestate.enterDeltaY = 0.0f;
 		}
 
-		widget->processMouseState (mousestate);
+		if (widget->processMouseState (mousestate)) {
+			mousestate.wheelUp = 0;
+			mousestate.wheelDown = 0;
+		}
 	}
 	SDL_UnlockMutex (widgetListMutex);
 }
@@ -602,22 +604,23 @@ bool Panel::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isCon
 	return (result);
 }
 
-void Panel::doProcessMouseState (const Widget::MouseState &mouseState) {
+bool Panel::doProcessMouseState (const Widget::MouseState &mouseState) {
 	Input *input;
 	std::list<Widget *>::reverse_iterator i, end;
 	Widget *widget;
-	bool found;
+	bool found, consumed;
 	Widget::MouseState m;
 	float x, y;
 
 	if (isTextureRenderEnabled) {
-		return;
+		return (false);
 	}
 
 	input = &(App::instance->input);
 	x = input->mouseX;
 	y = input->mouseY;
 
+	consumed = false;
 	found = false;
 	SDL_LockMutex (widgetListMutex);
 	i = widgetList.rbegin ();
@@ -643,16 +646,18 @@ void Panel::doProcessMouseState (const Widget::MouseState &mouseState) {
 				}
 			}
 		}
-		widget->processMouseState (m);
+
+		if (consumed) {
+			m.wheelUp = 0;
+			m.wheelDown = 0;
+		}
+		if (widget->processMouseState (m)) {
+			consumed = true;
+		}
 	}
 	SDL_UnlockMutex (widgetListMutex);
 
-	if (isMouseDragScrollEnabled && (! isInputSuspended)) {
-		// TODO: Don't scroll if a widget is present at the mouse position
-		if (mouseState.isEntered && input->isMouseLeftButtonDown) {
-			setViewOrigin (viewOriginX - (float) mouseState.positionDeltaX, viewOriginY - (float) mouseState.positionDeltaY);
-		}
-	}
+	return (consumed);
 }
 
 void Panel::doResetInputState () {
@@ -848,8 +853,6 @@ void Panel::doDraw (SDL_Texture *targetTexture, float originX, float originY) {
 	}
 	SDL_UnlockMutex (widgetListMutex);
 
-	App::instance->popClipRect ();
-
 	if (isBordered && (borderColor.aByte > 0) && (borderWidth >= 1.0f)) {
 		SDL_SetRenderTarget (render, targetTexture);
 		if (borderColor.aByte < 255) {
@@ -880,12 +883,18 @@ void Panel::doDraw (SDL_Texture *targetTexture, float originX, float originY) {
 		SDL_SetRenderDrawColor (render, 0, 0, 0, 0);
 		SDL_SetRenderTarget (render, NULL);
 	}
+	App::instance->popClipRect ();
 
 	if (isDropShadowed && (dropShadowColor.aByte > 0) && (dropShadowWidth >= 1.0f)) {
 		SDL_SetRenderTarget (render, targetTexture);
-		App::instance->suspendClipRect ();
 		SDL_SetRenderDrawBlendMode (render, SDL_BLENDMODE_BLEND);
 		SDL_SetRenderDrawColor (render, dropShadowColor.rByte, dropShadowColor.gByte, dropShadowColor.bByte, dropShadowColor.aByte);
+
+		rect.x = App::instance->clipRect.x;
+		rect.y = App::instance->clipRect.y;
+		rect.w = App::instance->clipRect.w + dropShadowWidth;
+		rect.h = App::instance->clipRect.h + dropShadowWidth;
+		App::instance->pushClipRect (&rect, true);
 
 		rect.x = x0 + (int) width;
 		rect.y = y0 + (int) dropShadowWidth;
@@ -899,9 +908,10 @@ void Panel::doDraw (SDL_Texture *targetTexture, float originX, float originY) {
 		rect.h = (int) dropShadowWidth;
 		SDL_RenderFillRect (render, &rect);
 
+		App::instance->popClipRect ();
+
 		SDL_SetRenderDrawBlendMode (render, SDL_BLENDMODE_NONE);
 		SDL_SetRenderDrawColor (render, 0, 0, 0, 0);
-		App::instance->unsuspendClipRect ();
 		SDL_SetRenderTarget (render, NULL);
 	}
 }
@@ -924,6 +934,20 @@ void Panel::doRefresh () {
 	}
 	SDL_UnlockMutex (widgetListMutex);
 
+	SDL_LockMutex (widgetAddListMutex);
+	i = widgetAddList.begin ();
+	end = widgetAddList.end ();
+	while (i != end) {
+		widget = *i;
+		++i;
+		if (widget->isDestroyed) {
+			continue;
+		}
+
+		widget->refresh ();
+	}
+	SDL_UnlockMutex (widgetAddListMutex);
+
 	refreshLayout ();
 }
 
@@ -941,7 +965,7 @@ void Panel::resetSize () {
 	while (i != end) {
 		widget = *i;
 		++i;
-		if (widget->isDestroyed || (! widget->isVisible)) {
+		if (widget->isDestroyed || (! widget->isVisible) || widget->isPanelSizeClipEnabled) {
 			continue;
 		}
 
@@ -962,7 +986,7 @@ void Panel::resetSize () {
 	while (i != end) {
 		widget = *i;
 		++i;
-		if (widget->isDestroyed || (! widget->isVisible)) {
+		if (widget->isDestroyed || (! widget->isVisible) || widget->isPanelSizeClipEnabled) {
 			continue;
 		}
 
@@ -989,7 +1013,7 @@ void Panel::refreshLayout () {
 	UiConfiguration *uiconfig;
 	std::list<Widget *>::iterator i, end;
 	Widget *widget;
-	float x, y, maxw;
+	float x, y, maxw, maxh;
 
 	switch (layout) {
 		case Panel::VerticalLayout: {
@@ -1079,7 +1103,6 @@ void Panel::refreshLayout () {
 				if (widget->isDestroyed || (! widget->isVisible)) {
 					continue;
 				}
-
 				widget->position.assignX (x + maxw - widget->width);
 			}
 			SDL_UnlockMutex (widgetListMutex);
@@ -1093,7 +1116,6 @@ void Panel::refreshLayout () {
 				if (widget->isDestroyed || (! widget->isVisible)) {
 					continue;
 				}
-
 				widget->position.assignX (x + maxw - widget->width);
 			}
 			SDL_UnlockMutex (widgetAddListMutex);
@@ -1135,6 +1157,75 @@ void Panel::refreshLayout () {
 			SDL_UnlockMutex (widgetAddListMutex);
 			break;
 		}
+		case Panel::HorizontalVcenteredLayout: {
+			uiconfig = &(App::instance->uiConfig);
+			x = widthPadding;
+			y = heightPadding;
+			maxh = 0.0f;
+
+			SDL_LockMutex (widgetListMutex);
+			i = widgetList.begin ();
+			end = widgetList.end ();
+			while (i != end) {
+				widget = *i;
+				++i;
+				if (widget->isDestroyed || (! widget->isVisible)) {
+					continue;
+				}
+
+				widget->position.assign (x, y);
+				x += widget->width + uiconfig->marginSize;
+				if (widget->height > maxh) {
+					maxh = widget->height;
+				}
+			}
+			SDL_UnlockMutex (widgetListMutex);
+
+			SDL_LockMutex (widgetAddListMutex);
+			i = widgetAddList.begin ();
+			end = widgetAddList.end ();
+			while (i != end) {
+				widget = *i;
+				++i;
+				if (widget->isDestroyed || (! widget->isVisible)) {
+					continue;
+				}
+
+				widget->position.assign (x, y);
+				x += widget->width + uiconfig->marginSize;
+				if (widget->height > maxh) {
+					maxh = widget->height;
+				}
+			}
+			SDL_UnlockMutex (widgetAddListMutex);
+
+			SDL_LockMutex (widgetListMutex);
+			i = widgetList.begin ();
+			end = widgetList.end ();
+			while (i != end) {
+				widget = *i;
+				++i;
+				if (widget->isDestroyed || (! widget->isVisible)) {
+					continue;
+				}
+				widget->position.assignY (y + ((maxh - widget->height) / 2.0f));
+			}
+			SDL_UnlockMutex (widgetListMutex);
+
+			SDL_LockMutex (widgetAddListMutex);
+			i = widgetAddList.begin ();
+			end = widgetAddList.end ();
+			while (i != end) {
+				widget = *i;
+				++i;
+				if (widget->isDestroyed || (! widget->isVisible)) {
+					continue;
+				}
+				widget->position.assignY (y + ((maxh - widget->height) / 2.0f));
+			}
+			SDL_UnlockMutex (widgetAddListMutex);
+			break;
+		}
 	}
 	resetSize ();
 }
@@ -1146,16 +1237,16 @@ void Panel::sortWidgetList () {
 	bool sorted;
 
 	sorted = true;
-	minlevel = Widget::minZLevel - 1;
-	maxlevel = Widget::minZLevel - 1;
+	minlevel = Widget::MinZLevel - 1;
+	maxlevel = Widget::MinZLevel - 1;
 	i = widgetList.begin ();
 	end = widgetList.end ();
 	while (i != end) {
 		widget = *i;
-		if (minlevel < Widget::minZLevel) {
+		if (minlevel < Widget::MinZLevel) {
 			minlevel = widget->zLevel;
 		}
-		if (maxlevel < Widget::minZLevel) {
+		if (maxlevel < Widget::MinZLevel) {
 			maxlevel = widget->zLevel;
 		}
 
@@ -1209,26 +1300,26 @@ void Panel::setCornerRadius (int topLeftRadius, int topRightRadius, int bottomLe
 	if (topLeftRadius < 0) {
 		topLeftRadius = 0;
 	}
-	if (topLeftRadius > App::maxCornerRadius) {
-		topLeftRadius = App::maxCornerRadius;
+	if (topLeftRadius > App::MaxCornerRadius) {
+		topLeftRadius = App::MaxCornerRadius;
 	}
 	if (topRightRadius < 0) {
 		topRightRadius = 0;
 	}
-	if (topRightRadius > App::maxCornerRadius) {
-		topRightRadius = App::maxCornerRadius;
+	if (topRightRadius > App::MaxCornerRadius) {
+		topRightRadius = App::MaxCornerRadius;
 	}
 	if (bottomLeftRadius < 0) {
 		bottomLeftRadius = 0;
 	}
-	if (bottomLeftRadius > App::maxCornerRadius) {
-		bottomLeftRadius = App::maxCornerRadius;
+	if (bottomLeftRadius > App::MaxCornerRadius) {
+		bottomLeftRadius = App::MaxCornerRadius;
 	}
 	if (bottomRightRadius < 0) {
 		bottomRightRadius = 0;
 	}
-	if (bottomRightRadius > App::maxCornerRadius) {
-		bottomRightRadius = App::maxCornerRadius;
+	if (bottomRightRadius > App::MaxCornerRadius) {
+		bottomRightRadius = App::MaxCornerRadius;
 	}
 	if ((topLeftRadius <= 0) && (topRightRadius <= 0) && (bottomLeftRadius <= 0) && (bottomRightRadius <= 0)) {
 		cornerSize = 0;
@@ -1461,10 +1552,6 @@ void Panel::setFixedSize (bool enable, float fixedWidth, float fixedHeight) {
 	else {
 		isFixedSize = false;
 	}
-}
-
-void Panel::setMouseDragScroll (bool enable) {
-	isMouseDragScrollEnabled = enable;
 }
 
 void Panel::setWaiting (bool enable) {

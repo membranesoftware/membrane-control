@@ -40,7 +40,7 @@ public:
 	ProgressBar (float barWidth = 0.0f, float barHeight = 0.0f);
 	~ProgressBar ();
 
-	static const float animationFactor;
+	static const float AnimationFactor;
 
 	// Set the bar's size
 	void setSize (float barWidth, float barHeight);
