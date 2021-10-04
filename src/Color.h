@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -43,6 +43,7 @@ public:
 	float r, g, b, a;
 	uint8_t rByte, gByte, bByte, aByte;
 	bool isTranslating;
+	bool isAnimating;
 
 	// Return a string description of the color
 	StdString toString () const;
@@ -55,6 +56,9 @@ public:
 
 	// Return a Color object with values copied from this one. If aValue is zero or greater, assign that value to the returned object's alpha component.
 	Color copy (float aValue = -1.0f);
+
+	// Return a boolean value indicating if the color holds values equal to another
+	bool equals (const Color &other) const;
 
 	// Assign the color's values
 	void assign (float rValue, float gValue, float bValue);
@@ -74,16 +78,22 @@ public:
 	void translate (const Color &targetColor, int durationMs);
 	void translate (const Color &startColor, const Color &targetColor, int durationMs);
 
-	// Return a boolean value indicating if the color holds values equal to another
-	bool equals (const Color &other) const;
+	// Begin an operation to animate the color's value over time
+	void animate (const Color &color1, const Color &color2, int durationMs, int repeatDelayMs = 0);
 
 private:
 	// Clip the r, g, and b data members to valid ranges, and reset dependent data members
 	void normalize ();
 
 	int translateDuration;
+	int animateDuration;
+	int animateRepeatDelay;
+	int animateStage;
+	int animateClock;
 	float targetR, targetG, targetB, targetA;
 	float deltaR, deltaG, deltaB, deltaA;
+	float animateColor1R, animateColor1G, animateColor1B, animateColor1A;
+	float animateColor2R, animateColor2G, animateColor2B, animateColor2A;
 };
 
 #endif

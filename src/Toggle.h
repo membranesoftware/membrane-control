@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -69,7 +69,7 @@ public:
 	void setImageColor (const Color &imageColor);
 
 	// Set mouse hover tooltips that should apply to the toggle based on its checked state
-	void setStateMouseHoverTooltips (const StdString &uncheckedTooltip, const StdString &checkedTooltip, int alignment = Widget::BottomAlignment);
+	void setStateMouseHoverTooltips (const StdString &uncheckedTooltip, const StdString &checkedTooltip, Widget::Alignment alignment = Widget::BottomAlignment);
 
 	// Return a boolean value indicating if the provided Widget is a member of this class
 	static bool isWidgetType (Widget *widget);

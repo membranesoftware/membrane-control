@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -35,6 +35,7 @@
 #include <list>
 #include <vector>
 #include "StdString.h"
+#include "OsUtil.h"
 #include "LabelWindow.h"
 #include "Panel.h"
 
@@ -90,7 +91,7 @@ private:
 	float barWidth;
 	float barHeight;
 	float duration;
-	int minDurationUnitType;
+	OsUtil::TimeUnit minDurationUnitType;
 	int thumbnailCount;
 };
 

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,43 +29,37 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
+#include "UiConfiguration.h"
 #include "UiText.h"
 #include "OsUtil.h"
 #include "Widget.h"
 #include "Panel.h"
 #include "Label.h"
 #include "Image.h"
-#include "UiConfiguration.h"
 #include "HyperlinkWindow.h"
 
-HyperlinkWindow::HyperlinkWindow (const StdString &linkText, const StdString &linkUrl, int fontType)
+HyperlinkWindow::HyperlinkWindow (const StdString &linkText, const StdString &linkUrl, UiConfiguration::FontType fontType)
 : Panel ()
+, url (linkUrl)
+, linkOpenResult (-1)
 , maxLineHeight (0.0f)
 , label (NULL)
-, url (linkUrl)
 , labelWidth (0.0f)
 , labelHeight (0.0f)
 {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
-
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-
-	label = (Label *) addWidget (new Label (linkText, fontType, uiconfig->linkTextColor));
+	label = (Label *) addWidget (new Label (linkText, fontType, UiConfiguration::instance->linkTextColor));
 	label->isInputSuspended = true;
 	label->setUnderlined (true);
-	maxLineHeight = label->maxLineHeight + uiconfig->textUnderlineMargin;
+	maxLineHeight = label->maxLineHeight + UiConfiguration::instance->textUnderlineMargin;
 	labelWidth = label->width;
 	labelHeight = label->height;
 	mouseClickCallback = Widget::EventCallbackContext (HyperlinkWindow::windowClicked, this);
 	mouseEnterCallback = Widget::EventCallbackContext (HyperlinkWindow::windowMouseEntered, this);
 	mouseExitCallback = Widget::EventCallbackContext (HyperlinkWindow::windowMouseExited, this);
-	setMouseHoverTooltip (uitext->getText (UiTextString::HyperlinkTooltip));
+	setMouseHoverTooltip (UiText::instance->getText (UiTextString::HyperlinkTooltip));
 
 	refreshLayout ();
 }
@@ -101,44 +95,32 @@ void HyperlinkWindow::refreshLayout () {
 	x = widthPadding;
 	y = heightPadding;
 	label->position.assign (x, y);
-
 	setFixedSize (true, labelWidth + (widthPadding * 2.0f), labelHeight + (heightPadding * 2.0f));
 }
 
 void HyperlinkWindow::windowClicked (void *windowPtr, Widget *widgetPtr) {
 	HyperlinkWindow *window;
-	int result;
 
 	window = (HyperlinkWindow *) windowPtr;
 	if (window->url.empty ()) {
 		return;
 	}
-
-	result = OsUtil::openUrl (window->url);
-	if (result != Result::Success) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::OpenHelpUrlError));
-	}
-	else {
-		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::LaunchedWebBrowser).capitalized ().c_str (), window->url.c_str ()));
-	}
+	window->linkOpenResult = OsUtil::openUrl (window->url);
+	window->eventCallback (window->linkOpenCallback);
 }
 
 void HyperlinkWindow::windowMouseEntered (void *windowPtr, Widget *widgetPtr) {
 	HyperlinkWindow *window;
-	UiConfiguration *uiconfig;
 
 	window = (HyperlinkWindow *) windowPtr;
-	uiconfig = &(App::instance->uiConfig);
 	window->label->setUnderlined (false);
-	window->label->textColor.translate (uiconfig->lightPrimaryTextColor, uiconfig->shortColorTranslateDuration);
+	window->label->textColor.translate (UiConfiguration::instance->lightPrimaryTextColor, UiConfiguration::instance->shortColorTranslateDuration);
 }
 
 void HyperlinkWindow::windowMouseExited (void *windowPtr, Widget *widgetPtr) {
 	HyperlinkWindow *window;
-	UiConfiguration *uiconfig;
 
 	window = (HyperlinkWindow *) windowPtr;
-	uiconfig = &(App::instance->uiConfig);
 	window->label->setUnderlined (true);
-	window->label->textColor.translate (uiconfig->linkTextColor, uiconfig->shortColorTranslateDuration);
+	window->label->textColor.translate (UiConfiguration::instance->linkTextColor, UiConfiguration::instance->shortColorTranslateDuration);
 }

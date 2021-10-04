@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -27,48 +27,59 @@
 * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 * POSSIBILITY OF SUCH DAMAGE.
 */
-// Constants to use for result values
+// Class that holds a lua_State object and executes Lua scripts
 
-#ifndef RESULT_H
-#define RESULT_H
+#ifndef LUA_SCRIPT_H
+#define LUA_SCRIPT_H
 
-class Result {
+extern "C" {
+#include "lua.h"
+}
+#include "SDL2/SDL.h"
+#include "StdString.h"
+
+class LuaScript {
 public:
-	enum {
-		Success = 0,
-		InvalidParamError = -1,
-		FileOpenFailedError = -2,
-		ThreadCreateFailedError = -3,
-		MalformedResponseError = -4,
-		FileOperationFailedError = -5,
-		MalformedDataError = -6,
-		OutOfMemoryError = -7,
-		FreetypeOperationFailedError = -8,
-		SocketOperationFailedError = -9,
-		SocketNotConnectedError = -10,
-		HttpOperationFailedError = -11,
-		MoreDataRequiredError = -12,
-		JsonParseFailedError = -13,
-		SystemOperationFailedError = -14,
-		KeyNotFoundError = -15,
-		MismatchedTypeError = -16,
-		SdlOperationFailedError = -17,
-		LibmicrohttpdOperationFailedError = -18,
-		ArrayIndexOutOfBoundsError = -19,
-		HttpRequestFailedError = -20,
-		DuplicateIdError = -21,
-		InvalidConfigurationError = -22,
-		UnknownHostnameError = -23,
-		NotImplementedError = -24,
-		AlreadyLoadedError = -25,
-		InternalApplicationFailureError = -26,
-		UnknownProtocolError = -27,
-		LibcurlOperationFailedError = -28,
-		UnknownMethodError = -29,
-		ApplicationNotInstalledError = -30,
-		ProgramNotFoundError = -31,
-		UnauthorizedError = -32
+	LuaScript (const StdString &script = StdString (""));
+	~LuaScript ();
+
+	// Read-only data members
+	StdString script;
+	int runResult;
+	StdString runErrorText;
+
+	// Run the provided LuaScript object and delete it when complete
+	static void run (void *luaScriptPtr);
+
+	// lua_register functions
+	static int help (lua_State *L);
+	static int print (lua_State *L);
+	static int dofile (lua_State *L);
+	static int quit (lua_State *L);
+	static int sleep (lua_State *L);
+	static int printservers (lua_State *L);
+	static int attach (lua_State *L);
+	static int detach (lua_State *L);
+	static int info (lua_State *L);
+	static int contact (lua_State *L);
+	static int unlist (lua_State *L);
+
+	struct Function {
+		const lua_CFunction fn;
+		const char *name;
+		const char *parameters;
+		const int helpText;
 	};
+
+	static void argvInteger (lua_State *L, int position, int *value);
+	static void argvString (lua_State *L, int position, char **value);
+	static void argvBoolean (lua_State *L, int position, bool *value);
+
+	// sort predicate function
+	static bool compareFunctions (const Function &a, const Function &b);
+
+private:
+	lua_State *state;
 };
 
 #endif

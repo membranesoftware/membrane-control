@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,7 +29,6 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
@@ -54,21 +53,17 @@ SnackbarWindow::SnackbarWindow (float maxWidth)
 , isTimeoutDismissed (false)
 , scrollDuration (0)
 {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::instance->uiConfig);
-
 	backgroundPanel = (Panel *) addWidget (new Panel ());
 	backgroundPanel->mouseClickCallback = Widget::EventCallbackContext (SnackbarWindow::backgroundPanelClicked, this);
-	backgroundPanel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	backgroundPanel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->overlayWindowAlpha));
+	backgroundPanel->setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
+	backgroundPanel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, UiConfiguration::instance->overlayWindowAlpha));
 
-	messageLabel = (Label *) backgroundPanel->addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->inverseTextColor));
+	messageLabel = (Label *) backgroundPanel->addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->inverseTextColor));
 	messageLabel->zLevel = 1;
 
 	actionButton = (Button *) backgroundPanel->addWidget (new Button ());
-	actionButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
-	actionButton->setTextColor (uiconfig->raisedButtonTextColor);
+	actionButton->setRaised (true, UiConfiguration::instance->raisedButtonBackgroundColor);
+	actionButton->setTextColor (UiConfiguration::instance->raisedButtonTextColor);
 	actionButton->zLevel = 2;
 	actionButton->isVisible = false;
 
@@ -159,17 +154,14 @@ void SnackbarWindow::doUpdate (int msElapsed) {
 }
 
 void SnackbarWindow::refreshLayout () {
-	UiConfiguration *uiconfig;
 	float x, y, w;
-
-	uiconfig = &(App::instance->uiConfig);
 
 	x = backgroundPanel->widthPadding;
 	y = backgroundPanel->heightPadding;
 	messageLabel->position.assign (x, y);
 	x += messageLabel->width;
 	if (actionButton->isVisible) {
-		x += uiconfig->marginSize;
+		x += UiConfiguration::instance->marginSize;
 		actionButton->position.assign (x, y);
 		x += actionButton->width;
 	}

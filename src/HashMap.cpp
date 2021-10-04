@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -31,7 +31,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <map>
-#include "Result.h"
+#include "OsUtil.h"
 #include "Log.h"
 #include "StdString.h"
 #include "Buffer.h"
@@ -132,17 +132,16 @@ bool HashMap::sortDescending (const StdString &a, const StdString &b) {
 	return (false);
 }
 
-int HashMap::read (const StdString &filename, bool shouldClear) {
+OsUtil::Result HashMap::read (const StdString &filename, bool shouldClear) {
 	FILE *fp;
 	char data[8192];
 	Buffer *buffer;
-	int result;
+	OsUtil::Result result;
 
 	fp = fopen (filename.c_str (), "rb");
 	if (! fp) {
-		return (Result::FileOpenFailedError);
+		return (OsUtil::Result::FileOpenFailedError);
 	}
-
 	buffer = new Buffer ();
 	while (1) {
 		if (! fgets (data, sizeof (data), fp)) {
@@ -158,7 +157,7 @@ int HashMap::read (const StdString &filename, bool shouldClear) {
 	return (result);
 }
 
-int HashMap::read (Buffer *buffer, bool shouldClear) {
+OsUtil::Result HashMap::read (Buffer *buffer, bool shouldClear) {
 	uint8_t *data, *end, *key1, *key2, *val1, *val2;
 	char c;
 	bool iscomment;
@@ -184,7 +183,6 @@ int HashMap::read (Buffer *buffer, bool shouldClear) {
 			}
 			continue;
 		}
-
 		if (! key1) {
 			if (c == '#') {
 				iscomment = true;
@@ -194,7 +192,6 @@ int HashMap::read (Buffer *buffer, bool shouldClear) {
 				val2 = NULL;
 				continue;
 			}
-
 			if (! isspace (c)) {
 				key1 = (data - 1);
 			}
@@ -231,10 +228,10 @@ int HashMap::read (Buffer *buffer, bool shouldClear) {
 		}
 	}
 
-	return (Result::Success);
+	return (OsUtil::Result::Success);
 }
 
-int HashMap::write (const StdString &filename) {
+OsUtil::Result HashMap::write (const StdString &filename) {
 	std::map<StdString, StdString>::iterator i, end;
 	StdString out;
 	FILE *fp;
@@ -253,12 +250,12 @@ int HashMap::write (const StdString &filename) {
 
 	fp = fopen (filename.c_str (), "wb");
 	if (! fp) {
-		return (Result::FileOpenFailedError);
+		return (OsUtil::Result::FileOpenFailedError);
 	}
 	fprintf (fp, "%s", out.c_str ());
 	fclose (fp);
 
-	return (Result::Success);
+	return (OsUtil::Result::Success);
 }
 
 bool HashMap::exists (const StdString &key) {
@@ -428,7 +425,6 @@ StdString HashMap::find (const StdString &key, const StdString &defaultValue) {
 	if (i == valueMap.end ()) {
 		return (defaultValue);
 	}
-
 	return (i->second);
 }
 
@@ -447,7 +443,6 @@ int HashMap::find (const StdString &key, int defaultValue) {
 	if (i == valueMap.end ()) {
 		return (defaultValue);
 	}
-
 	return (atoi (i->second.c_str ()));
 }
 
@@ -462,7 +457,6 @@ int64_t HashMap::find (const StdString &key, int64_t defaultValue) {
 	if (i == valueMap.end ()) {
 		return (defaultValue);
 	}
-
 	return (atoll (i->second.c_str ()));
 }
 
@@ -477,7 +471,6 @@ bool HashMap::find (const StdString &key, bool defaultValue) {
 	if (i == valueMap.end ()) {
 		return (defaultValue);
 	}
-
 	return (i->second.lowercased ().equals ("true") || i->second.lowercased ().equals ("yes"));
 }
 
@@ -535,13 +528,11 @@ HashMap::Iterator HashMap::begin () {
 		if (! isSorted) {
 			doSort ();
 		}
-
 		i.listIterator = keyList.begin ();
 	}
 	else {
 		i.mapIterator = valueMap.begin ();
 	}
-
 	return (i);
 }
 
@@ -567,6 +558,5 @@ StdString HashMap::next (HashMap::Iterator *i) {
 			++(i->mapIterator);
 		}
 	}
-
 	return (val);
 }

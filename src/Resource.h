@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -38,6 +38,7 @@
 #include "ft2build.h"
 #include FT_FREETYPE_H
 #include "StdString.h"
+#include "OsUtil.h"
 #include "Buffer.h"
 #include "Font.h"
 
@@ -50,7 +51,7 @@ public:
 	void setSource (const StdString &path);
 
 	// Prepare the Resource object to execute file operations. Returns a Result value.
-	int open ();
+	OsUtil::Result open ();
 
 	// Close the resource object and free all assets
 	void close ();
@@ -92,7 +93,7 @@ public:
 	void unloadFont (const StdString &path, int pointSize);
 
 	// Read a value from an SDL_RWops object and store it in the provided pointer. Returns a Result value.
-	static int readUint64 (SDL_RWops *src, Uint64 *value);
+	static OsUtil::Result readUint64 (SDL_RWops *src, Uint64 *value);
 
 	// Interface functions for use in an SDL_RWops struct
 	static Sint64 rwopsSize (SDL_RWops *rw);

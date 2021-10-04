@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,20 +29,20 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include "Result.h"
+#include "App.h"
 #include "ClassId.h"
 #include "Log.h"
 #include "StdString.h"
-#include "App.h"
 #include "UiText.h"
 #include "Sprite.h"
 #include "SpriteGroup.h"
 #include "Widget.h"
 #include "Color.h"
 #include "UiConfiguration.h"
+#include "AgentControl.h"
 #include "Panel.h"
 #include "Image.h"
-#include "TextArea.h"
+#include "TextFlow.h"
 #include "Button.h"
 #include "Label.h"
 #include "ServerContactWindow.h"
@@ -62,30 +62,27 @@ ServerContactWindow::ServerContactWindow (const StdString &displayName, const St
 , progressBar (NULL)
 , deleteButton (NULL)
 {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
-
 	classId = ClassId::ServerContactWindow;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	setFillBg (true, uiconfig->mediumBackgroundColor);
 
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeServerIconSprite)));
-	nameLabel = (Label *) addWidget (new Label (Label::getTruncatedText (agentDisplayName, UiConfiguration::HeadlineFont, (float) App::instance->windowWidth * ServerContactWindow::NameTruncateScale, Label::DotTruncateSuffix), UiConfiguration::HeadlineFont, uiconfig->primaryTextColor));
-	statusLabel = (Label *) addWidget (new Label (uitext->getText (UiTextString::ServerUiContactingAgentDescription), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
+	setFillBg (true, UiConfiguration::instance->mediumBackgroundColor);
 
-	detailText = (TextArea *) addWidget (new TextArea (UiConfiguration::CaptionFont, uiconfig->primaryTextColor, uiconfig->textAreaShortLineLength));
+	iconImage = (Image *) addWidget (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeServerIconSprite)));
+	nameLabel = (Label *) addWidget (new Label (UiConfiguration::instance->fonts[UiConfiguration::HeadlineFont]->truncatedText (agentDisplayName, (float) App::instance->windowWidth * ServerContactWindow::NameTruncateScale, Font::DotTruncateSuffix), UiConfiguration::HeadlineFont, UiConfiguration::instance->primaryTextColor));
+	statusLabel = (Label *) addWidget (new Label (UiText::instance->getText (UiTextString::ServerUiContactingAgentDescription), UiConfiguration::CaptionFont, UiConfiguration::instance->lightPrimaryTextColor));
+
+	detailText = (TextFlow *) addWidget (new TextFlow (UiConfiguration::instance->textFieldShortLineLength * UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, UiConfiguration::CaptionFont));
+	detailText->setTextColor (UiConfiguration::instance->primaryTextColor);
 	detailText->isVisible = false;
 
-	progressBar = (ProgressBar *) addWidget (new ProgressBar (1.0f, uiconfig->progressBarHeight));
+	progressBar = (ProgressBar *) addWidget (new ProgressBar (1.0f, UiConfiguration::instance->progressBarHeight));
 	progressBar->zLevel = 1;
 	progressBar->setIndeterminate (true);
 
-	deleteButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
+	deleteButton = (Button *) addWidget (new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
 	deleteButton->mouseClickCallback = Widget::EventCallbackContext (ServerContactWindow::deleteButtonClicked, this);
-	deleteButton->setMouseHoverTooltip (uitext->getText (UiTextString::Remove).capitalized ());
-	deleteButton->setImageColor (uiconfig->flatButtonTextColor);
+	deleteButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::Remove).capitalized ());
+	deleteButton->setImageColor (UiConfiguration::instance->flatButtonTextColor);
 	deleteButton->isVisible = false;
 
 	layout = ServerContactWindow::ContactingLayout;
@@ -109,22 +106,20 @@ ServerContactWindow *ServerContactWindow::castWidget (Widget *widget) {
 }
 
 void ServerContactWindow::doUpdate (int msElapsed) {
-	UiText *uitext;
 	int curlayout;
 
 	Panel::doUpdate (msElapsed);
-	uitext = &(App::instance->uiText);
 	curlayout = layout;
-	if (App::instance->agentControl.isHostContacted (agentHostname, agentPort)) {
+	if (AgentControl::instance->isHostContacted (agentHostname, agentPort)) {
 		curlayout = ServerContactWindow::IdleLayout;
 		isDeleted = true;
 	}
-	else if (App::instance->agentControl.isHostContacting (agentHostname, agentPort)) {
+	else if (AgentControl::instance->isHostContacting (agentHostname, agentPort)) {
 		curlayout = ServerContactWindow::ContactingLayout;
 	}
 	else {
 		if (curlayout == ServerContactWindow::ContactingLayout) {
-			if (App::instance->agentControl.isHostUnauthorized (agentHostname, agentPort)) {
+			if (AgentControl::instance->isHostUnauthorized (agentHostname, agentPort)) {
 				curlayout = ServerContactWindow::UnauthorizedLayout;
 			}
 			else {
@@ -145,7 +140,7 @@ void ServerContactWindow::doUpdate (int msElapsed) {
 			}
 			case ServerContactWindow::ContactingLayout: {
 				progressBar->isVisible = true;
-				statusLabel->setText (uitext->getText (UiTextString::ServerUiContactingAgentDescription));
+				statusLabel->setText (UiText::instance->getText (UiTextString::ServerUiContactingAgentDescription));
 				statusLabel->isVisible = true;
 				detailText->isVisible = false;
 				deleteButton->isVisible = false;
@@ -153,35 +148,31 @@ void ServerContactWindow::doUpdate (int msElapsed) {
 			}
 			case ServerContactWindow::UnauthorizedLayout: {
 				progressBar->isVisible = false;
-				statusLabel->setText (uitext->getText (UiTextString::ServerUiUnauthorizedErrorTitle));
+				statusLabel->setText (UiText::instance->getText (UiTextString::ServerUiUnauthorizedErrorTitle));
 				statusLabel->isVisible = true;
-				detailText->setText (uitext->getText (UiTextString::ServerUiUnauthorizedErrorText));
+				detailText->setText (UiText::instance->getText (UiTextString::ServerUiUnauthorizedErrorText));
 				detailText->isVisible = true;
 				deleteButton->isVisible = true;
 				break;
 			}
 			case ServerContactWindow::FailedLayout: {
 				progressBar->isVisible = false;
-				statusLabel->setText (uitext->getText (UiTextString::ServerUiFailedContactErrorTitle));
+				statusLabel->setText (UiText::instance->getText (UiTextString::ServerUiFailedContactErrorTitle));
 				statusLabel->isVisible = true;
-				detailText->setText (uitext->getText (UiTextString::ServerUiFailedContactErrorText));
+				detailText->setText (UiText::instance->getText (UiTextString::ServerUiFailedContactErrorText));
 				detailText->isVisible = true;
 				deleteButton->isVisible = true;
 				break;
 			}
 		}
 		refreshLayout ();
-		if (stateChangeCallback.callback) {
-			stateChangeCallback.callback (stateChangeCallback.callbackData, this);
-		}
+		eventCallback (stateChangeCallback);
 	}
 }
 
 void ServerContactWindow::refreshLayout () {
-	UiConfiguration *uiconfig;
 	float x, y, y0, x2, y2;
 
-	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	y0 = y;
@@ -194,7 +185,7 @@ void ServerContactWindow::refreshLayout () {
 		statusLabel->flowDown (x, &y, &x2, &y2);
 	}
 	if (deleteButton->isVisible) {
-		deleteButton->position.assign (x2 + uiconfig->marginSize, y0);
+		deleteButton->position.assign (x2 + UiConfiguration::instance->marginSize, y0);
 	}
 	if (detailText->isVisible) {
 		detailText->flowDown (x, &y, &x2, &y2);

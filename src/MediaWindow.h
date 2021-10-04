@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -39,7 +39,7 @@
 #include "Label.h"
 #include "LabelWindow.h"
 #include "ImageWindow.h"
-#include "TextArea.h"
+#include "TextFlow.h"
 #include "Button.h"
 #include "Panel.h"
 
@@ -127,7 +127,7 @@ private:
 	SpriteGroup *sprites;
 	ImageWindow *mediaImage;
 	Label *nameLabel;
-	TextArea *detailText;
+	TextFlow *detailText;
 	LabelWindow *mouseoverLabel;
 	LabelWindow *detailNameLabel;
 	Button *viewButton;

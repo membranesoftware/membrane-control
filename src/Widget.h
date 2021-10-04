@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -69,6 +69,12 @@ public:
 		Rectangle (): x (0.0f), y (0.0f), w (0.0f), h (0.0f) { }
 		Rectangle (float x, float y, float w, float h): x (x), y (y), w (w), h (h) { }
 	};
+	enum Alignment {
+		TopAlignment = 0,
+		LeftAlignment = 1,
+		RightAlignment = 2,
+		BottomAlignment = 3
+	};
 
 	Widget ();
 	virtual ~Widget ();
@@ -101,7 +107,7 @@ public:
 	float screenX, screenY;
 	bool isKeyFocused;
 	StdString tooltipText;
-	int tooltipAlignment;
+	Widget::Alignment tooltipAlignment;
 
 	// Read-only data members. Widget subclasses should maintain these values for proper layout handling.
 	float width, height;
@@ -152,13 +158,7 @@ public:
 	bool processMouseState (const Widget::MouseState &mouseState);
 
 	// Set the widget to display the specified tooltip text on mouse hover
-	enum {
-		TopAlignment = 0,
-		LeftAlignment = 1,
-		RightAlignment = 2,
-		BottomAlignment = 3
-	};
-	void setMouseHoverTooltip (const StdString &text, int alignment = Widget::BottomAlignment);
+	void setMouseHoverTooltip (const StdString &text, Widget::Alignment alignment = Widget::BottomAlignment);
 
 	// Set the widget to destroy itself after the specified number of milliseconds passes
 	void setDestroyDelay (int delayMs);
@@ -184,14 +184,25 @@ public:
 	// Invoke the widget's mouse click callback
 	void mouseClick ();
 
+	// Invoke any function contained in callback and return a boolean value indicating if a function executed
+	bool eventCallback (const Widget::EventCallbackContext &callback);
+
 	// Assign the widget's position to the provided x/y values, then reset positionX as appropriate for a rightward flow. If rightExtent and bottomExtent are provided, update them with the widget's right (x plus width) and bottom (y plus height) extents if greater.
 	virtual void flowRight (float *positionX, float positionY, float *rightExtent = NULL, float *bottomExtent = NULL);
 
 	// Assign the widget's position to the provided x/y values, then reset positionY as appropriate for a downward flow. If rightExtent and bottomExtent are provided, update them with the widget's right (x plus width) and bottom (y plus height) extents if greater.
 	virtual void flowDown (float positionX, float *positionY, float *rightExtent = NULL, float *bottomExtent = NULL);
 
-	// Assign the widget's x position to the provided value, then reset positionX as appropriate for a leftward flow
+	// Assign the widget's x position, then reset positionX as appropriate for a leftward flow. If positionY is provided, also assign the widget's y position.
 	virtual void flowLeft (float *positionX);
+	virtual void flowLeft (float *positionX, float positionY);
+
+	// Assign the widget's y position, then reset positionY as appropriate for an upward flow. If positionX is provided, also assign the widget's x position.
+	virtual void flowUp (float *positionY);
+	virtual void flowUp (float positionX, float *positionY);
+
+	// Assign the widget's x position to a centered value within the provided horizontal extents
+	virtual void centerHorizontal (float leftExtent, float rightExtent);
 
 	// Assign the widget's y position to a centered value within the provided vertical extents
 	virtual void centerVertical (float topExtent, float bottomExtent);

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -36,13 +36,16 @@
 #include "SDL2/SDL.h"
 #include "ft2build.h"
 #include FT_FREETYPE_H
-#include "Result.h"
+#include "OsUtil.h"
 #include "App.h"
 #include "Log.h"
 #include "StdString.h"
 #include "Resource.h"
 #include "Buffer.h"
 #include "Font.h"
+
+const char *Font::GlyphCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_=+[]{}\\\"';:,.<>/?!@#$%^&*()|";
+const StdString Font::DotTruncateSuffix = StdString ("...");
 
 Font::Font (FT_Library freetype, const StdString &name)
 : name (name)
@@ -78,11 +81,10 @@ void Font::clearGlyphMap () {
 	glyphMap.clear ();
 }
 
-int Font::load (Buffer *fontData, int pointSize) {
+OsUtil::Result Font::load (Buffer *fontData, int pointSize) {
 	Font::Glyph glyph;
 	FT_GlyphSlot slot;
 	SDL_Surface *surface;
-	const char *charlist = FONT_CHARACTERS;
 	char *s, c;
 	int result, charindex, x, y, w, h, pitch, maxw, maxtopbearing;
 	uint8_t *row, *bitmap, alpha;
@@ -92,24 +94,24 @@ int Font::load (Buffer *fontData, int pointSize) {
 	result = FT_New_Memory_Face (freetype, (FT_Byte *) fontData->data, fontData->length, 0, &face);
 	if (result != 0) {
 		Log::err ("Failed to load font; name=\"%s\" err=\"FT_New_Memory_Face: %i\"", name.c_str (), result);
-		return (Result::FreetypeOperationFailedError);
+		return (OsUtil::Result::FreetypeOperationFailedError);
 	}
 	result = FT_Set_Char_Size (face, pointSize << 6, 0, 100, 0);
 	if (result != 0) {
 		Log::err ("Failed to load font; name=\"%s\" err=\"FT_Set_Char_Size: %i\"", name.c_str (), result);
-		return (Result::FreetypeOperationFailedError);
+		return (OsUtil::Result::FreetypeOperationFailedError);
 	}
 
 	maxw = 0;
 	maxtopbearing = 0;
-	s = (char *) charlist;
+	s = (char *) Font::GlyphCharacters;
 	while (1) {
 		c = *s;
 		if (c == 0) {
 			break;
 		}
 		++s;
-	
+
 		charindex = FT_Get_Char_Index (face, c);
 		result = FT_Load_Glyph (face, charindex, FT_LOAD_RENDER);
 		if (result != 0) {
@@ -150,11 +152,9 @@ int Font::load (Buffer *fontData, int pointSize) {
 				++dest;
 				++x;
 			}
-
 			row += pitch;
 			++y;
 		}
-
 #if SDL_BYTEORDER == SDL_BIG_ENDIAN
 		rmask = 0xFF000000;
 		gmask = 0x00FF0000;
@@ -195,7 +195,12 @@ int Font::load (Buffer *fontData, int pointSize) {
 			maxtopbearing = glyph.topBearing;
 		}
 	}
-	spaceWidth = (maxw / 3);
+	if (face->face_flags & FT_FACE_FLAG_FIXED_WIDTH) {
+		spaceWidth = maxw;
+	}
+	else {
+		spaceWidth = (maxw / 3);
+	}
 
 	maxGlyphWidth = 0;
 	maxLineHeight = 0;
@@ -215,7 +220,7 @@ int Font::load (Buffer *fontData, int pointSize) {
 	}
 
 	isLoaded = true;
-	return (Result::Success);
+	return (OsUtil::Result::Success);
 }
 
 Font::Glyph *Font::getGlyph (char glyphCharacter) {
@@ -225,7 +230,6 @@ Font::Glyph *Font::getGlyph (char glyphCharacter) {
 	if (i == glyphMap.end ()) {
 		return (NULL);
 	}
-
 	return (&(i->second));
 }
 
@@ -236,6 +240,163 @@ int Font::getKerning (char leftCharacter, char rightCharacter) {
 	leftindex = FT_Get_Char_Index (face, leftCharacter);
 	rightindex = FT_Get_Char_Index (face, rightCharacter);
 	FT_Get_Kerning (face, leftindex, rightindex, FT_KERNING_DEFAULT, &vector);
-
 	return (vector.x >> 6);
+}
+
+void Font::resetMetrics (Font::Metrics *metrics, const StdString &text, int textPosition) {
+	metrics->text.assign (text);
+	metrics->textLength = (int) metrics->text.length ();
+	metrics->textPosition = 0;
+	metrics->lastCharacter = '\0';
+	metrics->textWidth = 0.0f;
+	metrics->isComplete = false;
+
+	if (textPosition < 0) {
+		textPosition = metrics->textLength;
+	}
+	if (textPosition > 0) {
+		advanceMetrics (metrics, textPosition);
+	}
+	if (metrics->textPosition >= metrics->textLength) {
+		metrics->isComplete = true;
+	}
+}
+
+void Font::advanceMetrics (Font::Metrics *metrics, int advanceLength) {
+	Font::Glyph *glyph;
+	int i, kerning;
+	char *buf, c;
+
+	if (advanceLength <= 0) {
+		return;
+	}
+	if (metrics->isComplete || (metrics->textPosition < 0) || (metrics->textPosition >= metrics->textLength)) {
+		return;
+	}
+
+	buf = (char *) metrics->text.c_str ();
+	for (i = 0; i < advanceLength; ++i) {
+		if (metrics->textPosition >= metrics->textLength) {
+			break;
+		}
+		c = buf[metrics->textPosition];
+		glyph = getGlyph (c);
+
+		if (metrics->lastCharacter != '\0') {
+			kerning = getKerning (metrics->lastCharacter, c);
+			metrics->textWidth += (float) kerning;
+		}
+		metrics->lastCharacter = c;
+
+		if (! glyph) {
+			metrics->textWidth += (float) spaceWidth;
+		}
+		else {
+			if (metrics->textPosition == (metrics->textLength - 1)) {
+				metrics->textWidth += (float) glyph->leftBearing;
+				metrics->textWidth += (float) glyph->width;
+			}
+			else {
+				metrics->textWidth += (float) glyph->advanceWidth;
+			}
+		}
+
+		++(metrics->textPosition);
+	}
+
+	if (metrics->textPosition >= metrics->textLength) {
+		metrics->isComplete = true;
+	}
+}
+
+void Font::truncateText (StdString *text, float maxWidth, const StdString &truncateSuffix) {
+	Font::Glyph *glyph;
+	float x, spacew, suffixw;
+	char *buf, c, lastc, suffixc;
+	int i, textlen, truncatepos, suffixkerning;
+
+	spacew = (float) spaceWidth;
+	suffixc = 0;
+	x = 0.0f;
+	lastc = 0;
+	buf = (char *) truncateSuffix.c_str ();
+	textlen = truncateSuffix.length ();
+	for (i = 0; i < textlen; ++i) {
+		c = buf[i];
+		if (suffixc <= 0) {
+			suffixc = c;
+		}
+		glyph = getGlyph (c);
+		if (i > 0) {
+			x += getKerning (lastc, c);
+		}
+		lastc = c;
+
+		if (! glyph) {
+			if (i < (textlen - 1)) {
+				x += spacew;
+			}
+		}
+		else {
+			if (i == (textlen - 1)) {
+				x += glyph->leftBearing;
+				x += glyph->width;
+			}
+			else {
+				x += glyph->advanceWidth;
+			}
+		}
+	}
+	suffixw = x;
+
+	truncatepos = 0;
+	x = 0.0f;
+	lastc = 0;
+	buf = (char *) text->c_str ();
+	textlen = text->length ();
+	for (i = 0; i < textlen; ++i) {
+		c = buf[i];
+		glyph = getGlyph (c);
+		if (i > 0) {
+			x += getKerning (lastc, c);
+		}
+		lastc = c;
+
+		if (! glyph) {
+			if (i < (textlen - 1)) {
+				x += spacew;
+			}
+		}
+		else {
+			if (i == (textlen - 1)) {
+				x += glyph->leftBearing;
+				x += glyph->width;
+			}
+			else {
+				x += glyph->advanceWidth;
+			}
+		}
+
+		suffixkerning = 0;
+		if (suffixc > 0) {
+			suffixkerning = getKerning (c, suffixc);
+		}
+
+		if ((x + suffixkerning + suffixw) <= maxWidth) {
+			truncatepos = i;
+		}
+		if (x > maxWidth) {
+			text->assign (text->substr (0, truncatepos + 1));
+			text->append (truncateSuffix);
+			break;
+		}
+	}
+}
+
+StdString Font::truncatedText (const StdString &text, float maxWidth, const StdString &truncateSuffix) {
+	StdString s;
+
+	s.assign (text);
+	truncateText (&s, maxWidth, truncateSuffix);
+	return (s);
 }

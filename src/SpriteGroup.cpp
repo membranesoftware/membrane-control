@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,7 +30,7 @@
 #include "Config.h"
 #include <stdlib.h>
 #include <vector>
-#include "Result.h"
+#include "OsUtil.h"
 #include "Log.h"
 #include "App.h"
 #include "StdString.h"
@@ -63,24 +63,25 @@ void SpriteGroup::clearSpriteList () {
 	spriteList.clear ();
 }
 
-int SpriteGroup::load (const StdString &path, int imageScale) {
+OsUtil::Result SpriteGroup::load (const StdString &path, int imageScale) {
 	Resource *resource;
 	Sprite *sprite;
-	int result, i;
+	OsUtil::Result result;
+	int i;
 
 	if (isLoaded) {
 		if (! loadPath.equals (path)) {
-			return (Result::AlreadyLoadedError);
+			return (OsUtil::Result::AlreadyLoadedError);
 		}
 
-		return (Result::Success);
+		return (OsUtil::Result::Success);
 	}
 
 	resource = &(App::instance->resource);
 	if (imageScale < 0) {
 		imageScale = App::instance->imageScale;
 	}
-	result = Result::Success;
+	result = OsUtil::Result::Success;
 	i = 0;
 	while (true) {
 		if (! resource->fileExists (StdString::createSprintf ("%s/%03i/000_%i.png", path.c_str (), i, imageScale))) {
@@ -91,7 +92,7 @@ int SpriteGroup::load (const StdString &path, int imageScale) {
 
 		sprite = new Sprite ();
 		result = sprite->load (StdString::createSprintf ("%s/%03i", path.c_str (), i), imageScale);
-		if (result != Result::Success) {
+		if (result != OsUtil::Result::Success) {
 			delete (sprite);
 			break;
 		}
@@ -100,7 +101,7 @@ int SpriteGroup::load (const StdString &path, int imageScale) {
 		++i;
 	}
 
-	if (result == Result::Success) {
+	if (result == OsUtil::Result::Success) {
 		loadPath.assign (path);
 		isLoaded = true;
 	}
@@ -138,7 +139,7 @@ void SpriteGroup::resize (int imageScale) {
 		if (resource->fileExists (StdString::createSprintf ("%s/%03i/000_%i.png", loadPath.c_str (), index, imageScale))) {
 			sprite->unload ();
 			result = sprite->load (StdString::createSprintf ("%s/%03i", loadPath.c_str (), index), imageScale);
-			if (result != Result::Success) {
+			if (result != OsUtil::Result::Success) {
 				Log::err ("Failed to reload textures; path=\"%s\" index=%i err=%i", loadPath.c_str (), index, result);
 			}
 		}

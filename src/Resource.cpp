@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -42,7 +42,7 @@
 #include FT_FREETYPE_H
 #include "App.h"
 #include "Font.h"
-#include "Result.h"
+#include "OsUtil.h"
 #include "Log.h"
 #include "StdString.h"
 #include "Resource.h"
@@ -137,71 +137,63 @@ void Resource::setSource (const StdString &path) {
 	isBundleFile = (dataPath.find (".dat") == (dataPath.length () - 4));
 }
 
-int Resource::open () {
+OsUtil::Result Resource::open () {
 	struct stat st;
 	SDL_RWops *rw;
 	Resource::ArchiveEntry ae;
 	uint64_t id;
-	int result;
-
+	OsUtil::Result result;
 
 	if (FT_Init_FreeType (&(freetype))) {
 		Log::err ("Failed to initialize freetype library");
-		return (Result::FreetypeOperationFailedError);
+		return (OsUtil::Result::FreetypeOperationFailedError);
 	}
-
 	if (dataPath.empty ()) {
-		return (Result::InvalidConfigurationError);
+		return (OsUtil::Result::InvalidConfigurationError);
 	}
-
 	if (stat (dataPath.c_str (), &st) != 0) {
 		Log::err ("stat failed; path=\"%s\" err=\"%s\"", dataPath.c_str (), strerror (errno));
-		return (Result::FileOperationFailedError);
+		return (OsUtil::Result::FileOperationFailedError);
 	}
 
 	if (! isBundleFile) {
 		if (! S_ISDIR (st.st_mode)) {
 			Log::err ("Failed to open resources; path=\"%s\" err=\"Invalid resource path\"", dataPath.c_str ());
-			return (Result::MismatchedTypeError);
+			return (OsUtil::Result::MismatchedTypeError);
 		}
-
 		isOpen = true;
-		return (Result::Success);
+		return (OsUtil::Result::Success);
 	}
 
 	rw = SDL_RWFromFile (dataPath.c_str (), "r");
 	if (! rw) {
 		Log::err ("Failed to open resource bundle file; path=\"%s\" error=\"%s\"", dataPath.c_str (), SDL_GetError ());
-		return (Result::FileOperationFailedError);
+		return (OsUtil::Result::FileOperationFailedError);
 	}
 
-	result = Result::Success;
+	result = OsUtil::Result::Success;
 	archiveEntryMap.clear ();
 	while (true) {
 		result = Resource::readUint64 (rw, &id);
-		if (result != Result::Success) {
+		if (result != OsUtil::Result::Success) {
 			break;
 		}
 		if (id == 0) {
 			break;
 		}
-
 		result = Resource::readUint64 (rw, &(ae.position));
-		if (result != Result::Success) {
+		if (result != OsUtil::Result::Success) {
 			break;
 		}
-
 		result = Resource::readUint64 (rw, &(ae.length));
-		if (result != Result::Success) {
+		if (result != OsUtil::Result::Success) {
 			break;
 		}
-
 		archiveEntryMap.insert (std::pair<uint64_t, Resource::ArchiveEntry> (id, ae));
 	}
 
 	SDL_RWclose (rw);
-
-	if (result == Result::Success) {
+	if (result == OsUtil::Result::Success) {
 		isOpen = true;
 	}
 	return (result);
@@ -211,16 +203,13 @@ void Resource::close () {
 	if (! isOpen) {
 		return;
 	}
-
 	clearFileMap ();
 	clearTextureMap ();
 	clearFontMap ();
-
 	if (freetype) {
 		FT_Done_FreeType (freetype);
 		freetype = NULL;
 	}
-
 	isOpen = false;
 }
 
@@ -237,7 +226,6 @@ void Resource::compactFileMap () {
 	if (fileCompactList.empty ()) {
 		return;
 	}
-
 	SDL_LockMutex (fileMapMutex);
 	i = fileCompactList.begin ();
 	end = fileCompactList.end ();
@@ -263,7 +251,6 @@ void Resource::compactTextureMap () {
 	if (textureCompactList.empty ()) {
 		return;
 	}
-
 	SDL_LockMutex (textureMapMutex);
 	i = textureCompactList.begin ();
 	end = textureCompactList.end ();
@@ -289,7 +276,6 @@ void Resource::compactFontMap () {
 	if (fontCompactList.empty ()) {
 		return;
 	}
-
 	SDL_LockMutex (fontMapMutex);
 	i = fontCompactList.begin ();
 	end = fontCompactList.end ();
@@ -331,7 +317,6 @@ bool Resource::fileExists (const StdString &path) {
 			exists = true;
 		}
 	}
-
 	return (exists);
 }
 
@@ -350,20 +335,17 @@ SDL_RWops *Resource::openFile (const StdString &path, uint64_t *fileSize) {
 			Log::debug3 ("Failed to open file resource; path=\"%s\" error=\"Unknown path\"", path.c_str ());
 			return (NULL);
 		}
-
 		rwbundle = SDL_RWFromFile (dataPath.c_str (), "r");
 		if (! rwbundle) {
 			Log::debug3 ("Failed to open file resource; path=\"%s\" error=\"bundle: %s\"", dataPath.c_str (), SDL_GetError ());
 			return (NULL);
 		}
-
 		pos = SDL_RWseek (rwbundle, (Sint64) i->second.position, RW_SEEK_SET);
 		if (pos < 0) {
 			SDL_RWclose (rwbundle);
 			Log::debug3 ("Failed to open file resource; path=\"%s\" error=\"seek: %s\"", dataPath.c_str (), SDL_GetError ());
 			return (NULL);
 		}
-
 		rw = SDL_AllocRW ();
 		if (! rw) {
 			SDL_RWclose (rwbundle);
@@ -390,18 +372,15 @@ SDL_RWops *Resource::openFile (const StdString &path, uint64_t *fileSize) {
 		if (! rw) {
 			return (NULL);
 		}
-
 		pos = SDL_RWsize (rw);
 		if (pos < 0) {
 			Log::debug3 ("Failed to open file resource; path=\"%s\" error=\"%s\"", loadpath.c_str (), SDL_GetError ());
 			return (NULL);
 		}
-
 		if (fileSize) {
 			*fileSize = (uint64_t) pos;
 		}
 	}
-
 	return (rw);
 }
 
@@ -436,17 +415,14 @@ Sint64 Resource::rwopsSeek (SDL_RWops *rw, Sint64 offset, int whence) {
 			if (pos < 0) {
 				break;
 			}
-
 			if (offset == 0) {
 				return (pos - (Sint64) ae->position);
 			}
-
 			pos += offset;
 			pos -= (Sint64) ae->position;
 			if ((pos < 0) || (pos >= (Sint64) ae->length)) {
 				break;
 			}
-
 			result = SDL_RWseek (rwbundle, ((Sint64) ae->position) + pos, RW_SEEK_SET);
 			if (result >= 0) {
 				result -= (Sint64) ae->position;
@@ -458,7 +434,6 @@ Sint64 Resource::rwopsSeek (SDL_RWops *rw, Sint64 offset, int whence) {
 			if ((pos < 0) || (pos >= (Sint64) ae->length)) {
 				break;
 			}
-
 			result = SDL_RWseek (rwbundle, ((Sint64) ae->position) + pos, RW_SEEK_SET);
 			if (result >= 0) {
 				result -= (Sint64) ae->position;
@@ -466,7 +441,6 @@ Sint64 Resource::rwopsSeek (SDL_RWops *rw, Sint64 offset, int whence) {
 			break;
 		}
 	}
-
 	return (result);
 }
 
@@ -478,18 +452,15 @@ size_t Resource::rwopsRead (SDL_RWops *rw, void *ptr, size_t size, size_t maxnum
 
 	ae = (Resource::ArchiveEntry *) rw->hidden.unknown.data1;
 	rwbundle = (SDL_RWops *) rw->hidden.unknown.data2;
-
 	if ((size == 0) || (maxnum == 0)) {
 		return (0);
 	}
-
 	pos = SDL_RWtell (rwbundle);
 	filebytes = ae->length - (uint64_t) (pos - (Sint64) ae->position);
 	readbytes = ((uint64_t) size) * maxnum;
 	if (readbytes > filebytes) {
 		maxnum = (filebytes / size);
 	}
-
 	return (SDL_RWread (rwbundle, ptr, size, maxnum));
 }
 
@@ -508,7 +479,6 @@ int Resource::rwopsClose (SDL_RWops *rw) {
 	if (result < 0) {
 		return (result);
 	}
-
 	SDL_FreeRW (rw);
 	return (0);
 }
@@ -533,7 +503,6 @@ Buffer *Resource::loadFile (const StdString &path) {
 	if (buffer) {
 		return (buffer);
 	}
-
 	rw = openFile (path, &sz);
 	if (! rw) {
 		return (NULL);
@@ -578,13 +547,11 @@ void Resource::unloadFile (const StdString &path) {
 	if (i != fileMap.end ()) {
 		if (i->second.refcount > 0) {
 			--(i->second.refcount);
-
 			if (i->second.refcount <= 0) {
 				fileCompactList.push_back (i->first);
 			}
 		}
 	}
-
 	SDL_UnlockMutex (fileMapMutex);
 }
 
@@ -599,7 +566,6 @@ SDL_Surface *Resource::loadSurface (const StdString &path) {
 		if (! rw) {
 			return (NULL);
 		}
-
 		surface = IMG_Load_RW (rw, 1);
 		if (! surface) {
 			Log::info ("bundle IMG_Load_RW failed; path=\"%s\" err=\"%s\"", path.c_str (), SDL_GetError ());
@@ -614,7 +580,6 @@ SDL_Surface *Resource::loadSurface (const StdString &path) {
 			return (NULL);
 		}
 	}
-
 	return (surface);
 }
 
@@ -644,7 +609,6 @@ SDL_Texture *Resource::loadTexture (const StdString &path) {
 		if (! rw) {
 			return (NULL);
 		}
-
 		surface = IMG_Load_RW (rw, 1);
 		if (! surface) {
 			Log::info ("bundle IMG_Load_RW failed; path=\"%s\" err=\"%s\"", path.c_str (), SDL_GetError ());
@@ -695,7 +659,6 @@ SDL_Texture *Resource::createTexture (const StdString &path, SDL_Surface *surfac
 	if (texture) {
 		return (texture);
 	}
-
 	texture = SDL_CreateTextureFromSurface (App::instance->render, surface);
 	if (! texture) {
 		Log::err ("SDL_CreateTextureFromSurface failed; path=\"%s\" err=\"%s\"", path.c_str (), SDL_GetError ());
@@ -719,7 +682,6 @@ SDL_Texture *Resource::createTexture (const StdString &path, int textureWidth, i
 	if ((textureWidth <= 0) || (textureHeight <= 0)) {
 		return (NULL);
 	}
-
 	texture = NULL;
 	SDL_LockMutex (textureMapMutex);
 	i = textureMap.find (path);
@@ -731,7 +693,6 @@ SDL_Texture *Resource::createTexture (const StdString &path, int textureWidth, i
 	if (texture) {
 		return (texture);
 	}
-
 	texture = SDL_CreateTexture (App::instance->render, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, textureWidth, textureHeight);
 	if (! texture) {
 		Log::err ("SDL_CreateTextureFromSurface failed; path=\"%s\" err=\"%s\"", path.c_str (), SDL_GetError ());
@@ -785,7 +746,6 @@ Font *Resource::loadFont (const StdString &path, int pointSize) {
 	if (font) {
 		return (font);
 	}
-
 	buffer = loadFile (path);
 	if (! buffer) {
 		return (NULL);
@@ -793,8 +753,7 @@ Font *Resource::loadFont (const StdString &path, int pointSize) {
 
 	font = new Font (freetype, key);
 	result = font->load (buffer, pointSize);
-
-	if (result != Result::Success) {
+	if (result != OsUtil::Result::Success) {
 		delete (font);
 		unloadFile (path);
 		Log::err ("Failed to load font resource; key=\"%s\" err=%i", key.c_str (), result);
@@ -822,16 +781,13 @@ void Resource::unloadFont (const StdString &path, int pointSize) {
 	if (i != fontMap.end ()) {
 		if (i->second.refcount > 0) {
 			--(i->second.refcount);
-
 			if (i->second.refcount <= 0) {
 				fontCompactList.push_back (i->first);
 				unloaded = true;
 			}
 		}
 	}
-
 	SDL_UnlockMutex (fontMapMutex);
-
 	if (unloaded) {
 		unloadFile (path);
 	}
@@ -855,20 +811,18 @@ uint64_t Resource::getPathId (const StdString &path) {
 		id = ((id << 5) + id) + c;
 		++s;
 	}
-
 	return (id);
 }
 
-int Resource::readUint64 (SDL_RWops *src, Uint64 *value) {
+OsUtil::Result Resource::readUint64 (SDL_RWops *src, Uint64 *value) {
 	char buf[8];
 	size_t rlen;
 	Uint64 val;
 
 	rlen = SDL_RWread (src, buf, 8, 1);
 	if (rlen < 1) {
-		return (Result::FileOperationFailedError);
+		return (OsUtil::Result::FileOperationFailedError);
 	}
-
 	val = 0;
 	val |= (buf[0] & 0xFF);
 	val <<= 8;
@@ -889,5 +843,5 @@ int Resource::readUint64 (SDL_RWops *src, Uint64 *value) {
 	if (value) {
 		*value = val;
 	}
-	return (Result::Success);
+	return (OsUtil::Result::Success);
 }

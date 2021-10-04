@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -33,6 +33,7 @@
 #define BUFFER_H
 
 #include <stdint.h>
+#include "OsUtil.h"
 
 class Buffer {
 public:
@@ -53,8 +54,8 @@ public:
 	bool empty () const;
 
 	// Add data to the buffer and return a Result value
-	int add (uint8_t *dataPtr, int dataLength);
-	int add (const char *str);
+	OsUtil::Result add (uint8_t *dataPtr, int dataLength);
+	OsUtil::Result add (const char *str);
 
 	// Truncate the buffer's data length to the provided value, which must be less than the buffer's current length
 	void setDataLength (int dataLength);

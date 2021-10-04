@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -39,7 +39,6 @@
 #include "HashMap.h"
 #include "Label.h"
 #include "Panel.h"
-#include "LabelWindow.h"
 #include "ScrollBar.h"
 #include "ScrollView.h"
 
@@ -160,7 +159,8 @@ private:
 		Panel *panel;
 		int row;
 		bool isHighlighted;
-		Item (): panel (NULL), row (-1), isHighlighted (false) { }
+		bool isAnimationStarted;
+		Item (): panel (NULL), row (-1), isHighlighted (false), isAnimationStarted (false) { }
 	};
 
 	struct Row {

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -31,17 +31,20 @@
 #include <stdlib.h>
 #include "SDL2/SDL.h"
 #include "App.h"
-#include "Result.h"
 #include "StdString.h"
-#include "Log.h"
 #include "OsUtil.h"
+#include "Log.h"
+#include "Input.h"
 #include "Ui.h"
+#include "UiConfiguration.h"
+#include "UiText.h"
 #include "Menu.h"
 #include "LogoWindow.h"
 #include "TooltipWindow.h"
 #include "SettingsWindow.h"
 #include "HelpWindow.h"
 #include "ImageWindow.h"
+#include "ConsoleWindow.h"
 #include "UiStack.h"
 
 UiStack::UiStack ()
@@ -98,7 +101,7 @@ void UiStack::populateWidgets () {
 	bottomBarHeight = secondaryToolbar->isVisible ? secondaryToolbar->height : 0.0f;
 
 	if (! snackbarWindow) {
-		snackbarWindow = (SnackbarWindow *) App::instance->rootPanel->addWidget (new SnackbarWindow (App::instance->windowWidth - (App::instance->uiConfig.paddingSize * 2.0f)));
+		snackbarWindow = (SnackbarWindow *) App::instance->rootPanel->addWidget (new SnackbarWindow (App::instance->windowWidth - (UiConfiguration::instance->paddingSize * 2.0f)));
 		snackbarWindow->isVisible = false;
 	}
 }
@@ -191,13 +194,9 @@ void UiStack::update (int msElapsed) {
 			activeUi->retain ();
 
 			tooltip.destroyAndClear ();
-			mainMenu.destroyAndClear ();
 			keyFocusTarget.clear ();
 			mouseHoverTarget.clear ();
-			darkenPanel.destroyAndClear ();
-			settingsWindow.destroyAndClear ();
-			helpWindow.destroyAndClear ();
-			dialogWindow.destroyAndClear ();
+			clearOverlay ();
 			resetToolbars ();
 			snackbarWindow->isVisible = false;
 			activeUi->resume ();
@@ -208,20 +207,21 @@ void UiStack::update (int msElapsed) {
 	SDL_UnlockMutex (uiMutex);
 
 	tooltip.compact ();
-	mainMenu.compact ();
 	keyFocusTarget.compact ();
 	mouseHoverTarget.compact ();
+	mainMenu.compact ();
 	darkenPanel.compact ();
 	settingsWindow.compact ();
 	helpWindow.compact ();
 	dialogWindow.compact ();
+	consoleWindow.compact ();
 
 	keywidget = keyFocusTarget.widget;
 	if (keywidget && (! keywidget->isKeyFocused)) {
 		keyFocusTarget.clear ();
 	}
 
-	mousewidget = App::instance->rootPanel->findWidget ((float) App::instance->input.mouseX, (float) App::instance->input.mouseY, true);
+	mousewidget = App::instance->rootPanel->findWidget ((float) Input::instance->mouseX, (float) Input::instance->mouseY, true);
 	if (! mousewidget) {
 		mouseHoverTarget.clear ();
 		deactivateMouseHover ();
@@ -241,12 +241,12 @@ void UiStack::update (int msElapsed) {
 		}
 	}
 
-	if (darkenPanel.widget && (! settingsWindow.widget) && (! helpWindow.widget) && (! dialogWindow.widget)) {
+	if (darkenPanel.widget && (! isDarkenOverlayActive ())) {
 		darkenPanel.destroyAndClear ();
 	}
 
 	if (isUiInputSuspended) {
-		if ((! darkenPanel.widget) && (! settingsWindow.widget) && (! helpWindow.widget) && (! dialogWindow.widget)) {
+		if ((! darkenPanel.widget) && (! isDarkenOverlayActive ())) {
 			ui = getActiveUi ();
 			if (ui) {
 				ui->rootPanel->isInputSuspended = false;
@@ -266,10 +266,10 @@ void UiStack::resetToolbars () {
 	mainToolbar->clearRightItems ();
 	secondaryToolbar->clearAll ();
 
-	button = new Button (App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::MainMenuButtonSprite));
+	button = new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::MainMenuButtonSprite));
 	button->mouseClickCallback = Widget::EventCallbackContext (UiStack::mainMenuButtonClicked, this);
 	button->setInverseColor (true);
-	button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::MainMenuTooltip));
+	button->setMouseHoverTooltip (UiText::instance->getText (UiTextString::MainMenuTooltip));
 	mainToolbar->addRightItem (button);
 	if (activeUi) {
 		activeUi->addMainToolbarItems (mainToolbar);
@@ -277,10 +277,10 @@ void UiStack::resetToolbars () {
 	}
 
 	if (uiList.size () > 1) {
-		button = new Button (App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::BackButtonSprite));
+		button = new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::BackButtonSprite));
 		button->mouseClickCallback = Widget::EventCallbackContext (UiStack::backButtonClicked, this);
 		button->setInverseColor (true);
-		button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::UiBackTooltip));
+		button->setMouseHoverTooltip (UiText::instance->getText (UiTextString::UiBackTooltip));
 		mainToolbar->addRightItem (button);
 	}
 
@@ -320,7 +320,7 @@ void UiStack::executeStackCommands () {
 				break;
 			}
 			result = ui->load ();
-			if (result != Result::Success) {
+			if (result != OsUtil::Result::Success) {
 				Log::err ("Failed to load UI resources; err=%i", result);
 				ui->release ();
 				break;
@@ -345,7 +345,7 @@ void UiStack::executeStackCommands () {
 				break;
 			}
 			result = ui->load ();
-			if (result != Result::Success) {
+			if (result != OsUtil::Result::Success) {
 				Log::err ("Failed to load UI resources; err=%i", result);
 				ui->release ();
 				break;
@@ -455,7 +455,7 @@ void UiStack::resize () {
 void UiStack::showSnackbar (const StdString &messageText, const StdString &actionButtonText, Widget::EventCallbackContext actionButtonClickCallback) {
 	float y;
 
-	snackbarWindow->setMaxWidth (App::instance->windowWidth - (App::instance->uiConfig.paddingSize * 2.0f) - rightBarWidth);
+	snackbarWindow->setMaxWidth (App::instance->windowWidth - (UiConfiguration::instance->paddingSize * 2.0f) - rightBarWidth);
 	snackbarWindow->setMessageText (messageText);
 	if ((! actionButtonText.empty ()) && actionButtonClickCallback.callback) {
 		snackbarWindow->setActionButtonEnabled (true, actionButtonText, actionButtonClickCallback);
@@ -471,8 +471,8 @@ void UiStack::showSnackbar (const StdString &messageText, const StdString &actio
 		y = topBarHeight;
 	}
 	snackbarWindow->position.assign (App::instance->windowWidth - rightBarWidth - snackbarWindow->width, y);
-	snackbarWindow->startTimeout (App::instance->uiConfig.snackbarTimeout);
-	snackbarWindow->startScroll (App::instance->uiConfig.snackbarScrollDuration);
+	snackbarWindow->startTimeout (UiConfiguration::instance->snackbarTimeout);
+	snackbarWindow->startScroll (UiConfiguration::instance->snackbarScrollDuration);
 	if (snackbarWindow->zLevel < App::instance->rootPanel->maxWidgetZLevel) {
 		snackbarWindow->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
 	}
@@ -480,12 +480,9 @@ void UiStack::showSnackbar (const StdString &messageText, const StdString &actio
 }
 
 bool UiStack::processKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown) {
-	if (settingsWindow.widget || helpWindow.widget || dialogWindow.widget) {
-		if (keycode == SDLK_ESCAPE) {
-			settingsWindow.destroyAndClear ();
-			helpWindow.destroyAndClear ();
-			dialogWindow.destroyAndClear ();
-			darkenPanel.destroyAndClear ();
+	if (keycode == SDLK_ESCAPE) {
+		if (isDarkenOverlayActive ()) {
+			clearOverlay ();
 			return (true);
 		}
 	}
@@ -500,7 +497,7 @@ void UiStack::setKeyFocusTarget (Widget *widget) {
 	if (target == widget) {
 		return;
 	}
-	if (target) {
+	if (target && (! target->isDestroyed)) {
 		target->setKeyFocus (false);
 	}
 
@@ -512,15 +509,12 @@ void UiStack::setKeyFocusTarget (Widget *widget) {
 }
 
 void UiStack::activateMouseHover () {
-	UiConfiguration *uiconfig;
 	Widget *widget;
 	TooltipWindow *tooltipwindow;
 	StdString text;
 	float x, y, max;
 
-	uiconfig = &(App::instance->uiConfig);
 	tooltip.destroyAndClear ();
-
 	widget = mouseHoverTarget.widget;
 	if (widget) {
 		text.assign (widget->tooltipText);
@@ -535,70 +529,70 @@ void UiStack::activateMouseHover () {
 		switch (widget->tooltipAlignment) {
 			case Widget::TopAlignment: {
 				x += ((widget->width / 2.0f) - (tooltipwindow->width / 2.0f));
-				y -= (tooltipwindow->height + uiconfig->marginSize);
+				y -= (tooltipwindow->height + UiConfiguration::instance->marginSize);
 
-				if (x < uiconfig->paddingSize) {
-					x = uiconfig->paddingSize;
+				if (x < UiConfiguration::instance->paddingSize) {
+					x = UiConfiguration::instance->paddingSize;
 				}
-				max = App::instance->rootPanel->width - tooltipwindow->width - uiconfig->paddingSize;
+				max = App::instance->rootPanel->width - tooltipwindow->width - UiConfiguration::instance->paddingSize;
 				if (x > max) {
 					x = max;
 				}
 
-				if (y < uiconfig->paddingSize) {
-					y = widget->screenY + widget->height + uiconfig->marginSize;
+				if (y < UiConfiguration::instance->paddingSize) {
+					y = widget->screenY + widget->height + UiConfiguration::instance->marginSize;
 				}
 				break;
 			}
 			case Widget::LeftAlignment: {
-				x -= (tooltipwindow->width + uiconfig->marginSize);
+				x -= (tooltipwindow->width + UiConfiguration::instance->marginSize);
 				y += ((widget->height / 2.0f) - (tooltipwindow->height / 2.0f));
 
-				if (y < uiconfig->paddingSize) {
-					y = uiconfig->paddingSize;
+				if (y < UiConfiguration::instance->paddingSize) {
+					y = UiConfiguration::instance->paddingSize;
 				}
-				max = App::instance->rootPanel->height - tooltipwindow->height - uiconfig->paddingSize;
+				max = App::instance->rootPanel->height - tooltipwindow->height - UiConfiguration::instance->paddingSize;
 				if (y > max) {
 					y = max;
 				}
 
-				if (x < uiconfig->paddingSize) {
-					x = widget->screenX + widget->width + uiconfig->marginSize;
+				if (x < UiConfiguration::instance->paddingSize) {
+					x = widget->screenX + widget->width + UiConfiguration::instance->marginSize;
 				}
 				break;
 			}
 			case Widget::RightAlignment: {
-				x += (widget->width + uiconfig->marginSize);
+				x += (widget->width + UiConfiguration::instance->marginSize);
 				y += ((widget->height / 2.0f) - (tooltipwindow->height / 2.0f));
 
-				if (y < uiconfig->paddingSize) {
-					y = uiconfig->paddingSize;
+				if (y < UiConfiguration::instance->paddingSize) {
+					y = UiConfiguration::instance->paddingSize;
 				}
-				max = App::instance->rootPanel->height - tooltipwindow->height - uiconfig->paddingSize;
+				max = App::instance->rootPanel->height - tooltipwindow->height - UiConfiguration::instance->paddingSize;
 				if (y > max) {
 					y = max;
 				}
 
-				if ((x + tooltipwindow->width) >= (App::instance->rootPanel->width - uiconfig->paddingSize)) {
-					x = widget->screenX - (tooltipwindow->width + uiconfig->marginSize);
+				if ((x + tooltipwindow->width) >= (App::instance->rootPanel->width - UiConfiguration::instance->paddingSize)) {
+					x = widget->screenX - (tooltipwindow->width + UiConfiguration::instance->marginSize);
 				}
 				break;
 			}
 			case Widget::BottomAlignment:
 			default: {
 				x += ((widget->width / 2.0f) - (tooltipwindow->width / 2.0f));
-				y += (widget->height + uiconfig->marginSize);
+				y += (widget->height + UiConfiguration::instance->marginSize);
 
-				if (x < uiconfig->paddingSize) {
-					x = uiconfig->paddingSize;
+				if (x < UiConfiguration::instance->paddingSize) {
+					x = UiConfiguration::instance->paddingSize;
 				}
-				max = App::instance->rootPanel->width - tooltipwindow->width - uiconfig->paddingSize;
+				max = App::instance->rootPanel->width - tooltipwindow->width - UiConfiguration::instance->paddingSize;
 				if (x > max) {
 					x = max;
 				}
 
-				if ((y + tooltipwindow->height) >= (App::instance->rootPanel->height - uiconfig->paddingSize)) {
-					y = widget->screenY - (tooltipwindow->height + uiconfig->marginSize);
+				if ((y + tooltipwindow->height) >= (App::instance->rootPanel->height - UiConfiguration::instance->paddingSize)) {
+					y = widget->screenY - (tooltipwindow->height + UiConfiguration::instance->marginSize);
 				}
 				break;
 			}
@@ -613,7 +607,7 @@ void UiStack::activateMouseHover () {
 
 void UiStack::deactivateMouseHover () {
 	tooltip.destroyAndClear ();
-	mouseHoverClock = App::instance->uiConfig.mouseHoverThreshold;
+	mouseHoverClock = UiConfiguration::instance->mouseHoverThreshold;
 	isMouseHoverSuspended = false;
 	isMouseHoverActive = false;
 }
@@ -637,15 +631,13 @@ void UiStack::suspendUiInput () {
 
 void UiStack::suspendMouseHover () {
 	tooltip.destroyAndClear ();
-	mouseHoverClock = App::instance->uiConfig.mouseHoverThreshold;
+	mouseHoverClock = UiConfiguration::instance->mouseHoverThreshold;
 	isMouseHoverActive = false;
 	isMouseHoverSuspended = true;
 }
 
 void UiStack::mainMenuButtonClicked (void *uiStackPtr, Widget *widgetPtr) {
 	UiStack *uistack;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	Menu *menu;
 
 	uistack = (UiStack *) uiStackPtr;
@@ -661,17 +653,15 @@ void UiStack::mainMenuButtonClicked (void *uiStackPtr, Widget *widgetPtr) {
 	}
 	SDL_UnlockMutex (uistack->uiMutex);
 
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
 	menu = (Menu *) App::instance->rootPanel->addWidget (new Menu ());
 	menu->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
 	menu->isClickDestroyEnabled = true;
-	menu->addItem (uitext->getText (UiTextString::Settings).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::SettingsGearButtonSprite), UiStack::settingsActionClicked, uistack);
-	menu->addItem (uitext->getText (UiTextString::About).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::AboutButtonSprite), UiStack::aboutActionClicked, uistack);
-	menu->addItem (uitext->getText (UiTextString::CheckForUpdates).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::UpdateButtonSprite), UiStack::updateActionClicked, uistack);
-	menu->addItem (uitext->getText (UiTextString::SendFeedback).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::FeedbackButtonSprite), UiStack::feedbackActionClicked, uistack);
-	menu->addItem (uitext->getText (UiTextString::Help).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::HelpButtonSprite), UiStack::helpActionClicked, uistack);
-	menu->addItem (uitext->getText (UiTextString::Exit).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::ExitButtonSprite), UiStack::exitActionClicked, uistack);
+	menu->addItem (UiText::instance->getText (UiTextString::Settings).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SettingsGearButtonSprite), UiStack::settingsActionClicked, uistack);
+	menu->addItem (UiText::instance->getText (UiTextString::About).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::AboutButtonSprite), UiStack::aboutActionClicked, uistack);
+	menu->addItem (UiText::instance->getText (UiTextString::CheckForUpdates).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::UpdateButtonSprite), UiStack::updateActionClicked, uistack);
+	menu->addItem (UiText::instance->getText (UiTextString::SendFeedback).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::FeedbackButtonSprite), UiStack::feedbackActionClicked, uistack);
+	menu->addItem (UiText::instance->getText (UiTextString::Help).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::HelpButtonSprite), UiStack::helpActionClicked, uistack);
+	menu->addItem (UiText::instance->getText (UiTextString::Exit).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ExitButtonSprite), UiStack::exitActionClicked, uistack);
 	menu->position.assign (widgetPtr->position.x + widgetPtr->width - menu->width, widgetPtr->position.y + widgetPtr->height);
 	uistack->mainMenu.assign (menu);
 }
@@ -690,11 +680,11 @@ void UiStack::aboutActionClicked (void *uiStackPtr, Widget *widgetPtr) {
 
 	url.assign (App::getHelpUrl ("about-membrane-control"));
 	result = OsUtil::openUrl (url);
-	if (result != Result::Success) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::OpenAboutUrlError));
+	if (result != OsUtil::Result::Success) {
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::OpenAboutUrlError));
 	}
 	else {
-		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::LaunchedWebBrowser).capitalized ().c_str (), url.c_str ()));
+		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s - %s", UiText::instance->getText (UiTextString::LaunchedWebBrowser).capitalized ().c_str (), url.c_str ()));
 	}
 }
 
@@ -702,11 +692,11 @@ void UiStack::updateActionClicked (void *uiStackPtr, Widget *widgetPtr) {
 	int result;
 
 	result = OsUtil::openUrl (App::getUpdateUrl ());
-	if (result != Result::Success) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::OpenFeedbackUrlError));
+	if (result != OsUtil::Result::Success) {
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::OpenFeedbackUrlError));
 	}
 	else {
-		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::LaunchedWebBrowser).capitalized ().c_str (), App::ServerUrl.c_str ()));
+		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s - %s", UiText::instance->getText (UiTextString::LaunchedWebBrowser).capitalized ().c_str (), App::ServerUrl.c_str ()));
 	}
 }
 
@@ -714,11 +704,11 @@ void UiStack::feedbackActionClicked (void *uiStackPtr, Widget *widgetPtr) {
 	int result;
 
 	result = OsUtil::openUrl (App::getFeedbackUrl (true));
-	if (result != Result::Success) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::OpenFeedbackUrlError));
+	if (result != OsUtil::Result::Success) {
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::OpenFeedbackUrlError));
 	}
 	else {
-		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::LaunchedWebBrowser).capitalized ().c_str (), App::getFeedbackUrl ().c_str ()));
+		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s - %s", UiText::instance->getText (UiTextString::LaunchedWebBrowser).capitalized ().c_str (), App::getFeedbackUrl ().c_str ()));
 	}
 }
 
@@ -730,34 +720,42 @@ void UiStack::exitActionClicked (void *uiStackPtr, Widget *widgetPtr) {
 	App::instance->shutdown ();
 }
 
+void UiStack::clearOverlay () {
+	mainMenu.destroyAndClear ();
+	darkenPanel.destroyAndClear ();
+	settingsWindow.destroyAndClear ();
+	helpWindow.destroyAndClear ();
+	dialogWindow.destroyAndClear ();
+	consoleWindow.destroyAndClear ();
+}
+
+bool UiStack::isDarkenOverlayActive () {
+	return (settingsWindow.widget || helpWindow.widget || dialogWindow.widget || consoleWindow.widget);
+}
+
 void UiStack::toggleSettingsWindow () {
-	UiConfiguration *uiconfig;
 	SettingsWindow *settings;
 	Panel *panel;
 
 	if (dialogWindow.widget) {
 		return;
 	}
-
-	darkenPanel.destroyAndClear ();
 	if (settingsWindow.widget) {
-		settingsWindow.destroyAndClear ();
+		clearOverlay ();
 		return;
 	}
-	helpWindow.destroyAndClear ();
-	mainMenu.destroyAndClear ();
 
+	clearOverlay ();
 	SDL_LockMutex (uiMutex);
 	if (activeUi) {
 		activeUi->clearPopupWidgets ();
 	}
 	SDL_UnlockMutex (uiMutex);
 
-	uiconfig = &(App::instance->uiConfig);
 	settings = new SettingsWindow (App::instance->rootPanel->width * 0.33f, App::instance->rootPanel->height);
 	panel = new Panel ();
 	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, 0.0f));
-	panel->bgColor.translate (0.0f, 0.0f, 0.0f, uiconfig->overlayWindowAlpha, uiconfig->backgroundCrossFadeDuration);
+	panel->bgColor.translate (0.0f, 0.0f, 0.0f, UiConfiguration::instance->overlayWindowAlpha, UiConfiguration::instance->backgroundCrossFadeDuration);
 	panel->setFixedSize (true, App::instance->rootPanel->width - settings->width, App::instance->rootPanel->height);
 
 	App::instance->rootPanel->addWidget (panel);
@@ -771,23 +769,18 @@ void UiStack::toggleSettingsWindow () {
 }
 
 void UiStack::toggleHelpWindow () {
-	UiConfiguration *uiconfig;
 	HelpWindow *helpwindow;
 	Panel *panel;
 
 	if (dialogWindow.widget) {
 		return;
 	}
-
-	darkenPanel.destroyAndClear ();
 	if (helpWindow.widget) {
-		helpWindow.destroyAndClear ();
+		clearOverlay ();
 		return;
 	}
-	settingsWindow.destroyAndClear ();
-	mainMenu.destroyAndClear ();
 
-	uiconfig = &(App::instance->uiConfig);
+	clearOverlay ();
 	helpwindow = new HelpWindow (App::instance->rootPanel->width * 0.33f, App::instance->rootPanel->height);
 	SDL_LockMutex (uiMutex);
 	if (activeUi) {
@@ -798,7 +791,7 @@ void UiStack::toggleHelpWindow () {
 
 	panel = new Panel ();
 	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, 0.0f));
-	panel->bgColor.translate (0.0f, 0.0f, 0.0f, uiconfig->overlayWindowAlpha, uiconfig->backgroundCrossFadeDuration);
+	panel->bgColor.translate (0.0f, 0.0f, 0.0f, UiConfiguration::instance->overlayWindowAlpha, UiConfiguration::instance->backgroundCrossFadeDuration);
 	panel->setFixedSize (true, App::instance->rootPanel->width - helpwindow->width, App::instance->rootPanel->height);
 
 	App::instance->rootPanel->addWidget (panel);
@@ -811,21 +804,50 @@ void UiStack::toggleHelpWindow () {
 	suspendUiInput ();
 }
 
-void UiStack::showDialog (Panel *dialog) {
-	UiConfiguration *uiconfig;
+void UiStack::toggleConsoleWindow () {
 	Panel *panel;
+	ConsoleWindow *consolewindow;
 
-	uiconfig = &(App::instance->uiConfig);
+	if (dialogWindow.widget) {
+		return;
+	}
+	if (consoleWindow.widget) {
+		clearOverlay ();
+		return;
+	}
 
-	darkenPanel.destroyAndClear ();
-	dialogWindow.destroyAndClear ();
-	helpWindow.destroyAndClear ();
-	settingsWindow.destroyAndClear ();
-	mainMenu.destroyAndClear ();
+	clearOverlay ();
+	consolewindow = new ConsoleWindow ();
+	SDL_LockMutex (uiMutex);
+	if (activeUi) {
+		activeUi->clearPopupWidgets ();
+	}
+	SDL_UnlockMutex (uiMutex);
 
 	panel = new Panel ();
 	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, 0.0f));
-	panel->bgColor.translate (0.0f, 0.0f, 0.0f, uiconfig->overlayWindowAlpha, uiconfig->backgroundCrossFadeDuration);
+	panel->bgColor.translate (0.0f, 0.0f, 0.0f, UiConfiguration::instance->overlayWindowAlpha, UiConfiguration::instance->backgroundCrossFadeDuration);
+	panel->setFixedSize (true, App::instance->rootPanel->width, App::instance->rootPanel->height);
+
+	App::instance->rootPanel->addWidget (panel);
+	App::instance->rootPanel->addWidget (consolewindow);
+	panel->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
+	consolewindow->zLevel = App::instance->rootPanel->maxWidgetZLevel + 2;
+	consolewindow->position.assign (App::instance->rootPanel->width - consolewindow->width, (App::instance->rootPanel->height - consolewindow->height) / 2.0f);
+	darkenPanel.assign (panel);
+	consoleWindow.assign (consolewindow);
+	suspendUiInput ();
+	App::instance->setConsoleWindow (consolewindow);
+	consolewindow->assignKeyFocus ();
+}
+
+void UiStack::showDialog (Panel *dialog) {
+	Panel *panel;
+
+	clearOverlay ();
+	panel = new Panel ();
+	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, 0.0f));
+	panel->bgColor.translate (0.0f, 0.0f, 0.0f, UiConfiguration::instance->overlayWindowAlpha, UiConfiguration::instance->backgroundCrossFadeDuration);
 	panel->setFixedSize (true, App::instance->rootPanel->width, App::instance->rootPanel->height);
 
 	App::instance->rootPanel->addWidget (panel);
@@ -839,19 +861,16 @@ void UiStack::showDialog (Panel *dialog) {
 
 void UiStack::showImageDialog (const StdString &imageUrl) {
 	ImageWindow *image;
-	UiConfiguration *uiconfig;
 
 	if (imageUrl.empty ()) {
 		return;
 	}
-
-	uiconfig = &(App::instance->uiConfig);
-	image = new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite)));
+	image = new ImageWindow (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite)));
 	image->loadCallback = Widget::EventCallbackContext (UiStack::imageDialogLoaded, this);
 	image->mouseClickCallback = Widget::EventCallbackContext (UiStack::imageDialogClicked, this);
-	image->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	image->setFillBg (true, uiconfig->darkBackgroundColor);
-	image->setLoadSprite (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
+	image->setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
+	image->setFillBg (true, UiConfiguration::instance->darkBackgroundColor);
+	image->setLoadSprite (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
 	image->setLoadResize (true, ((float) App::instance->windowWidth) * 0.95f);
 	image->setImageUrl (imageUrl);
 	showDialog (image);
@@ -867,7 +886,15 @@ void UiStack::imageDialogClicked (void *uiStackPtr, Widget *widgetPtr) {
 
 void UiStack::imageDialogLoaded (void *uiStackPtr, Widget *widgetPtr) {
 	ImageWindow *image;
+	UiStack *uistack;
 
+	uistack = (UiStack *) uiStackPtr;
 	image = (ImageWindow *) widgetPtr;
+	if (! image->isLoaded ()) {
+		uistack->dialogWindow.destroyAndClear ();
+		uistack->darkenPanel.destroyAndClear ();
+		uistack->showSnackbar (UiText::instance->getText (UiTextString::ImageDialogLoadError));
+		return;
+	}
 	image->position.assign ((((float) App::instance->windowWidth) - image->width) / 2.0f, (((float) App::instance->windowHeight) - image->height) / 2.0f);
 }

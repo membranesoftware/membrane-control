@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -31,10 +31,9 @@
 #include <stdlib.h>
 #include <map>
 #include "SDL2/SDL.h"
-#include "Result.h"
+#include "App.h"
 #include "Log.h"
 #include "StdString.h"
-#include "App.h"
 #include "OsUtil.h"
 #include "MediaUtil.h"
 #include "Button.h"
@@ -42,6 +41,9 @@
 #include "Menu.h"
 #include "Chip.h"
 #include "SystemInterface.h"
+#include "RecordStore.h"
+#include "CommandListener.h"
+#include "Agent.h"
 #include "CardView.h"
 #include "ComboBox.h"
 #include "MediaWindow.h"
@@ -55,6 +57,9 @@
 #include "MediaThumbnailWindow.h"
 #include "StreamPlaylistWindow.h"
 #include "Ui.h"
+#include "UiConfiguration.h"
+#include "UiText.h"
+#include "AgentControl.h"
 #include "MediaItemUi.h"
 #include "StreamItemUi.h"
 #include "MonitorCacheUi.h"
@@ -118,39 +123,31 @@ StdString MediaUi::getSpritePath () {
 }
 
 Widget *MediaUi::createBreadcrumbWidget () {
-	return (new Chip (App::instance->uiText.getText (UiTextString::Media).capitalized (), sprites.getSprite (MediaUi::BreadcrumbIconSprite)));
+	return (new Chip (UiText::instance->getText (UiTextString::Media).capitalized (), sprites.getSprite (MediaUi::BreadcrumbIconSprite)));
 }
 
 void MediaUi::setHelpWindowContent (HelpWindow *helpWindow) {
-	UiText *uitext;
-
-	uitext = &(App::instance->uiText);
-	helpWindow->setHelpText (uitext->getText (UiTextString::MediaUiHelpTitle), uitext->getText (UiTextString::MediaUiHelpText));
+	helpWindow->setHelpText (UiText::instance->getText (UiTextString::MediaUiHelpTitle), UiText::instance->getText (UiTextString::MediaUiHelpText));
 	if (mediaServerCount <= 0) {
-		helpWindow->addAction (uitext->getText (UiTextString::MediaUiHelpAction1Text), uitext->getText (UiTextString::LearnMore).capitalized (), App::getHelpUrl ("servers"));
+		helpWindow->addAction (UiText::instance->getText (UiTextString::MediaUiHelpAction1Text), UiText::instance->getText (UiTextString::LearnMore).capitalized (), App::getHelpUrl ("servers"));
 	}
 	else if (mediaItemCount <= 0) {
-		helpWindow->addAction (uitext->getText (UiTextString::MediaUiHelpAction4Text), uitext->getText (UiTextString::LearnMore).capitalized (), App::getHelpUrl ("media-streaming"));
+		helpWindow->addAction (UiText::instance->getText (UiTextString::MediaUiHelpAction4Text), UiText::instance->getText (UiTextString::LearnMore).capitalized (), App::getHelpUrl ("media-streaming"));
 	}
 	else {
-		helpWindow->addAction (uitext->getText (UiTextString::MediaUiHelpAction2Text));
-		helpWindow->addAction (uitext->getText (UiTextString::MediaUiHelpAction3Text), uitext->getText (UiTextString::LearnMore).capitalized (), App::getHelpUrl ("media-streaming"));
+		helpWindow->addAction (UiText::instance->getText (UiTextString::MediaUiHelpAction2Text));
+		helpWindow->addAction (UiText::instance->getText (UiTextString::MediaUiHelpAction3Text), UiText::instance->getText (UiTextString::LearnMore).capitalized (), App::getHelpUrl ("media-streaming"));
 	}
-
-	helpWindow->addTopicLink (uitext->getText (UiTextString::MediaStreaming).capitalized (), App::getHelpUrl ("media-streaming"));
-	helpWindow->addTopicLink (uitext->getText (UiTextString::SearchForHelp).capitalized (), App::getHelpUrl (""));
+	helpWindow->addTopicLink (UiText::instance->getText (UiTextString::MediaStreaming).capitalized (), App::getHelpUrl ("media-streaming"));
+	helpWindow->addTopicLink (UiText::instance->getText (UiTextString::SearchForHelp).capitalized (), App::getHelpUrl (""));
 }
 
 int MediaUi::doLoad () {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	HashMap *prefs;
 	Panel *panel;
 	Toggle *toggle;
 	Button *button;
 
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
 	mediaServerCount = 0;
 	mediaItemCount = 0;
 	mediaStreamCount = 0;
@@ -165,41 +162,41 @@ int MediaUi::doLoad () {
 	App::instance->unlockPrefs ();
 
 	panel = new Panel ();
-	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
-	toggle = (Toggle *) panel->addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandAllLessButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandAllMoreButtonSprite)));
+	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, UiConfiguration::instance->scrimBackgroundAlpha));
+	toggle = (Toggle *) panel->addWidget (new Toggle (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ExpandAllLessButtonSprite), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ExpandAllMoreButtonSprite)));
 	toggle->stateChangeCallback = Widget::EventCallbackContext (MediaUi::expandAgentsToggleStateChanged, this);
 	toggle->setInverseColor (true);
-	toggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::MinimizeAll).capitalized (), uitext->getText (UiTextString::ExpandAll).capitalized ());
+	toggle->setStateMouseHoverTooltips (UiText::instance->getText (UiTextString::MinimizeAll).capitalized (), UiText::instance->getText (UiTextString::ExpandAll).capitalized ());
 	expandAgentsToggle.assign (toggle);
-	cardView->addItem (createRowHeaderPanel (uitext->getText (UiTextString::MediaUiAgentRowHeaderText), panel), StdString (""), MediaUi::AgentToggleRow);
+	cardView->addItem (createRowHeaderPanel (UiText::instance->getText (UiTextString::MediaUiAgentRowHeaderText), panel), StdString (""), MediaUi::AgentToggleRow);
 
 	cardView->setRowReverseSorted (MediaUi::ExpandedAgentRow, true);
 	cardView->setRowReverseSorted (MediaUi::ExpandedPlaylistRow, true);
 
 	panel = new Panel ();
-	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
-	toggle = (Toggle *) panel->addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandAllLessButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandAllMoreButtonSprite)));
+	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, UiConfiguration::instance->scrimBackgroundAlpha));
+	toggle = (Toggle *) panel->addWidget (new Toggle (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ExpandAllLessButtonSprite), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ExpandAllMoreButtonSprite)));
 	toggle->stateChangeCallback = Widget::EventCallbackContext (MediaUi::expandPlaylistsToggleStateChanged, this);
 	toggle->setInverseColor (true);
-	toggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::MinimizeAll).capitalized (), uitext->getText (UiTextString::ExpandAll).capitalized ());
+	toggle->setStateMouseHoverTooltips (UiText::instance->getText (UiTextString::MinimizeAll).capitalized (), UiText::instance->getText (UiTextString::ExpandAll).capitalized ());
 	expandPlaylistsToggle.assign (toggle);
 
 	button = (Button *) panel->addWidget (new Button (sprites.getSprite (MediaUi::CreatePlaylistButtonSprite)));
 	button->mouseClickCallback = Widget::EventCallbackContext (MediaUi::createPlaylistButtonClicked, this);
 	button->setInverseColor (true);
-	button->setMouseHoverTooltip (uitext->getText (UiTextString::MediaUiCreatePlaylistTooltip));
+	button->setMouseHoverTooltip (UiText::instance->getText (UiTextString::MediaUiCreatePlaylistTooltip));
 
 	panel->setLayout (Panel::HorizontalLayout);
-	cardView->addItem (createRowHeaderPanel (uitext->getText (UiTextString::Playlists).capitalized (), panel), StdString (""), MediaUi::PlaylistToggleRow);
+	cardView->addItem (createRowHeaderPanel (UiText::instance->getText (UiTextString::Playlists).capitalized (), panel), StdString (""), MediaUi::PlaylistToggleRow);
 
-	cardView->setRowHeader (MediaUi::EmptyMediaRow, createRowHeaderPanel (uitext->getText (UiTextString::Media).capitalized ()));
-	cardView->setRowHeader (MediaUi::MediaRow, createRowHeaderPanel (uitext->getText (UiTextString::Media).capitalized ()));
+	cardView->setRowHeader (MediaUi::EmptyMediaRow, createRowHeaderPanel (UiText::instance->getText (UiTextString::Media).capitalized ()));
+	cardView->setRowHeader (MediaUi::MediaRow, createRowHeaderPanel (UiText::instance->getText (UiTextString::Media).capitalized ()));
 	cardView->setRowItemMarginSize (MediaUi::MediaRow, 0.0f);
 	cardView->setRowSelectionAnimated (MediaUi::MediaRow, true);
 	cardView->setRowDetail (MediaUi::MediaRow, cardDetail);
-	cardView->setRowItemMarginSize (MediaUi::MediaLoadingRow, uiconfig->marginSize);
+	cardView->setRowItemMarginSize (MediaUi::MediaLoadingRow, UiConfiguration::instance->marginSize);
 
-	return (Result::Success);
+	return (OsUtil::Result::Success);
 }
 
 void MediaUi::doUnload () {
@@ -221,36 +218,34 @@ void MediaUi::doUnload () {
 	SDL_LockMutex (mediaServerMapMutex);
 	mediaServerMap.clear ();
 	SDL_UnlockMutex (mediaServerMapMutex);
+
+	RecordStore::instance->removeRecords (SystemInterface::CommandId_MediaItem);
+	RecordStore::instance->removeRecords (SystemInterface::CommandId_StreamItem);
 }
 
 void MediaUi::doAddMainToolbarItems (Toolbar *toolbar) {
 	Button *button;
 
-	button = new Button (App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::SelectImageSizeButtonSprite));
+	button = new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SelectImageSizeButtonSprite));
 	button->mouseClickCallback = Widget::EventCallbackContext (MediaUi::imageSizeButtonClicked, this);
 	button->setInverseColor (true);
-	button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::ThumbnailImageSizeTooltip));
+	button->setMouseHoverTooltip (UiText::instance->getText (UiTextString::ThumbnailImageSizeTooltip));
 	toolbar->addRightItem (button);
 
-	button = new Button (App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::ReloadButtonSprite));
+	button = new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ReloadButtonSprite));
 	button->mouseClickCallback = Widget::EventCallbackContext (MediaUi::reloadButtonClicked, this);
 	button->setInverseColor (true);
-	button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::ReloadTooltip));
+	button->setMouseHoverTooltip (UiText::instance->getText (UiTextString::ReloadTooltip));
 	toolbar->addRightItem (button);
 }
 
 void MediaUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	HashMap *prefs;
 	TextFieldWindow *textfield;
 	Button *button;
 
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-
-	textfield = new TextFieldWindow (App::instance->windowWidth * 0.37f, uitext->getText (UiTextString::EnterSearchKeyPrompt));
-	textfield->setPadding (uiconfig->paddingSize, 0.0f);
+	textfield = new TextFieldWindow (App::instance->windowWidth * 0.37f, UiText::instance->getText (UiTextString::EnterSearchKeyPrompt));
+	textfield->setPadding (UiConfiguration::instance->paddingSize, 0.0f);
 	textfield->setButtonsEnabled (false, false, true, true);
 	textfield->valueEditCallback = Widget::EventCallbackContext (MediaUi::searchFieldEdited, this);
 	toolbar->addLeftItem (textfield);
@@ -259,13 +254,13 @@ void MediaUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
 	button = new Button (sprites.getSprite (MediaUi::SearchButtonSprite));
 	button->mouseClickCallback = Widget::EventCallbackContext (MediaUi::searchButtonClicked, this);
 	button->setInverseColor (true);
-	button->setMouseHoverTooltip (uitext->getText (UiTextString::MediaUiSearchTooltip));
+	button->setMouseHoverTooltip (UiText::instance->getText (UiTextString::MediaUiSearchTooltip));
 	toolbar->addLeftItem (button);
 
 	button = new Button (sprites.getSprite (MediaUi::SortButtonSprite));
 	button->mouseClickCallback = Widget::EventCallbackContext (MediaUi::sortButtonClicked, this);
 	button->setInverseColor (true);
-	button->setMouseHoverTooltip (uitext->getText (UiTextString::MediaUiSortTooltip));
+	button->setMouseHoverTooltip (UiText::instance->getText (UiTextString::MediaUiSortTooltip));
 	toolbar->addLeftItem (button);
 
 	prefs = App::instance->lockPrefs ();
@@ -286,6 +281,11 @@ void MediaUi::doResume () {
 	int64_t now;
 
 	App::instance->setNextBackgroundTexturePath ("ui/MediaUi/bg");
+
+	CommandListener::instance->subscribe (SystemInterface::CommandId_FindMediaItemsResult, CommandListener::CommandCallbackContext (MediaUi::receiveFindMediaItemsResult, this));
+	CommandListener::instance->subscribe (SystemInterface::CommandId_MediaItem, CommandListener::CommandCallbackContext (MediaUi::receiveMediaItem, this));
+	CommandListener::instance->subscribe (SystemInterface::CommandId_FindMediaStreamsResult, CommandListener::CommandCallbackContext (MediaUi::receiveFindMediaStreamsResult, this));
+	CommandListener::instance->subscribe (SystemInterface::CommandId_StreamItem, CommandListener::CommandCallbackContext (MediaUi::receiveStreamItem, this));
 
 	if (searchField.widget) {
 		((TextFieldWindow *) searchField.widget)->setValue (searchKey);
@@ -391,14 +391,14 @@ void MediaUi::doClearPopupWidgets () {
 }
 
 void MediaUi::doUpdate (int msElapsed) {
-	UiText *uitext;
-	std::map<StdString, MediaUi::MediaServerInfo>::iterator i, end;
-	Json *params;
+	std::map<StdString, MediaUi::MediaServerInfo>::iterator i, iend;
+	std::map<StdString, Json *> cmdmap;
+	std::map<StdString, Json *>::iterator j, jend;
+	Json *params, *cmd;
 	int64_t now;
 	int count;
 	bool found;
 
-	uitext = &(App::instance->uiText);
 	emptyStateWindow.compact ();
 	commandPopup.compact ();
 	targetMediaWindow.compact ();
@@ -419,28 +419,52 @@ void MediaUi::doUpdate (int msElapsed) {
 		if (cardView->isScrolledToBottom ()) {
 			SDL_LockMutex (mediaServerMapMutex);
 			i = mediaServerMap.begin ();
-			end = mediaServerMap.end ();
-			while (i != end) {
+			iend = mediaServerMap.end ();
+			while (i != iend) {
 				if ((i->second.recordCount >= i->second.resultOffset) && (i->second.recordCount < i->second.setSize)) {
 					params = new Json ();
 					params->set ("searchKey", searchKey);
 					params->set ("resultOffset", i->second.resultOffset);
 					params->set ("maxResults", MediaUi::PageSize);
 					params->set ("sortOrder", mediaSortOrder);
-					App::instance->agentControl.writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindItems, SystemInterface::Constant_Media, params), i->first);
+					cmd = App::instance->createCommand (SystemInterface::Command_FindMediaItems, params);
+					if (cmd) {
+						j = cmdmap.find (i->first);
+						if (j != cmdmap.end ()) {
+							if (j->second) {
+								delete (j->second);
+							}
+							j->second = cmd;
+						}
+						else {
+							cmdmap.insert (std::pair<StdString, Json *> (i->first, cmd));
+						}
+					}
+
 					i->second.resultOffset += MediaUi::PageSize;
 				}
 				++i;
 			}
 			SDL_UnlockMutex (mediaServerMapMutex);
+
+			j = cmdmap.begin ();
+			jend = cmdmap.end ();
+			while (j != jend) {
+				cmd = j->second;
+				if (cmd) {
+					AgentControl::instance->writeLinkCommand (cmd, j->first);
+				}
+				++j;
+			}
+			cmdmap.clear ();
 		}
 	}
 
 	found = false;
 	SDL_LockMutex (mediaServerMapMutex);
 	i = mediaServerMap.begin ();
-	end = mediaServerMap.end ();
-	while (i != end) {
+	iend = mediaServerMap.end ();
+	while (i != iend) {
 		if (i->second.setSize < i->second.resultOffset) {
 			count = i->second.setSize;
 		}
@@ -456,11 +480,11 @@ void MediaUi::doUpdate (int msElapsed) {
 	SDL_UnlockMutex (mediaServerMapMutex);
 
 	if ((! isLoadingMedia) && found) {
-		cardView->setRowHeader (MediaUi::MediaRow, createRowHeaderPanel (uitext->getText (UiTextString::Media).capitalized (), createLoadingIconWindow ()));
+		cardView->setRowHeader (MediaUi::MediaRow, createRowHeaderPanel (UiText::instance->getText (UiTextString::Media).capitalized (), createLoadingIconWindow ()));
 		cardView->addItem (createLoadingIconWindow (), StdString (""), MediaUi::MediaLoadingRow);
 	}
 	else if (isLoadingMedia && (! found)) {
-		cardView->setRowHeader (MediaUi::MediaRow, createRowHeaderPanel (uitext->getText (UiTextString::Media).capitalized ()));
+		cardView->setRowHeader (MediaUi::MediaRow, createRowHeaderPanel (UiText::instance->getText (UiTextString::Media).capitalized ()));
 		cardView->removeRowItems (MediaUi::MediaLoadingRow);
 	}
 	isLoadingMedia = found;
@@ -489,23 +513,16 @@ bool MediaUi::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isC
 }
 
 void MediaUi::doSyncRecordStore () {
-	RecordStore *store;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	IconCardWindow *window;
 	int type;
 
-	store = &(App::instance->agentControl.recordStore);
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-
 	mediaServerCount = 0;
-	store->processAgentRecords ("mediaServerStatus", MediaUi::doSyncRecordStore_processMediaServerAgent, this);
-	store->processAgentRecords ("monitorServerStatus", MediaUi::doSyncRecordStore_processMonitorAgent, this);
+	RecordStore::instance->processAgentRecords ("mediaServerStatus", MediaUi::doSyncRecordStore_processMediaServerAgent, this);
+	RecordStore::instance->processAgentRecords ("monitorServerStatus", MediaUi::doSyncRecordStore_processMonitorAgent, this);
 
 	mediaItemCount = 0;
 	mediaStreamCount = 0;
-	store->processCommandRecords (SystemInterface::CommandId_MediaItem, MediaUi::doSyncRecordStore_processMediaItem, this);
+	RecordStore::instance->processCommandRecords (SystemInterface::CommandId_MediaItem, MediaUi::doSyncRecordStore_processMediaItem, this);
 
 	type = -1;
 	if (cardView->getRowItemCount (MediaUi::MediaRow) <= 0) {
@@ -530,23 +547,23 @@ void MediaUi::doSyncRecordStore () {
 		window = NULL;
 		switch (type) {
 			case MediaUi::EmptyAgentState: {
-				window = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::LargeServerIconSprite), uitext->getText (UiTextString::MediaUiEmptyAgentStatusTitle), StdString (""), uitext->getText (UiTextString::MediaUiEmptyAgentStatusText));
-				window->setLink (uitext->getText (UiTextString::LearnMore).capitalized (), App::getHelpUrl ("servers"));
+				window = new IconCardWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeServerIconSprite), UiText::instance->getText (UiTextString::MediaUiEmptyAgentStatusTitle), StdString (""), UiText::instance->getText (UiTextString::MediaUiEmptyAgentStatusText));
+				window->setLink (UiText::instance->getText (UiTextString::LearnMore).capitalized (), App::getHelpUrl ("servers"));
 				window->itemId.assign (cardView->getAvailableItemId ());
 				cardView->addItem (window, window->itemId, MediaUi::UnexpandedAgentRow);
 				emptyStateWindow.assign (window);
 				break;
 			}
 			case MediaUi::EmptyMediaState: {
-				window = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::LargeMediaIconSprite), uitext->getText (UiTextString::MediaUiEmptyMediaStatusTitle), StdString (""), uitext->getText (UiTextString::MediaUiEmptyMediaStatusText));
-				window->setLink (uitext->getText (UiTextString::LearnMore).capitalized (), App::getHelpUrl ("servers"));
+				window = new IconCardWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeMediaIconSprite), UiText::instance->getText (UiTextString::MediaUiEmptyMediaStatusTitle), StdString (""), UiText::instance->getText (UiTextString::MediaUiEmptyMediaStatusText));
+				window->setLink (UiText::instance->getText (UiTextString::LearnMore).capitalized (), App::getHelpUrl ("servers"));
 				window->itemId.assign (cardView->getAvailableItemId ());
 				cardView->addItem (window, window->itemId, MediaUi::EmptyMediaRow);
 				emptyStateWindow.assign (window);
 				break;
 			}
 			case MediaUi::EmptyMediaStreamState: {
-				window = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::LargeStreamIconSprite), uitext->getText (UiTextString::MediaUiEmptyMediaStreamStatusTitle), StdString (""), uitext->getText (UiTextString::MediaUiEmptyMediaStreamStatusText));
+				window = new IconCardWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeStreamIconSprite), UiText::instance->getText (UiTextString::MediaUiEmptyMediaStreamStatusTitle), StdString (""), UiText::instance->getText (UiTextString::MediaUiEmptyMediaStreamStatusText));
 				window->itemId.assign (cardView->getAvailableItemId ());
 				cardView->addItem (window, window->itemId, MediaUi::EmptyMediaRow);
 				emptyStateWindow.assign (window);
@@ -563,15 +580,12 @@ void MediaUi::doSyncRecordStore () {
 
 void MediaUi::doSyncRecordStore_processMediaServerAgent (void *uiPtr, Json *record, const StdString &recordId) {
 	MediaUi *ui;
-	SystemInterface *interface;
 	HashMap *prefs;
 	MediaLibraryWindow *medialibrary;
 	StringList items;
 	int row, pos;
 
 	ui = (MediaUi *) uiPtr;
-	interface = &(App::instance->systemInterface);
-
 	++(ui->mediaServerCount);
 	if (! ui->cardView->contains (recordId)) {
 		medialibrary = new MediaLibraryWindow (recordId);
@@ -584,7 +598,7 @@ void MediaUi::doSyncRecordStore_processMediaServerAgent (void *uiPtr, Json *reco
 		pos = items.indexOf (recordId);
 		if (pos < 0) {
 			row = MediaUi::UnexpandedAgentRow;
-			medialibrary->sortKey.sprintf ("a%s", interface->getCommandAgentName (record).lowercased ().c_str ());
+			medialibrary->sortKey.sprintf ("a%s", Agent::getCommandAgentName (record).lowercased ().c_str ());
 		}
 		else {
 			row = MediaUi::ExpandedAgentRow;
@@ -594,22 +608,19 @@ void MediaUi::doSyncRecordStore_processMediaServerAgent (void *uiPtr, Json *reco
 
 		ui->cardView->addItem (medialibrary, recordId, row);
 		medialibrary->animateNewCard ();
-		App::instance->agentControl.refreshAgentStatus (recordId);
+		AgentControl::instance->refreshAgentStatus (recordId);
 		ui->addLinkAgent (recordId);
 	}
 }
 
 void MediaUi::doSyncRecordStore_processMonitorAgent (void *uiPtr, Json *record, const StdString &recordId) {
 	MediaUi *ui;
-	SystemInterface *interface;
 	HashMap *prefs;
 	MonitorWindow *monitor;
 	StringList items;
 	int row, pos;
 
 	ui = (MediaUi *) uiPtr;
-	interface = &(App::instance->systemInterface);
-
 	if (! ui->cardView->contains (recordId)) {
 		monitor = new MonitorWindow (recordId);
 		monitor->setScreenshotDisplayEnabled (true);
@@ -618,13 +629,13 @@ void MediaUi::doSyncRecordStore_processMonitorAgent (void *uiPtr, Json *record, 
 		monitor->selectStateChangeCallback = Widget::EventCallbackContext (MediaUi::monitorSelectStateChanged, ui);
 		monitor->expandStateChangeCallback = Widget::EventCallbackContext (MediaUi::cardExpandStateChanged, ui);
 		monitor->screenshotLoadCallback = Widget::EventCallbackContext (MediaUi::monitorScreenshotLoaded, ui);
-		monitor->addActionButton (ui->sprites.getSprite (MediaUi::CacheButtonSprite), App::instance->uiText.getText (UiTextString::ViewMonitorCacheTooltip), Widget::EventCallbackContext (MediaUi::monitorCacheButtonClicked, ui));
+		monitor->addActionButton (ui->sprites.getSprite (MediaUi::CacheButtonSprite), UiText::instance->getText (UiTextString::ViewMonitorCacheTooltip), Widget::EventCallbackContext (MediaUi::monitorCacheButtonClicked, ui));
 
 		prefs = App::instance->lockPrefs ();
 		prefs->find (MediaUi::SelectedAgentsKey, &items);
 		if (items.contains (recordId)) {
 			monitor->setSelected (true, true);
-			ui->selectedMonitorMap.insert (recordId, App::instance->systemInterface.getCommandAgentName (record));
+			ui->selectedMonitorMap.insert (recordId, Agent::getCommandAgentName (record));
 		}
 		prefs->find (MediaUi::ExpandedAgentsKey, &items);
 		App::instance->unlockPrefs ();
@@ -632,7 +643,7 @@ void MediaUi::doSyncRecordStore_processMonitorAgent (void *uiPtr, Json *record, 
 		pos = items.indexOf (recordId);
 		if (pos < 0) {
 			row = MediaUi::UnexpandedAgentRow;
-			monitor->sortKey.sprintf ("b%s", interface->getCommandAgentName (record).lowercased ().c_str ());
+			monitor->sortKey.sprintf ("b%s", Agent::getCommandAgentName (record).lowercased ().c_str ());
 		}
 		else {
 			row = MediaUi::ExpandedAgentRow;
@@ -642,7 +653,7 @@ void MediaUi::doSyncRecordStore_processMonitorAgent (void *uiPtr, Json *record, 
 
 		ui->cardView->addItem (monitor, recordId, row);
 		monitor->animateNewCard ();
-		App::instance->agentControl.refreshAgentStatus (recordId);
+		AgentControl::instance->refreshAgentStatus (recordId);
 		ui->addLinkAgent (recordId);
 	}
 }
@@ -650,7 +661,6 @@ void MediaUi::doSyncRecordStore_processMonitorAgent (void *uiPtr, Json *record, 
 void MediaUi::doSyncRecordStore_processMediaItem (void *uiPtr, Json *record, const StdString &recordId) {
 	MediaUi *ui;
 	MediaWindow *media;
-	SystemInterface *interface;
 	StdString mediaid, agentid;
 	Json *params, *streamrecord;
 	StringList sourceids;
@@ -660,10 +670,9 @@ void MediaUi::doSyncRecordStore_processMediaItem (void *uiPtr, Json *record, con
 	ui = (MediaUi *) uiPtr;
 	++(ui->mediaItemCount);
 
-	interface = &(App::instance->systemInterface);
-	agentid = interface->getCommandAgentId (record);
+	agentid = SystemInterface::instance->getCommandAgentId (record);
 	mediaid.assign (recordId);
-	streamrecord = App::instance->agentControl.recordStore.findRecord (MediaWindow::matchStreamSourceId, &mediaid);
+	streamrecord = RecordStore::instance->findRecord (MediaWindow::matchStreamSourceId, &mediaid);
 	if (streamrecord) {
 		++(ui->mediaStreamCount);
 	}
@@ -673,11 +682,11 @@ void MediaUi::doSyncRecordStore_processMediaItem (void *uiPtr, Json *record, con
 	SDL_UnlockMutex (ui->findMediaStreamsMapMutex);
 
 	if (findstate < 0) {
-		if (App::instance->agentControl.isLinkClientConnected (agentid)) {
+		if (AgentControl::instance->isLinkClientConnected (agentid)) {
 			sourceids.push_back (recordId);
 			params = new Json ();
 			params->set ("sourceIds", &sourceids);
-			App::instance->agentControl.writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindMediaStreams, SystemInterface::Constant_Stream, params), agentid);
+			AgentControl::instance->writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindMediaStreams, params), agentid);
 
 			SDL_LockMutex (ui->findMediaStreamsMapMutex);
 			ui->findMediaStreamsMap.insert (recordId, MediaUi::StreamsRequestedState);
@@ -705,7 +714,7 @@ void MediaUi::doSyncRecordStore_processMediaItem (void *uiPtr, Json *record, con
 				media->browserPlayButtonClickCallback = Widget::EventCallbackContext (MediaUi::mediaWindowBrowserPlayButtonClicked, ui);
 				media->selectStateChangeCallback = Widget::EventCallbackContext (MediaUi::mediaWindowSelectStateChanged, ui);
 				if (ui->mediaSortOrder == SystemInterface::Constant_NewestSort) {
-					media->sortKey.sprintf ("%016llx", (long long int) (0x7FFFFFFFFFFFFFFFLL - interface->getCommandNumberParam (record, "mtime", (int64_t) 0)));
+					media->sortKey.sprintf ("%016llx", (long long int) (0x7FFFFFFFFFFFFFFFLL - SystemInterface::instance->getCommandNumberParam (record, "mtime", (int64_t) 0)));
 				}
 				else {
 					media->sortKey.assign (media->mediaName);
@@ -733,120 +742,109 @@ bool MediaUi::matchMediaItem (void *idPtr, Widget *widget) {
 }
 
 void MediaUi::handleLinkClientConnect (const StdString &agentId) {
-	RecordStore *store;
-	SystemInterface *interface;
 	Json *record, *params;
 	bool ismedia, ismonitor;
 	std::map<StdString, MediaUi::MediaServerInfo>::iterator info;
 
-	store = &(App::instance->agentControl.recordStore);
-	interface = &(App::instance->systemInterface);
 	ismedia = false;
 	ismonitor = false;
-	store->lock ();
-	record = store->findRecord (agentId, SystemInterface::CommandId_AgentStatus);
+	RecordStore::instance->lock ();
+	record = RecordStore::instance->findRecord (agentId, SystemInterface::CommandId_AgentStatus);
 	if (record) {
-		if (interface->getCommandObjectParam (record, "mediaServerStatus", NULL)) {
+		if (SystemInterface::instance->getCommandObjectParam (record, "mediaServerStatus", NULL)) {
 			ismedia = true;
 		}
-		if (interface->getCommandObjectParam (record, "monitorServerStatus", NULL)) {
+		if (SystemInterface::instance->getCommandObjectParam (record, "monitorServerStatus", NULL)) {
 			ismonitor = true;
 		}
 	}
-	store->unlock ();
+	RecordStore::instance->unlock ();
 
 	if (ismedia) {
 		SDL_LockMutex (mediaServerMapMutex);
-		if (mediaServerMap.count (agentId) <= 0) {
-			info = getMediaServerInfo (agentId);
-			info->second.resultOffset = MediaUi::PageSize;
-			params = new Json ();
-			params->set ("searchKey", searchKey);
-			params->set ("maxResults", MediaUi::PageSize);
-			params->set ("sortOrder", mediaSortOrder);
-			App::instance->agentControl.writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindItems, SystemInterface::Constant_Media, params), agentId);
-		}
+		info = getMediaServerInfo (agentId);
+		info->second.resultOffset = MediaUi::PageSize;
 		SDL_UnlockMutex (mediaServerMapMutex);
+		params = new Json ();
+		params->set ("searchKey", searchKey);
+		params->set ("maxResults", MediaUi::PageSize);
+		params->set ("sortOrder", mediaSortOrder);
+		AgentControl::instance->writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindMediaItems, params), agentId);
 	}
 
 	if (ismedia || ismonitor) {
-		App::instance->agentControl.writeLinkCommand (App::instance->createCommand (SystemInterface::Command_WatchStatus, SystemInterface::Constant_Admin), agentId);
+		AgentControl::instance->writeLinkCommand (App::instance->createCommand (SystemInterface::Command_WatchStatus), agentId);
 	}
 }
 
-void MediaUi::handleLinkClientCommand (const StdString &agentId, int commandId, Json *command) {
-	SystemInterface *interface;
-	UiConfiguration *uiconfig;
+void MediaUi::receiveFindMediaItemsResult (void *uiPtr, const StdString &agentId, Json *command) {
+	MediaUi *ui;
 	std::map<StdString, MediaUi::MediaServerInfo>::iterator info;
-	Json item;
+
+	ui = (MediaUi *) uiPtr;
+	SDL_LockMutex (ui->mediaServerMapMutex);
+	info = ui->getMediaServerInfo (agentId);
+	info->second.setSize = SystemInterface::instance->getCommandNumberParam (command, "setSize", (int) 0);
+	if (info->second.setSize <= 0) {
+		ui->findMediaComplete = true;
+	}
+	SDL_UnlockMutex (ui->mediaServerMapMutex);
+	App::instance->shouldSyncRecordStore = true;
+}
+
+void MediaUi::receiveMediaItem (void *uiPtr, const StdString &agentId, Json *command) {
+	MediaUi *ui;
+	std::map<StdString, MediaUi::MediaServerInfo>::iterator info;
+
+	ui = (MediaUi *) uiPtr;
+	RecordStore::instance->addRecord (command);
+	SDL_LockMutex (ui->mediaServerMapMutex);
+	info = ui->getMediaServerInfo (agentId);
+	++(info->second.recordCount);
+	if ((info->second.recordCount >= info->second.setSize) || (info->second.recordCount >= info->second.resultOffset)) {
+		App::instance->shouldSyncRecordStore = true;
+	}
+	SDL_UnlockMutex (ui->mediaServerMapMutex);
+	ui->findMediaComplete = true;
+	++(ui->recordReceiveCount);
+	ui->nextRecordSyncTime = OsUtil::getTime () + UiConfiguration::instance->recordSyncDelayDuration;
+}
+
+void MediaUi::receiveFindMediaStreamsResult (void *uiPtr, const StdString &agentId, Json *command) {
+	MediaUi *ui;
 	StdString id;
+	Json item;
 	int i, len;
 
-	interface = &(App::instance->systemInterface);
-	uiconfig = &(App::instance->uiConfig);
-
-	switch (commandId) {
-		case SystemInterface::CommandId_FindMediaResult: {
-			SDL_LockMutex (mediaServerMapMutex);
-			info = getMediaServerInfo (agentId);
-			info->second.setSize = interface->getCommandNumberParam (command, "setSize", (int) 0);
-			if (info->second.setSize <= 0) {
-				findMediaComplete = true;
-			}
-			SDL_UnlockMutex (mediaServerMapMutex);
-			App::instance->shouldSyncRecordStore = true;
-			break;
+	ui = (MediaUi *) uiPtr;
+	ui->nextRecordSyncTime = OsUtil::getTime () + UiConfiguration::instance->recordSyncDelayDuration;
+	id = SystemInterface::instance->getCommandStringParam (command, "mediaId", "");
+	if (! id.empty ()) {
+		SDL_LockMutex (ui->findMediaStreamsMapMutex);
+		if (ui->findMediaStreamsMap.exists (id)) {
+			ui->findMediaStreamsMap.insert (id, MediaUi::StreamsReceivedState);
 		}
-		case SystemInterface::CommandId_MediaItem: {
-			App::instance->agentControl.recordStore.addRecord (command);
-			SDL_LockMutex (mediaServerMapMutex);
-			info = getMediaServerInfo (agentId);
-			++(info->second.recordCount);
-			if ((info->second.recordCount >= info->second.setSize) || (info->second.recordCount >= info->second.resultOffset)) {
+		SDL_UnlockMutex (ui->findMediaStreamsMapMutex);
+	}
+
+	len = SystemInterface::instance->getCommandArrayLength (command, "streams");
+	for (i = 0; i < len; ++i) {
+		if (SystemInterface::instance->getCommandObjectArrayItem (command, "streams", i, &item)) {
+			if (SystemInterface::instance->getCommandId (&item) == SystemInterface::CommandId_StreamItem) {
+				RecordStore::instance->addRecord (&item);
 				App::instance->shouldSyncRecordStore = true;
 			}
-			SDL_UnlockMutex (mediaServerMapMutex);
-			findMediaComplete = true;
-			++recordReceiveCount;
-			nextRecordSyncTime = OsUtil::getTime () + uiconfig->recordSyncDelayDuration;
-			break;
-		}
-		case SystemInterface::CommandId_FindStreamsResult: {
-			break;
-		}
-		case SystemInterface::CommandId_FindMediaStreamsResult: {
-			nextRecordSyncTime = OsUtil::getTime () + uiconfig->recordSyncDelayDuration;
-			id = interface->getCommandStringParam (command, "mediaId", "");
-			if (! id.empty ()) {
-				SDL_LockMutex (findMediaStreamsMapMutex);
-				if (findMediaStreamsMap.exists (id)) {
-					findMediaStreamsMap.insert (id, MediaUi::StreamsReceivedState);
-				}
-				SDL_UnlockMutex (findMediaStreamsMapMutex);
-			}
-
-			len = interface->getCommandArrayLength (command, "streams");
-			if (len <= 0) {
-				break;
-			}
-
-			for (i = 0; i < len; ++i) {
-				if (interface->getCommandObjectArrayItem (command, "streams", i, &item)) {
-					if (interface->getCommandId (&item) == SystemInterface::CommandId_StreamItem) {
-						App::instance->agentControl.recordStore.addRecord (&item);
-						App::instance->shouldSyncRecordStore = true;
-					}
-				}
-			}
-			break;
-		}
-		case SystemInterface::CommandId_StreamItem: {
-			App::instance->agentControl.recordStore.addRecord (command);
-			++recordReceiveCount;
-			nextRecordSyncTime = OsUtil::getTime () + uiconfig->recordSyncDelayDuration;
-			break;
 		}
 	}
+}
+
+void MediaUi::receiveStreamItem (void *uiPtr, const StdString &agentId, Json *command) {
+	MediaUi *ui;
+
+	ui = (MediaUi *) uiPtr;
+	RecordStore::instance->addRecord (command);
+	++(ui->recordReceiveCount);
+	ui->nextRecordSyncTime = OsUtil::getTime () + UiConfiguration::instance->recordSyncDelayDuration;
 }
 
 void MediaUi::searchFieldEdited (void *uiPtr, Widget *widgetPtr) {
@@ -872,14 +870,9 @@ void MediaUi::searchButtonClicked (void *uiPtr, Widget *widgetPtr) {
 
 void MediaUi::sortButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	Menu *menu;
 
 	ui = (MediaUi *) uiPtr;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-
 	App::instance->uiStack.suspendMouseHover ();
 	if (ui->clearActionPopup (widgetPtr, MediaUi::sortButtonClicked)) {
 		return;
@@ -887,9 +880,9 @@ void MediaUi::sortButtonClicked (void *uiPtr, Widget *widgetPtr) {
 
 	menu = new Menu ();
 	menu->isClickDestroyEnabled = true;
-	menu->addItem (uitext->getText (UiTextString::MediaUiShowMediaWithoutStreamsAction), uiconfig->coreSprites.getSprite (UiConfiguration::VisibilityOnButtonSprite), MediaUi::showMediaWithoutStreamsActionClicked, ui, 0, (! ui->isShowingMediaWithoutStreams));
-	menu->addItem (uitext->getText (UiTextString::SortByName).capitalized (), ui->sprites.getSprite (MediaUi::SortButtonSprite), MediaUi::sortByNameActionClicked, ui, 2, ui->mediaSortOrder == SystemInterface::Constant_NameSort);
-	menu->addItem (uitext->getText (UiTextString::SortByNewest).capitalized (), ui->sprites.getSprite (MediaUi::SortButtonSprite), MediaUi::sortByNewestActionClicked, ui, 2, ui->mediaSortOrder == SystemInterface::Constant_NewestSort);
+	menu->addItem (UiText::instance->getText (UiTextString::MediaUiShowMediaWithoutStreamsAction), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::VisibilityOnButtonSprite), MediaUi::showMediaWithoutStreamsActionClicked, ui, 0, (! ui->isShowingMediaWithoutStreams));
+	menu->addItem (UiText::instance->getText (UiTextString::SortByName).capitalized (), ui->sprites.getSprite (MediaUi::SortButtonSprite), MediaUi::sortByNameActionClicked, ui, 2, ui->mediaSortOrder == SystemInterface::Constant_NameSort);
+	menu->addItem (UiText::instance->getText (UiTextString::SortByNewest).capitalized (), ui->sprites.getSprite (MediaUi::SortButtonSprite), MediaUi::sortByNewestActionClicked, ui, 2, ui->mediaSortOrder == SystemInterface::Constant_NewestSort);
 
 	ui->showActionPopup (menu, widgetPtr, MediaUi::sortButtonClicked, widgetPtr->getScreenRect (), Ui::RightEdgeAlignment, Ui::TopOfAlignment);
 }
@@ -966,7 +959,7 @@ void MediaUi::loadSearchResults () {
 	findMediaStreamsMap.clear ();
 	SDL_UnlockMutex (findMediaStreamsMapMutex);
 
-	App::instance->agentControl.recordStore.removeRecords (SystemInterface::CommandId_MediaItem);
+	RecordStore::instance->removeRecords (SystemInterface::CommandId_MediaItem);
 	cardView->removeRowItems (MediaUi::MediaRow);
 
 	findMediaComplete = false;
@@ -974,19 +967,14 @@ void MediaUi::loadSearchResults () {
 	params->set ("searchKey", searchKey);
 	params->set ("maxResults", MediaUi::PageSize);
 	params->set ("sortOrder", mediaSortOrder);
-	App::instance->agentControl.writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindItems, SystemInterface::Constant_Media, params));
+	AgentControl::instance->writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindMediaItems, params));
 }
 
 void MediaUi::imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	Menu *menu;
 
 	ui = (MediaUi *) uiPtr;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-
 	App::instance->uiStack.suspendMouseHover ();
 	if (ui->clearActionPopup (widgetPtr, MediaUi::imageSizeButtonClicked)) {
 		return;
@@ -994,9 +982,9 @@ void MediaUi::imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr) {
 
 	menu = new Menu ();
 	menu->isClickDestroyEnabled = true;
-	menu->addItem (uitext->getText (UiTextString::Small).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::SmallSizeButtonSprite), MediaUi::smallImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::LowDetail);
-	menu->addItem (uitext->getText (UiTextString::Medium).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::MediumSizeButtonSprite), MediaUi::mediumImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::MediumDetail);
-	menu->addItem (uitext->getText (UiTextString::Large).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::LargeSizeButtonSprite), MediaUi::largeImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::HighDetail);
+	menu->addItem (UiText::instance->getText (UiTextString::Small).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallSizeButtonSprite), MediaUi::smallImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::LowDetail);
+	menu->addItem (UiText::instance->getText (UiTextString::Medium).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::MediumSizeButtonSprite), MediaUi::mediumImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::MediumDetail);
+	menu->addItem (UiText::instance->getText (UiTextString::Large).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeSizeButtonSprite), MediaUi::largeImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::HighDetail);
 
 	ui->showActionPopup (menu, widgetPtr, MediaUi::imageSizeButtonClicked, widgetPtr->getScreenRect (), Ui::RightEdgeAlignment, Ui::BottomOfAlignment);
 }
@@ -1058,13 +1046,13 @@ static void reloadButtonClicked_processItem (void *uiPtr, Widget *widgetPtr) {
 
 	medialibrary = MediaLibraryWindow::castWidget (widgetPtr);
 	if (medialibrary) {
-		App::instance->agentControl.refreshAgentStatus (medialibrary->agentId);
+		AgentControl::instance->refreshAgentStatus (medialibrary->agentId);
 		return;
 	}
 
 	monitor = MonitorWindow::castWidget (widgetPtr);
 	if (monitor) {
-		App::instance->agentControl.refreshAgentStatus (monitor->agentId);
+		AgentControl::instance->refreshAgentStatus (monitor->agentId);
 		return;
 	}
 }
@@ -1113,7 +1101,7 @@ StdString MediaUi::getAvailablePlaylistName (const StdString &baseName) {
 	int i;
 
 	if (baseName.empty ()) {
-		base.assign (App::instance->uiText.getText (UiTextString::Playlist).capitalized ());
+		base.assign (UiText::instance->getText (UiTextString::Playlist).capitalized ());
 	}
 	else {
 		base.assign (baseName);
@@ -1182,12 +1170,12 @@ void MediaUi::mediaWindowBrowserPlayButtonClicked (void *uiPtr, Widget *widgetPt
 	if (media->streamAgentId.empty () || media->streamId.empty () || media->htmlPlayerPath.empty ()) {
 		return;
 	}
-	result = OsUtil::openUrl (StdString::createSprintf ("%s?%s", App::instance->agentControl.getAgentSecondaryUrl (media->streamAgentId, NULL, media->htmlPlayerPath).c_str (), media->streamId.urlEncoded ().c_str ()));
-	if (result != Result::Success) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::LaunchWebBrowserError));
+	result = OsUtil::openUrl (StdString::createSprintf ("%s?%s", AgentControl::instance->getAgentSecondaryUrl (media->streamAgentId, NULL, media->htmlPlayerPath).c_str (), media->streamId.urlEncoded ().c_str ()));
+	if (result != OsUtil::Result::Success) {
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::LaunchWebBrowserError));
 	}
 	else {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::LaunchedWebBrowser).capitalized ());
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::LaunchedWebBrowser).capitalized ());
 	}
 }
 
@@ -1436,22 +1424,17 @@ void MediaUi::expandPlaylistsToggleStateChanged (void *uiPtr, Widget *widgetPtr)
 
 void MediaUi::mediaLibraryMenuClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	MediaLibraryWindow *medialibrary;
 	Menu *menu;
 
 	ui = (MediaUi *) uiPtr;
 	medialibrary = (MediaLibraryWindow *) widgetPtr;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-
 	if (ui->clearActionPopup (widgetPtr, MediaUi::mediaLibraryMenuClicked)) {
 		return;
 	}
 
 	menu = new Menu ();
-	menu->addItem (uitext->getText (UiTextString::ScanForMedia).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::UpdateButtonSprite), MediaUi::mediaLibraryScanActionClicked, ui);
+	menu->addItem (UiText::instance->getText (UiTextString::ScanForMedia).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::UpdateButtonSprite), MediaUi::mediaLibraryScanActionClicked, ui);
 	menu->isClickDestroyEnabled = true;
 
 	ui->showActionPopup (menu, widgetPtr, MediaUi::mediaLibraryMenuClicked, medialibrary->getMenuButtonScreenRect (), Ui::LeftEdgeAlignment, Ui::BottomOfAlignment);
@@ -1468,12 +1451,12 @@ void MediaUi::mediaLibraryScanActionClicked (void *uiPtr, Widget *widgetPtr) {
 		return;
 	}
 
-	result = App::instance->agentControl.invokeCommand (target->agentId, App::instance->createCommand (SystemInterface::Command_ScanMediaItems, SystemInterface::Constant_Media));
-	if (result != Result::Success) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
+	result = AgentControl::instance->invokeCommand (target->agentId, App::instance->createCommand (SystemInterface::Command_ScanMediaItems));
+	if (result != OsUtil::Result::Success) {
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
 	}
 	else {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::ScanForMediaStartedMessage));
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::ScanForMediaStartedMessage));
 	}
 }
 
@@ -1543,25 +1526,21 @@ void MediaUi::playlistItemsChanged (void *uiPtr, Widget *widgetPtr) {
 
 void MediaUi::playlistRenameActionClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	StreamPlaylistWindow *target;
 	TextFieldWindow *textfield;
 
 	ui = (MediaUi *) uiPtr;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
 	target = StreamPlaylistWindow::castWidget (widgetPtr);
 	if (! target) {
 		return;
 	}
 
 	ui->clearPopupWidgets ();
-	textfield = new TextFieldWindow (target->windowWidth, uitext->getText (UiTextString::EnterPlaylistNamePrompt));
+	textfield = new TextFieldWindow (target->windowWidth, UiText::instance->getText (UiTextString::EnterPlaylistNamePrompt));
 	textfield->setValue (target->playlistName);
 	textfield->valueEditCallback = Widget::EventCallbackContext (MediaUi::playlistNameEdited, ui);
 	textfield->enterButtonClickCallback = Widget::EventCallbackContext (MediaUi::playlistNameEditEnterButtonClicked, ui);
-	textfield->setFillBg (true, uiconfig->lightPrimaryColor);
+	textfield->setFillBg (true, UiConfiguration::instance->lightPrimaryColor);
 	textfield->setButtonsEnabled (true, true, true, true);
 	textfield->shouldSkipTextClearCallbacks = true;
 	textfield->assignKeyFocus ();
@@ -1596,24 +1575,19 @@ void MediaUi::playlistNameEditEnterButtonClicked (void *uiPtr, Widget *widgetPtr
 void MediaUi::playlistRemoveActionClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
 	StreamPlaylistWindow *playlist;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	ActionWindow *action;
 
 	ui = (MediaUi *) uiPtr;
 	playlist = (StreamPlaylistWindow *) widgetPtr;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-
 	if (ui->clearActionPopup (playlist, MediaUi::playlistRemoveActionClicked)) {
 		return;
 	}
 
 	action = new ActionWindow ();
-	action->setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
+	action->setDropShadow (true, UiConfiguration::instance->dropShadowColor, UiConfiguration::instance->dropShadowWidth);
 	action->setInverseColor (true);
-	action->setTitleText (Label::getTruncatedText (playlist->playlistName, UiConfiguration::TitleFont, playlist->width * 0.34f, Label::DotTruncateSuffix));
-	action->setDescriptionText (uitext->getText (UiTextString::RemovePlaylistDescription));
+	action->setTitleText (UiConfiguration::instance->fonts[UiConfiguration::TitleFont]->truncatedText (playlist->playlistName, playlist->width * 0.34f, Font::DotTruncateSuffix));
+	action->setDescriptionText (UiText::instance->getText (UiTextString::RemovePlaylistDescription));
 	action->closeCallback = Widget::EventCallbackContext (MediaUi::removePlaylistActionClosed, ui);
 
 	ui->showActionPopup (action, playlist, MediaUi::playlistRemoveActionClicked, playlist->getRemoveButtonScreenRect (), Ui::LeftEdgeAlignment, Ui::TopOfAlignment);
@@ -1661,7 +1635,7 @@ void MediaUi::playlistAddItemActionClicked (void *uiPtr, Widget *widgetPtr) {
 		media = (MediaWindow *) ui->cardView->findItem (MediaUi::matchMediaItem, &mediaid);
 		if (media && (! media->streamId.empty ())) {
 			++count;
-			streamurl = App::instance->agentControl.getAgentSecondaryUrl (media->streamAgentId, NULL, media->hlsStreamPath);
+			streamurl = AgentControl::instance->getAgentSecondaryUrl (media->streamAgentId, NULL, media->hlsStreamPath);
 			startpos = (float) media->displayTimestamp;
 			if (startpos < 0.0f) {
 				startpos = 0.0f;
@@ -1670,7 +1644,7 @@ void MediaUi::playlistAddItemActionClicked (void *uiPtr, Widget *widgetPtr) {
 
 			thumbnailurl.assign ("");
 			if (! media->streamThumbnailPath.empty ()) {
-				thumbnailurl = App::instance->agentControl.getAgentSecondaryUrl (media->streamAgentId, NULL, media->streamThumbnailPath);
+				thumbnailurl = AgentControl::instance->getAgentSecondaryUrl (media->streamAgentId, NULL, media->streamThumbnailPath);
 			}
 			playlist->addItem (streamurl, media->streamId, media->mediaName, startpos, thumbnailurl, media->playThumbnailIndex);
 		}
@@ -1678,21 +1652,19 @@ void MediaUi::playlistAddItemActionClicked (void *uiPtr, Widget *widgetPtr) {
 
 	ui->clearPopupWidgets ();
 	if (count <= 0) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
 	}
 	else if (count == 1) {
-		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s: %s", playlist->playlistName.c_str (), App::instance->uiText.getText (UiTextString::AddedPlaylistItem).c_str ()));
+		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s: %s", playlist->playlistName.c_str (), UiText::instance->getText (UiTextString::AddedPlaylistItem).c_str ()));
 	}
 	else {
-		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s: %s (%i)", playlist->playlistName.c_str (), App::instance->uiText.getText (UiTextString::AddedPlaylistItems).c_str (), count));
+		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s: %s (%i)", playlist->playlistName.c_str (), UiText::instance->getText (UiTextString::AddedPlaylistItems).c_str (), count));
 	}
 }
 
 void MediaUi::playlistAddItemMouseEntered (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
 	StreamPlaylistWindow *playlist;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	Panel *panel;
 	LabelWindow *label;
 	IconLabelWindow *icon;
@@ -1701,35 +1673,32 @@ void MediaUi::playlistAddItemMouseEntered (void *uiPtr, Widget *widgetPtr) {
 
 	ui = (MediaUi *) uiPtr;
 	playlist = (StreamPlaylistWindow *) widgetPtr;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-
 	ui->commandPopup.destroyAndClear ();
 	ui->commandPopupSource.assign (widgetPtr);
 	panel = (Panel *) App::instance->rootPanel->addWidget (new Panel ());
 	ui->commandPopup.assign (panel);
-	panel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->overlayWindowAlpha));
-	panel->setBorder (true, Color (uiconfig->darkBackgroundColor.r, uiconfig->darkBackgroundColor.g, uiconfig->darkBackgroundColor.b, uiconfig->overlayWindowAlpha));
+	panel->setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
+	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, UiConfiguration::instance->overlayWindowAlpha));
+	panel->setBorder (true, Color (UiConfiguration::instance->darkBackgroundColor.r, UiConfiguration::instance->darkBackgroundColor.g, UiConfiguration::instance->darkBackgroundColor.b, UiConfiguration::instance->overlayWindowAlpha));
 
-	label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::AddPlaylistItems).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
+	label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (UiText::instance->getText (UiTextString::AddPlaylistItems).capitalized (), UiConfiguration::TitleFont, UiConfiguration::instance->inverseTextColor)));
 	label->setPadding (0.0f, 0.0f);
 
 	text.assign (playlist->playlistName);
-	Label::truncateText (&text, UiConfiguration::CaptionFont, App::instance->rootPanel->width * 0.20f, Label::DotTruncateSuffix);
+	UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->truncateText (&text, App::instance->rootPanel->width * 0.20f, Font::DotTruncateSuffix);
 
-	icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallPlaylistIconSprite), text, UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
-	icon->setFillBg (true, uiconfig->lightBackgroundColor);
+	icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallPlaylistIconSprite), text, UiConfiguration::CaptionFont, UiConfiguration::instance->primaryTextColor));
+	icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 	icon->setRightAligned (true);
 
 	text.assign (ui->getSelectedMediaNames (true));
-	color.assign (uiconfig->primaryTextColor);
+	color.assign (UiConfiguration::instance->primaryTextColor);
 	if (text.empty ()) {
-		text.assign (uitext->getText (UiTextString::MediaUiNoStreamableMediaSelectedPrompt));
-		color.assign (uiconfig->errorTextColor);
+		text.assign (UiText::instance->getText (UiTextString::MediaUiNoStreamableMediaSelectedPrompt));
+		color.assign (UiConfiguration::instance->errorTextColor);
 	}
-	icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite), text, UiConfiguration::CaptionFont, color));
-	icon->setFillBg (true, uiconfig->lightBackgroundColor);
+	icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite), text, UiConfiguration::CaptionFont, color));
+	icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 	icon->setRightAligned (true);
 
 	panel->setLayout (Panel::VerticalRightJustifiedLayout);
@@ -1748,12 +1717,9 @@ void MediaUi::playlistAddItemMouseExited (void *uiPtr, Widget *widgetPtr) {
 
 void MediaUi::modeButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
-	UiText *uitext;
 	Menu *menu;
 
 	ui = (MediaUi *) uiPtr;
-	uitext = &(App::instance->uiText);
-
 	App::instance->uiStack.suspendMouseHover ();
 	if (ui->clearActionPopup (widgetPtr, MediaUi::modeButtonClicked)) {
 		return;
@@ -1761,8 +1727,8 @@ void MediaUi::modeButtonClicked (void *uiPtr, Widget *widgetPtr) {
 
 	menu = new Menu ();
 	menu->isClickDestroyEnabled = true;
-	menu->addItem (uitext->getText (UiTextString::PlayStreams).capitalized (), ui->sprites.getSprite (MediaUi::PlayButtonSprite), MediaUi::monitorModeActionClicked, ui, 0, ui->toolbarMode == MediaUi::MonitorMode);
-	menu->addItem (uitext->getText (UiTextString::ManageStreams).capitalized (), ui->sprites.getSprite (MediaUi::ConfigureStreamButtonSprite), MediaUi::streamModeActionClicked, ui, 0, ui->toolbarMode == MediaUi::StreamMode);
+	menu->addItem (UiText::instance->getText (UiTextString::PlayStreams).capitalized (), ui->sprites.getSprite (MediaUi::PlayButtonSprite), MediaUi::monitorModeActionClicked, ui, 0, ui->toolbarMode == MediaUi::MonitorMode);
+	menu->addItem (UiText::instance->getText (UiTextString::ManageStreams).capitalized (), ui->sprites.getSprite (MediaUi::ConfigureStreamButtonSprite), MediaUi::streamModeActionClicked, ui, 0, ui->toolbarMode == MediaUi::StreamMode);
 
 	ui->showActionPopup (menu, widgetPtr, MediaUi::modeButtonClicked, widgetPtr->getScreenRect (), Ui::RightEdgeAlignment, Ui::TopOfAlignment);
 }
@@ -1788,17 +1754,12 @@ void MediaUi::streamModeActionClicked (void *uiPtr, Widget *widgetPtr) {
 }
 
 void MediaUi::setToolbarMode (int mode, bool forceReset) {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	Toolbar *toolbar;
 	Button *button;
 
 	if ((toolbarMode == mode) && (! forceReset)) {
 		return;
 	}
-
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
 	toolbar = App::instance->uiStack.secondaryToolbar;
 	toolbar->clearRightItems ();
 	playButton = NULL;
@@ -1809,10 +1770,10 @@ void MediaUi::setToolbarMode (int mode, bool forceReset) {
 	deleteStreamButton = NULL;
 	selectAllButton = NULL;
 
-	button = new Button (uiconfig->coreSprites.getSprite (UiConfiguration::ToolsButtonSprite));
+	button = new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ToolsButtonSprite));
 	button->mouseClickCallback = Widget::EventCallbackContext (MediaUi::modeButtonClicked, this);
 	button->setInverseColor (true);
-	button->setMouseHoverTooltip (uitext->getText (UiTextString::ToolbarModeButtonTooltip), Widget::LeftAlignment);
+	button->setMouseHoverTooltip (UiText::instance->getText (UiTextString::ToolbarModeButtonTooltip), Widget::LeftAlignment);
 	toolbar->addRightItem (button);
 
 	toolbarMode = mode;
@@ -1823,7 +1784,7 @@ void MediaUi::setToolbarMode (int mode, bool forceReset) {
 			playButton->mouseEnterCallback = Widget::EventCallbackContext (MediaUi::commandButtonMouseEntered, this);
 			playButton->mouseExitCallback = Widget::EventCallbackContext (MediaUi::commandButtonMouseExited, this);
 			playButton->setInverseColor (true);
-			playButton->setMouseHoverTooltip (uitext->getText (UiTextString::MediaUiPlayTooltip).capitalized (), Widget::LeftAlignment);
+			playButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::MediaUiPlayTooltip).capitalized (), Widget::LeftAlignment);
 			playButton->shortcutKey = SDLK_F4;
 			toolbar->addRightItem (playButton);
 
@@ -1832,7 +1793,7 @@ void MediaUi::setToolbarMode (int mode, bool forceReset) {
 			writePlaylistButton->mouseEnterCallback = Widget::EventCallbackContext (MediaUi::commandButtonMouseEntered, this);
 			writePlaylistButton->mouseExitCallback = Widget::EventCallbackContext (MediaUi::commandButtonMouseExited, this);
 			writePlaylistButton->setInverseColor (true);
-			writePlaylistButton->setMouseHoverTooltip (uitext->getText (UiTextString::MediaUiWritePlaylistTooltip), Widget::LeftAlignment);
+			writePlaylistButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::MediaUiWritePlaylistTooltip), Widget::LeftAlignment);
 			writePlaylistButton->shortcutKey = SDLK_F3;
 			toolbar->addRightItem (writePlaylistButton);
 
@@ -1841,7 +1802,7 @@ void MediaUi::setToolbarMode (int mode, bool forceReset) {
 			pauseButton->mouseEnterCallback = Widget::EventCallbackContext (MediaUi::commandButtonMouseEntered, this);
 			pauseButton->mouseExitCallback = Widget::EventCallbackContext (MediaUi::commandButtonMouseExited, this);
 			pauseButton->setInverseColor (true);
-			pauseButton->setMouseHoverTooltip (uitext->getText (UiTextString::MediaUiPauseTooltip), Widget::LeftAlignment);
+			pauseButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::MediaUiPauseTooltip), Widget::LeftAlignment);
 			pauseButton->shortcutKey = SDLK_F2;
 			toolbar->addRightItem (pauseButton);
 
@@ -1850,16 +1811,16 @@ void MediaUi::setToolbarMode (int mode, bool forceReset) {
 			stopButton->mouseEnterCallback = Widget::EventCallbackContext (MediaUi::commandButtonMouseEntered, this);
 			stopButton->mouseExitCallback = Widget::EventCallbackContext (MediaUi::commandButtonMouseExited, this);
 			stopButton->setInverseColor (true);
-			stopButton->setMouseHoverTooltip (uitext->getText (UiTextString::MediaUiStopTooltip), Widget::LeftAlignment);
+			stopButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::MediaUiStopTooltip), Widget::LeftAlignment);
 			stopButton->shortcutKey = SDLK_F1;
 			toolbar->addRightItem (stopButton);
 			break;
 		}
 		case MediaUi::StreamMode: {
-			selectAllButton = new Button (uiconfig->coreSprites.getSprite (UiConfiguration::StarHalfButtonSprite));
+			selectAllButton = new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::StarHalfButtonSprite));
 			selectAllButton->mouseClickCallback = Widget::EventCallbackContext (MediaUi::selectAllButtonClicked, this);
 			selectAllButton->setInverseColor (true);
-			selectAllButton->setMouseHoverTooltip (uitext->getText (UiTextString::MediaUiSelectAllTooltip), Widget::LeftAlignment);
+			selectAllButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::MediaUiSelectAllTooltip), Widget::LeftAlignment);
 			toolbar->addRightItem (selectAllButton);
 
 			configureStreamButton = new Button (sprites.getSprite (MediaUi::ConfigureStreamButtonSprite));
@@ -1867,7 +1828,7 @@ void MediaUi::setToolbarMode (int mode, bool forceReset) {
 			configureStreamButton->mouseEnterCallback = Widget::EventCallbackContext (MediaUi::commandButtonMouseEntered, this);
 			configureStreamButton->mouseExitCallback = Widget::EventCallbackContext (MediaUi::commandButtonMouseExited, this);
 			configureStreamButton->setInverseColor (true);
-			configureStreamButton->setMouseHoverTooltip (uitext->getText (UiTextString::MediaUiConfigureStreamTooltip), Widget::LeftAlignment);
+			configureStreamButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::MediaUiConfigureStreamTooltip), Widget::LeftAlignment);
 			toolbar->addRightItem (configureStreamButton);
 
 			cacheStreamButton = new Button (sprites.getSprite (MediaUi::CacheButtonSprite));
@@ -1875,15 +1836,15 @@ void MediaUi::setToolbarMode (int mode, bool forceReset) {
 			cacheStreamButton->mouseEnterCallback = Widget::EventCallbackContext (MediaUi::commandButtonMouseEntered, this);
 			cacheStreamButton->mouseExitCallback = Widget::EventCallbackContext (MediaUi::commandButtonMouseExited, this);
 			cacheStreamButton->setInverseColor (true);
-			cacheStreamButton->setMouseHoverTooltip (uitext->getText (UiTextString::MediaUiAddCacheStreamTooltip), Widget::LeftAlignment);
+			cacheStreamButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::MediaUiAddCacheStreamTooltip), Widget::LeftAlignment);
 			toolbar->addRightItem (cacheStreamButton);
 
-			deleteStreamButton = new Button (uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite));
+			deleteStreamButton = new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite));
 			deleteStreamButton->mouseClickCallback = Widget::EventCallbackContext (MediaUi::deleteStreamButtonClicked, this);
 			deleteStreamButton->mouseEnterCallback = Widget::EventCallbackContext (MediaUi::commandButtonMouseEntered, this);
 			deleteStreamButton->mouseExitCallback = Widget::EventCallbackContext (MediaUi::commandButtonMouseExited, this);
 			deleteStreamButton->setInverseColor (true);
-			deleteStreamButton->setMouseHoverTooltip (uitext->getText (UiTextString::MediaUiDeleteStreamTooltip), Widget::LeftAlignment);
+			deleteStreamButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::MediaUiDeleteStreamTooltip), Widget::LeftAlignment);
 			toolbar->addRightItem (deleteStreamButton);
 			break;
 		}
@@ -1893,8 +1854,6 @@ void MediaUi::setToolbarMode (int mode, bool forceReset) {
 void MediaUi::commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
 	Button *button;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	Panel *panel;
 	LabelWindow *label;
 	IconLabelWindow *icon;
@@ -1905,151 +1864,149 @@ void MediaUi::commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr) {
 
 	ui = (MediaUi *) uiPtr;
 	button = (Button *) widgetPtr;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
 	Button::mouseEntered (button, button);
 
 	ui->commandPopup.destroyAndClear ();
 	ui->commandPopupSource.assign (button);
 	panel = (Panel *) App::instance->rootPanel->addWidget (new Panel ());
 	ui->commandPopup.assign (panel);
-	panel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->overlayWindowAlpha));
-	panel->setBorder (true, Color (uiconfig->darkBackgroundColor.r, uiconfig->darkBackgroundColor.g, uiconfig->darkBackgroundColor.b, uiconfig->overlayWindowAlpha));
+	panel->setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
+	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, UiConfiguration::instance->overlayWindowAlpha));
+	panel->setBorder (true, Color (UiConfiguration::instance->darkBackgroundColor.r, UiConfiguration::instance->darkBackgroundColor.g, UiConfiguration::instance->darkBackgroundColor.b, UiConfiguration::instance->overlayWindowAlpha));
 
 	label = NULL;
 	if (button == ui->configureStreamButton) {
-		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::ConfigureStream).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
+		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (UiText::instance->getText (UiTextString::ConfigureStream).capitalized (), UiConfiguration::TitleFont, UiConfiguration::instance->inverseTextColor)));
 
 		text.assign (ui->getSelectedMediaNames (false, true));
-		color.assign (uiconfig->primaryTextColor);
+		color.assign (UiConfiguration::instance->primaryTextColor);
 		if (text.empty ()) {
-			text.assign (uitext->getText (UiTextString::MediaUiNoMediaSelectedPrompt));
-			color.assign (uiconfig->errorTextColor);
+			text.assign (UiText::instance->getText (UiTextString::MediaUiNoMediaSelectedPrompt));
+			color.assign (UiConfiguration::instance->errorTextColor);
 		}
-		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallMediaIconSprite), text, UiConfiguration::CaptionFont, color));
-		icon->setFillBg (true, uiconfig->lightBackgroundColor);
+		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallMediaIconSprite), text, UiConfiguration::CaptionFont, color));
+		icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 		icon->setRightAligned (true);
 	}
 	else if (button == ui->deleteStreamButton) {
-		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::DeleteStream).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
+		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (UiText::instance->getText (UiTextString::DeleteStream).capitalized (), UiConfiguration::TitleFont, UiConfiguration::instance->inverseTextColor)));
 
 		text.assign (ui->getSelectedMediaNames (true));
-		color.assign (uiconfig->primaryTextColor);
+		color.assign (UiConfiguration::instance->primaryTextColor);
 		if (text.empty ()) {
-			text.assign (uitext->getText (UiTextString::MediaUiNoStreamableMediaSelectedPrompt));
-			color.assign (uiconfig->errorTextColor);
+			text.assign (UiText::instance->getText (UiTextString::MediaUiNoStreamableMediaSelectedPrompt));
+			color.assign (UiConfiguration::instance->errorTextColor);
 		}
-		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite), text, UiConfiguration::CaptionFont, color));
-		icon->setFillBg (true, uiconfig->lightBackgroundColor);
+		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite), text, UiConfiguration::CaptionFont, color));
+		icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 		icon->setRightAligned (true);
 	}
 	else if (button == ui->cacheStreamButton) {
-		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::CacheStream).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
+		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (UiText::instance->getText (UiTextString::CacheStream).capitalized (), UiConfiguration::TitleFont, UiConfiguration::instance->inverseTextColor)));
 
 		text.assign (ui->getSelectedMonitorNames ());
-		color.assign (uiconfig->primaryTextColor);
+		color.assign (UiConfiguration::instance->primaryTextColor);
 		if (text.empty ()) {
-			text.assign (uitext->getText (UiTextString::NoMonitorSelectedPrompt));
-			color.assign (uiconfig->errorTextColor);
+			text.assign (UiText::instance->getText (UiTextString::NoMonitorSelectedPrompt));
+			color.assign (UiConfiguration::instance->errorTextColor);
 		}
-		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallDisplayIconSprite), text, UiConfiguration::CaptionFont, color));
-		icon->setFillBg (true, uiconfig->lightBackgroundColor);
+		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallDisplayIconSprite), text, UiConfiguration::CaptionFont, color));
+		icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 		icon->setRightAligned (true);
 
 		text.assign (ui->getSelectedMediaNames (true));
-		color.assign (uiconfig->primaryTextColor);
+		color.assign (UiConfiguration::instance->primaryTextColor);
 		if (text.empty ()) {
-			text.assign (uitext->getText (UiTextString::MediaUiNoStreamableMediaSelectedPrompt));
-			color.assign (uiconfig->errorTextColor);
+			text.assign (UiText::instance->getText (UiTextString::MediaUiNoStreamableMediaSelectedPrompt));
+			color.assign (UiConfiguration::instance->errorTextColor);
 		}
-		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite), text, UiConfiguration::CaptionFont, color));
-		icon->setFillBg (true, uiconfig->lightBackgroundColor);
+		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite), text, UiConfiguration::CaptionFont, color));
+		icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 		icon->setRightAligned (true);
 	}
 	else if (button == ui->playButton) {
-		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::Play).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
+		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (UiText::instance->getText (UiTextString::Play).capitalized (), UiConfiguration::TitleFont, UiConfiguration::instance->inverseTextColor)));
 
 		text.assign (ui->getSelectedMonitorNames ());
-		color.assign (uiconfig->primaryTextColor);
+		color.assign (UiConfiguration::instance->primaryTextColor);
 		if (text.empty ()) {
-			text.assign (uitext->getText (UiTextString::NoMonitorSelectedPrompt));
-			color.assign (uiconfig->errorTextColor);
+			text.assign (UiText::instance->getText (UiTextString::NoMonitorSelectedPrompt));
+			color.assign (UiConfiguration::instance->errorTextColor);
 		}
-		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallDisplayIconSprite), text, UiConfiguration::CaptionFont, color));
-		icon->setFillBg (true, uiconfig->lightBackgroundColor);
+		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallDisplayIconSprite), text, UiConfiguration::CaptionFont, color));
+		icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 		icon->setRightAligned (true);
 
 		media = MediaWindow::castWidget (ui->lastSelectedMediaWindow.widget);
 		if ((! media) || media->hlsStreamPath.empty ()) {
-			text.assign (uitext->getText (UiTextString::MediaUiNoStreamableMediaSelectedPrompt));
-			color.assign (uiconfig->errorTextColor);
+			text.assign (UiText::instance->getText (UiTextString::MediaUiNoStreamableMediaSelectedPrompt));
+			color.assign (UiConfiguration::instance->errorTextColor);
 		}
 		else {
 			text.assign (media->mediaName);
-			Label::truncateText (&text, UiConfiguration::CaptionFont, App::instance->rootPanel->width * 0.20f, Label::DotTruncateSuffix);
+			UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->truncateText (&text, App::instance->rootPanel->width * 0.20f, Font::DotTruncateSuffix);
 			text.appendSprintf (" %s", OsUtil::getDurationString ((media->displayTimestamp > 0.0f) ? (int64_t) media->displayTimestamp : 0, OsUtil::HoursUnit).c_str ());
-			color.assign (uiconfig->primaryTextColor);
+			color.assign (UiConfiguration::instance->primaryTextColor);
 		}
-		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite), text, UiConfiguration::CaptionFont, color));
-		icon->setFillBg (true, uiconfig->lightBackgroundColor);
+		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite), text, UiConfiguration::CaptionFont, color));
+		icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 		icon->setRightAligned (true);
 	}
 	else if (button == ui->writePlaylistButton) {
-		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::RunPlaylist).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
+		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (UiText::instance->getText (UiTextString::RunPlaylist).capitalized (), UiConfiguration::TitleFont, UiConfiguration::instance->inverseTextColor)));
 
 		text.assign (ui->getSelectedMonitorNames ());
-		color.assign (uiconfig->primaryTextColor);
+		color.assign (UiConfiguration::instance->primaryTextColor);
 		if (text.empty ()) {
-			text.assign (uitext->getText (UiTextString::NoMonitorSelectedPrompt));
-			color.assign (uiconfig->errorTextColor);
+			text.assign (UiText::instance->getText (UiTextString::NoMonitorSelectedPrompt));
+			color.assign (UiConfiguration::instance->errorTextColor);
 		}
-		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallDisplayIconSprite), text, UiConfiguration::CaptionFont, color));
-		icon->setFillBg (true, uiconfig->lightBackgroundColor);
+		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallDisplayIconSprite), text, UiConfiguration::CaptionFont, color));
+		icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 		icon->setRightAligned (true);
 
 		playlist = StreamPlaylistWindow::castWidget (ui->selectedPlaylistWindow.widget);
 		if (! playlist) {
-			text.assign (uitext->getText (UiTextString::NoPlaylistSelectedPrompt));
-			color.assign (uiconfig->errorTextColor);
+			text.assign (UiText::instance->getText (UiTextString::NoPlaylistSelectedPrompt));
+			color.assign (UiConfiguration::instance->errorTextColor);
 		}
 		else if (playlist->getItemCount () <= 0) {
-			text.assign (uitext->getText (UiTextString::EmptyPlaylistSelectedPrompt));
-			color.assign (uiconfig->errorTextColor);
+			text.assign (UiText::instance->getText (UiTextString::EmptyPlaylistSelectedPrompt));
+			color.assign (UiConfiguration::instance->errorTextColor);
 		}
 		else {
 			text.assign (playlist->playlistName);
-			Label::truncateText (&text, UiConfiguration::CaptionFont, App::instance->rootPanel->width * 0.20f, Label::DotTruncateSuffix);
-			color.assign (uiconfig->primaryTextColor);
+			UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->truncateText (&text, App::instance->rootPanel->width * 0.20f, Font::DotTruncateSuffix);
+			color.assign (UiConfiguration::instance->primaryTextColor);
 		}
-		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallPlaylistIconSprite), text, UiConfiguration::CaptionFont, color));
-		icon->setFillBg (true, uiconfig->lightBackgroundColor);
+		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallPlaylistIconSprite), text, UiConfiguration::CaptionFont, color));
+		icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 		icon->setRightAligned (true);
 	}
 	else if (button == ui->stopButton) {
-		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::Stop).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
+		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (UiText::instance->getText (UiTextString::Stop).capitalized (), UiConfiguration::TitleFont, UiConfiguration::instance->inverseTextColor)));
 
 		text.assign (ui->getSelectedMonitorNames ());
-		color.assign (uiconfig->primaryTextColor);
+		color.assign (UiConfiguration::instance->primaryTextColor);
 		if (text.empty ()) {
-			text.assign (uitext->getText (UiTextString::NoMonitorSelectedPrompt));
-			color.assign (uiconfig->errorTextColor);
+			text.assign (UiText::instance->getText (UiTextString::NoMonitorSelectedPrompt));
+			color.assign (UiConfiguration::instance->errorTextColor);
 		}
-		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallDisplayIconSprite), text, UiConfiguration::CaptionFont, color));
-		icon->setFillBg (true, uiconfig->lightBackgroundColor);
+		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallDisplayIconSprite), text, UiConfiguration::CaptionFont, color));
+		icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 		icon->setRightAligned (true);
 	}
 	else if (button == ui->pauseButton) {
-		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (StdString::createSprintf ("%s / %s", uitext->getText (UiTextString::Pause).capitalized ().c_str (), uitext->getText (UiTextString::Resume).c_str ()), UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
+		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (StdString::createSprintf ("%s / %s", UiText::instance->getText (UiTextString::Pause).capitalized ().c_str (), UiText::instance->getText (UiTextString::Resume).c_str ()), UiConfiguration::TitleFont, UiConfiguration::instance->inverseTextColor)));
 
 		text.assign (ui->getSelectedMonitorNames ());
-		color.assign (uiconfig->primaryTextColor);
+		color.assign (UiConfiguration::instance->primaryTextColor);
 		if (text.empty ()) {
-			text.assign (uitext->getText (UiTextString::NoMonitorSelectedPrompt));
-			color.assign (uiconfig->errorTextColor);
+			text.assign (UiText::instance->getText (UiTextString::NoMonitorSelectedPrompt));
+			color.assign (UiConfiguration::instance->errorTextColor);
 		}
-		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallDisplayIconSprite), text, UiConfiguration::CaptionFont, color));
-		icon->setFillBg (true, uiconfig->lightBackgroundColor);
+		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallDisplayIconSprite), text, UiConfiguration::CaptionFont, color));
+		icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 		icon->setRightAligned (true);
 	}
 
@@ -2058,7 +2015,7 @@ void MediaUi::commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr) {
 	}
 	panel->setLayout (Panel::VerticalRightJustifiedLayout);
 	panel->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
-	panel->position.assign (App::instance->windowWidth - panel->width - uiconfig->paddingSize, App::instance->windowHeight - App::instance->uiStack.bottomBarHeight - panel->height - uiconfig->marginSize);
+	panel->position.assign (App::instance->windowWidth - panel->width - UiConfiguration::instance->paddingSize, App::instance->windowHeight - App::instance->uiStack.bottomBarHeight - panel->height - UiConfiguration::instance->marginSize);
 }
 
 void MediaUi::commandButtonMouseExited (void *uiPtr, Widget *widgetPtr) {
@@ -2095,7 +2052,7 @@ void MediaUi::playButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	params = new Json ();
 	params->set ("streamId", media->streamId);
 	params->set ("startPosition", startpos);
-	streamurl = App::instance->agentControl.getAgentSecondaryUrl (media->streamAgentId, App::instance->createCommand (SystemInterface::Command_GetHlsManifest, SystemInterface::Constant_Stream, params), media->hlsStreamPath);
+	streamurl = AgentControl::instance->getAgentSecondaryUrl (media->streamAgentId, App::instance->createCommand (SystemInterface::Command_GetHlsManifest, params), media->hlsStreamPath);
 
 	params = new Json ();
 	params->set ("mediaName", media->mediaName);
@@ -2105,13 +2062,13 @@ void MediaUi::playButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	if (! media->playThumbnailUrl.empty ()) {
 		params->set ("thumbnailUrl", media->playThumbnailUrl);
 	}
-	count = App::instance->agentControl.invokeCommand (&idlist, App::instance->createCommand (SystemInterface::Command_PlayMedia, SystemInterface::Constant_Monitor, params));
+	count = AgentControl::instance->invokeCommand (&idlist, App::instance->createCommand (SystemInterface::Command_PlayMedia, params));
 	if (count <= 0) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
 	}
 	else {
-		App::instance->agentControl.refreshAgentStatus (&idlist);
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InvokePlayMediaMessage));
+		AgentControl::instance->refreshAgentStatus (&idlist);
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InvokePlayMediaMessage));
 	}
 }
 
@@ -2128,13 +2085,13 @@ void MediaUi::writePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr) {
 		return;
 	}
 
-	count = App::instance->agentControl.invokeCommand (&idlist, playlist->createCommand ());
+	count = AgentControl::instance->invokeCommand (&idlist, playlist->createCommand ());
 	if (count <= 0) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
 	}
 	else {
-		App::instance->agentControl.refreshAgentStatus (&idlist);
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InvokeCreateStreamPlaylistMessage));
+		AgentControl::instance->refreshAgentStatus (&idlist);
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InvokeCreateStreamPlaylistMessage));
 	}
 }
 
@@ -2149,13 +2106,13 @@ void MediaUi::pauseButtonClicked (void *uiPtr, Widget *widgetPtr) {
 		return;
 	}
 
-	count = App::instance->agentControl.invokeCommand (&idlist, App::instance->createCommand (SystemInterface::Command_PauseMedia, SystemInterface::Constant_Monitor));
+	count = AgentControl::instance->invokeCommand (&idlist, App::instance->createCommand (SystemInterface::Command_PauseMedia));
 	if (count <= 0) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
 	}
 	else {
-		App::instance->agentControl.refreshAgentStatus (&idlist);
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InvokePauseMediaMessage));
+		AgentControl::instance->refreshAgentStatus (&idlist);
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InvokePauseMediaMessage));
 	}
 }
 
@@ -2170,20 +2127,18 @@ void MediaUi::stopButtonClicked (void *uiPtr, Widget *widgetPtr) {
 		return;
 	}
 
-	count = App::instance->agentControl.invokeCommand (&idlist, App::instance->createCommand (SystemInterface::Command_ClearDisplay, SystemInterface::Constant_Monitor));
+	count = AgentControl::instance->invokeCommand (&idlist, App::instance->createCommand (SystemInterface::Command_ClearDisplay));
 	if (count <= 0) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
 	}
 	else {
-		App::instance->agentControl.refreshAgentStatus (&idlist);
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InvokeClearDisplayMessage));
+		AgentControl::instance->refreshAgentStatus (&idlist);
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InvokeClearDisplayMessage));
 	}
 }
 
 void MediaUi::configureStreamButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	HashMap *prefs;
 	ActionWindow *action;
 	ComboBox *combobox;
@@ -2192,8 +2147,6 @@ void MediaUi::configureStreamButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	int count, profile;
 
 	ui = (MediaUi *) uiPtr;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
 	if (ui->selectedMediaMap.empty () || ui->getSelectedMediaNames (false, true).empty ()) {
 		return;
 	}
@@ -2208,30 +2161,33 @@ void MediaUi::configureStreamButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	App::instance->unlockPrefs ();
 
 	action = new ActionWindow ();
-	action->setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
+	action->setDropShadow (true, UiConfiguration::instance->dropShadowColor, UiConfiguration::instance->dropShadowWidth);
 	action->setInverseColor (true);
-	action->setTitleText (uitext->getText (UiTextString::ConfigureStream).capitalized ());
-	action->setConfirmTooltipText (uitext->getText (UiTextString::Apply).capitalized ());
+	action->setTitleText (UiText::instance->getText (UiTextString::ConfigureStream).capitalized ());
+	action->setConfirmTooltipText (UiText::instance->getText (UiTextString::Apply).capitalized ());
 	action->optionChangeCallback = Widget::EventCallbackContext (MediaUi::configureStreamOptionChanged, ui);
 	action->closeCallback = Widget::EventCallbackContext (MediaUi::configureStreamActionClosed, ui);
 
 	combobox = new ComboBox ();
-	combobox->addItem (MediaUtil::getStreamProfileDescription (SystemInterface::Constant_DefaultStreamProfile));
-	combobox->addItem (MediaUtil::getStreamProfileDescription (SystemInterface::Constant_CompressedStreamProfile));
-	combobox->addItem (MediaUtil::getStreamProfileDescription (SystemInterface::Constant_LowQualityStreamProfile));
-	combobox->addItem (MediaUtil::getStreamProfileDescription (SystemInterface::Constant_LowestQualityStreamProfile));
-	combobox->setValue (MediaUtil::getStreamProfileDescription (profile));
-	action->addOption (uitext->getText (UiTextString::VideoQuality).capitalized (), combobox, uitext->getText (UiTextString::VideoQualityDescription));
+	combobox->addItem (MediaUtil::getStreamProfileName (SystemInterface::Constant_SourceMatchStreamProfile));
+	combobox->addItem (MediaUtil::getStreamProfileName (SystemInterface::Constant_HighBitrateStreamProfile));
+	combobox->addItem (MediaUtil::getStreamProfileName (SystemInterface::Constant_MediumBitrateStreamProfile));
+	combobox->addItem (MediaUtil::getStreamProfileName (SystemInterface::Constant_LowBitrateStreamProfile));
+	combobox->addItem (MediaUtil::getStreamProfileName (SystemInterface::Constant_LowestBitrateStreamProfile));
+	combobox->addItem (MediaUtil::getStreamProfileName (SystemInterface::Constant_PreviewStreamProfile));
+	combobox->addItem (MediaUtil::getStreamProfileName (SystemInterface::Constant_FastPreviewStreamProfile));
+	combobox->setValue (MediaUtil::getStreamProfileName (profile));
+	action->addOption (UiText::instance->getText (UiTextString::VideoQuality).capitalized (), combobox, MediaUtil::getStreamProfileDescription (profile));
 
 	panel = new Panel ();
 	count = ui->getSelectedCreateStreamCount ();
-	icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite), StdString::createSprintf ("%i", count), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
-	icon->setFillBg (true, uiconfig->lightBackgroundColor);
-	icon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::ConfigureStreamItemCountTooltip, UiTextString::ConfigureStreamItemsCountTooltip));
+	icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite), StdString::createSprintf ("%i", count), UiConfiguration::CaptionFont, UiConfiguration::instance->primaryTextColor));
+	icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
+	icon->setMouseHoverTooltip (UiText::instance->getCountText (count, UiTextString::ConfigureStreamItemCountTooltip, UiTextString::ConfigureStreamItemsCountTooltip));
 
-	icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::StorageIconSprite), OsUtil::getByteCountDisplayString (ui->getSelectedCreateStreamSize (profile)), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
-	icon->setFillBg (true, uiconfig->lightBackgroundColor);
-	icon->setMouseHoverTooltip (uitext->getText (UiTextString::ConfigureStreamByteCountTooltip));
+	icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::StorageIconSprite), OsUtil::getByteCountDisplayString (ui->getSelectedCreateStreamSize (profile)), UiConfiguration::CaptionFont, UiConfiguration::instance->primaryTextColor));
+	icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
+	icon->setMouseHoverTooltip (UiText::instance->getText (UiTextString::ConfigureStreamByteCountTooltip));
 	ui->configureStreamSizeIcon.assign (icon);
 	panel->setLayout (Panel::HorizontalLayout);
 	action->setFooterPanel (panel);
@@ -2242,23 +2198,27 @@ void MediaUi::configureStreamButtonClicked (void *uiPtr, Widget *widgetPtr) {
 void MediaUi::configureStreamOptionChanged (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
 	ActionWindow *action;
-	UiText *uitext;
 	IconLabelWindow *icon;
+	StdString text;
+	int profile;
 
 	ui = (MediaUi *) uiPtr;
 	action = (ActionWindow *) widgetPtr;
-	uitext = &(App::instance->uiText);
 	icon = (IconLabelWindow *) ui->configureStreamSizeIcon.widget;
-	if (! icon) {
-		return;
+	if (icon) {
+		icon->setText (OsUtil::getByteCountDisplayString (ui->getSelectedCreateStreamSize (MediaUtil::getStreamProfile (action->getStringValue (UiText::instance->getText (UiTextString::VideoQuality).capitalized (), "")))));
 	}
-	icon->setText (OsUtil::getByteCountDisplayString (ui->getSelectedCreateStreamSize (MediaUtil::getStreamProfile (action->getStringValue (uitext->getText (UiTextString::VideoQuality).capitalized (), "")))));
+
+	profile = MediaUtil::getStreamProfile (action->getStringValue (UiText::instance->getText (UiTextString::VideoQuality).capitalized (), ""));
+	text = MediaUtil::getStreamProfileDescription (profile);
+	if (! text.empty ()) {
+		action->setOptionDescriptionText (UiText::instance->getText (UiTextString::VideoQuality).capitalized (), text);
+	}
 	action->refresh ();
 }
 
 void MediaUi::configureStreamActionClosed (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
-	UiText *uitext;
 	HashMap *prefs;
 	ActionWindow *action;
 	MediaWindow *media;
@@ -2268,12 +2228,11 @@ void MediaUi::configureStreamActionClosed (void *uiPtr, Widget *widgetPtr) {
 	int result, profile, invokecount, errcount;
 
 	ui = (MediaUi *) uiPtr;
-	uitext = &(App::instance->uiText);
 	action = (ActionWindow *) widgetPtr;
 	invokecount = 0;
 	errcount = 0;
 	if (action->isConfirmed) {
-		profile = MediaUtil::getStreamProfile (action->getStringValue (uitext->getText (UiTextString::VideoQuality).capitalized (), ""));
+		profile = MediaUtil::getStreamProfile (action->getStringValue (UiText::instance->getText (UiTextString::VideoQuality).capitalized (), ""));
 		prefs = App::instance->lockPrefs ();
 		if (profile != SystemInterface::Constant_DefaultStreamProfile) {
 			prefs->insert (MediaUi::VideoQualityKey, profile);
@@ -2300,8 +2259,8 @@ void MediaUi::configureStreamActionClosed (void *uiPtr, Widget *widgetPtr) {
 				//  params->set ("mediaUrl", url);
 
 				ui->retain ();
-				result = App::instance->agentControl.invokeCommand (media->agentId, App::instance->createCommand (SystemInterface::Command_ConfigureMediaStream, SystemInterface::Constant_Stream, params), MediaUi::configureMediaStreamComplete, ui);
-				if (result != Result::Success) {
+				result = AgentControl::instance->invokeCommand (media->agentId, App::instance->createCommand (SystemInterface::Command_ConfigureMediaStream, params), MediaUi::configureMediaStreamComplete, ui);
+				if (result != OsUtil::Result::Success) {
 					ui->release ();
 					++errcount;
 					Log::debug ("Failed to invoke ConfigureMediaStream command; err=%i agentId=%s", result, media->agentId.c_str ());
@@ -2315,40 +2274,34 @@ void MediaUi::configureStreamActionClosed (void *uiPtr, Widget *widgetPtr) {
 
 	if (invokecount <= 0) {
 		if (errcount > 0) {
-			App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
+			App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
 		}
 	}
 	else {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InvokeConfigureMediaStreamMessage));
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InvokeConfigureMediaStreamMessage));
 	}
 }
 
 void MediaUi::configureMediaStreamComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand) {
 	MediaUi *ui;
-	RecordStore *store;
-	SystemInterface *interface;
-	StdString taskid, mediaid, streamid;
+	StdString mediaid, streamid;
 	Json *streamitem;
 
 	ui = (MediaUi *) uiPtr;
-	store = &(App::instance->agentControl.recordStore);
-	interface = &(App::instance->systemInterface);
-
-	taskid = interface->getCommandStringParam (responseCommand, "taskId", "");
-	mediaid = interface->getCommandStringParam (invokeCommand, "mediaId", "");
-	if ((! taskid.empty ()) && (! mediaid.empty ())) {
-		store->lock ();
-		streamitem = store->findRecord (MediaWindow::matchStreamSourceId, &mediaid);
+	mediaid = SystemInterface::instance->getCommandStringParam (invokeCommand, "mediaId", "");
+	if (! mediaid.empty ()) {
+		RecordStore::instance->lock ();
+		streamitem = RecordStore::instance->findRecord (MediaWindow::matchStreamSourceId, &mediaid);
 		if (streamitem) {
-			streamid = interface->getCommandRecordId (streamitem);
+			streamid = SystemInterface::instance->getCommandRecordId (streamitem);
 			if (! streamid.empty ()) {
-				store->removeRecord (streamid);
+				RecordStore::instance->removeRecord (streamid);
 			}
 		}
-		store->unlock ();
+		RecordStore::instance->unlock ();
 	}
 	if (! streamid.empty ()) {
-		App::instance->agentControl.refreshAgentStatus (agentId);
+		AgentControl::instance->refreshAgentStatus (agentId);
 	}
 
 	ui->release ();
@@ -2356,16 +2309,12 @@ void MediaUi::configureMediaStreamComplete (void *uiPtr, int invokeResult, const
 
 void MediaUi::cacheStreamButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	ActionWindow *action;
 	IconLabelWindow *icon;
 	Panel *panel;
 	int count;
 
 	ui = (MediaUi *) uiPtr;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
 	if (ui->selectedMonitorMap.empty () || ui->selectedMediaMap.empty () || ui->getSelectedMediaNames (true).empty ()) {
 		return;
 	}
@@ -2376,26 +2325,26 @@ void MediaUi::cacheStreamButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	}
 
 	action = new ActionWindow ();
-	action->setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
+	action->setDropShadow (true, UiConfiguration::instance->dropShadowColor, UiConfiguration::instance->dropShadowWidth);
 	action->setInverseColor (true);
-	action->setTitleText (uitext->getText (UiTextString::CacheStreams).capitalized ());
-	action->setDescriptionText (uitext->getText (UiTextString::CacheStreamsDescription));
+	action->setTitleText (UiText::instance->getText (UiTextString::CacheStreams).capitalized ());
+	action->setDescriptionText (UiText::instance->getText (UiTextString::CacheStreamsDescription));
 	action->closeCallback = Widget::EventCallbackContext (MediaUi::cacheStreamActionClosed, ui);
 
 	panel = new Panel ();
 	count = (int) ui->selectedMonitorMap.size ();
-	icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallDisplayIconSprite), StdString::createSprintf ("%i", count), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
-	icon->setFillBg (true, uiconfig->lightBackgroundColor);
-	icon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::MonitorSelected, UiTextString::MonitorsSelected));
+	icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallDisplayIconSprite), StdString::createSprintf ("%i", count), UiConfiguration::CaptionFont, UiConfiguration::instance->primaryTextColor));
+	icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
+	icon->setMouseHoverTooltip (UiText::instance->getCountText (count, UiTextString::MonitorSelected, UiTextString::MonitorsSelected));
 
 	count = ui->getSelectedStreamCount ();
-	icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite), StdString::createSprintf ("%i", count), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
-	icon->setFillBg (true, uiconfig->lightBackgroundColor);
-	icon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::CacheStreamItemCountTooltip, UiTextString::CacheStreamItemsCountTooltip));
+	icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite), StdString::createSprintf ("%i", count), UiConfiguration::CaptionFont, UiConfiguration::instance->primaryTextColor));
+	icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
+	icon->setMouseHoverTooltip (UiText::instance->getCountText (count, UiTextString::CacheStreamItemCountTooltip, UiTextString::CacheStreamItemsCountTooltip));
 
-	icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::StorageIconSprite), OsUtil::getByteCountDisplayString (ui->getSelectedStreamSize ()), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
-	icon->setFillBg (true, uiconfig->lightBackgroundColor);
-	icon->setMouseHoverTooltip (uitext->getText (UiTextString::CacheStreamByteCountTooltip));
+	icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::StorageIconSprite), OsUtil::getByteCountDisplayString (ui->getSelectedStreamSize ()), UiConfiguration::CaptionFont, UiConfiguration::instance->primaryTextColor));
+	icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
+	icon->setMouseHoverTooltip (UiText::instance->getText (UiTextString::CacheStreamByteCountTooltip));
 	panel->setLayout (Panel::HorizontalLayout);
 	action->setFooterPanel (panel);
 
@@ -2406,8 +2355,6 @@ void MediaUi::cacheStreamActionClosed (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
 	ActionWindow *action;
 	MediaWindow *media;
-	RecordStore *store;
-	SystemInterface *interface;
 	HashMap::Iterator i, j;
 	StdString mediaid, agentid;
 	Json *params, *streamitem, *agentstatus, serverstatus;
@@ -2418,9 +2365,6 @@ void MediaUi::cacheStreamActionClosed (void *uiPtr, Widget *widgetPtr) {
 	if ((! action->isConfirmed) || ui->selectedMonitorMap.empty () || ui->selectedMediaMap.empty () || ui->getSelectedMediaNames (true).empty ()) {
 		return;
 	}
-
-	store = &(App::instance->agentControl.recordStore);
-	interface = &(App::instance->systemInterface);
 	invokecount = 0;
 	errcount = 0;
 	i = ui->selectedMediaMap.begin ();
@@ -2429,22 +2373,22 @@ void MediaUi::cacheStreamActionClosed (void *uiPtr, Widget *widgetPtr) {
 		media = (MediaWindow *) ui->cardView->findItem (MediaUi::matchMediaItem, &mediaid);
 		if (media && (! media->streamId.empty ())) {
 			params = NULL;
-			store->lock ();
-			streamitem = store->findRecord (media->streamId, SystemInterface::CommandId_StreamItem);
-			agentstatus = store->findRecord (RecordStore::matchAgentStatusSource, &(media->streamAgentId));
-			if (streamitem && agentstatus && interface->getCommandObjectParam (agentstatus, "streamServerStatus", &serverstatus)) {
+			RecordStore::instance->lock ();
+			streamitem = RecordStore::instance->findRecord (media->streamId, SystemInterface::CommandId_StreamItem);
+			agentstatus = RecordStore::instance->findRecord (RecordStore::matchAgentStatusSource, &(media->streamAgentId));
+			if (streamitem && agentstatus && SystemInterface::instance->getCommandObjectParam (agentstatus, "streamServerStatus", &serverstatus)) {
 				params = new Json ();
-				params->set ("streamUrl", App::instance->agentControl.getAgentSecondaryUrl (media->streamAgentId, NULL, media->hlsStreamPath));
-				params->set ("thumbnailUrl", App::instance->agentControl.getAgentSecondaryUrl (media->streamAgentId, NULL, serverstatus.getString ("thumbnailPath", "")));
+				params->set ("streamUrl", AgentControl::instance->getAgentSecondaryUrl (media->streamAgentId, NULL, media->hlsStreamPath));
+				params->set ("thumbnailUrl", AgentControl::instance->getAgentSecondaryUrl (media->streamAgentId, NULL, serverstatus.getString ("thumbnailPath", "")));
 				params->set ("streamId", media->streamId);
-				params->set ("streamName", interface->getCommandStringParam (streamitem, "name", ""));
-				params->set ("duration", interface->getCommandNumberParam (streamitem, "duration", (float) 0.0f));
-				params->set ("width", interface->getCommandNumberParam (streamitem, "width", (int) 0));
-				params->set ("height", interface->getCommandNumberParam (streamitem, "height", (int) 0));
-				params->set ("bitrate", interface->getCommandNumberParam (streamitem, "bitrate", (int64_t) 0));
-				params->set ("frameRate", interface->getCommandNumberParam (streamitem, "frameRate", (float) 0.0f));
+				params->set ("streamName", SystemInterface::instance->getCommandStringParam (streamitem, "name", ""));
+				params->set ("duration", SystemInterface::instance->getCommandNumberParam (streamitem, "duration", (float) 0.0f));
+				params->set ("width", SystemInterface::instance->getCommandNumberParam (streamitem, "width", (int) 0));
+				params->set ("height", SystemInterface::instance->getCommandNumberParam (streamitem, "height", (int) 0));
+				params->set ("bitrate", SystemInterface::instance->getCommandNumberParam (streamitem, "bitrate", (int64_t) 0));
+				params->set ("frameRate", SystemInterface::instance->getCommandNumberParam (streamitem, "frameRate", (float) 0.0f));
 			}
-			store->unlock ();
+			RecordStore::instance->unlock ();
 
 			if (! params) {
 				++errcount;
@@ -2453,8 +2397,8 @@ void MediaUi::cacheStreamActionClosed (void *uiPtr, Widget *widgetPtr) {
 				j = ui->selectedMonitorMap.begin ();
 				while (ui->selectedMonitorMap.hasNext (&j)) {
 					agentid = ui->selectedMonitorMap.next (&j);
-					result = App::instance->agentControl.invokeCommand (agentid, App::instance->createCommand (SystemInterface::Command_CreateCacheStream, SystemInterface::Constant_Monitor, params->copy ()));
-					if (result != Result::Success) {
+					result = AgentControl::instance->invokeCommand (agentid, App::instance->createCommand (SystemInterface::Command_CreateCacheStream, params->copy ()));
+					if (result != OsUtil::Result::Success) {
 						++errcount;
 					}
 					else {
@@ -2469,26 +2413,22 @@ void MediaUi::cacheStreamActionClosed (void *uiPtr, Widget *widgetPtr) {
 
 	if (invokecount <= 0) {
 		if (errcount > 0) {
-			App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
+			App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
 		}
 	}
 	else {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InvokeCreateCacheStreamMessage));
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InvokeCreateCacheStreamMessage));
 	}
 }
 
 void MediaUi::deleteStreamButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	MediaUi *ui;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	ActionWindow *action;
 	IconLabelWindow *icon;
 	Panel *panel;
 	int count;
 
 	ui = (MediaUi *) uiPtr;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
 	if (ui->selectedMediaMap.empty () || ui->getSelectedMediaNames (true).empty ()) {
 		return;
 	}
@@ -2499,21 +2439,21 @@ void MediaUi::deleteStreamButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	}
 
 	action = new ActionWindow ();
-	action->setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
+	action->setDropShadow (true, UiConfiguration::instance->dropShadowColor, UiConfiguration::instance->dropShadowWidth);
 	action->setInverseColor (true);
-	action->setTitleText (uitext->getText (UiTextString::DeleteStreamTitle));
-	action->setDescriptionText (uitext->getText (UiTextString::DeleteStreamDescription));
+	action->setTitleText (UiText::instance->getText (UiTextString::DeleteStreamTitle));
+	action->setDescriptionText (UiText::instance->getText (UiTextString::DeleteStreamDescription));
 	action->closeCallback = Widget::EventCallbackContext (MediaUi::deleteStreamActionClosed, ui);
 
 	panel = new Panel ();
 	count = ui->getSelectedStreamCount ();
-	icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite), StdString::createSprintf ("%i", count), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
-	icon->setFillBg (true, uiconfig->lightBackgroundColor);
-	icon->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::DeleteStreamItemCountTooltip, UiTextString::DeleteStreamItemsCountTooltip));
+	icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite), StdString::createSprintf ("%i", count), UiConfiguration::CaptionFont, UiConfiguration::instance->primaryTextColor));
+	icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
+	icon->setMouseHoverTooltip (UiText::instance->getCountText (count, UiTextString::DeleteStreamItemCountTooltip, UiTextString::DeleteStreamItemsCountTooltip));
 
-	icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::StorageIconSprite), OsUtil::getByteCountDisplayString (ui->getSelectedStreamSize ()), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
-	icon->setFillBg (true, uiconfig->lightBackgroundColor);
-	icon->setMouseHoverTooltip (uitext->getText (UiTextString::DeleteStreamByteCountTooltip));
+	icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::StorageIconSprite), OsUtil::getByteCountDisplayString (ui->getSelectedStreamSize ()), UiConfiguration::CaptionFont, UiConfiguration::instance->primaryTextColor));
+	icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
+	icon->setMouseHoverTooltip (UiText::instance->getText (UiTextString::DeleteStreamByteCountTooltip));
 
 	panel->setLayout (Panel::HorizontalLayout);
 	action->setFooterPanel (panel);
@@ -2546,8 +2486,8 @@ void MediaUi::deleteStreamActionClosed (void *uiPtr, Widget *widgetPtr) {
 		if (media && (! media->streamId.empty ())) {
 			params = new Json ();
 			params->set ("id", media->streamId);
-			result = App::instance->agentControl.invokeCommand (media->streamAgentId, App::instance->createCommand (SystemInterface::Command_RemoveStream, SystemInterface::Constant_Stream, params));
-			if (result != Result::Success) {
+			result = AgentControl::instance->invokeCommand (media->streamAgentId, App::instance->createCommand (SystemInterface::Command_RemoveStream, params));
+			if (result != OsUtil::Result::Success) {
 				++errcount;
 				Log::debug ("Failed to invoke RemoveStream command; err=%i agentId=\"%s\"", result, media->streamAgentId.c_str ());
 			}
@@ -2559,16 +2499,16 @@ void MediaUi::deleteStreamActionClosed (void *uiPtr, Widget *widgetPtr) {
 
 	if (removelist.size () <= 0) {
 		if (errcount > 0) {
-			App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
+			App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
 		}
 	}
 	else {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InvokeRemoveStreamMessage));
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InvokeRemoveStreamMessage));
 
 		ri = removelist.begin ();
 		rend = removelist.end ();
 		while (ri != rend) {
-			App::instance->agentControl.recordStore.removeRecord (*ri);
+			RecordStore::instance->removeRecord (*ri);
 			++ri;
 		}
 		App::instance->shouldSyncRecordStore = true;
@@ -2603,7 +2543,7 @@ void MediaUi::createPlaylistButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	ui->cardView->scrollToItem (playlist->itemId);
 	ui->cardView->refresh ();
 	ui->resetExpandToggles ();
-	App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s: %s", App::instance->uiText.getText (UiTextString::CreatedPlaylist).capitalized ().c_str (), playlist->playlistName.c_str ()));
+	App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s: %s", UiText::instance->getText (UiTextString::CreatedPlaylist).capitalized ().c_str (), playlist->playlistName.c_str ()));
 }
 
 std::map<StdString, MediaUi::MediaServerInfo>::iterator MediaUi::getMediaServerInfo (const StdString &agentId) {
@@ -2637,7 +2577,7 @@ StdString MediaUi::getSelectedMonitorNames () {
 
 	names.sort (StringList::compareCaseInsensitiveAscending);
 	text.assign (names.join (", "));
-	Label::truncateText (&text, UiConfiguration::CaptionFont, App::instance->rootPanel->width * MediaUi::TruncateWidthMultiplier, StdString::createSprintf ("... (%i)", count));
+	UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->truncateText (&text, App::instance->rootPanel->width * MediaUi::TruncateWidthMultiplier, StdString::createSprintf ("... (%i)", count));
 
 	return (text);
 }
@@ -2668,7 +2608,7 @@ StdString MediaUi::getSelectedMediaNames (bool isStreamRequired, bool isCreateSt
 
 	names.sort (StringList::compareCaseInsensitiveAscending);
 	text.assign (names.join (", "));
-	Label::truncateText (&text, UiConfiguration::CaptionFont, App::instance->rootPanel->width * MediaUi::TruncateWidthMultiplier, StdString::createSprintf ("... (%i)", (int) names.size ()));
+	UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->truncateText (&text, App::instance->rootPanel->width * MediaUi::TruncateWidthMultiplier, StdString::createSprintf ("... (%i)", (int) names.size ()));
 
 	return (text);
 }
@@ -2721,13 +2661,11 @@ static void resetExpandToggles_countExpandedAgents (void *intPtr, Widget *widget
 	if (! count) {
 		return;
 	}
-
 	monitor = MonitorWindow::castWidget (widgetPtr);
 	if (monitor && monitor->isExpanded) {
 		++(*count);
 		return;
 	}
-
 	medialibrary = MediaLibraryWindow::castWidget (widgetPtr);
 	if (medialibrary && medialibrary->isExpanded) {
 		++(*count);
@@ -2742,7 +2680,6 @@ static void resetExpandToggles_countExpandedPlaylists (void *intPtr, Widget *wid
 	if (! count) {
 		return;
 	}
-
 	playlist = StreamPlaylistWindow::castWidget (widgetPtr);
 	if (playlist && playlist->isExpanded) {
 		++(*count);
@@ -2781,7 +2718,6 @@ int64_t MediaUi::getSelectedStreamSize () {
 			bytes += media->streamSize;
 		}
 	}
-
 	return (bytes);
 }
 
@@ -2798,7 +2734,6 @@ int MediaUi::getSelectedStreamCount () {
 			++count;
 		}
 	}
-
 	return (count);
 }
 
@@ -2815,7 +2750,6 @@ int MediaUi::getSelectedCreateStreamCount () {
 			++count;
 		}
 	}
-
 	return (count);
 }
 
@@ -2829,9 +2763,8 @@ int64_t MediaUi::getSelectedCreateStreamSize (int profile) {
 	while (selectedMediaMap.hasNext (&i)) {
 		media = MediaWindow::castWidget (cardView->getItem (selectedMediaMap.next (&i)));
 		if (media && media->isCreateStreamAvailable) {
-			bytes += MediaUtil::getStreamSize (media->mediaSize, profile);
+			bytes += MediaUtil::getStreamSize (media->mediaSize, media->mediaBitrate, media->mediaDuration, profile);
 		}
 	}
-
 	return (bytes);
 }

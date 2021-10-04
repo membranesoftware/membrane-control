@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,7 +30,6 @@
 #include "Config.h"
 #include <stdlib.h>
 #include <list>
-#include "Result.h"
 #include "ClassId.h"
 #include "Log.h"
 #include "StdString.h"
@@ -54,17 +53,14 @@ Menu::Menu ()
 , isItemFocused (false)
 , lastFocusPanel (NULL)
 {
-	UiConfiguration *uiconfig;
-
 	classId = ClassId::Menu;
 
-	uiconfig = &(App::instance->uiConfig);
-	setFillBg (true, uiconfig->lightBackgroundColor);
-	setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
+	setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
+	setDropShadow (true, UiConfiguration::instance->dropShadowColor, UiConfiguration::instance->dropShadowWidth);
 
 	focusBackgroundPanel = (Panel *) addWidget (new Panel ());
 	focusBackgroundPanel->zLevel = Widget::MinZLevel;
-	focusBackgroundPanel->setFillBg (true, uiconfig->darkBackgroundColor);
+	focusBackgroundPanel->setFillBg (true, UiConfiguration::instance->darkBackgroundColor);
 	focusBackgroundPanel->isVisible = false;
 }
 
@@ -81,23 +77,19 @@ Menu *Menu::castWidget (Widget *widget) {
 }
 
 void Menu::addItem (const StdString &name, Sprite *sprite, Widget::EventCallback callback, void *callbackData, int selectionGroup, bool isSelected) {
-	UiConfiguration *uiconfig;
 	std::list<Menu::Item>::iterator i, end;
 	Menu::Item item;
 	Panel *panel;
 	Image *image;
 	float w;
 
-	uiconfig = &(App::instance->uiConfig);
-
 	item.isChoice = true;
-
 	panel = new Panel ();
 	panel->zLevel = 1;
 	addWidget (panel);
 	item.panel = panel;
 
-	item.label = (Label *) panel->addWidget (new Label (name, UiConfiguration::BodyFont, uiconfig->primaryTextColor));
+	item.label = (Label *) panel->addWidget (new Label (name, UiConfiguration::BodyFont, UiConfiguration::instance->primaryTextColor));
 	if (sprite) {
 		item.image = (Image *) panel->addWidget (new Image (sprite, UiConfiguration::BlackButtonFrame));
 	}
@@ -108,10 +100,10 @@ void Menu::addItem (const StdString &name, Sprite *sprite, Widget::EventCallback
 	if (item.selectionGroup >= 0) {
 		item.isSelected = isSelected;
 		if (checkmarkImageMap.count (item.selectionGroup) <= 0) {
-			image = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::CheckmarkSprite)));
+			image = (Image *) addWidget (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::CheckmarkSprite)));
 			image->isVisible = false;
 			image->zLevel = panel->zLevel + 1;
-			w = image->width + (uiconfig->paddingSize / 2.0f);
+			w = image->width + (UiConfiguration::instance->paddingSize / 2.0f);
 			if (selectionMarginSize < w) {
 				selectionMarginSize = w;
 			}
@@ -128,16 +120,13 @@ void Menu::addItem (const StdString &name, Sprite *sprite, Widget::EventCallback
 }
 
 void Menu::addDivider () {
-	UiConfiguration *uiconfig;
 	Menu::Item item;
 	Panel *panel;
 
-	uiconfig = &(App::instance->uiConfig);
-
 	item.isDivider = true;
 	panel = new Panel ();
-	panel->setFillBg (true, uiconfig->primaryTextColor);
-	panel->setFixedSize (true, width, uiconfig->menuDividerLineWidth);
+	panel->setFillBg (true, UiConfiguration::instance->primaryTextColor);
+	panel->setFixedSize (true, width, UiConfiguration::instance->menuDividerLineWidth);
 	addWidget (panel);
 
 	item.panel = panel;
@@ -203,7 +192,6 @@ bool Menu::doProcessMouseState (const Widget::MouseState &mouseState) {
 }
 
 void Menu::refreshLayout () {
-	UiConfiguration *uiconfig;
 	std::list<Menu::Item>::iterator i, end;
 	std::map<int, Image *>::iterator mi, mend;
 	std::map<int, bool> checkfoundmap;
@@ -212,13 +200,12 @@ void Menu::refreshLayout () {
 	Panel *panel;
 	float x0, x, y, w, h, maxw, maxh, maximagew, padw, padh;
 
-	uiconfig = &(App::instance->uiConfig);
-	x0 = uiconfig->paddingSize + selectionMarginSize;
+	x0 = UiConfiguration::instance->paddingSize + selectionMarginSize;
 	maxw = 0.0f;
 	maxh = 0.0f;
 	maximagew = 0.0f;
-	padw = uiconfig->paddingSize;
-	padh = uiconfig->paddingSize;
+	padw = UiConfiguration::instance->paddingSize;
+	padh = UiConfiguration::instance->paddingSize;
 
 	i = itemList.begin ();
 	end = itemList.end ();
@@ -241,7 +228,7 @@ void Menu::refreshLayout () {
 
 			w = label->width;
 			if (image) {
-				w += uiconfig->marginSize + maximagew;
+				w += UiConfiguration::instance->marginSize + maximagew;
 			}
 			h = label->height;
 			if (image && (image->height > h)) {
@@ -258,8 +245,8 @@ void Menu::refreshLayout () {
 		++i;
 	}
 
-	maxw += uiconfig->paddingSize + selectionMarginSize;
-	maxh += uiconfig->paddingSize;
+	maxw += UiConfiguration::instance->paddingSize + selectionMarginSize;
+	maxh += UiConfiguration::instance->paddingSize;
 	itemHeight = maxh;
 
 	y = 0.0f;
@@ -273,7 +260,7 @@ void Menu::refreshLayout () {
 			x = x0;
 			if (image) {
 				image->position.assign (x, (maxh / 2.0f) - (image->height / 2.0f));
-				x += maximagew + uiconfig->marginSize;
+				x += maximagew + UiConfiguration::instance->marginSize;
 			}
 			label->position.assign (x, (maxh / 2.0f) - (label->height / 2.0f));
 			panel->setFixedSize (true, maxw, maxh);
@@ -284,7 +271,7 @@ void Menu::refreshLayout () {
 					mi = checkmarkImageMap.find (i->selectionGroup);
 					if (mi != checkmarkImageMap.end ()) {
 						checkfoundmap.insert (std::pair<int, bool> (i->selectionGroup, true));
-						mi->second->position.assign (uiconfig->paddingSize / 2.0f, y + (maxh / 2.0f) - (mi->second->height / 2.0f));
+						mi->second->position.assign (UiConfiguration::instance->paddingSize / 2.0f, y + (maxh / 2.0f) - (mi->second->height / 2.0f));
 					}
 				}
 			}
@@ -294,12 +281,12 @@ void Menu::refreshLayout () {
 		}
 		else if (i->isDivider) {
 			panel = i->panel;
-			y += (uiconfig->marginSize / 2.0f);
+			y += (UiConfiguration::instance->marginSize / 2.0f);
 			panel->position.assign (0.0f, y);
-			panel->setFixedSize (true, maxw + (uiconfig->paddingSize * 2.0f), uiconfig->menuDividerLineWidth);
-			y += panel->height + (uiconfig->marginSize / 2.0f);
+			panel->setFixedSize (true, maxw + (UiConfiguration::instance->paddingSize * 2.0f), UiConfiguration::instance->menuDividerLineWidth);
+			y += panel->height + (UiConfiguration::instance->marginSize / 2.0f);
 			padw = 0.0f;
-			padh = uiconfig->paddingSize;
+			padh = UiConfiguration::instance->paddingSize;
 		}
 		++i;
 	}

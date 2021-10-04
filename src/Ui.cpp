@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,9 +30,9 @@
 #include "Config.h"
 #include <stdlib.h>
 #include <list>
-#include "Result.h"
 #include "Log.h"
 #include "App.h"
+#include "Input.h"
 #include "OsUtil.h"
 #include "StdString.h"
 #include "StringList.h"
@@ -40,14 +40,15 @@
 #include "Widget.h"
 #include "Resource.h"
 #include "UiConfiguration.h"
+#include "AgentControl.h"
 #include "Panel.h"
 #include "Button.h"
 #include "Toolbar.h"
-#include "Chip.h"
 #include "LabelWindow.h"
 #include "ProgressBar.h"
 #include "HelpWindow.h"
 #include "IconLabelWindow.h"
+#include "CommandListener.h"
 #include "Ui.h"
 
 Ui::Ui ()
@@ -59,6 +60,7 @@ Ui::Ui ()
 , actionSource (NULL)
 , refcount (0)
 , refcountMutex (NULL)
+, lastWindowCloseCount (0)
 {
 	refcountMutex = SDL_CreateMutex ();
 
@@ -72,7 +74,6 @@ Ui::~Ui () {
 		rootPanel->release ();
 		rootPanel = NULL;
 	}
-
 	if (refcountMutex) {
 		SDL_DestroyMutex (refcountMutex);
 		refcountMutex = NULL;
@@ -87,7 +88,6 @@ void Ui::retain () {
 		refcount = 1;
 	}
 	SDL_UnlockMutex (refcountMutex);
-
 }
 
 void Ui::release () {
@@ -101,7 +101,6 @@ void Ui::release () {
 		isdestroyed = true;
 	}
 	SDL_UnlockMutex (refcountMutex);
-
 	if (isdestroyed) {
 		delete (this);
 	}
@@ -112,13 +111,12 @@ int Ui::load () {
 	int result;
 
 	if (isLoaded) {
-		return (Result::Success);
+		return (OsUtil::Result::Success);
 	}
-
 	path = getSpritePath ();
 	if (! path.empty ()) {
 		result = sprites.load (path);
-		if (result != Result::Success) {
+		if (result != OsUtil::Result::Success) {
 			Log::err ("Failed to load sprite resources");
 			return (result);
 		}
@@ -130,20 +128,19 @@ int Ui::load () {
 	cardView->isExitedMouseWheelScrollEnabled = true;
 
 	result = doLoad ();
-	if (result != Result::Success) {
+	if (result != OsUtil::Result::Success) {
 		return (result);
 	}
 
 	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 	isLoaded = true;
-	return (Result::Success);
+	return (OsUtil::Result::Success);
 }
 
 void Ui::unload () {
 	if (! isLoaded) {
 		return;
 	}
-
 	clearPopupWidgets ();
 	actionWidget.destroyAndClear ();
 	actionTarget.clear ();
@@ -166,7 +163,7 @@ Widget *Ui::createBreadcrumbWidget () {
 
 int Ui::doLoad () {
 	// Default implementation does nothing
-	return (Result::Success);
+	return (OsUtil::Result::Success);
 }
 
 void Ui::doUnload () {
@@ -174,26 +171,21 @@ void Ui::doUnload () {
 }
 
 void Ui::showShutdownWindow () {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	LabelWindow *label;
 	ProgressBar *bar;
 	Panel *panel;
-
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
 
 	clearPopupWidgets ();
 
 	panel = new Panel ();
 	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, 0.0f));
-	panel->bgColor.translate (0.0f, 0.0f, 0.0f, uiconfig->overlayWindowAlpha, uiconfig->backgroundCrossFadeDuration);
+	panel->bgColor.translate (0.0f, 0.0f, 0.0f, UiConfiguration::instance->overlayWindowAlpha, UiConfiguration::instance->backgroundCrossFadeDuration);
 	panel->setFixedSize (true, App::instance->rootPanel->width, App::instance->rootPanel->height);
 
-	label = new LabelWindow (new Label (uitext->getText (UiTextString::ShuttingDownApp), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
-	label->setFillBg (true, uiconfig->lightBackgroundColor);
+	label = new LabelWindow (new Label (StdString::createSprintf ("%s %s", UiText::instance->getText (UiTextString::ShuttingDown).capitalized ().c_str (), APPLICATION_NAME), UiConfiguration::CaptionFont, UiConfiguration::instance->primaryTextColor));
+	label->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 
-	bar = new ProgressBar (label->width, uiconfig->progressBarHeight);
+	bar = new ProgressBar (label->width, UiConfiguration::instance->progressBarHeight);
 	bar->setIndeterminate (true);
 
 	App::instance->rootPanel->addWidget (panel);
@@ -221,13 +213,17 @@ bool Ui::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isContro
 	return (false);
 }
 
+bool Ui::doProcessWindowCloseEvent () {
+	// Default implementation does nothing
+	return (false);
+}
+
 void Ui::resume () {
 	StdString title;
 
 	if (! isLoaded) {
 		return;
 	}
-
 	if (rootPanel->id <= 0) {
 		rootPanel->id = App::instance->getUniqueId ();
 	}
@@ -236,6 +232,7 @@ void Ui::resume () {
 	rootPanel->resetInputState ();
 	rootPanel->isInputSuspended = false;
 	App::instance->rootPanel->addWidget (rootPanel);
+	lastWindowCloseCount = Input::instance->windowCloseCount;
 
 	setLinkConnected (true);
 	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
@@ -248,23 +245,34 @@ void Ui::pause () {
 	if (! isLoaded) {
 		return;
 	}
-
 	App::instance->rootPanel->removeWidget (rootPanel);
+	lastWindowCloseCount = Input::instance->windowCloseCount;
 	clearPopupWidgets ();
+	CommandListener::instance->unsubscribeContext (this);
 	setLinkConnected (false);
 	doPause ();
 }
 
 void Ui::update (int msElapsed) {
+	int count;
+
 	if (actionWidget.widget) {
 		actionWidget.compact ();
 		if (! actionWidget.widget) {
 			actionTarget.clear ();
 		}
 	}
-
 	actionTarget.compact ();
 	breadcrumbWidget.compact ();
+
+	count = Input::instance->windowCloseCount;
+	if (lastWindowCloseCount != count) {
+		lastWindowCloseCount = count;
+		if (! doProcessWindowCloseEvent ()) {
+			App::instance->shutdown ();
+		}
+	}
+
 	doUpdate (msElapsed);
 }
 
@@ -368,10 +376,6 @@ void Ui::handleLinkClientDisconnect (const StdString &agentId, const StdString &
 	// Default implementation does nothing
 }
 
-void Ui::handleLinkClientCommand (const StdString &agentId, int commandId, Json *command) {
-	// Default implementation does nothing
-}
-
 void Ui::syncRecordStore () {
 	// Superclass method takes no action
 	doSyncRecordStore ();
@@ -393,10 +397,10 @@ void Ui::setLinkConnected (bool connected) {
 	end = linkAgentIds.end ();
 	while (i != end) {
 		if (isLinkConnected) {
-			App::instance->agentControl.connectLinkClient (*i);
+			AgentControl::instance->connectLinkClient (*i);
 		}
 		else {
-			App::instance->agentControl.disconnectLinkClient (*i);
+			AgentControl::instance->disconnectLinkClient (*i);
 		}
 		++i;
 	}
@@ -409,7 +413,7 @@ void Ui::addLinkAgent (const StdString &agentId) {
 
 	linkAgentIds.push_back (agentId);
 	if (isLinkConnected) {
-		App::instance->agentControl.connectLinkClient (agentId);
+		AgentControl::instance->connectLinkClient (agentId);
 	}
 }
 
@@ -433,52 +437,50 @@ bool Ui::clearActionPopup (Widget *target, Widget::EventCallback sourceFn) {
 }
 
 void Ui::assignPopupPosition (Widget *popupWidget, const Widget::Rectangle &popupSourceRect, int xAlignment, int yAlignment) {
-	UiConfiguration *uiconfig;
 	float x, y;
 
-	uiconfig = &(App::instance->uiConfig);
 	switch (xAlignment) {
 		case Ui::LeftOfAlignment: {
 			x = popupSourceRect.x - popupWidget->width;
-			if (x <= uiconfig->marginSize) {
+			if (x <= UiConfiguration::instance->marginSize) {
 				x = popupSourceRect.x + popupSourceRect.w;
 			}
 			break;
 		}
 		case Ui::LeftEdgeAlignment: {
 			x = popupSourceRect.x;
-			if (x < uiconfig->marginSize) {
-				x = uiconfig->marginSize;
+			if (x < UiConfiguration::instance->marginSize) {
+				x = UiConfiguration::instance->marginSize;
 			}
-			if ((x + popupWidget->width) >= (App::instance->windowWidth - uiconfig->marginSize)) {
-				x = App::instance->windowWidth - uiconfig->marginSize - popupWidget->width;
+			if ((x + popupWidget->width) >= (App::instance->windowWidth - UiConfiguration::instance->marginSize)) {
+				x = App::instance->windowWidth - UiConfiguration::instance->marginSize - popupWidget->width;
 			}
 			break;
 		}
 		case Ui::RightEdgeAlignment: {
 			x = popupSourceRect.x + popupSourceRect.w - popupWidget->width;
-			if (x < uiconfig->marginSize) {
-				x = uiconfig->marginSize;
+			if (x < UiConfiguration::instance->marginSize) {
+				x = UiConfiguration::instance->marginSize;
 			}
-			if ((x + popupWidget->width) >= (App::instance->windowWidth - uiconfig->marginSize)) {
-				x = App::instance->windowWidth - uiconfig->marginSize - popupWidget->width;
+			if ((x + popupWidget->width) >= (App::instance->windowWidth - UiConfiguration::instance->marginSize)) {
+				x = App::instance->windowWidth - UiConfiguration::instance->marginSize - popupWidget->width;
 			}
 			break;
 		}
 		case Ui::RightOfAlignment: {
 			x = popupSourceRect.x + popupSourceRect.w;
-			if ((x + popupWidget->width) >= (App::instance->windowWidth - uiconfig->marginSize)) {
+			if ((x + popupWidget->width) >= (App::instance->windowWidth - UiConfiguration::instance->marginSize)) {
 				x = popupSourceRect.x - popupWidget->width;
 			}
 			break;
 		}
 		default: {
 			x = popupSourceRect.x + ((popupSourceRect.w / 2.0f) - (popupWidget->width / 2.0f));
-			if (x < uiconfig->marginSize) {
-				x = uiconfig->marginSize;
+			if (x < UiConfiguration::instance->marginSize) {
+				x = UiConfiguration::instance->marginSize;
 			}
-			if ((x + popupWidget->width) > (App::instance->windowWidth - uiconfig->marginSize)) {
-				x = App::instance->windowWidth - uiconfig->marginSize - popupWidget->width;
+			if ((x + popupWidget->width) > (App::instance->windowWidth - UiConfiguration::instance->marginSize)) {
+				x = App::instance->windowWidth - UiConfiguration::instance->marginSize - popupWidget->width;
 			}
 			break;
 		}
@@ -487,45 +489,45 @@ void Ui::assignPopupPosition (Widget *popupWidget, const Widget::Rectangle &popu
 	switch (yAlignment) {
 		case Ui::TopOfAlignment: {
 			y = popupSourceRect.y - popupWidget->height;
-			if (y <= uiconfig->marginSize) {
+			if (y <= UiConfiguration::instance->marginSize) {
 				y = popupSourceRect.y + popupSourceRect.h;
 			}
 			break;
 		}
 		case Ui::TopEdgeAlignment: {
 			y = popupSourceRect.y;
-			if (y < uiconfig->marginSize) {
-				y = uiconfig->marginSize;
+			if (y < UiConfiguration::instance->marginSize) {
+				y = UiConfiguration::instance->marginSize;
 			}
-			if ((y + popupWidget->height) > (App::instance->windowHeight - uiconfig->marginSize)) {
-				y = App::instance->windowHeight - uiconfig->marginSize - popupWidget->height;
+			if ((y + popupWidget->height) > (App::instance->windowHeight - UiConfiguration::instance->marginSize)) {
+				y = App::instance->windowHeight - UiConfiguration::instance->marginSize - popupWidget->height;
 			}
 			break;
 		}
 		case Ui::BottomEdgeAlignment: {
 			y = popupSourceRect.y + popupSourceRect.h - popupWidget->height;
-			if (y < uiconfig->marginSize) {
-				y = uiconfig->marginSize;
+			if (y < UiConfiguration::instance->marginSize) {
+				y = UiConfiguration::instance->marginSize;
 			}
-			if ((y + popupWidget->height) >= (App::instance->windowHeight - uiconfig->marginSize)) {
-				y = App::instance->windowHeight - uiconfig->marginSize - popupWidget->height;
+			if ((y + popupWidget->height) >= (App::instance->windowHeight - UiConfiguration::instance->marginSize)) {
+				y = App::instance->windowHeight - UiConfiguration::instance->marginSize - popupWidget->height;
 			}
 			break;
 		}
 		case Ui::BottomOfAlignment: {
 			y = popupSourceRect.y + popupSourceRect.h;
-			if ((y + popupWidget->height) >= (App::instance->windowHeight - uiconfig->marginSize)) {
+			if ((y + popupWidget->height) >= (App::instance->windowHeight - UiConfiguration::instance->marginSize)) {
 				y = popupSourceRect.y - popupWidget->height;
 			}
 			break;
 		}
 		default: {
 			y = popupSourceRect.y + ((popupSourceRect.h / 2.0f) - (popupWidget->height / 2.0f));
-			if (y < uiconfig->marginSize) {
-				y = uiconfig->marginSize;
+			if (y < UiConfiguration::instance->marginSize) {
+				y = UiConfiguration::instance->marginSize;
 			}
-			if ((y + popupWidget->height) > (App::instance->windowHeight - uiconfig->marginSize)) {
-				y = App::instance->windowHeight - uiconfig->marginSize - popupWidget->height;
+			if ((y + popupWidget->height) > (App::instance->windowHeight - UiConfiguration::instance->marginSize)) {
+				y = App::instance->windowHeight - UiConfiguration::instance->marginSize - popupWidget->height;
 			}
 			break;
 		}
@@ -536,16 +538,14 @@ void Ui::assignPopupPosition (Widget *popupWidget, const Widget::Rectangle &popu
 }
 
 Panel *Ui::createRowHeaderPanel (const StdString &headerText, Panel *sidePanel) {
-	UiConfiguration *uiconfig;
 	Panel *panel;
 	LabelWindow *label;
 
-	uiconfig = &(App::instance->uiConfig);
 	panel = new Panel ();
 	panel->setLayout (Panel::HorizontalLayout);
 	if (! headerText.empty ()) {
-		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (headerText, UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
-		label->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
+		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (headerText, UiConfiguration::TitleFont, UiConfiguration::instance->inverseTextColor)));
+		label->setFillBg (true, Color (0.0f, 0.0f, 0.0f, UiConfiguration::instance->scrimBackgroundAlpha));
 	}
 	if (sidePanel) {
 		panel->addWidget (sidePanel);
@@ -556,14 +556,10 @@ Panel *Ui::createRowHeaderPanel (const StdString &headerText, Panel *sidePanel) 
 }
 
 Panel *Ui::createLoadingIconWindow () {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	IconLabelWindow *icon;
 
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-	icon = new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallLoadingIconSprite), uitext->getText (UiTextString::Loading).capitalized (), UiConfiguration::CaptionFont);
-	icon->setFillBg (true, uiconfig->lightBackgroundColor);
+	icon = new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallLoadingIconSprite), UiText::instance->getText (UiTextString::Loading).capitalized (), UiConfiguration::CaptionFont);
+	icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 	icon->setProgressBar (true);
 
 	return (icon);

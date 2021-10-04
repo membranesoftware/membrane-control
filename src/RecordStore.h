@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -27,7 +27,7 @@
 * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 * POSSIBILITY OF SUCH DAMAGE.
 */
-// Class that maintains a set of records received from the link server, indexed by ID
+// Class that maintains a set of records received from remote agents, indexed by ID
 
 #ifndef RECORD_STORE_H
 #define RECORD_STORE_H
@@ -46,6 +46,7 @@ public:
 	typedef void (*ProcessRecordFunction) (void *data, Json *record, const StdString &recordId);
 	RecordStore ();
 	~RecordStore ();
+	static RecordStore *instance;
 
 	// Copy the provided Json object and add the copy to the record store. If recordId is not provided, the command must include a params.id field for use as a record ID.
 	void addRecord (Json *record, const StdString &recordId = StdString (""));
@@ -58,9 +59,6 @@ public:
 
 	// Release a previously acquired lock
 	void unlock ();
-
-	// Remove closed records from the store. This method should be invoked only while the store is locked.
-	void compact ();
 
 	// Find a record matching the specified ID and type and return the associated Json object, or NULL if no such record was found. This method should be invoked only while the store is locked; if a Json object is returned by this method, it remains valid only as long as the store lock is held.
 	Json *findRecord (const StdString &recordId, int recordType);
@@ -91,15 +89,12 @@ public:
 	// Remove all records with the specified command ID
 	void removeRecords (int commandId);
 
-	// Return the number of AgentStatus records matching the provided function, with an optional maxRecordAge value specified in milliseconds. This method should be invoked only while the store is locked.
-	int countRecords (RecordStore::FindMatchFunction matchFn, void *matchData, int64_t maxRecordAge = 0);
+	// Return the number of AgentStatus records containing a status field of the specified name. This method should be invoked only while the store is locked.
+	int countAgentRecords (const char *agentStatusFieldName);
+	int countAgentRecords (const StdString &agentStatusFieldName);
 
-	// Return the number of AgentStatus records containing a status field of the specified name, with an optional maxRecordAge value specified in milliseconds. This method should be invoked only while the store is locked.
-	int countAgentRecords (const char *agentStatusFieldName, int64_t maxRecordAge = 0);
-	int countAgentRecords (const StdString &agentStatusFieldName, int64_t maxRecordAge = 0);
-
-	// Return the number of records matching the specified command ID, with an optional maxRecordAge value specified in milliseconds. This method should be invoked only while the store is locked.
-	int countCommandRecords (int commandId, int64_t maxRecordAge = 0);
+	// Return the number of records matching the specified command ID. This method should be invoked only while the store is locked.
+	int countCommandRecords (int commandId);
 
 	// Match functions for use with find methods
 	static bool matchCommandId (void *intPtr, Json *record);

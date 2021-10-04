@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -32,10 +32,6 @@
 #include <stdio.h>
 #include <signal.h>
 #include <string.h>
-#include <map>
-#include "Result.h"
-#include "Log.h"
-#include "StdString.h"
 #include "OsUtil.h"
 #include "App.h"
 
@@ -59,62 +55,9 @@ int main (int argc, char **argv)
 #if PLATFORM_LINUX || PLATFORM_MACOS
 	struct sigaction action;
 #endif
-	StdString logfilename, path;
 	int result, exitstatus;
-	bool shouldcreate;
 
 	atexit (cleanup);
-	App::createInstance ();
-
-	App::instance->log.setLevelByName (OsUtil::getEnvValue ("LOG_LEVEL", "ERR"));
-	if (OsUtil::getEnvValue ("LOG_STDERR", false)) {
-		App::instance->log.setStderrOutput (true);
-	}
-	logfilename = OsUtil::getEnvValue ("LOG_FILENAME", "");
-	if (! logfilename.empty ()) {
-		App::instance->log.setFileOutput (true, logfilename);
-	}
-
-	shouldcreate = false;
-	path = OsUtil::getEnvValue ("APPDATA_PATH", "");
-	if (path.empty ()) {
-		shouldcreate = true;
-#if PLATFORM_LINUX
-		path = OsUtil::getEnvValue ("HOME", "");
-		if (! path.empty ()) {
-			path = OsUtil::getAppendPath (path, CONFIG_APPDATA_DIRNAME);
-		}
-#endif
-#if PLATFORM_MACOS
-		path = OsUtil::getEnvValue ("HOME", "");
-		if (! path.empty ()) {
-			path = OsUtil::getAppendPath (path, "Library");
-			path = OsUtil::getAppendPath (path, "Application Support");
-			path = OsUtil::getAppendPath (path, CONFIG_APPDATA_DIRNAME);
-		}
-#endif
-#if PLATFORM_WINDOWS
-		path = OsUtil::getEnvValue ("LOCALAPPDATA", "");
-		if (! path.empty ()) {
-			path = OsUtil::getAppendPath (path, CONFIG_APPDATA_DIRNAME);
-		}
-#endif
-	}
-	if (path.empty ()) {
-		Log::warning ("Application data cannot be saved (set APPDATA_PATH to specify destination directory)");
-	}
-	else {
-		if (shouldcreate) {
-			result = OsUtil::createDirectory (path);
-			if (result != Result::Success) {
-				Log::warning ("Application data cannot be saved (failed to create directory); path=\"%s\" err=%i", path.c_str (), result);
-			}
-		}
-		App::instance->prefsPath.assign (OsUtil::getAppendPath (path, CONFIG_PREFS_FILENAME));
-		if (logfilename.empty ()) {
-			App::instance->log.setFileOutput (true, OsUtil::getAppendPath (path, CONFIG_LOG_FILENAME));
-		}
-	}
 
 #if PLATFORM_LINUX || PLATFORM_MACOS
 	memset (&action, 0, sizeof (action));
@@ -142,22 +85,16 @@ int main (int argc, char **argv)
 	sigaction (SIGPIPE, &action, NULL);
 #endif
 
-	path = OsUtil::getEnvValue ("RESOURCE_PATH", CONFIG_DEFAULT_RESOURCE_PATH);
-	if (path.empty ()) {
-		Log::err ("Application resources not found (set RESOURCE_PATH to specify source path)");
-		exit (1);
-	}
-	App::instance->resource.setSource (path);
-
-	App::instance->minDrawFrameDelay = OsUtil::getEnvValue ("MIN_DRAW_FRAME_DELAY", 0);
-	App::instance->minUpdateFrameDelay = OsUtil::getEnvValue ("MIN_UPDATE_FRAME_DELAY", 0);
-	App::instance->windowWidth = OsUtil::getEnvValue ("WINDOW_WIDTH", 0);
-	App::instance->windowHeight = OsUtil::getEnvValue ("WINDOW_HEIGHT", 0);
-
 	exitstatus = 0;
+	App::createInstance ();
 	result = App::instance->run ();
-	if (result != Result::Success) {
-		printf ("Failed to execute application. For errors, see log file: %s\n", App::instance->log.outputFilename.c_str ());
+	if (result != OsUtil::Result::Success) {
+		if (App::instance->log.isFileWriteEnabled) {
+			printf ("Failed to execute application. Visit membranesoftware.com for help or an updated version. Errors written to log file: %s\n", App::instance->log.writeFilename.c_str ());
+		}
+		else {
+			printf ("Failed to execute application. Visit membranesoftware.com for help or an updated version. error=%i\n", result);
+		}
 		exitstatus = 1;
 	}
 	exit (exitstatus);

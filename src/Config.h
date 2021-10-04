@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -43,15 +43,12 @@
 #ifndef PLATFORM_LINUX
 #define PLATFORM_LINUX 0
 #endif
-
 #ifndef PLATFORM_MACOS
 #define PLATFORM_MACOS 0
 #endif
-
 #ifndef PLATFORM_WINDOWS
 #define PLATFORM_WINDOWS 0
 #endif
-
 #if !(PLATFORM_LINUX || PLATFORM_MACOS || PLATFORM_WINDOWS)
 #undef PLATFORM_LINUX
 #define PLATFORM_LINUX 1
@@ -61,9 +58,6 @@
 #define FLOAT_EQUALS(F1,F2) (fabs (F1 - F2) <= CONFIG_FLOAT_EPSILON)
 #define BOOL_STRING(VAL) ((VAL) ? "true" : "false")
 #define TOSTRING_STRING(VAL) ((VAL) ? (VAL)->toString ().c_str () : "NULL")
-#define CONFIG_DEFAULT_RESOURCE_PATH "membrane-control.dat"
-#define CONFIG_PREFS_FILENAME "membranecontrol.conf"
-#define CONFIG_LOG_FILENAME "membranecontrol.log"
 
 #if PLATFORM_LINUX
 #define CONFIG_NEWLINE "\n"
@@ -72,7 +66,7 @@
 
 #if PLATFORM_MACOS
 #define CONFIG_NEWLINE "\n"
-#define CONFIG_APPDATA_DIRNAME "Membrane Control"
+#define CONFIG_APPDATA_DIRNAME APPLICATION_NAME
 #endif
 
 #if PLATFORM_WINDOWS
@@ -83,7 +77,7 @@
 #define S_ISDIR(X) ((X) && _S_IFDIR)
 #define SHUT_RDWR SD_BOTH
 #define CONFIG_NEWLINE "\r\n"
-#define CONFIG_APPDATA_DIRNAME "Membrane Control"
+#define CONFIG_APPDATA_DIRNAME APPLICATION_NAME
 #endif
 
 #endif

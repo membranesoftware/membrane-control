@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,7 +29,6 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include "Result.h"
 #include "ClassId.h"
 #include "Log.h"
 #include "StdString.h"
@@ -44,6 +43,7 @@
 #include "ComboBox.h"
 #include "TextField.h"
 #include "TextFieldWindow.h"
+#include "TextFlow.h"
 #include "Toggle.h"
 #include "SliderWindow.h"
 #include "UiConfiguration.h"
@@ -55,41 +55,37 @@ ActionWindow::ActionWindow ()
 , isConfirmed (false)
 , isInverseColor (false)
 , titleLabel (NULL)
-, descriptionText (NULL)
+, headerDescriptionText (NULL)
 , footerPanel (NULL)
 , confirmButton (NULL)
 , cancelButton (NULL)
 {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
-
 	classId = ClassId::ActionWindow;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
 
-	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	setFillBg (true, uiconfig->lightBackgroundColor);
+	setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
+	setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 
-	titleLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::TitleFont, uiconfig->primaryTextColor));
+	titleLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::TitleFont, UiConfiguration::instance->primaryTextColor));
 	titleLabel->isInputSuspended = true;
 	titleLabel->isVisible = false;
 
-	descriptionText = (TextArea *) addWidget (new TextArea (UiConfiguration::CaptionFont, uiconfig->primaryTextColor, 0, uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth));
-	descriptionText->isInputSuspended = true;
-	descriptionText->isVisible = false;
+	headerDescriptionText = (TextFlow *) addWidget (new TextFlow (UiConfiguration::instance->textFieldMediumLineLength * UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, UiConfiguration::CaptionFont));
+	headerDescriptionText->setTextColor (UiConfiguration::instance->primaryTextColor);
+	headerDescriptionText->isInputSuspended = true;
+	headerDescriptionText->isVisible = false;
 
-	confirmButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::OkButtonSprite)));
+	confirmButton = (Button *) addWidget (new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::OkButtonSprite)));
 	confirmButton->mouseClickCallback = Widget::EventCallbackContext (ActionWindow::confirmButtonClicked, this);
-	confirmButton->setTextColor (uiconfig->raisedButtonTextColor);
-	confirmButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
-	confirmButtonTooltipText.assign (uitext->getText (UiTextString::Confirm).capitalized ());
+	confirmButton->setTextColor (UiConfiguration::instance->raisedButtonTextColor);
+	confirmButton->setRaised (true, UiConfiguration::instance->raisedButtonBackgroundColor);
+	confirmButtonTooltipText.assign (UiText::instance->getText (UiTextString::Confirm).capitalized ());
 	confirmButton->setMouseHoverTooltip (confirmButtonTooltipText);
 
-	cancelButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::CancelButtonSprite)));
+	cancelButton = (Button *) addWidget (new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::CancelButtonSprite)));
 	cancelButton->mouseClickCallback = Widget::EventCallbackContext (ActionWindow::cancelButtonClicked, this);
-	cancelButton->setTextColor (uiconfig->raisedButtonTextColor);
-	cancelButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
-	cancelButton->setMouseHoverTooltip (uitext->getText (UiTextString::Cancel).capitalized ());
+	cancelButton->setTextColor (UiConfiguration::instance->raisedButtonTextColor);
+	cancelButton->setRaised (true, UiConfiguration::instance->raisedButtonBackgroundColor);
+	cancelButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::Cancel).capitalized ());
 
 	refreshLayout ();
 }
@@ -128,75 +124,70 @@ void ActionWindow::setTitleText (const StdString &text) {
 }
 
 void ActionWindow::setDescriptionText (const StdString &text) {
-	descriptionText->setText (text);
+	headerDescriptionText->setText (text);
 	if (text.empty ()) {
-		descriptionText->isVisible = false;
+		headerDescriptionText->isVisible = false;
 	}
 	else {
-		descriptionText->isVisible = true;
+		headerDescriptionText->isVisible = true;
 	}
 	refreshLayout ();
 }
 
 void ActionWindow::setConfirmTooltipText (const StdString &text) {
-	UiText *uitext;
-
-	uitext = &(App::instance->uiText);
 	confirmButtonTooltipText.assign (text);
 	if (isOptionDataValid) {
 		confirmButton->setMouseHoverTooltip (confirmButtonTooltipText);
 	}
 	else {
-		confirmButton->setMouseHoverTooltip (StdString::createSprintf ("%s %s", confirmButtonTooltipText.c_str (), uitext->getText (UiTextString::ActionWindowInvalidDataTooltip).c_str ()));
+		confirmButton->setMouseHoverTooltip (StdString::createSprintf ("%s %s", confirmButtonTooltipText.c_str (), UiText::instance->getText (UiTextString::ActionWindowInvalidDataTooltip).c_str ()));
 	}
 }
 
 void ActionWindow::setInverseColor (bool inverse) {
-	UiConfiguration *uiconfig;
 	std::list<ActionWindow::Item>::iterator i, end;
 
 	if (isInverseColor == inverse) {
 		return;
 	}
-	uiconfig = &(App::instance->uiConfig);
 	isInverseColor = inverse;
 	if (isInverseColor) {
 		if (isFilledBg) {
-			setFillBg (true, uiconfig->lightPrimaryColor);
+			setFillBg (true, UiConfiguration::instance->lightPrimaryColor);
 		}
 
-		titleLabel->textColor.assign (uiconfig->inverseTextColor);
-		descriptionText->setTextColor (uiconfig->inverseTextColor);
+		titleLabel->textColor.assign (UiConfiguration::instance->inverseTextColor);
+		headerDescriptionText->setTextColor (UiConfiguration::instance->inverseTextColor);
 
 		confirmButton->setInverseColor (true);
-		confirmButton->setTextColor (uiconfig->raisedButtonInverseTextColor);
-		confirmButton->setRaised (true, uiconfig->darkInverseBackgroundColor);
+		confirmButton->setTextColor (UiConfiguration::instance->raisedButtonInverseTextColor);
+		confirmButton->setRaised (true, UiConfiguration::instance->darkInverseBackgroundColor);
 
 		cancelButton->setInverseColor (true);
-		cancelButton->setTextColor (uiconfig->raisedButtonInverseTextColor);
-		cancelButton->setRaised (true, uiconfig->darkInverseBackgroundColor);
+		cancelButton->setTextColor (UiConfiguration::instance->raisedButtonInverseTextColor);
+		cancelButton->setRaised (true, UiConfiguration::instance->darkInverseBackgroundColor);
 	}
 	else {
 		if (isFilledBg) {
-			setFillBg (true, uiconfig->lightBackgroundColor);
+			setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 		}
 
-		titleLabel->textColor.assign (uiconfig->primaryTextColor);
-		descriptionText->setTextColor (uiconfig->primaryTextColor);
+		titleLabel->textColor.assign (UiConfiguration::instance->primaryTextColor);
+		headerDescriptionText->setTextColor (UiConfiguration::instance->primaryTextColor);
 
 		confirmButton->setInverseColor (false);
-		confirmButton->setTextColor (uiconfig->raisedButtonTextColor);
-		confirmButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
+		confirmButton->setTextColor (UiConfiguration::instance->raisedButtonTextColor);
+		confirmButton->setRaised (true, UiConfiguration::instance->raisedButtonBackgroundColor);
 
 		cancelButton->setInverseColor (false);
-		cancelButton->setTextColor (uiconfig->raisedButtonTextColor);
-		cancelButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
+		cancelButton->setTextColor (UiConfiguration::instance->raisedButtonTextColor);
+		cancelButton->setRaised (true, UiConfiguration::instance->raisedButtonBackgroundColor);
 	}
 
 	i = itemList.begin ();
 	end = itemList.end ();
 	while (i != end) {
-		i->nameLabel->textColor.assign (isInverseColor ? uiconfig->inverseTextColor : uiconfig->primaryTextColor);
+		i->nameLabel->textColor.assign (isInverseColor ? UiConfiguration::instance->inverseTextColor : UiConfiguration::instance->primaryTextColor);
 		switch (i->type) {
 			case ActionWindow::ComboBoxItem: {
 				((ComboBox *) i->optionWidget)->setInverseColor (isInverseColor);
@@ -214,6 +205,9 @@ void ActionWindow::setInverseColor (bool inverse) {
 				((Toggle *) i->optionWidget)->setInverseColor (isInverseColor);
 				break;
 			}
+		}
+		if (i->descriptionText) {
+			i->descriptionText->setTextColor (isInverseColor ? UiConfiguration::instance->inverseTextColor : UiConfiguration::instance->primaryTextColor);
 		}
 		++i;
 	}
@@ -261,16 +255,14 @@ void ActionWindow::addOption (const StdString &optionName, SliderWindow *slider,
 }
 
 void ActionWindow::doAddOption (int itemType, const StdString &optionName, Widget *optionWidget, const StdString &descriptionText) {
-	UiConfiguration *uiconfig;
 	std::list<ActionWindow::Item>::iterator item;
 
-	uiconfig = &(App::instance->uiConfig);
 	addWidget (optionWidget);
 	item = findItem (optionName, true);
 	if (item != itemList.end ()) {
 		item->type = itemType;
 		if (! item->nameLabel) {
-			item->nameLabel = (Label *) addWidget (new Label (item->name, UiConfiguration::CaptionFont, isInverseColor ? uiconfig->inverseTextColor : uiconfig->primaryTextColor));
+			item->nameLabel = (Label *) addWidget (new Label (item->name, UiConfiguration::CaptionFont, isInverseColor ? UiConfiguration::instance->inverseTextColor : UiConfiguration::instance->primaryTextColor));
 		}
 		else {
 			item->nameLabel->setText (item->name);
@@ -281,7 +273,8 @@ void ActionWindow::doAddOption (int itemType, const StdString &optionName, Widge
 			item->descriptionText = NULL;
 		}
 		if (! descriptionText.empty ()) {
-			item->descriptionText = (TextArea *) addWidget (new TextArea (UiConfiguration::CaptionFont, isInverseColor ? uiconfig->darkInverseTextColor : uiconfig->lightPrimaryTextColor, 0, uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth));
+			item->descriptionText = (TextFlow *) addWidget (new TextFlow (UiConfiguration::instance->textFieldMediumLineLength * UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, UiConfiguration::CaptionFont));
+			item->descriptionText->setTextColor (isInverseColor ? UiConfiguration::instance->inverseTextColor : UiConfiguration::instance->primaryTextColor);
 			item->descriptionText->setText (descriptionText);
 		}
 
@@ -578,11 +571,9 @@ std::list<ActionWindow::Item>::iterator ActionWindow::findItem (const StdString 
 }
 
 void ActionWindow::refreshLayout () {
-	UiConfiguration *uiconfig;
 	std::list<ActionWindow::Item>::iterator i, end;
 	float x, y, x0, x2, y2, w, h;
 
-	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	x0 = x;
@@ -591,11 +582,11 @@ void ActionWindow::refreshLayout () {
 
 	if (titleLabel->isVisible) {
 		titleLabel->flowDown (x, &y, &x2, &y2);
-		y = y2 + uiconfig->marginSize;
+		y = y2 + UiConfiguration::instance->marginSize;
 	}
-	if (descriptionText->isVisible) {
-		descriptionText->flowDown (x, &y, &x2, &y2);
-		y = y2 + uiconfig->marginSize;
+	if (headerDescriptionText->isVisible) {
+		headerDescriptionText->flowDown (x, &y, &x2, &y2);
+		y = y2 + UiConfiguration::instance->marginSize;
 	}
 
 	w = 0.0f;
@@ -612,7 +603,7 @@ void ActionWindow::refreshLayout () {
 	end = itemList.end ();
 	while (i != end) {
 		i->nameLabel->position.assign (x + w - i->nameLabel->width, i->nameLabel->getLinePosition (y));
-		i->optionWidget->position.assign (x + w + uiconfig->marginSize, y);
+		i->optionWidget->position.assign (x + w + UiConfiguration::instance->marginSize, y);
 
 		h = i->nameLabel->height;
 		if (i->optionWidget->height > h) {
@@ -620,10 +611,10 @@ void ActionWindow::refreshLayout () {
 			i->nameLabel->position.assignY (y + (h / 2.0f) - (i->nameLabel->height / 2.0f));
 		}
 
-		y += h + uiconfig->marginSize;
+		y += h + UiConfiguration::instance->marginSize;
 		if (i->descriptionText) {
-			i->descriptionText->position.assign (x + w + uiconfig->marginSize, y);
-			y += i->descriptionText->height + uiconfig->marginSize;
+			i->descriptionText->position.assign (x + w + UiConfiguration::instance->marginSize, y);
+			y += i->descriptionText->height + UiConfiguration::instance->marginSize;
 		}
 
 		++i;
@@ -660,9 +651,7 @@ void ActionWindow::confirmButtonClicked (void *windowPtr, Widget *widgetPtr) {
 
 	window = (ActionWindow *) windowPtr;
 	window->isConfirmed = true;
-	if (window->closeCallback.callback) {
-		window->closeCallback.callback (window->closeCallback.callbackData, window);
-	}
+	window->eventCallback (window->closeCallback);
 	window->isDestroyed = true;
 }
 
@@ -671,9 +660,7 @@ void ActionWindow::cancelButtonClicked (void *windowPtr, Widget *widgetPtr) {
 
 	window = (ActionWindow *) windowPtr;
 	window->isConfirmed = false;
-	if (window->closeCallback.callback) {
-		window->closeCallback.callback (window->closeCallback.callbackData, window);
-	}
+	window->eventCallback (window->closeCallback);
 	window->isDestroyed = true;
 }
 
@@ -682,27 +669,23 @@ void ActionWindow::optionValueChanged (void *windowPtr, Widget *widgetPtr) {
 
 	window = (ActionWindow *) windowPtr;
 	window->verifyOptions ();
-	if (window->optionChangeCallback.callback) {
-		window->optionChangeCallback.callback (window->optionChangeCallback.callbackData, window);
-	}
+	window->eventCallback (window->optionChangeCallback);
 }
 
 void ActionWindow::setOptionDescriptionText (const StdString &optionName, const StdString &descriptionText) {
-	UiConfiguration *uiconfig;
 	std::list<ActionWindow::Item>::iterator item;
 
 	item = findItem (optionName);
 	if (item == itemList.end ()) {
 		return;
 	}
-
-	uiconfig = &(App::instance->uiConfig);
 	if (item->descriptionText) {
 		item->descriptionText->isDestroyed = true;
 		item->descriptionText = NULL;
 	}
 	if (! descriptionText.empty ()) {
-		item->descriptionText = (TextArea *) addWidget (new TextArea (UiConfiguration::CaptionFont, isInverseColor ? uiconfig->darkInverseTextColor : uiconfig->lightPrimaryTextColor, 0, uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth));
+		item->descriptionText = (TextFlow *) addWidget (new TextFlow (UiConfiguration::instance->textFieldMediumLineLength * UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, UiConfiguration::CaptionFont));
+		item->descriptionText->setTextColor (isInverseColor ? UiConfiguration::instance->inverseTextColor : UiConfiguration::instance->primaryTextColor);
 		item->descriptionText->setText (descriptionText);
 	}
 	refreshLayout ();
@@ -715,7 +698,6 @@ void ActionWindow::setOptionNotEmptyString (const StdString &optionName) {
 	if (item == itemList.end ()) {
 		return;
 	}
-
 	item->isNotEmptyString = true;
 	verifyOptions ();
 }
@@ -727,7 +709,6 @@ void ActionWindow::setOptionDisabled (const StdString &optionName, bool disable)
 	if (item == itemList.end ()) {
 		return;
 	}
-
 	item->isDisabled = disable;
 	switch (item->type) {
 		case ActionWindow::ComboBoxItem: {
@@ -754,14 +735,10 @@ void ActionWindow::setOptionDisabled (const StdString &optionName, bool disable)
 }
 
 void ActionWindow::verifyOptions () {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	std::list<ActionWindow::Item>::iterator i, end;
 	StdString s;
 	bool windowvalid, optionvalid;
 
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
 	windowvalid = true;
 	i = itemList.begin ();
 	end = itemList.end ();
@@ -776,7 +753,6 @@ void ActionWindow::verifyOptions () {
 						break;
 					}
 				}
-
 				break;
 			}
 			case ActionWindow::TextFieldItem: {
@@ -787,7 +763,6 @@ void ActionWindow::verifyOptions () {
 						break;
 					}
 				}
-
 				break;
 			}
 			case ActionWindow::TextFieldWindowItem: {
@@ -798,7 +773,6 @@ void ActionWindow::verifyOptions () {
 						break;
 					}
 				}
-
 				break;
 			}
 			case ActionWindow::ToggleItem: {
@@ -807,11 +781,11 @@ void ActionWindow::verifyOptions () {
 		}
 
 		if (optionvalid) {
-			i->nameLabel->textColor.translate (isInverseColor ? uiconfig->inverseTextColor : uiconfig->primaryTextColor, uiconfig->shortColorTranslateDuration);
+			i->nameLabel->textColor.translate (isInverseColor ? UiConfiguration::instance->inverseTextColor : UiConfiguration::instance->primaryTextColor, UiConfiguration::instance->shortColorTranslateDuration);
 		}
 		else {
 			windowvalid = false;
-			i->nameLabel->textColor.translate (uiconfig->errorTextColor, uiconfig->shortColorTranslateDuration);
+			i->nameLabel->textColor.translate (UiConfiguration::instance->errorTextColor, UiConfiguration::instance->shortColorTranslateDuration);
 		}
 		++i;
 	}
@@ -823,6 +797,6 @@ void ActionWindow::verifyOptions () {
 	}
 	else {
 		confirmButton->setDisabled (true);
-		confirmButton->setMouseHoverTooltip (StdString::createSprintf ("%s %s", confirmButtonTooltipText.c_str (), uitext->getText (UiTextString::ActionWindowInvalidDataTooltip).c_str ()));
+		confirmButton->setMouseHoverTooltip (StdString::createSprintf ("%s %s", confirmButtonTooltipText.c_str (), UiText::instance->getText (UiTextString::ActionWindowInvalidDataTooltip).c_str ()));
 	}
 }

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -35,11 +35,11 @@
 #include <stdarg.h>
 #include "SDL2/SDL.h"
 #include "StdString.h"
+#include "OsUtil.h"
 
 class Log {
 public:
-	// Log levels
-	enum {
+	enum LogLevel {
 		ErrLevel = 0,
 		WarningLevel = 1,
 		NoticeLevel = 2,
@@ -49,39 +49,42 @@ public:
 		Debug2Level = 6,
 		Debug3Level = 7,
 		Debug4Level = 8,
-		LevelCount = 9,
 		NoLevel = 255
+	};
+	enum {
+		LevelCount = 9
 	};
 
 	Log ();
 	~Log ();
 
+	// Read-write data members
+	bool isStdoutWriteEnabled;
+
 	// Read-only data members
+	bool isFileWriteEnabled;
+	StdString writeFilename;
 	int writeLevel;
-	StdString outputFilename;
 
 	static const char *LevelNames[];
 
 	// Set the log's level, causing it to write messages of that level and below
-	void setLevel (int level);
+	void setLevel (Log::LogLevel level);
 
-	// Set the log's level according to the value of the provided string. Returns Result::SUCCESS or an error value.
-	int setLevelByName (const char *name);
-	int setLevelByName (const StdString &name);
+	// Set the log's level according to the value of the provided string. Returns a Result value.
+	OsUtil::Result setLevelByName (const char *name);
+	OsUtil::Result setLevelByName (const StdString &name);
 
-	// Set the log's stderr output option. If enabled, log output is written to stderr.
-	void setStderrOutput (bool enable);
-
-	// Set the log's file output option. If enabled, log output is written to the specified filename. Returns Result::SUCCESS or an error value.
-	int setFileOutput (bool enable, const char *filename);
-	int setFileOutput (bool enable, const StdString &filename);
+	// Open the specified file for log message writing. If filename is empty, instead close any previously opened log file. Returns a Result value.
+	OsUtil::Result openLogFile (const char *filename);
+	OsUtil::Result openLogFile (const StdString &filename);
 
 	// Write a message to the log using the provided va_list and args
-	void voutput (int level, const char *str, va_list args);
+	void voutput (Log::LogLevel level, const char *str, va_list args);
 
 	// Write a message to the default log instance using the specified parameters
-	static void write (int level, const char *str, ...) __attribute__((format(printf, 2, 3)));
-	static void write (int level, const char *str, va_list args);
+	static void write (Log::LogLevel level, const char *str, ...) __attribute__((format(printf, 2, 3)));
+	static void write (Log::LogLevel level, const char *str, va_list args);
 
 	// Write a message to the default log instance without specifying a level
 	static void printf (const char *str, ...) __attribute__((format(printf, 1, 2)));
@@ -114,8 +117,6 @@ public:
 	static void debug4 (const char *str, ...) __attribute__((format(printf, 1, 2)));
 
 protected:
-	bool isStderrOutputEnabled;
-	bool isFileOutputEnabled;
 	bool isFileErrorLogged;
 	SDL_mutex *mutex;
 };

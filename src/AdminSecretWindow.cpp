@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,11 +30,10 @@
 #include "Config.h"
 #include <stdlib.h>
 #include "openssl/evp.h"
-#include "Result.h"
+#include "App.h"
 #include "Log.h"
 #include "ClassId.h"
 #include "StdString.h"
-#include "App.h"
 #include "UiText.h"
 #include "Sprite.h"
 #include "SpriteGroup.h"
@@ -45,12 +44,12 @@
 #include "Label.h"
 #include "HashMap.h"
 #include "Button.h"
-#include "TextArea.h"
 #include "Image.h"
 #include "TextField.h"
 #include "ListView.h"
 #include "Json.h"
 #include "SystemInterface.h"
+#include "AgentControl.h"
 #include "IconLabelWindow.h"
 #include "ActionWindow.h"
 #include "AdminSecretWindow.h"
@@ -65,40 +64,36 @@ AdminSecretWindow::AdminSecretWindow ()
 , addButton (NULL)
 , expandToggle (NULL)
 {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
-
 	classId = ClassId::AdminSecretWindow;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	setFillBg (true, uiconfig->mediumBackgroundColor);
 
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeKeyIconSprite)));
-	iconImage->setMouseHoverTooltip (uitext->getText (UiTextString::ServerPasswords).capitalized ());
-	iconLabel = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallPlaylistIconSprite), StdString ("0"), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
+	setFillBg (true, UiConfiguration::instance->mediumBackgroundColor);
+
+	iconImage = (Image *) addWidget (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeKeyIconSprite)));
+	iconImage->setMouseHoverTooltip (UiText::instance->getText (UiTextString::ServerPasswords).capitalized ());
+	iconLabel = (IconLabelWindow *) addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallPlaylistIconSprite), StdString ("0"), UiConfiguration::CaptionFont, UiConfiguration::instance->lightPrimaryTextColor));
 
 	dividerPanel = (Panel *) addWidget (new Panel ());
-	dividerPanel->setFillBg (true, uiconfig->dividerColor);
-	dividerPanel->setFixedSize (true, 1.0f, uiconfig->headlineDividerLineWidth);
+	dividerPanel->setFillBg (true, UiConfiguration::instance->dividerColor);
+	dividerPanel->setFixedSize (true, 1.0f, UiConfiguration::instance->headlineDividerLineWidth);
 	dividerPanel->isPanelSizeClipEnabled = true;
 	dividerPanel->isVisible = false;
 
-	itemListView = (ListView *) addWidget (new ListView (uiconfig->textFieldMediumLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, 3, 3, UiConfiguration::CaptionFont, uitext->getText (UiTextString::EmptyAdminSecretListText)));
+	itemListView = (ListView *) addWidget (new ListView (UiConfiguration::instance->textFieldMediumLineLength * UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, 3, 3, UiConfiguration::CaptionFont, UiText::instance->getText (UiTextString::EmptyAdminSecretListText)));
 	itemListView->listChangeCallback = Widget::EventCallbackContext (AdminSecretWindow::listChanged, this);
 	itemListView->itemDeleteCallback = Widget::EventCallbackContext (AdminSecretWindow::listItemDeleted, this);
 	itemListView->isVisible = false;
 
-	addButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::AddButtonSprite)));
+	addButton = (Button *) addWidget (new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::AddButtonSprite)));
 	addButton->mouseClickCallback = Widget::EventCallbackContext (AdminSecretWindow::addButtonClicked, this);
-	addButton->setImageColor (uiconfig->flatButtonTextColor);
-	addButton->setMouseHoverTooltip (uitext->getText (UiTextString::AddAdminPasswordTooltip));
+	addButton->setImageColor (UiConfiguration::instance->flatButtonTextColor);
+	addButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::AddAdminPasswordTooltip));
 	addButton->isVisible = false;
 
-	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
+	expandToggle = (Toggle *) addWidget (new Toggle (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
 	expandToggle->stateChangeCallback = Widget::EventCallbackContext (AdminSecretWindow::expandToggleStateChanged, this);
-	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
-	expandToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::Expand).capitalized (), uitext->getText (UiTextString::Minimize).capitalized ());
+	expandToggle->setImageColor (UiConfiguration::instance->flatButtonTextColor);
+	expandToggle->setStateMouseHoverTooltips (UiText::instance->getText (UiTextString::Expand).capitalized (), UiText::instance->getText (UiTextString::Minimize).capitalized ());
 
 	readItems ();
 }
@@ -135,16 +130,14 @@ void AdminSecretWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCa
 	}
 
 	refreshLayout ();
-	if ((! shouldSkipStateChangeCallback) && expandStateChangeCallback.callback) {
-		expandStateChangeCallback.callback (expandStateChangeCallback.callbackData, this);
+	if (! shouldSkipStateChangeCallback) {
+		eventCallback (expandStateChangeCallback);
 	}
 }
 
 void AdminSecretWindow::refreshLayout () {
-	UiConfiguration *uiconfig;
 	float x, y, x0, y0, x2, y2;
 
-	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	x0 = x;
@@ -155,11 +148,11 @@ void AdminSecretWindow::refreshLayout () {
 	iconImage->flowRight (&x, y, &x2, &y2);
 	iconLabel->flowDown (x, &y, &x2, &y2);
 	iconLabel->position.assignY (y0 + ((y2 - y0) / 2.0f) - (iconLabel->height / 2.0f));
-	expandToggle->position.assign (x2 + uiconfig->marginSize, y0);
+	expandToggle->position.assign (x2 + UiConfiguration::instance->marginSize, y0);
 
 	x = x0;
 	x2 = 0.0f;
-	y = y2 + uiconfig->marginSize;
+	y = y2 + UiConfiguration::instance->marginSize;
 	if (dividerPanel->isVisible) {
 		dividerPanel->flowDown (0.0f, &y, &x2, &y2);
 	}
@@ -176,7 +169,7 @@ void AdminSecretWindow::refreshLayout () {
 	resetSize ();
 
 	if (dividerPanel->isVisible) {
-		dividerPanel->setFixedSize (true, width, uiconfig->headlineDividerLineWidth);
+		dividerPanel->setFixedSize (true, width, UiConfiguration::instance->headlineDividerLineWidth);
 	}
 
 	x = width - widthPadding;
@@ -195,111 +188,93 @@ void AdminSecretWindow::expandToggleStateChanged (void *windowPtr, Widget *widge
 	window = (AdminSecretWindow *) windowPtr;
 	toggle = (Toggle *) widgetPtr;
 	window->setExpanded (toggle->isChecked, true);
-	if (window->expandStateChangeCallback.callback) {
-		window->expandStateChangeCallback.callback (window->expandStateChangeCallback.callbackData, window);
-	}
+	window->eventCallback (window->expandStateChangeCallback);
 }
 
 void AdminSecretWindow::addButtonClicked (void *windowPtr, Widget *widgetPtr) {
-	AdminSecretWindow *window;
-
-	window = (AdminSecretWindow *) windowPtr;
-	if (window->addButtonClickCallback.callback) {
-		window->addButtonClickCallback.callback (window->addButtonClickCallback.callbackData, window);
-	}
+	((AdminSecretWindow *) windowPtr)->eventCallback (((AdminSecretWindow *) windowPtr)->addButtonClickCallback);
 }
 
 void AdminSecretWindow::listChanged (void *windowPtr, Widget *widgetPtr) {
 	AdminSecretWindow *window;
 	ListView *listview;
-	UiText *uitext;
 	int count;
 
 	window = (AdminSecretWindow *) windowPtr;
 	listview = (ListView *) widgetPtr;
-	uitext = &(App::instance->uiText);
 
 	count = listview->getItemCount ();
 	window->iconLabel->setText (StdString::createSprintf ("%i", count));
-	window->iconLabel->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::PasswordStored, UiTextString::PasswordsStored));
+	window->iconLabel->setMouseHoverTooltip (UiText::instance->getCountText (count, UiTextString::PasswordStored, UiTextString::PasswordsStored));
 	window->refreshLayout ();
 }
 
 void AdminSecretWindow::listItemDeleted (void *windowPtr, Widget *widgetPtr) {
 	AdminSecretWindow *window;
 	ListView *listview;
-	UiText *uitext;
-	StdString name;
 	int count;
 
 	window = (AdminSecretWindow *) windowPtr;
 	listview = (ListView *) widgetPtr;
-	uitext = &(App::instance->uiText);
-
-	name = listview->getItemText (listview->focusItemIndex);
-	if (! name.empty ()) {
-		App::instance->agentControl.removeAdminSecret (name);
+	if (listview->focusItemIndex < 0) {
+		return;
 	}
+
+	AgentControl::instance->removeAdminSecret (listview->focusItemIndex);
 	listview->removeItem (listview->focusItemIndex);
 	count = listview->getItemCount ();
 	window->iconLabel->setText (StdString::createSprintf ("%i", count));
-	window->iconLabel->setMouseHoverTooltip (uitext->getCountText (count, UiTextString::PasswordStored, UiTextString::PasswordsStored));
+	window->iconLabel->setMouseHoverTooltip (UiText::instance->getCountText (count, UiTextString::PasswordStored, UiTextString::PasswordsStored));
 	window->refreshLayout ();
 }
 
 ActionWindow *AdminSecretWindow::createAddActionWindow () {
 	ActionWindow *action;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	TextField *textfield;
 	TextFieldWindow *textfieldwindow;
 	StdString name;
 	int i, len;
 
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
 	action = new ActionWindow ();
 	action->setInverseColor (true);
-	action->setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
-	action->setTitleText (uitext->getText (UiTextString::CreateAdminPassword).capitalized ());
+	action->setDropShadow (true, UiConfiguration::instance->dropShadowColor, UiConfiguration::instance->dropShadowWidth);
+	action->setTitleText (UiText::instance->getText (UiTextString::CreateAdminPassword).capitalized ());
 
 	i = itemListView->getItemCount () + 1;
 	while (true) {
-		name.sprintf ("%s %i", uitext->getText (UiTextString::Password).capitalized ().c_str (), i);
+		name.sprintf ("%s %i", UiText::instance->getText (UiTextString::Password).capitalized ().c_str (), i);
 		if (! itemListView->contains (name)) {
 			break;
 		}
 		++i;
 	}
 
-	len = (uiconfig->textFieldShortLineLength + uiconfig->textFieldMediumLineLength) / 2;
+	len = (UiConfiguration::instance->textFieldShortLineLength + UiConfiguration::instance->textFieldMediumLineLength) / 2;
 
-	textfield = new TextField (len * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, uitext->getText (UiTextString::AdminPasswordNamePrompt));
+	textfield = new TextField (len * UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, UiText::instance->getText (UiTextString::AdminPasswordNamePrompt));
 	textfield->setPromptErrorColor (true);
 	textfield->setValue (name);
-	action->addOption (uitext->getText (UiTextString::Name).capitalized (), textfield);
-	action->setOptionNotEmptyString (uitext->getText (UiTextString::Name).capitalized ());
+	action->addOption (UiText::instance->getText (UiTextString::Name).capitalized (), textfield);
+	action->setOptionNotEmptyString (UiText::instance->getText (UiTextString::Name).capitalized ());
 
-	textfieldwindow = new TextFieldWindow (len * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, uitext->getText (UiTextString::AdminPasswordPrompt));
+	textfieldwindow = new TextFieldWindow (len * UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, UiText::instance->getText (UiTextString::AdminPasswordPrompt));
 	textfieldwindow->setPromptErrorColor (true);
 	textfieldwindow->setObscured (true);
 	textfieldwindow->setButtonsEnabled (false, false, false, false, true);
-	action->addOption (uitext->getText (UiTextString::Password).capitalized (), textfieldwindow);
-	action->setOptionNotEmptyString (uitext->getText (UiTextString::Password).capitalized ());
+	action->addOption (UiText::instance->getText (UiTextString::Password).capitalized (), textfieldwindow);
+	action->setOptionNotEmptyString (UiText::instance->getText (UiTextString::Password).capitalized ());
 
 	return (action);
 }
 
 void AdminSecretWindow::addItem (ActionWindow *actionWindow) {
-	UiText *uitext;
 	StdString name, password;
 	EVP_MD_CTX *ctx;
 	unsigned char digest[EVP_MAX_MD_SIZE];
 	unsigned int len;
 
-	uitext = &(App::instance->uiText);
-	name = actionWindow->getStringValue (uitext->getText (UiTextString::Name).capitalized (), StdString (""));
-	password = actionWindow->getStringValue (uitext->getText (UiTextString::Password).capitalized (), StdString (""));
+	name = actionWindow->getStringValue (UiText::instance->getText (UiTextString::Name).capitalized (), StdString (""));
+	password = actionWindow->getStringValue (UiText::instance->getText (UiTextString::Password).capitalized (), StdString (""));
 	if (name.empty () || password.empty ()) {
 		return;
 	}
@@ -332,20 +307,18 @@ void AdminSecretWindow::addItem (ActionWindow *actionWindow) {
 		return;
 	}
 
-	App::instance->agentControl.addAdminSecret (name, StdString::createHex (digest, len));
+	AgentControl::instance->addAdminSecret (name, StdString::createHex (digest, len));
 	itemListView->addItem (name);
 	itemListView->scrollToBottom ();
 	refreshLayout ();
 }
 
 void AdminSecretWindow::readItems () {
-	UiText *uitext;
 	StringList items;
 
-	uitext = &(App::instance->uiText);
-	App::instance->agentControl.getAdminSecretNames (&items);
+	AgentControl::instance->getAdminSecretNames (&items);
 	iconLabel->setText (StdString::createSprintf ("%i", (int) items.size ()));
-	iconLabel->setMouseHoverTooltip (uitext->getCountText ((int) items.size (), UiTextString::PasswordStored, UiTextString::PasswordsStored));
+	iconLabel->setMouseHoverTooltip (UiText::instance->getCountText ((int) items.size (), UiTextString::PasswordStored, UiTextString::PasswordsStored));
 	itemListView->setItems (&items, true);
 	refreshLayout ();
 }

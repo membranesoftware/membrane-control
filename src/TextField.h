@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -43,6 +43,7 @@ public:
 	// Read-write data members
 	Widget::EventCallbackContext valueChangeCallback;
 	Widget::EventCallbackContext valueEditCallback;
+	bool shouldRetainFocusOnReturnKey;
 
 	// Read-only data members
 	float fieldWidth;

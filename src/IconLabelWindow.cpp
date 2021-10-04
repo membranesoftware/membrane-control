@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,7 +29,6 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include "Result.h"
 #include "App.h"
 #include "Log.h"
 #include "StdString.h"
@@ -43,7 +42,7 @@
 #include "ProgressBar.h"
 #include "IconLabelWindow.h"
 
-IconLabelWindow::IconLabelWindow (Sprite *iconSprite, const StdString &iconText, int iconFontType, const Color &iconTextColor)
+IconLabelWindow::IconLabelWindow (Sprite *iconSprite, const StdString &iconText, UiConfiguration::FontType iconFontType, const Color &iconTextColor)
 : Panel ()
 , label (NULL)
 , image (NULL)
@@ -52,10 +51,7 @@ IconLabelWindow::IconLabelWindow (Sprite *iconSprite, const StdString &iconText,
 , isTextChangeHighlightEnabled (false)
 , progressBar (NULL)
 {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::instance->uiConfig);
-	setPadding (uiconfig->paddingSize, 0.0f);
+	setPadding (UiConfiguration::instance->paddingSize, 0.0f);
 
 	normalTextColor.assign (iconTextColor);
 	label = (Label *) addWidget (new Label (iconText, iconFontType, normalTextColor));
@@ -78,7 +74,7 @@ void IconLabelWindow::setText (const StdString &text) {
 	if (isTextChangeHighlightEnabled) {
 		if ((! label->text.empty ()) && (! text.equals (label->text))) {
 			label->textColor.assign (highlightTextColor);
-			label->textColor.translate (normalTextColor, App::instance->uiConfig.longColorTranslateDuration);
+			label->textColor.translate (normalTextColor, UiConfiguration::instance->longColorTranslateDuration);
 		}
 	}
 	label->setText (text);
@@ -86,12 +82,7 @@ void IconLabelWindow::setText (const StdString &text) {
 }
 
 void IconLabelWindow::labelClicked (void *windowPtr, Widget *widgetPtr) {
-	IconLabelWindow *window;
-
-	window = (IconLabelWindow *) windowPtr;
-	if (window->textClickCallback.callback) {
-		window->textClickCallback.callback (window->textClickCallback.callbackData, window);
-	}
+	((IconLabelWindow *) windowPtr)->eventCallback (((IconLabelWindow *) windowPtr)->textClickCallback);
 }
 
 void IconLabelWindow::setTextColor (const Color &textColor) {
@@ -103,7 +94,7 @@ void IconLabelWindow::setTextUnderlined (bool enable) {
 	refreshLayout ();
 }
 
-void IconLabelWindow::setTextFont (int fontType) {
+void IconLabelWindow::setTextFont (UiConfiguration::FontType fontType) {
 	label->setFont (fontType);
 	refreshLayout ();
 }
@@ -179,10 +170,8 @@ void IconLabelWindow::setProgressBar (bool enable, float progressValue, float ta
 }
 
 void IconLabelWindow::refreshLayout () {
-	UiConfiguration *uiconfig;
 	float x, y, x2, y2;
 
-	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	x2 = 0.0f;
@@ -190,12 +179,12 @@ void IconLabelWindow::refreshLayout () {
 
 	if (isRightAligned) {
 		label->flowRight (&x, y, &x2, &y2);
-		x -= (uiconfig->marginSize / 2.0f);
+		x -= (UiConfiguration::instance->marginSize / 2.0f);
 		image->flowRight (&x, y, &x2, &y2);
 	}
 	else {
 		image->flowRight (&x, y, &x2, &y2);
-		x -= (uiconfig->marginSize / 2.0f);
+		x -= (UiConfiguration::instance->marginSize / 2.0f);
 		label->flowRight (&x, y, &x2, &y2);
 	}
 
@@ -205,7 +194,7 @@ void IconLabelWindow::refreshLayout () {
 
 	x2 += widthPadding;
 	if (progressBar) {
-		progressBar->setSize (x2, uiconfig->progressBarHeight);
+		progressBar->setSize (x2, UiConfiguration::instance->progressBarHeight);
 		progressBar->position.assign (0.0f, y2);
 		y2 += progressBar->height;
 	}

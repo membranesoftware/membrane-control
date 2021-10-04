@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -33,7 +33,6 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <string>
-#include "Result.h"
 #include "Buffer.h"
 #include "StdString.h"
 
@@ -294,12 +293,13 @@ StdString StdString::replaced (size_t pos, size_t len, size_t n, char c) const {
 	return (s);
 }
 
-int StdString::urlDecode () {
+bool StdString::urlDecode () {
 	StdString s;
 	char *d, *end, c;
-	int rval, code, codechars;
+	int code, codechars;
+	bool result;
 
-	rval = Result::Success;
+	result = true;
 	s.assign ("");
 	d = (char *) c_str ();
 	end = d + length ();
@@ -331,7 +331,7 @@ int StdString::urlDecode () {
 				++codechars;
 			}
 			else {
-				rval = Result::MalformedDataError;
+				result = false;
 				break;
 			}
 
@@ -344,22 +344,19 @@ int StdString::urlDecode () {
 		++d;
 	}
 
-	if (rval == Result::Success) {
+	if (result) {
 		assign (s.c_str ());
 	}
-	return (rval);
+	return (result);
 }
 
 StdString StdString::urlDecoded () const {
 	StdString s;
-	int result;
 
 	s.assign (c_str ());
-	result = s.urlDecode ();
-	if (result != Result::Success) {
+	if (! s.urlDecode ()) {
 		return (StdString (""));
 	}
-
 	return (s);
 }
 
@@ -645,6 +642,37 @@ bool StdString::parseAddress (StdString *hostnameValue, int *portValue, int defa
 	return (true);
 }
 
+bool StdString::isUuid () const {
+	int i, len;
+	char c;
+
+	len = (int) length ();
+	if (len != 36) {
+		return (false);
+	}
+	for (i = 0; i < len; ++i) {
+		c = at (i);
+		if ((i == 8) || (i == 13) || (i == 18) || (i == 23)) {
+			if (c != '-') {
+				return (false);
+			}
+		}
+		else {
+			if ((c >= '0') && (c <= '9')) {
+				continue;
+			}
+			if ((c >= 'a') && (c <= 'f')) {
+				continue;
+			}
+			if ((c >= 'A') && (c <= 'F')) {
+				continue;
+			}
+			return (false);
+		}
+	}
+	return (true);
+}
+
 Buffer *StdString::createBuffer () {
 	Buffer *buffer;
 
@@ -655,6 +683,10 @@ Buffer *StdString::createBuffer () {
 }
 
 void StdString::assignBuffer (Buffer *buffer) {
+	if (! buffer) {
+		assign ("");
+		return;
+	}
 	assign ((char *) buffer->data, buffer->length);
 }
 

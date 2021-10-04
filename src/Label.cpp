@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -33,7 +33,6 @@
 #include <string.h>
 #include "SDL2/SDL.h"
 #include "App.h"
-#include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "Sprite.h"
@@ -43,12 +42,10 @@
 #include "Label.h"
 
 const char Label::ObscureCharacter = '*';
-const StdString Label::DotTruncateSuffix = StdString ("...");
 
-Label::Label (const StdString &text, int fontType, const Color &color)
+Label::Label (const StdString &text, UiConfiguration::FontType fontType, const Color &color)
 : Widget ()
-, textColor (color)
-, textFontType (-1)
+, textFontType (UiConfiguration::NoFont)
 , textFont (NULL)
 , textFontSize (0)
 , spaceWidth (0.0f)
@@ -62,6 +59,7 @@ Label::Label (const StdString &text, int fontType, const Color &color)
 , underlineMargin (0.0f)
 , textMutex (NULL)
 {
+	textColor.assign (color);
 	textMutex = SDL_CreateMutex ();
 	setText (text, fontType);
 }
@@ -79,13 +77,11 @@ Label::~Label () {
 		kerningList.clear ();
 		SDL_UnlockMutex (textMutex);
 	}
-
 	if (textFont) {
 		resource = &(App::instance->resource);
 		resource->unloadFont (textFontName, textFontSize);
 		textFont = NULL;
 	}
-
 	if (textMutex) {
 		SDL_DestroyMutex (textMutex);
 		textMutex = NULL;
@@ -100,7 +96,6 @@ float Label::getLinePosition (float targetY) {
 	float y;
 
 	y = targetY + maxLineHeight - maxCharacterHeight + descenderHeight;
-
 	return (y);
 }
 
@@ -158,15 +153,11 @@ float Label::getCharacterPosition (int position) {
 }
 
 void Label::setUnderlined (bool enable) {
-	UiConfiguration *uiconfig;
-
 	if (isUnderlined == enable) {
 		return;
 	}
-
-	uiconfig = &(App::instance->uiConfig);
 	isUnderlined = enable;
-	underlineMargin = uiconfig->textUnderlineMargin;
+	underlineMargin = UiConfiguration::instance->textUnderlineMargin;
 	if (isUnderlined) {
 		height = maxGlyphTopBearing + underlineMargin + 1.0f;
 	}
@@ -254,11 +245,8 @@ void Label::doDraw (SDL_Texture *targetTexture, float originX, float originY) {
 }
 
 void Label::doRefresh () {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::instance->uiConfig);
 	if (textFont && (textFontType >= 0)) {
-		if ((! textFontName.equals (uiconfig->fontNames[textFontType])) || (textFontSize != uiconfig->fontSizes[textFontType])) {
+		if ((! textFontName.equals (UiConfiguration::instance->fontNames[textFontType])) || (textFontSize != UiConfiguration::instance->fontSizes[textFontType])) {
 			setText (text, textFontType, true);
 		}
 	}
@@ -268,8 +256,7 @@ void Label::doUpdate (int msElapsed) {
 	textColor.update (msElapsed);
 }
 
-void Label::setText (const StdString &labelText, int fontType, bool forceFontReload) {
-	UiConfiguration *uiconfig;
+void Label::setText (const StdString &textContent, UiConfiguration::FontType fontType, bool forceFontReload) {
 	Resource *resource;
 	Font *font;
 	Font::Glyph *glyph;
@@ -277,20 +264,19 @@ void Label::setText (const StdString &labelText, int fontType, bool forceFontRel
 	float x;
 	char *buf, c, lastc;
 
-	uiconfig = &(App::instance->uiConfig);
 	font = NULL;
 	if (fontType >= 0) {
 		if (forceFontReload || (! textFont) || (textFontType != fontType)) {
 			resource = &(App::instance->resource);
-			font = resource->loadFont (uiconfig->fontNames[fontType], uiconfig->fontSizes[fontType]);
+			font = resource->loadFont (UiConfiguration::instance->fontNames[fontType], UiConfiguration::instance->fontSizes[fontType]);
 			if (font) {
 				if (textFont) {
 					resource->unloadFont (textFontName, textFontSize);
 				}
 				textFont = font;
 				textFontType = fontType;
-				textFontName.assign (uiconfig->fontNames[fontType]);
-				textFontSize = uiconfig->fontSizes[fontType];
+				textFontName.assign (UiConfiguration::instance->fontNames[fontType]);
+				textFontSize = UiConfiguration::instance->fontSizes[fontType];
 				spaceWidth = (float) textFont->spaceWidth;
 				maxGlyphWidth = (float) textFont->maxGlyphWidth;
 				maxLineHeight = (float) textFont->maxLineHeight;
@@ -300,12 +286,12 @@ void Label::setText (const StdString &labelText, int fontType, bool forceFontRel
 	if (! textFont) {
 		return;
 	}
-	if ((! font) && text.equals (labelText)) {
+	if ((! font) && text.equals (textContent)) {
 		return;
 	}
 
 	SDL_LockMutex (textMutex);
-	text.assign (labelText);
+	text.assign (textContent);
 	glyphList.clear ();
 	kerningList.clear ();
 	textlen = text.length ();
@@ -385,126 +371,18 @@ void Label::setText (const StdString &labelText, int fontType, bool forceFontRel
 	SDL_UnlockMutex (textMutex);
 }
 
-void Label::setFont (int fontType) {
+void Label::setFont (UiConfiguration::FontType fontType) {
 	if (fontType == textFontType) {
 		return;
 	}
-
 	setText (text, fontType);
 }
 
-void Label::truncateText (StdString *text, int fontType, float maxWidth, const StdString &truncateSuffix) {
-	UiConfiguration *uiconfig;
-	Font *font;
-	Font::Glyph *glyph;
-	float x, spacew, suffixw;
-	char *buf, c, lastc, suffixc;
-	int i, textlen, truncatepos, suffixkerning;
-
-	if ((fontType < 0) || (fontType >= UiConfiguration::FontCount)) {
-		return;
-	}
-
-	uiconfig = &(App::instance->uiConfig);
-	font = uiconfig->fonts[fontType];
-	if (! font) {
-		return;
-	}
-	spacew = (float) font->spaceWidth;
-
-	suffixc = 0;
-	x = 0.0f;
-	lastc = 0;
-	buf = (char *) truncateSuffix.c_str ();
-	textlen = truncateSuffix.length ();
-	for (i = 0; i < textlen; ++i) {
-		c = buf[i];
-		if (suffixc <= 0) {
-			suffixc = c;
-		}
-		glyph = font->getGlyph (c);
-		if (i > 0) {
-			x += font->getKerning (lastc, c);
-		}
-		lastc = c;
-
-		if (! glyph) {
-			if (i < (textlen - 1)) {
-				x += spacew;
-			}
-		}
-		else {
-			if (i == (textlen - 1)) {
-				x += glyph->leftBearing;
-				x += glyph->width;
-			}
-			else {
-				x += glyph->advanceWidth;
-			}
-		}
-	}
-	suffixw = x;
-
-	truncatepos = 0;
-	x = 0.0f;
-	lastc = 0;
-	buf = (char *) text->c_str ();
-	textlen = text->length ();
-	for (i = 0; i < textlen; ++i) {
-		c = buf[i];
-		glyph = font->getGlyph (c);
-		if (i > 0) {
-			x += font->getKerning (lastc, c);
-		}
-		lastc = c;
-
-		if (! glyph) {
-			if (i < (textlen - 1)) {
-				x += spacew;
-			}
-		}
-		else {
-			if (i == (textlen - 1)) {
-				x += glyph->leftBearing;
-				x += glyph->width;
-			}
-			else {
-				x += glyph->advanceWidth;
-			}
-		}
-
-		suffixkerning = 0;
-		if (suffixc > 0) {
-			suffixkerning = font->getKerning (c, suffixc);
-		}
-
-		if ((x + suffixkerning + suffixw) <= maxWidth) {
-			truncatepos = i;
-		}
-		if (x > maxWidth) {
-			text->assign (text->substr (0, truncatepos + 1));
-			text->append (truncateSuffix);
-			break;
-		}
-	}
-}
-
-StdString Label::getTruncatedText (const StdString &text, int fontType, float maxWidth, const StdString &truncateSuffix) {
-	StdString s;
-
-	s.assign (text);
-	Label::truncateText (&s, fontType, maxWidth, truncateSuffix);
-
-	return (s);
-}
-
 void Label::flowRight (float *positionX, float positionY, float *rightExtent, float *bottomExtent) {
-	UiConfiguration *uiconfig;
 	float pos;
 
-	uiconfig = &(App::instance->uiConfig);
 	position.assign (*positionX, getLinePosition (positionY));
-	*positionX += width + uiconfig->marginSize;
+	*positionX += width + UiConfiguration::instance->marginSize;
 	if (rightExtent) {
 		pos = position.x + width;
 		if (pos > *rightExtent) {
@@ -520,13 +398,11 @@ void Label::flowRight (float *positionX, float positionY, float *rightExtent, fl
 }
 
 void Label::flowDown (float positionX, float *positionY, float *rightExtent, float *bottomExtent) {
-	UiConfiguration *uiconfig;
 	float x, y;
 
-	uiconfig = &(App::instance->uiConfig);
 	y = *positionY;
 	position.assign (positionX, getLinePosition (y));
-	*positionY += maxLineHeight + uiconfig->marginSize;
+	*positionY += maxLineHeight + UiConfiguration::instance->marginSize;
 	if (rightExtent) {
 		x = position.x + width;
 		if (x > *rightExtent) {

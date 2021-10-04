@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -35,6 +35,7 @@
 #include <map>
 #include <list>
 #include "StdString.h"
+#include "OsUtil.h"
 #include "StringList.h"
 #include "Json.h"
 #include "Buffer.h"
@@ -97,11 +98,11 @@ public:
 	void remove (StringList *keys);
 
 	// Read values from configuration file data and store the resulting items in the map, optionally clearing the map before doing so. Returns a Result value.
-	int read (const StdString &filename, bool shouldClear = false);
-	int read (Buffer *buffer, bool shouldClear = false);
+	OsUtil::Result read (const StdString &filename, bool shouldClear = false);
+	OsUtil::Result read (Buffer *buffer, bool shouldClear = false);
 
 	// Write values from the map to the specified file. Returns a Result value.
-	int write (const StdString &filename);
+	OsUtil::Result write (const StdString &filename);
 
 	// Return a boolean value indicating if the provided key exists in the map
 	bool exists (const StdString &key);

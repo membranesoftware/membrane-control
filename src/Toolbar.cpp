@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,20 +30,13 @@
 #include "Config.h"
 #include <stdlib.h>
 #include <math.h>
-#include <map>
 #include <list>
-#include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
 #include "Widget.h"
 #include "Color.h"
 #include "Panel.h"
-#include "Label.h"
-#include "Image.h"
-#include "Button.h"
-#include "ImageWindow.h"
-#include "LabelWindow.h"
 #include "UiConfiguration.h"
 #include "Toolbar.h"
 
@@ -51,12 +44,8 @@ Toolbar::Toolbar (float toolbarWidth)
 : Panel ()
 , barWidth (toolbarWidth)
 {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::instance->uiConfig);
-	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	setFillBg (true, uiconfig->darkPrimaryColor);
-
+	setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
+	setFillBg (true, UiConfiguration::instance->darkPrimaryColor);
 	refreshLayout ();
 }
 
@@ -149,12 +138,10 @@ void Toolbar::addRightItem (Widget *itemWidget) {
 }
 
 void Toolbar::addRightSpacer () {
-	UiConfiguration *uiconfig;
 	Panel *panel;
 
-	uiconfig = &(App::instance->uiConfig);
 	panel = new Panel ();
-	panel->setFixedSize (true, uiconfig->marginSize, 2.0f);
+	panel->setFixedSize (true, UiConfiguration::instance->marginSize, 2.0f);
 	addRightItem (panel);
 }
 
@@ -195,17 +182,15 @@ void Toolbar::setRightOverlay (Widget *itemWidget) {
 }
 
 void Toolbar::refreshLayout () {
-	UiConfiguration *uiconfig;
 	std::list<Widget *>::iterator i, end;
 	Widget *widget;
 	float x, y, h;
 
-	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	if (leftCorner.widget && (! leftCorner.widget->isDestroyed)) {
 		leftCorner.widget->position.assign (x, y);
-		x += leftCorner.widget->width + uiconfig->marginSize;
+		x += leftCorner.widget->width + UiConfiguration::instance->marginSize;
 	}
 
 	if (leftOverlay.widget && (! leftOverlay.widget->isDestroyed)) {
@@ -224,7 +209,7 @@ void Toolbar::refreshLayout () {
 			else {
 				widget->position.assign (x, y);
 				widget->isVisible = true;
-				x += widget->width + uiconfig->marginSize;
+				x += widget->width + UiConfiguration::instance->marginSize;
 			}
 		}
 	}
@@ -233,13 +218,13 @@ void Toolbar::refreshLayout () {
 	if (rightCorner.widget && (! rightCorner.widget->isDestroyed)) {
 		x -= rightCorner.widget->width;
 		rightCorner.widget->position.assign (x, y);
-		x -= uiconfig->marginSize;
+		x -= UiConfiguration::instance->marginSize;
 	}
 
 	if (rightOverlay.widget && (! rightOverlay.widget->isDestroyed)) {
 		x -= rightOverlay.widget->width;
 		rightOverlay.widget->position.assign (x, 0.0f);
-		x -= uiconfig->marginSize;
+		x -= UiConfiguration::instance->marginSize;
 	}
 	i = rightItemList.begin ();
 	end = rightItemList.end ();
@@ -255,7 +240,7 @@ void Toolbar::refreshLayout () {
 				x -= widget->width;
 				widget->position.assign (x, y);
 				widget->isVisible = true;
-				x -= uiconfig->marginSize;
+				x -= UiConfiguration::instance->marginSize;
 			}
 		}
 	}
@@ -361,11 +346,9 @@ void Toolbar::doUpdate (int msElapsed) {
 }
 
 float Toolbar::getLeftWidth () {
-	UiConfiguration *uiconfig;
 	std::list<Widget *>::reverse_iterator i, end;
 	float w;
 
-	uiconfig = &(App::instance->uiConfig);
 	w = barWidth;
 	if (! rightItemList.empty ()) {
 		i = rightItemList.rbegin ();
@@ -380,7 +363,7 @@ float Toolbar::getLeftWidth () {
 	}
 
 	if (leftCorner.widget) {
-		w -= (leftCorner.widget->width + uiconfig->marginSize);
+		w -= (leftCorner.widget->width + UiConfiguration::instance->marginSize);
 	}
 	w -= widthPadding;
 	return (w);

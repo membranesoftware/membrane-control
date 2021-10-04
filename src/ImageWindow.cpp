@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -32,10 +32,10 @@
 #include <math.h>
 #include "SDL2/SDL.h"
 #include "SDL2/SDL_image.h"
-#include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
+#include "Network.h"
 #include "Widget.h"
 #include "Color.h"
 #include "Panel.h"
@@ -88,7 +88,6 @@ StdString ImageWindow::toStringDetail () {
 	if (! imageUrl.empty ()) {
 		s.appendSprintf (" imageUrl=\"%s\"", imageUrl.c_str ());
 	}
-
 	return (s);
 }
 
@@ -101,7 +100,6 @@ bool ImageWindow::isLoaded () {
 	if (! image) {
 		return (false);
 	}
-
 	return (isImageFileLoaded || isImageUrlLoaded);
 }
 
@@ -111,7 +109,6 @@ bool ImageWindow::shouldShowUrlImage () {
 	if (imageUrl.empty () || isImageUrlLoadDisabled || (! isVisible)) {
 		return (false);
 	}
-
 	w = ((float) App::instance->windowWidth) * ImageWindow::UrlImageShowAreaMultiplier;
 	h = ((float) App::instance->windowHeight) * ImageWindow::UrlImageShowAreaMultiplier;
 	if ((screenX >= -w) && (screenX <= w)) {
@@ -119,7 +116,6 @@ bool ImageWindow::shouldShowUrlImage () {
 			return (true);
 		}
 	}
-
 	return (false);
 }
 
@@ -147,7 +143,6 @@ void ImageWindow::setFrame (int frame) {
 	if (! image) {
 		return;
 	}
-
 	image->setFrame (frame);
 	refreshLayout ();
 }
@@ -156,7 +151,6 @@ void ImageWindow::setScale (float scale) {
 	if (! image) {
 		return;
 	}
-
 	image->setScale (scale);
 	refreshLayout ();
 }
@@ -215,6 +209,9 @@ void ImageWindow::setImageFilePath (const StdString &filePath, bool isExternalPa
 		return;
 	}
 
+	if (loadCallback.callback) {
+		shouldInvokeLoadCallback = true;
+	}
 	surface = NULL;
 	if (isImageFileExternal) {
 		rw = SDL_RWFromFile (imageFilePath.c_str (), "r");
@@ -245,10 +242,6 @@ void ImageWindow::setImageFilePath (const StdString &filePath, bool isExternalPa
 	isImageFileLoaded = true;
 	isLoadingImageFile = false;
 	refreshLayout ();
-
-	if (loadCallback.callback) {
-		shouldInvokeLoadCallback = true;
-	}
 }
 
 bool ImageWindow::isImageUrlEmpty () {
@@ -321,9 +314,7 @@ void ImageWindow::doUpdate (int msElapsed) {
 
 	if (shouldInvokeLoadCallback) {
 		shouldInvokeLoadCallback = false;
-		if (loadCallback.callback) {
-			loadCallback.callback (loadCallback.callbackData, this);
-		}
+		eventCallback (loadCallback);
 	}
 }
 
@@ -333,7 +324,6 @@ void ImageWindow::loadImageResource () {
 	}
 	isLoadingImageFile = true;
 	retain ();
-
 	App::instance->addRenderTask (ImageWindow::createFileTexture, this);
 }
 
@@ -342,7 +332,7 @@ void ImageWindow::endLoadImageResource (bool clearResourcePath) {
 		imageFilePath.assign ("");
 	}
 	isLoadingImageFile = false;
-	if (loadCallback.callback && isLoaded ()) {
+	if (loadCallback.callback) {
 		shouldInvokeLoadCallback = true;
 	}
 	release ();
@@ -425,11 +415,9 @@ void ImageWindow::requestImage () {
 	if (isLoadingImageUrl) {
 		return;
 	}
-
 	isLoadingImageUrl = true;
-
 	retain ();
-	App::instance->network.sendHttpGet (imageUrl, ImageWindow::getImageComplete, this);
+	Network::instance->sendHttpGet (imageUrl, Network::HttpRequestCallbackContext (ImageWindow::getImageComplete, this));
 }
 
 void ImageWindow::endRequestImage (bool disableLoad) {
@@ -439,7 +427,7 @@ void ImageWindow::endRequestImage (bool disableLoad) {
 		imageUrlData = NULL;
 	}
 	isLoadingImageUrl = false;
-	if (loadCallback.callback && isLoaded ()) {
+	if (loadCallback.callback) {
 		shouldInvokeLoadCallback = true;
 	}
 	if (! nextImageUrl.empty () && (! isDestroyed)) {

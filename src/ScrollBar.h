@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -34,7 +34,6 @@
 
 #include <list>
 #include "StdString.h"
-#include "Color.h"
 #include "Image.h"
 #include "Panel.h"
 
@@ -60,6 +59,9 @@ public:
 	void setScrollBounds (float scrollViewHeight, float scrollAreaHeight);
 
 protected:
+	// Return a string that should be included as part of the toString method's output
+	virtual StdString toStringDetail ();
+
 	// Execute subclass-specific operations to update object state as appropriate for an elapsed millisecond time period
 	virtual void doUpdate (int msElapsed);
 

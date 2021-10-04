@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,12 +30,11 @@
 #include "Config.h"
 #include <stdlib.h>
 #include <math.h>
-#include <list>
 #include "App.h"
-#include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "Ui.h"
+#include "UiConfiguration.h"
 #include "Input.h"
 #include "Sprite.h"
 #include "Color.h"
@@ -43,172 +42,140 @@
 #include "Label.h"
 #include "Font.h"
 #include "Panel.h"
-#include "UiConfiguration.h"
+#include "ScrollBar.h"
+#include "ScrollView.h"
 #include "TextArea.h"
 
-TextArea::TextArea (int fontType, const Color &textColor, int maxTextLineLength, float maxTextLineWidth)
-: Panel ()
-, textFontType (fontType)
-, textColor (textColor)
-, maxLineLength (maxTextLineLength)
-, maxLineWidth (maxTextLineWidth)
+TextArea::TextArea (float viewWidth, int viewLineCount, UiConfiguration::FontType fontType, bool isScrollEnabled)
+: ScrollView ()
+, textFlow (NULL)
+, scrollBar (NULL)
 {
-	UiConfiguration *uiconfig;
+	float textw;
 
-	uiconfig = &(App::instance->uiConfig);
-	if (maxLineLength <= 0) {
-		maxLineLength = uiconfig->textAreaMediumLineLength;
+	setViewSize (viewWidth, (UiConfiguration::instance->fonts[fontType]->maxLineHeight + UiConfiguration::instance->textLineHeightMargin) * (float) viewLineCount);
+
+	textw = viewWidth;
+	if (isScrollEnabled) {
+		isMouseWheelScrollEnabled = true;
+		scrollBar = (ScrollBar *) addWidget (new ScrollBar (1.0f));
+		scrollBar->setMaxTrackLength (height);
+		scrollBar->positionChangeCallback = Widget::EventCallbackContext (TextArea::scrollBarPositionChanged, this);
+		scrollBar->zLevel = 3;
+		textw -= (scrollBar->width + UiConfiguration::instance->marginSize);
 	}
+	textFlow = (TextFlow *) addWidget (new TextFlow (textw, fontType));
+	textFlow->setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
+
+	setInverseColor (false);
+	refreshLayout ();
 }
 
 TextArea::~TextArea () {
 
 }
 
-void TextArea::clear () {
-	std::list<Label *>::iterator i, end;
-
-	i = lineList.begin ();
-	end = lineList.end ();
-	while (i != end) {
-		(*i)->isDestroyed = true;
-		++i;
-	}
-	lineList.clear ();
-}
-
-void TextArea::setMaxLineWidth (float maxTextLineWidth) {
-	std::list<Label *>::iterator i, end;
-	StdString text;
-
-	if (FLOAT_EQUALS (maxTextLineWidth, maxLineWidth)) {
-		return;
-	}
-
-	maxLineWidth = maxTextLineWidth;
-	i = lineList.begin ();
-	end = lineList.end ();
-	while (i != end) {
-		if (! text.empty ()) {
-			text.append (1, ' ');
-		}
-		text.append ((*i)->text);
-		++i;
-	}
-	setText (text);
-}
-
-void TextArea::setPadding (float widthPaddingSize, float heightPaddingSize) {
-	Panel::setPadding (widthPaddingSize, heightPaddingSize);
+void TextArea::setFont (UiConfiguration::FontType fontType) {
+	textFlow->setFont (fontType);
 	refreshLayout ();
 }
 
 void TextArea::setTextColor (const Color &color) {
-	std::list<Label *>::iterator i, end;
+	textFlow->setTextColor (color);
+}
 
-	textColor.assign (color);
-	i = lineList.begin ();
-	end = lineList.end ();
-	while (i != end) {
-		(*i)->textColor.assign (textColor);
-		++i;
+void TextArea::setInverseColor (bool isInverseColor) {
+	if (isInverseColor) {
+		setFillBg (true, UiConfiguration::instance->mediumInverseBackgroundColor);
+		setBorder (true, UiConfiguration::instance->lightInverseBackgroundColor);
+		setTextColor (UiConfiguration::instance->inverseTextColor);
+	}
+	else {
+		setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
+		setBorder (true, UiConfiguration::instance->darkBackgroundColor);
+		setTextColor (UiConfiguration::instance->primaryTextColor);
 	}
 }
 
-void TextArea::setText (const StdString &text) {
-	Label *label;
-	StdString s, line;
-	size_t pos;
-
-	clear ();
-
-	s.assign (text);
-	while (true) {
-		if (s.empty ()) {
-			break;
-		}
-
-		line.assign ("");
-		pos = s.find ('\n');
-		if (pos != StdString::npos) {
-			if ((maxLineLength > 0) && ((int) pos > maxLineLength)) {
-				pos = StdString::npos;
-			}
-		}
-
-		if (pos != StdString::npos) {
-			line.assign (s.substr (0, pos));
-			s.assign (s.substr (pos + 1));
-		}
-		else {
-			if ((maxLineLength <= 0) || ((int) s.length () < maxLineLength)) {
-				line.assign (s);
-				s.assign ("");
-			}
-			else {
-				pos = s.find_last_of (' ', maxLineLength);
-				if (pos == StdString::npos) {
-					line.assign (s);
-					s.assign ("");
-				}
-				else {
-					line.assign (s.substr (0, pos));
-					s.assign (s.substr (pos + 1));
-				}
-			}
-		}
-
-		label = (Label *) addWidget (new Label (line, textFontType, textColor));
-		if (maxLineWidth > 0.0f) {
-			while (true) {
-				if (label->width <= maxLineWidth) {
-					break;
-				}
-
-				pos = line.find_last_of (' ');
-				if (pos == StdString::npos) {
-					break;
-				}
-
-				if (s.find (' ') != 0) {
-					s.insert (0, 1, ' ');
-				}
-				s.insert (0, line.substr (pos));
-				line.assign (line.substr (0, pos));
-				label->setText (line);
-			}
-
-			if (s.find (' ') == 0) {
-				s.assign (s.substr (1));
-			}
-		}
-
-		lineList.push_back (label);
+void TextArea::setMaxLineCount (int max) {
+	if (max < 0) {
+		max = 0;
 	}
+	textFlow->maxLineCount = max;
+}
 
+void TextArea::setText (const StdString &textContent, UiConfiguration::FontType fontType, bool forceFontReload) {
+	textFlow->setText (textContent, fontType, forceFontReload);
 	refreshLayout ();
 }
 
-void TextArea::refreshLayout () {
-	UiConfiguration *uiconfig;
-	std::list<Label *>::iterator i, end;
-	Label *label;
-	float x, y, dh;
+void TextArea::appendText (const StdString &textContent, bool scrollToBottom) {
+	textFlow->appendText (textContent);
+	refreshLayout ();
+	if (scrollBar && scrollToBottom) {
+		setViewOrigin (0.0f, maxViewOriginY);
+		scrollBar->setPosition (viewOriginY, true);
+		scrollBar->position.assignY (viewOriginY);
+	}
+}
 
-	uiconfig = &(App::instance->uiConfig);
-	dh = 0.0f;
+void TextArea::refreshLayout () {
+	float x, y;
+
 	x = widthPadding;
 	y = heightPadding;
-	i = lineList.begin ();
-	end = lineList.end ();
-	while (i != end) {
-		label = *i;
-		label->position.assign (x, label->getLinePosition (y));
-		y += label->maxLineHeight + uiconfig->textLineHeightMargin;
-		dh = label->maxLineHeight - label->height + uiconfig->textLineHeightMargin;
-		++i;
+	textFlow->position.assign (x, y);
+
+	y += textFlow->height;
+	y -= height;
+	if (y < 0.0f) {
+		y = 0.0f;
+	}
+	setVerticalScrollBounds (0.0f, y);
+	if (viewOriginY < 0.0f) {
+		setViewOrigin (0.0f, 0.0f);
+	}
+	else if (viewOriginY > y) {
+		setViewOrigin (0.0f, y);
 	}
 
-	resetSize ();
-	height += dh;
+	if (scrollBar) {
+		scrollBar->setScrollBounds (height, textFlow->height + (heightPadding * 2.0f));
+		scrollBar->position.assign (width - scrollBar->width, viewOriginY);
+		if (scrollBar->maxScrollPosition <= 0.0f) {
+			isMouseWheelScrollEnabled = false;
+			scrollBar->isInputSuspended = true;
+		}
+		else {
+			isMouseWheelScrollEnabled = true;
+			scrollBar->isInputSuspended = false;
+		}
+	}
+}
+
+bool TextArea::doProcessMouseState (const Widget::MouseState &mouseState) {
+	bool consumed;
+	float y1;
+
+	y1 = viewOriginY;
+	consumed = ScrollView::doProcessMouseState (mouseState);
+	if (scrollBar) {
+		if (! FLOAT_EQUALS (y1, viewOriginY)) {
+			scrollBar->setPosition (viewOriginY, true);
+			scrollBar->position.assignY (viewOriginY);
+		}
+	}
+
+	return (consumed);
+}
+
+void TextArea::scrollBarPositionChanged (void *textAreaPtr, Widget *widgetPtr) {
+	TextArea *textarea;
+	ScrollBar *scrollbar;
+
+	textarea = (TextArea *) textAreaPtr;
+	scrollbar = (ScrollBar *) widgetPtr;
+
+	textarea->setViewOrigin (0.0f, scrollbar->scrollPosition);
+	scrollbar->position.assignY (textarea->viewOriginY);
 }

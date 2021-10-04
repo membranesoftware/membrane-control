@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -34,9 +34,9 @@
 #include <map>
 #include "SDL2/SDL.h"
 #include "App.h"
-#include "Result.h"
 #include "Log.h"
 #include "StdString.h"
+#include "Input.h"
 #include "Ui.h"
 #include "Widget.h"
 #include "HashMap.h"
@@ -58,18 +58,15 @@ CardView::CardView (float viewWidth, float viewHeight)
 , isSorted (false)
 , scrollBar (NULL)
 {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::instance->uiConfig);
-	itemMarginSize = uiconfig->marginSize;
+	itemMarginSize = UiConfiguration::instance->marginSize;
 	itemMutex = SDL_CreateMutex ();
-	scrollBar = (ScrollBar *) addWidget (new ScrollBar (viewHeight - (uiconfig->paddingSize * 2.0f)));
+	scrollBar = (ScrollBar *) addWidget (new ScrollBar (viewHeight - (UiConfiguration::instance->paddingSize * 2.0f)));
 	scrollBar->positionChangeCallback = Widget::EventCallbackContext (CardView::scrollBarPositionChanged, this);
 	scrollBar->zLevel = 2;
 	scrollBar->isVisible = false;
 
 	setViewSize (viewWidth, viewHeight);
-	cardAreaWidth = width - scrollBar->width - (uiconfig->paddingSize * 2.0f) - (uiconfig->marginSize * 0.25f);
+	cardAreaWidth = width - scrollBar->width - (UiConfiguration::instance->paddingSize * 2.0f) - (UiConfiguration::instance->marginSize * 0.25f);
 }
 
 CardView::~CardView () {
@@ -99,12 +96,9 @@ CardView::~CardView () {
 }
 
 void CardView::setViewSize (float viewWidth, float viewHeight) {
-	UiConfiguration *uiconfig;
-
 	ScrollView::setViewSize (viewWidth, viewHeight);
-	uiconfig = &(App::instance->uiConfig);
-	scrollBar->setMaxTrackLength (viewHeight - (uiconfig->paddingSize * 2.0f));
-	cardAreaWidth = width - scrollBar->width - (uiconfig->paddingSize * 2.0f) - (uiconfig->marginSize * 0.25f);
+	scrollBar->setMaxTrackLength (viewHeight - (UiConfiguration::instance->paddingSize * 2.0f));
+	cardAreaWidth = width - scrollBar->width - (UiConfiguration::instance->paddingSize * 2.0f) - (UiConfiguration::instance->marginSize * 0.25f);
 	refreshLayout ();
 }
 
@@ -162,7 +156,6 @@ void CardView::setRowSelectionAnimated (int row, bool enable) {
 	if (! App::instance->isInterfaceAnimationEnabled) {
 		return;
 	}
-
 	pos = getRow (row);
 	if (enable == pos->second.isSelectionAnimated) {
 		return;
@@ -182,7 +175,6 @@ bool CardView::isRowSelectionAnimated (int row) {
 }
 
 void CardView::setRowDetail (int row, int detailType) {
-	UiConfiguration *uiconfig;
 	std::map<int, CardView::Row>::iterator pos;
 	std::list<CardView::Item>::iterator i, end;
 	float scale;
@@ -190,8 +182,6 @@ void CardView::setRowDetail (int row, int detailType) {
 	if ((detailType < 0) || (detailType > CardView::HighDetail)) {
 		return;
 	}
-
-	uiconfig = &(App::instance->uiConfig);
 	pos = getRow (row);
 	if (detailType == pos->second.layout) {
 		return;
@@ -199,15 +189,15 @@ void CardView::setRowDetail (int row, int detailType) {
 	pos->second.layout = detailType;
 	switch (pos->second.layout) {
 		case CardView::LowDetail: {
-			scale = uiconfig->smallThumbnailImageScale;
+			scale = UiConfiguration::instance->smallThumbnailImageScale;
 			break;
 		}
 		case CardView::HighDetail: {
-			scale = uiconfig->largeThumbnailImageScale;
+			scale = UiConfiguration::instance->largeThumbnailImageScale;
 			break;
 		}
 		default: {
-			scale = uiconfig->mediumThumbnailImageScale;
+			scale = UiConfiguration::instance->mediumThumbnailImageScale;
 			break;
 		}
 	}
@@ -254,9 +244,9 @@ void CardView::doUpdate (int msElapsed) {
 			jend = itemList.end ();
 			while (j != jend) {
 				if (j->row == i->first) {
-					if (! j->panel->isVisible) {
+					if (! j->isAnimationStarted) {
 						j->panel->animateScale (0.99f, CardView::SmallItemScale, CardView::AnimateScaleDuration);
-						j->panel->isVisible = true;
+						j->isAnimationStarted = true;
 						refresh = true;
 					}
 				}
@@ -283,11 +273,11 @@ bool CardView::doProcessMouseState (const Widget::MouseState &mouseState) {
 	consumed = ScrollView::doProcessMouseState (mouseState);
 	if (! FLOAT_EQUALS (y1, viewOriginY)) {
 		scrollBar->setPosition (viewOriginY, true);
-		scrollBar->position.assignY (viewOriginY + App::instance->uiConfig.paddingSize);
+		scrollBar->position.assignY (viewOriginY + UiConfiguration::instance->paddingSize);
 	}
 
-	mousex = App::instance->input.mouseX;
-	mousey = App::instance->input.mouseY;
+	mousex = Input::instance->mouseX;
+	mousey = Input::instance->mouseY;
 	if (! highlightedItemId.empty ()) {
 		SDL_LockMutex (itemMutex);
 		item = findItemPosition (highlightedItemId);
@@ -379,9 +369,8 @@ bool CardView::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool is
 	result = ScrollView::doProcessKeyEvent (keycode, isShiftDown, isControlDown);
 	if (! FLOAT_EQUALS (y, viewOriginY)) {
 		scrollBar->setPosition (viewOriginY, true);
-		scrollBar->position.assignY (viewOriginY + App::instance->uiConfig.paddingSize);
+		scrollBar->position.assignY (viewOriginY + UiConfiguration::instance->paddingSize);
 	}
-
 	return (result);
 }
 
@@ -391,13 +380,12 @@ void CardView::resetRowSelection (int row) {
 	if (! isRowSelectionAnimated (row)) {
 		return;
 	}
-
 	SDL_LockMutex (itemMutex);
 	i = itemList.begin ();
 	end = itemList.end ();
 	while (i != end) {
 		if (i->row == row) {
-			i->panel->isVisible = false;
+			i->isAnimationStarted = false;
 			i->panel->setTextureRender (false);
 		}
 		++i;
@@ -468,9 +456,6 @@ Widget *CardView::addItem (Panel *itemPanel, const StdString &itemId, int row, b
 	item.panel->retain ();
 	item.row = row;
 	rowpos = getRow (row);
-	if (rowpos->second.isSelectionAnimated) {
-		item.panel->isVisible = false;
-	}
 	if (rowpos->second.layout >= 0) {
 		item.panel->setLayout (rowpos->second.layout, rowpos->second.maxItemWidth);
 	}
@@ -615,31 +600,27 @@ void CardView::processRowItems (int row, Widget::EventCallback fn, void *fnData,
 
 void CardView::scrollToItem (const StdString &itemId) {
 	std::list<CardView::Item>::iterator pos;
-	UiConfiguration *uiconfig;
 
 	SDL_LockMutex (itemMutex);
 	pos = findItemPosition (itemId);
 	if (pos != itemList.end ()) {
-		uiconfig = &(App::instance->uiConfig);
 		setViewOrigin (0.0f, pos->panel->position.y - (height / 2.0f) + (pos->panel->height / 2.0f));
 		scrollBar->setPosition (viewOriginY, true);
-		scrollBar->position.assignY (viewOriginY + uiconfig->paddingSize);
+		scrollBar->position.assignY (viewOriginY + UiConfiguration::instance->paddingSize);
 	}
 	SDL_UnlockMutex (itemMutex);
 }
 
 void CardView::refreshLayout () {
-	UiConfiguration *uiconfig;
 	std::list<CardView::Item>::iterator i, end;
 	std::map<int, CardView::Row>::iterator rowpos;
 	Panel *itempanel, *headerpanel;
 	float x, y, dx, dy, x0, itemw, itemh, rowh, rowmargin;
 	int row;
 
-	uiconfig = &(App::instance->uiConfig);
 	row = -1;
-	x0 = uiconfig->paddingSize;
-	y = uiconfig->paddingSize;
+	x0 = UiConfiguration::instance->paddingSize;
+	y = UiConfiguration::instance->paddingSize;
 	x = x0;
 	rowmargin = itemMarginSize;
 	rowh = 0.0f;
@@ -706,7 +687,7 @@ void CardView::refreshLayout () {
 	SDL_UnlockMutex (itemMutex);
 
 	y += rowh;
-	y += (uiconfig->paddingSize * 2.0f);
+	y += (UiConfiguration::instance->paddingSize * 2.0f);
 	scrollBar->setScrollBounds (height, y);
 	y -= height;
 	if (y < 0.0f) {
@@ -724,7 +705,7 @@ void CardView::refreshLayout () {
 		scrollBar->isVisible = false;
 	}
 	else {
-		scrollBar->position.assign (width - uiconfig->paddingSize - scrollBar->width, viewOriginY + uiconfig->paddingSize);
+		scrollBar->position.assign (width - UiConfiguration::instance->paddingSize - scrollBar->width, viewOriginY + UiConfiguration::instance->paddingSize);
 		scrollBar->isVisible = true;
 	}
 }
@@ -924,12 +905,10 @@ Widget *CardView::findItem (CardView::MatchFunction fn, void *fnData) {
 void CardView::scrollBarPositionChanged (void *windowPtr, Widget *widgetPtr) {
 	CardView *window;
 	ScrollBar *scrollbar;
-	UiConfiguration *uiconfig;
 
 	window = (CardView *) windowPtr;
 	scrollbar = (ScrollBar *) widgetPtr;
-	uiconfig = &(App::instance->uiConfig);
 
 	window->setViewOrigin (0.0f, scrollbar->scrollPosition);
-	scrollbar->position.assignY (window->viewOriginY + uiconfig->paddingSize);
+	scrollbar->position.assignY (window->viewOriginY + UiConfiguration::instance->paddingSize);
 }

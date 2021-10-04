@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -32,7 +32,6 @@
 #include <math.h>
 #include "SDL2/SDL.h"
 #include "App.h"
-#include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "Input.h"
@@ -112,7 +111,7 @@ void Widget::doResetInputState () {
 	// Default implementation does nothing
 }
 
-void Widget::setMouseHoverTooltip (const StdString &text, int alignment) {
+void Widget::setMouseHoverTooltip (const StdString &text, Widget::Alignment alignment) {
 	tooltipText.assign (text);
 	tooltipAlignment = alignment;
 	isMouseHoverEnabled = true;
@@ -252,30 +251,21 @@ bool Widget::processMouseState (const Widget::MouseState &mouseState) {
 	if (mouseState.isEntered) {
 		if (! isMouseEntered) {
 			isMouseEntered = true;
-			if (mouseEnterCallback.callback) {
-				mouseEnterCallback.callback (mouseEnterCallback.callbackData, this);
-			}
+			eventCallback (mouseEnterCallback);
 		}
 
 		if (mouseState.isLeftClicked) {
 			if (! isMousePressed) {
 				isMousePressed = true;
-				if (mousePressCallback.callback) {
-					mousePressCallback.callback (mousePressCallback.callbackData, this);
-				}
+				eventCallback (mousePressCallback);
 			}
 		}
 
 		if (isMousePressed && mouseState.isLeftClickReleased) {
 			isMousePressed = false;
-			if (mouseReleaseCallback.callback) {
-				mouseReleaseCallback.callback (mouseReleaseCallback.callbackData, this);
-			}
-
+			eventCallback (mouseReleaseCallback);
 			if (mouseState.isLeftClickEntered) {
-				if (mouseClickCallback.callback) {
-					mouseClickCallback.callback (mouseClickCallback.callbackData, this);
-				}
+				eventCallback (mouseClickCallback);
 			}
 		}
 
@@ -289,16 +279,11 @@ bool Widget::processMouseState (const Widget::MouseState &mouseState) {
 	else {
 		if (isMousePressed) {
 			isMousePressed = false;
-			if (mouseReleaseCallback.callback) {
-				mouseReleaseCallback.callback (mouseReleaseCallback.callbackData, this);
-			}
+			eventCallback (mouseReleaseCallback);
 		}
-
 		if (isMouseEntered) {
 			isMouseEntered = false;
-			if (mouseExitCallback.callback) {
-				mouseExitCallback.callback (mouseExitCallback.callbackData, this);
-			}
+			eventCallback (mouseExitCallback);
 		}
 	}
 
@@ -315,42 +300,38 @@ bool Widget::compareZLevel (Widget *first, Widget *second) {
 }
 
 void Widget::mouseEnter () {
-	if (mouseEnterCallback.callback) {
-		mouseEnterCallback.callback (mouseEnterCallback.callbackData, this);
-	}
+	eventCallback (mouseEnterCallback);
 }
 
 void Widget::mouseExit () {
-	if (mouseExitCallback.callback) {
-		mouseExitCallback.callback (mouseExitCallback.callbackData, this);
-	}
+	eventCallback (mouseExitCallback);
 }
 
 void Widget::mousePress () {
-	if (mousePressCallback.callback) {
-		mousePressCallback.callback (mousePressCallback.callbackData, this);
-	}
+	eventCallback (mousePressCallback);
 }
 
 void Widget::mouseRelease () {
-	if (mouseReleaseCallback.callback) {
-		mouseReleaseCallback.callback (mouseReleaseCallback.callbackData, this);
-	}
+	eventCallback (mouseReleaseCallback);
 }
 
 void Widget::mouseClick () {
-	if (mouseClickCallback.callback) {
-		mouseClickCallback.callback (mouseClickCallback.callbackData, this);
+	eventCallback (mouseClickCallback);
+}
+
+bool Widget::eventCallback (const Widget::EventCallbackContext &callback) {
+	if (! callback.callback) {
+		return (false);
 	}
+	callback.callback (callback.callbackData, this);
+	return (true);
 }
 
 void Widget::flowRight (float *positionX, float positionY, float *rightExtent, float *bottomExtent) {
-	UiConfiguration *uiconfig;
 	float pos;
 
-	uiconfig = &(App::instance->uiConfig);
 	position.assign (*positionX, positionY);
-	*positionX += width + uiconfig->marginSize;
+	*positionX += width + UiConfiguration::instance->marginSize;
 	if (rightExtent) {
 		pos = position.x + width;
 		if (pos > *rightExtent) {
@@ -366,12 +347,10 @@ void Widget::flowRight (float *positionX, float positionY, float *rightExtent, f
 }
 
 void Widget::flowDown (float positionX, float *positionY, float *rightExtent, float *bottomExtent) {
-	UiConfiguration *uiconfig;
 	float pos;
 
-	uiconfig = &(App::instance->uiConfig);
 	position.assign (positionX, *positionY);
-	*positionY += height + uiconfig->marginSize;
+	*positionY += height + UiConfiguration::instance->marginSize;
 	if (rightExtent) {
 		pos = position.x + width;
 		if (pos > *rightExtent) {
@@ -387,12 +366,29 @@ void Widget::flowDown (float positionX, float *positionY, float *rightExtent, fl
 }
 
 void Widget::flowLeft (float *positionX) {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::instance->uiConfig);
 	*positionX -= width;
 	position.assignX (*positionX);
-	*positionX -= uiconfig->marginSize;
+	*positionX -= UiConfiguration::instance->marginSize;
+}
+
+void Widget::flowLeft (float *positionX, float positionY) {
+	flowLeft (positionX);
+	position.assignY (positionY);
+}
+
+void Widget::flowUp (float *positionY) {
+	*positionY -= height;
+	position.assignY (*positionY);
+	*positionY -= UiConfiguration::instance->marginSize;
+}
+
+void Widget::flowUp (float positionX, float *positionY) {
+	flowUp (positionY);
+	position.assignX (positionX);
+}
+
+void Widget::centerHorizontal (float leftExtent, float rightExtent) {
+	position.assignX (leftExtent + ((rightExtent - leftExtent) / 2.0f) - (width / 2.0f));
 }
 
 void Widget::centerVertical (float topExtent, float bottomExtent) {

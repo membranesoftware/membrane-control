@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -48,14 +48,17 @@ public:
 	// Return a string containing the name of the specified frame size, or an empty string if no such name was found.
 	static StdString getFrameSizeName (int width, int height);
 
-	// Return a string containing a description of the specified stream profile constant, or an empty string if no such name was found
+	// Return a string containing the name of the specified stream profile constant, or an empty string if no such text was found
+	static StdString getStreamProfileName (int streamProfile);
+
+	// Return a string containing the description of the specified stream profile constant, or an empty string if no such text was found
 	static StdString getStreamProfileDescription (int streamProfile);
 
 	// Return the stream profile constant matching the provided description text, or SystemInterface::Constant_DefaultStreamProfile if no matching constant was found
 	static int getStreamProfile (const StdString &description);
 
-	// Return the estimated stream data size for the specified media size and profile, in bytes
-	static int64_t getStreamSize (int64_t mediaSize, int streamProfile);
+	// Return the estimated stream data size for the specified media attributes and stream profile, in bytes
+	static int64_t getStreamSize (int64_t mediaSize, int64_t mediaBitrate, float mediaDuration, int streamProfile);
 };
 
 #endif

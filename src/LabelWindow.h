@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -67,7 +67,7 @@ public:
 	void setText (const StdString &text);
 
 	// Set the font type used in the label
-	void setFont (int fontType);
+	void setFont (UiConfiguration::FontType fontType);
 
 	// Set the label window's mouseover highlight option. If enabled, the window changes background and text color during mouseover events.
 	void setMouseoverHighlight (bool enable, const Color &normalTextColor = Color (), const Color &normalBgColor = Color (), const Color &highlightTextColor = Color (), const Color &highlightBgColor = Color (), int colorTranslateDuration = 0);

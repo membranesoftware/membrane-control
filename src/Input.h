@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -35,11 +35,13 @@
 #include <map>
 #include <vector>
 #include "SDL2/SDL.h"
+#include "OsUtil.h"
 
 class Input {
 public:
 	Input ();
 	~Input ();
+	static Input *instance;
 
 	// Read-write data members
 	int keyRepeatStartThreshold;
@@ -52,9 +54,10 @@ public:
 	int mouseLeftDownCount, mouseRightDownCount;
 	int mouseLeftUpCount, mouseRightUpCount;
 	int mouseWheelDownCount, mouseWheelUpCount;
+	int windowCloseCount;
 
 	// Initialize input functionality and acquire resources as needed. Returns a Result value.
-	int start ();
+	OsUtil::Result start ();
 
 	// Stop the input engine and release acquired resources
 	void stop ();
@@ -76,6 +79,9 @@ public:
 
 	// Consume keypress events that have occurred since the last poll and append the resulting items to the provided vector
 	void pollKeyPressEvents (std::vector<SDL_Keycode> *destVector);
+
+	// Generate a window close event for consumption by Ui classes
+	void windowClose ();
 
 private:
 	std::map<SDL_Keycode, bool> keyDownMap;

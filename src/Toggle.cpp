@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,7 +30,6 @@
 #include "Config.h"
 #include <stdlib.h>
 #include "SDL2/SDL.h"
-#include "Result.h"
 #include "Log.h"
 #include "ClassId.h"
 #include "StdString.h"
@@ -56,20 +55,17 @@ Toggle::Toggle (Sprite *uncheckedButtonSprite, Sprite *checkedButtonSprite)
 , uncheckedButton (NULL)
 , checkedButton (NULL)
 {
-	UiConfiguration *uiconfig;
-
 	classId = ClassId::Toggle;
 
 	// TODO: Add an indeterminate toggle state (for use when disabled)
 
-	uiconfig = &(App::instance->uiConfig);
 	if (uncheckedButtonSprite && checkedButtonSprite) {
 		uncheckedButton = (Button *) addWidget (new Button (uncheckedButtonSprite));
 		checkedButton = (Button *) addWidget (new Button (checkedButtonSprite));
 	}
 	else {
-		uncheckedButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::ToggleCheckboxOutlineSprite)));
-		checkedButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::ToggleCheckboxSprite)));
+		uncheckedButton = (Button *) addWidget (new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ToggleCheckboxOutlineSprite)));
+		checkedButton = (Button *) addWidget (new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ToggleCheckboxSprite)));
 	}
 	uncheckedButton->isInputSuspended = true;
 	checkedButton->isInputSuspended = true;
@@ -121,8 +117,8 @@ void Toggle::setChecked (bool checked, bool shouldSkipChangeCallback) {
 		uncheckedButton->isVisible = true;
 	}
 	refreshLayout ();
-	if (stateChangeCallback.callback && (! shouldSkipChangeCallback)) {
-		stateChangeCallback.callback (stateChangeCallback.callbackData, this);
+	if (! shouldSkipChangeCallback) {
+		eventCallback (stateChangeCallback);
 	}
 }
 
@@ -151,7 +147,7 @@ void Toggle::setImageColor (const Color &imageColor) {
 	checkedButton->setImageColor (imageColor);
 }
 
-void Toggle::setStateMouseHoverTooltips (const StdString &uncheckedTooltip, const StdString &checkedTooltip, int alignment) {
+void Toggle::setStateMouseHoverTooltips (const StdString &uncheckedTooltip, const StdString &checkedTooltip, Widget::Alignment alignment) {
 	uncheckedButton->setMouseHoverTooltip (uncheckedTooltip, alignment);
 	checkedButton->setMouseHoverTooltip (checkedTooltip, alignment);
 }
@@ -179,10 +175,8 @@ bool Toggle::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isCo
 
 void Toggle::mouseEntered (void *togglePtr, Widget *widgetPtr) {
 	Toggle *toggle;
-	UiConfiguration *uiconfig;
 
 	toggle = (Toggle *) togglePtr;
-	uiconfig = &(App::instance->uiConfig);
 	if (toggle->isDisabled) {
 		return;
 	}
@@ -191,7 +185,7 @@ void Toggle::mouseEntered (void *togglePtr, Widget *widgetPtr) {
 	toggle->checkedButton->mouseEnter ();
 	toggle->uncheckedButton->mouseEnter ();
 	if (! toggle->isFocusDropShadowDisabled) {
-		toggle->setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
+		toggle->setDropShadow (true, UiConfiguration::instance->dropShadowColor, UiConfiguration::instance->dropShadowWidth);
 	}
 }
 

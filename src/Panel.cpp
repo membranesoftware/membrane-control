@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -32,10 +32,10 @@
 #include <math.h>
 #include <list>
 #include "SDL2/SDL.h"
-#include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
+#include "UiConfiguration.h"
 #include "Input.h"
 #include "OsUtil.h"
 #include "Widget.h"
@@ -132,7 +132,6 @@ Panel::~Panel () {
 		SDL_DestroyMutex (widgetListMutex);
 		widgetListMutex = NULL;
 	}
-
 	if (widgetAddListMutex) {
 		SDL_DestroyMutex (widgetAddListMutex);
 		widgetAddListMutex = NULL;
@@ -201,7 +200,6 @@ void Panel::animateScale (float startScale, float targetScale, int duration) {
 	if (! App::instance->isInterfaceAnimationEnabled) {
 		return;
 	}
-
 	isAnimating = true;
 	setTextureRender (true);
 	animationScale.translateX (startScale, targetScale, duration);
@@ -211,7 +209,6 @@ void Panel::animateNewCard () {
 	if (! App::instance->isInterfaceAnimationEnabled) {
 		return;
 	}
-
 	isAnimating = true;
 	setTextureRender (true);
 	animationScale.assignX (0.8f);
@@ -257,7 +254,6 @@ Widget *Panel::addWidget (Widget *widget, float positionX, float positionY, int 
 	if (widget->sortKey.empty ()) {
 		widget->sortKey.sprintf ("%016llx", (unsigned long long) widget->id);
 	}
-
 	widget->position.assign (positionX, positionY);
 	widget->zLevel = zLevel;
 	widget->retain ();
@@ -317,7 +313,6 @@ Widget *Panel::findWidget (float screenPositionX, float screenPositionY, bool re
 		if (widget->isDestroyed || (! widget->isVisible) || (! widget->hasScreenPosition)) {
 			continue;
 		}
-
 		w = widget->width;
 		h = widget->height;
 		if ((w <= 0.0f) || (h <= 0.0f)) {
@@ -386,7 +381,6 @@ void Panel::doUpdate (int msElapsed) {
 			}
 			++i;
 		}
-
 		if (! found) {
 			break;
 		}
@@ -399,10 +393,9 @@ void Panel::doUpdate (int msElapsed) {
 	if (waitPanel.widget) {
 		panel = (Panel *) waitPanel.widget;
 		panel->setFixedSize (true, width, height);
-
 		if (waitProgressBar.widget) {
 			bar = (ProgressBar *) waitProgressBar.widget;
-			bar->setSize (width, App::instance->uiConfig.progressBarHeight);
+			bar->setSize (width, UiConfiguration::instance->progressBarHeight);
 		}
 	}
 
@@ -416,8 +409,9 @@ void Panel::doUpdate (int msElapsed) {
 	SDL_UnlockMutex (widgetListMutex);
 
 	if (! isResettingDrawTexture) {
-		if ((isTextureRenderEnabled && (! drawTexture)) || ((! isTextureRenderEnabled) && drawTexture)) {
+		if ((isTextureRenderEnabled && (! drawTexture)) || ((! isTextureRenderEnabled) && drawTexture) || shouldRefreshTexture) {
 			isResettingDrawTexture = true;
+			shouldRefreshTexture = false;
 			retain ();
 			App::instance->addRenderTask (Panel::resetDrawTexture, this);
 		}
@@ -425,7 +419,6 @@ void Panel::doUpdate (int msElapsed) {
 }
 
 void Panel::processInput () {
-	Input *input;
 	std::list<Widget *>::reverse_iterator i, iend;
 	std::vector<SDL_Keycode> keyevents;
 	std::vector<SDL_Keycode>::iterator j, jend;
@@ -434,37 +427,34 @@ void Panel::processInput () {
 	float x, y, enterdx, enterdy;
 	bool isshiftdown, iscontroldown, isleftdown, isconsumed;
 
-	input = &(App::instance->input);
-
-	input->pollKeyPressEvents (&keyevents);
-	isshiftdown = input->isShiftDown ();
-	iscontroldown = input->isControlDown ();
-	isleftdown = (input->mouseLeftDownCount != input->mouseLeftUpCount);
+	Input::instance->pollKeyPressEvents (&keyevents);
+	isshiftdown = Input::instance->isShiftDown ();
+	iscontroldown = Input::instance->isControlDown ();
+	isleftdown = (Input::instance->mouseLeftDownCount != Input::instance->mouseLeftUpCount);
 
 	if (isMouseInputStarted) {
-		if (input->mouseLeftDownCount != lastMouseLeftDownCount) {
+		if (Input::instance->mouseLeftDownCount != lastMouseLeftDownCount) {
 			mousestate.isLeftClicked = true;
 		}
-		if (input->mouseLeftUpCount != lastMouseLeftUpCount) {
+		if (Input::instance->mouseLeftUpCount != lastMouseLeftUpCount) {
 			mousestate.isLeftClickReleased = true;
 		}
-
-		mousestate.positionDeltaX = input->mouseX - input->lastMouseX;
-		mousestate.positionDeltaY = input->mouseY - input->lastMouseY;
-		mousestate.wheelUp = input->mouseWheelUpCount - lastMouseWheelUpCount;
-		mousestate.wheelDown = input->mouseWheelDownCount - lastMouseWheelDownCount;
+		mousestate.positionDeltaX = Input::instance->mouseX - Input::instance->lastMouseX;
+		mousestate.positionDeltaY = Input::instance->mouseY - Input::instance->lastMouseY;
+		mousestate.wheelUp = Input::instance->mouseWheelUpCount - lastMouseWheelUpCount;
+		mousestate.wheelDown = Input::instance->mouseWheelDownCount - lastMouseWheelDownCount;
 	}
-	lastMouseLeftUpCount = input->mouseLeftUpCount;
-	lastMouseLeftDownCount = input->mouseLeftDownCount;
-	lastMouseRightUpCount = input->mouseRightUpCount;
-	lastMouseRightDownCount = input->mouseRightDownCount;
-	lastMouseWheelUpCount = input->mouseWheelUpCount;
-	lastMouseWheelDownCount = input->mouseWheelDownCount;
+	lastMouseLeftUpCount = Input::instance->mouseLeftUpCount;
+	lastMouseLeftDownCount = Input::instance->mouseLeftDownCount;
+	lastMouseRightUpCount = Input::instance->mouseRightUpCount;
+	lastMouseRightDownCount = Input::instance->mouseRightDownCount;
+	lastMouseWheelUpCount = Input::instance->mouseWheelUpCount;
+	lastMouseWheelDownCount = Input::instance->mouseWheelDownCount;
 	isMouseInputStarted = true;
 
 	mousewidget = NULL;
-	x = input->mouseX;
-	y = input->mouseY;
+	x = Input::instance->mouseX;
+	y = Input::instance->mouseY;
 	enterdx = 0.0f;
 	enterdy = 0.0f;
 	SDL_LockMutex (widgetListMutex);
@@ -476,7 +466,6 @@ void Panel::processInput () {
 		if (widget->isDestroyed || widget->isInputSuspended || (! widget->isVisible) || (! widget->hasScreenPosition)) {
 			continue;
 		}
-
 		if ((widget->width > 0.0f) && (widget->height > 0.0f)) {
 			if ((x >= (int) widget->screenX) && (x <= (int) (widget->screenX + widget->width)) && (y >= (int) widget->screenY) && (y <= (int) (widget->screenY + widget->height))) {
 				mousewidget = widget;
@@ -523,7 +512,6 @@ void Panel::processInput () {
 		if (widget->isDestroyed || widget->isInputSuspended || (! widget->isVisible) || (! widget->hasScreenPosition)) {
 			continue;
 		}
-
 		if (keyevents.size () > 0) {
 			isconsumed = false;
 			j = keyevents.begin ();
@@ -582,7 +570,6 @@ bool Panel::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isCon
 	if (isTextureRenderEnabled) {
 		return (false);
 	}
-
 	result = false;
 	SDL_LockMutex (widgetListMutex);
 	i = widgetList.begin ();
@@ -593,7 +580,6 @@ bool Panel::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isCon
 		if (widget->isDestroyed || widget->isInputSuspended) {
 			continue;
 		}
-
 		result = widget->processKeyEvent (keycode, isShiftDown, isControlDown);
 		if (result) {
 			break;
@@ -605,7 +591,6 @@ bool Panel::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isCon
 }
 
 bool Panel::doProcessMouseState (const Widget::MouseState &mouseState) {
-	Input *input;
 	std::list<Widget *>::reverse_iterator i, end;
 	Widget *widget;
 	bool found, consumed;
@@ -615,11 +600,8 @@ bool Panel::doProcessMouseState (const Widget::MouseState &mouseState) {
 	if (isTextureRenderEnabled) {
 		return (false);
 	}
-
-	input = &(App::instance->input);
-	x = input->mouseX;
-	y = input->mouseY;
-
+	x = Input::instance->mouseX;
+	y = Input::instance->mouseY;
 	consumed = false;
 	found = false;
 	SDL_LockMutex (widgetListMutex);
@@ -661,17 +643,15 @@ bool Panel::doProcessMouseState (const Widget::MouseState &mouseState) {
 }
 
 void Panel::doResetInputState () {
-	Input *input;
 	std::list<Widget *>::iterator i, end;
 	Widget *widget;
 
-	input = &(App::instance->input);
-	lastMouseLeftUpCount = input->mouseLeftUpCount;
-	lastMouseLeftDownCount = input->mouseLeftDownCount;
-	lastMouseRightUpCount = input->mouseRightUpCount;
-	lastMouseRightDownCount = input->mouseRightDownCount;
-	lastMouseWheelUpCount = input->mouseWheelUpCount;
-	lastMouseWheelDownCount = input->mouseWheelDownCount;
+	lastMouseLeftUpCount = Input::instance->mouseLeftUpCount;
+	lastMouseLeftDownCount = Input::instance->mouseLeftDownCount;
+	lastMouseRightUpCount = Input::instance->mouseRightUpCount;
+	lastMouseRightDownCount = Input::instance->mouseRightDownCount;
+	lastMouseWheelUpCount = Input::instance->mouseWheelUpCount;
+	lastMouseWheelDownCount = Input::instance->mouseWheelDownCount;
 
 	SDL_LockMutex (widgetListMutex);
 	i = widgetList.begin ();
@@ -699,10 +679,6 @@ void Panel::doDraw (SDL_Texture *targetTexture, float originX, float originY) {
 
 	if ((! targetTexture) && isTextureRenderEnabled) {
 		if (drawTexture) {
-			if (shouldRefreshTexture) {
-				shouldRefreshTexture = false;
-				doDraw (drawTexture, -(position.x), -(position.y));
-			}
 			rect.x = x0;
 			rect.y = y0;
 			w = drawTextureWidth;
@@ -929,7 +905,6 @@ void Panel::doRefresh () {
 		if (widget->isDestroyed) {
 			continue;
 		}
-
 		widget->refresh ();
 	}
 	SDL_UnlockMutex (widgetListMutex);
@@ -943,7 +918,6 @@ void Panel::doRefresh () {
 		if (widget->isDestroyed) {
 			continue;
 		}
-
 		widget->refresh ();
 	}
 	SDL_UnlockMutex (widgetAddListMutex);
@@ -968,7 +942,6 @@ void Panel::resetSize () {
 		if (widget->isDestroyed || (! widget->isVisible) || widget->isPanelSizeClipEnabled) {
 			continue;
 		}
-
 		wx = widget->position.x + widget->width;
 		wy = widget->position.y + widget->height;
 		if ((xmax <= 0.0f) || (wx > xmax)) {
@@ -989,7 +962,6 @@ void Panel::resetSize () {
 		if (widget->isDestroyed || (! widget->isVisible) || widget->isPanelSizeClipEnabled) {
 			continue;
 		}
-
 		wx = widget->position.x + widget->width;
 		wy = widget->position.y + widget->height;
 		if ((xmax <= 0.0f) || (wx > xmax)) {
@@ -1010,14 +982,12 @@ void Panel::resetSize () {
 }
 
 void Panel::refreshLayout () {
-	UiConfiguration *uiconfig;
 	std::list<Widget *>::iterator i, end;
 	Widget *widget;
 	float x, y, maxw, maxh;
 
 	switch (layout) {
 		case Panel::VerticalLayout: {
-			uiconfig = &(App::instance->uiConfig);
 			x = widthPadding;
 			y = heightPadding;
 
@@ -1030,9 +1000,8 @@ void Panel::refreshLayout () {
 				if (widget->isDestroyed || (! widget->isVisible)) {
 					continue;
 				}
-
 				widget->position.assign (x, y);
-				y += widget->height + uiconfig->marginSize;
+				y += widget->height + UiConfiguration::instance->marginSize;
 			}
 			SDL_UnlockMutex (widgetListMutex);
 
@@ -1045,15 +1014,13 @@ void Panel::refreshLayout () {
 				if (widget->isDestroyed || (! widget->isVisible)) {
 					continue;
 				}
-
 				widget->position.assign (x, y);
-				y += widget->height + uiconfig->marginSize;
+				y += widget->height + UiConfiguration::instance->marginSize;
 			}
 			SDL_UnlockMutex (widgetAddListMutex);
 			break;
 		}
 		case Panel::VerticalRightJustifiedLayout: {
-			uiconfig = &(App::instance->uiConfig);
 			x = widthPadding;
 			y = heightPadding;
 			maxw = 0.0f;
@@ -1067,9 +1034,8 @@ void Panel::refreshLayout () {
 				if (widget->isDestroyed || (! widget->isVisible)) {
 					continue;
 				}
-
 				widget->position.assign (x, y);
-				y += widget->height + uiconfig->marginSize;
+				y += widget->height + UiConfiguration::instance->marginSize;
 				if (widget->width > maxw) {
 					maxw = widget->width;
 				}
@@ -1085,9 +1051,8 @@ void Panel::refreshLayout () {
 				if (widget->isDestroyed || (! widget->isVisible)) {
 					continue;
 				}
-
 				widget->position.assign (x, y);
-				y += widget->height + uiconfig->marginSize;
+				y += widget->height + UiConfiguration::instance->marginSize;
 				if (widget->width > maxw) {
 					maxw = widget->width;
 				}
@@ -1122,7 +1087,6 @@ void Panel::refreshLayout () {
 			break;
 		}
 		case Panel::HorizontalLayout: {
-			uiconfig = &(App::instance->uiConfig);
 			x = widthPadding;
 			y = heightPadding;
 
@@ -1135,9 +1099,8 @@ void Panel::refreshLayout () {
 				if (widget->isDestroyed || (! widget->isVisible)) {
 					continue;
 				}
-
 				widget->position.assign (x, y);
-				x += widget->width + uiconfig->marginSize;
+				x += widget->width + UiConfiguration::instance->marginSize;
 			}
 			SDL_UnlockMutex (widgetListMutex);
 
@@ -1150,15 +1113,13 @@ void Panel::refreshLayout () {
 				if (widget->isDestroyed || (! widget->isVisible)) {
 					continue;
 				}
-
 				widget->position.assign (x, y);
-				x += widget->width + uiconfig->marginSize;
+				x += widget->width + UiConfiguration::instance->marginSize;
 			}
 			SDL_UnlockMutex (widgetAddListMutex);
 			break;
 		}
 		case Panel::HorizontalVcenteredLayout: {
-			uiconfig = &(App::instance->uiConfig);
 			x = widthPadding;
 			y = heightPadding;
 			maxh = 0.0f;
@@ -1172,9 +1133,8 @@ void Panel::refreshLayout () {
 				if (widget->isDestroyed || (! widget->isVisible)) {
 					continue;
 				}
-
 				widget->position.assign (x, y);
-				x += widget->width + uiconfig->marginSize;
+				x += widget->width + UiConfiguration::instance->marginSize;
 				if (widget->height > maxh) {
 					maxh = widget->height;
 				}
@@ -1190,9 +1150,8 @@ void Panel::refreshLayout () {
 				if (widget->isDestroyed || (! widget->isVisible)) {
 					continue;
 				}
-
 				widget->position.assign (x, y);
-				x += widget->width + uiconfig->marginSize;
+				x += widget->width + UiConfiguration::instance->marginSize;
 				if (widget->height > maxh) {
 					maxh = widget->height;
 				}
@@ -1555,25 +1514,22 @@ void Panel::setFixedSize (bool enable, float fixedWidth, float fixedHeight) {
 }
 
 void Panel::setWaiting (bool enable) {
-	UiConfiguration *uiconfig;
 	Panel *panel;
 	ProgressBar *bar;
 
 	if (isWaiting == enable) {
 		return;
 	}
-
-	uiconfig = &(App::instance->uiConfig);
 	isWaiting = enable;
 	if (isWaiting) {
 		isInputSuspended = true;
 
 		panel = (Panel *) addWidget (new Panel ());
 		panel->setFixedSize (true, width, height);
-		panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->waitingShadeAlpha));
+		panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, UiConfiguration::instance->waitingShadeAlpha));
 		panel->zLevel = maxWidgetZLevel + 1;
 
-		bar = (ProgressBar *) panel->addWidget (new ProgressBar (width, uiconfig->progressBarHeight));
+		bar = (ProgressBar *) panel->addWidget (new ProgressBar (width, UiConfiguration::instance->progressBarHeight));
 		bar->setIndeterminate (true);
 		bar->position.assign (0.0f, height - bar->height);
 

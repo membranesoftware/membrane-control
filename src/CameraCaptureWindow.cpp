@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,13 +30,15 @@
 #include "Config.h"
 #include <stdlib.h>
 #include <math.h>
-#include "Result.h"
+#include "App.h"
 #include "ClassId.h"
 #include "Log.h"
 #include "StdString.h"
-#include "App.h"
 #include "OsUtil.h"
 #include "SystemInterface.h"
+#include "AgentControl.h"
+#include "RecordStore.h"
+#include "Agent.h"
 #include "UiConfiguration.h"
 #include "SpriteGroup.h"
 #include "Widget.h"
@@ -69,23 +71,17 @@ CameraCaptureWindow::CameraCaptureWindow (Json *agentStatus, int captureId, Spri
 , selectToggle (NULL)
 , viewButton (NULL)
 {
-	SystemInterface *interface;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	Json serverstatus;
 
 	classId = ClassId::CameraCaptureWindow;
-	interface = &(App::instance->systemInterface);
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
 
-	setFillBg (true, uiconfig->mediumBackgroundColor);
-	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	setCornerRadius (uiconfig->cornerRadius);
-	agentId = interface->getCommandAgentId (agentStatus);
-	agentName = interface->getCommandAgentName (agentStatus);
+	setFillBg (true, UiConfiguration::instance->mediumBackgroundColor);
+	setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
+	setCornerRadius (UiConfiguration::instance->cornerRadius);
+	agentId = SystemInterface::instance->getCommandAgentId (agentStatus);
+	agentName = Agent::getCommandAgentName (agentStatus);
 	captureName.assign (agentName);
-	if (interface->getCommandObjectParam (agentStatus, "cameraServerStatus", &serverstatus)) {
+	if (SystemInterface::instance->getCommandObjectParam (agentStatus, "cameraServerStatus", &serverstatus)) {
 		captureImagePath = serverstatus.getString ("captureImagePath", "");
 		lastCaptureWidth = serverstatus.getNumber ("lastCaptureWidth", (int) 0);
 		lastCaptureHeight = serverstatus.getNumber ("lastCaptureHeight", (int) 0);
@@ -97,32 +93,32 @@ CameraCaptureWindow::CameraCaptureWindow (Json *agentStatus, int captureId, Spri
 
 	iconImage = (Image *) addWidget (new Image (sprites->getSprite (CameraUi::TimelapseIconSprite)));
 
-	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::BodyFont, uiconfig->primaryTextColor));
+	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::BodyFont, UiConfiguration::instance->primaryTextColor));
 	nameLabel->isInputSuspended = true;
 
-	timeLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	timeLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->lightPrimaryTextColor));
 	timeLabel->isInputSuspended = true;
 	if (displayCaptureTime > 0) {
 		timeLabel->setText (OsUtil::getTimestampDisplayString (displayCaptureTime));
 	}
 
-	thumbnailImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
+	thumbnailImage = (ImageWindow *) addWidget (new ImageWindow (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
 	thumbnailImage->mouseLongPressCallback = Widget::EventCallbackContext (CameraCaptureWindow::thumbnailImageLongPressed, this);
 	thumbnailImage->loadCallback = Widget::EventCallbackContext (CameraCaptureWindow::thumbnailImageLoaded, this);
-	thumbnailImage->setLoadSprite (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
+	thumbnailImage->setLoadSprite (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
 
-	selectToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::StarOutlineButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::StarButtonSprite)));
+	selectToggle = (Toggle *) addWidget (new Toggle (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::StarOutlineButtonSprite), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::StarButtonSprite)));
 	selectToggle->stateChangeCallback = Widget::EventCallbackContext (CameraCaptureWindow::selectToggleStateChanged, this);
-	selectToggle->setImageColor (uiconfig->flatButtonTextColor);
-	selectToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::UnselectedToggleTooltip), uitext->getText (UiTextString::SelectedToggleTooltip));
+	selectToggle->setImageColor (UiConfiguration::instance->flatButtonTextColor);
+	selectToggle->setStateMouseHoverTooltips (UiText::instance->getText (UiTextString::UnselectedToggleTooltip), UiText::instance->getText (UiTextString::SelectedToggleTooltip));
 
-	viewButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::ImageButtonSprite)));
+	viewButton = (Button *) addWidget (new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ImageButtonSprite)));
 	viewButton->mouseClickCallback = Widget::EventCallbackContext (CameraCaptureWindow::viewButtonClicked, this);
 	viewButton->zLevel = 3;
 	viewButton->isTextureTargetDrawEnabled = false;
-	viewButton->setImageColor (uiconfig->flatButtonTextColor);
-	viewButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
-	viewButton->setMouseHoverTooltip (uitext->getText (UiTextString::ViewTimelineImagesTooltip));
+	viewButton->setImageColor (UiConfiguration::instance->flatButtonTextColor);
+	viewButton->setRaised (true, UiConfiguration::instance->raisedButtonBackgroundColor);
+	viewButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::ViewTimelineImagesTooltip));
 }
 
 CameraCaptureWindow::~CameraCaptureWindow () {
@@ -142,28 +138,23 @@ CameraCaptureWindow *CameraCaptureWindow::castWidget (Widget *widget) {
 }
 
 void CameraCaptureWindow::setSelected (bool selected, bool shouldSkipStateChangeCallback) {
-	UiConfiguration *uiconfig;
-
 	if (selected == isSelected) {
 		return;
 	}
-	uiconfig = &(App::instance->uiConfig);
 	isSelected = selected;
 	selectToggle->setChecked (isSelected, shouldSkipStateChangeCallback);
 	if (isSelected) {
-		setCornerRadius (0, uiconfig->cornerRadius, 0, uiconfig->cornerRadius);
+		setCornerRadius (0, UiConfiguration::instance->cornerRadius, 0, UiConfiguration::instance->cornerRadius);
 	}
 	else {
-		setCornerRadius (uiconfig->cornerRadius);
+		setCornerRadius (UiConfiguration::instance->cornerRadius);
 	}
 	refreshLayout ();
 }
 
 void CameraCaptureWindow::setSelectedTimestamp (int64_t timestamp) {
-	UiConfiguration *uiconfig;
 	Json *params;
 
-	uiconfig = &(App::instance->uiConfig);
 	if (selectedTime == timestamp) {
 		return;
 	}
@@ -171,28 +162,25 @@ void CameraCaptureWindow::setSelectedTimestamp (int64_t timestamp) {
 	if (selectedTime != displayCaptureTime) {
 		displayCaptureTime = selectedTime;
 		timeLabel->setText (OsUtil::getTimestampDisplayString (selectedTime));
-		timeLabel->textColor.assign (uiconfig->primaryTextColor);
-		timeLabel->textColor.translate (uiconfig->lightPrimaryTextColor, uiconfig->longColorTranslateDuration);
+		timeLabel->textColor.assign (UiConfiguration::instance->primaryTextColor);
+		timeLabel->textColor.translate (UiConfiguration::instance->lightPrimaryTextColor, UiConfiguration::instance->longColorTranslateDuration);
 		if (! captureImagePath.empty ()) {
-			thumbnailImage->setLoadSprite (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
+			thumbnailImage->setLoadSprite (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
 			params = new Json ();
 			if (selectedTime >= 0) {
 				params->set ("imageTime", selectedTime);
 			}
-			thumbnailImage->setImageUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetCaptureImage, SystemInterface::Constant_Camera, params), captureImagePath));
+			thumbnailImage->setImageUrl (AgentControl::instance->getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetCaptureImage, params), captureImagePath));
 		}
 	}
 }
 
 void CameraCaptureWindow::setLayout (int layoutType, float maxPanelWidth) {
-	UiConfiguration *uiconfig;
 	float w, h;
 
 	if ((layoutType == layout) || (displayCaptureWidth <= 0) || (maxPanelWidth < 1.0f)) {
 		return;
 	}
-
-	uiconfig = &(App::instance->uiConfig);
 	layout = layoutType;
 	w = maxPanelWidth;
 	h = displayCaptureHeight;
@@ -202,20 +190,18 @@ void CameraCaptureWindow::setLayout (int layoutType, float maxPanelWidth) {
 	h = floorf (h);
 	thumbnailImage->setWindowSize (w, h);
 	if (hasCaptureImage () && thumbnailImage->isImageUrlEmpty ()) {
-		thumbnailImage->setImageUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetCaptureImage, SystemInterface::Constant_Camera), captureImagePath));
+		thumbnailImage->setImageUrl (AgentControl::instance->getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetCaptureImage), captureImagePath));
 	}
 	thumbnailImage->reload ();
 
-	w = maxPanelWidth - selectToggle->width - iconImage->width - (uiconfig->marginSize * 2.0f);
-	nameLabel->setText (Label::getTruncatedText (agentName, UiConfiguration::BodyFont, w, Label::DotTruncateSuffix));
+	w = maxPanelWidth - selectToggle->width - iconImage->width - (UiConfiguration::instance->marginSize * 2.0f);
+	nameLabel->setText (UiConfiguration::instance->fonts[UiConfiguration::BodyFont]->truncatedText (agentName, w, Font::DotTruncateSuffix));
 	refreshLayout ();
 }
 
 void CameraCaptureWindow::refreshLayout () {
-	UiConfiguration *uiconfig;
 	float x, y, x0, y0, x2, y2;
 
-	uiconfig = &(App::instance->uiConfig);
 	x0 = widthPadding;
 	y0 = heightPadding;
 	x = x0;
@@ -231,7 +217,7 @@ void CameraCaptureWindow::refreshLayout () {
 	selectToggle->flowRight (&x, y, &x2, &y2);
 
 	x = x0;
-	y = y2 + uiconfig->marginSize;
+	y = y2 + UiConfiguration::instance->marginSize;
 	thumbnailImage->flowDown (x, &y, &x2, &y2);
 	viewButton->flowDown (x, &y, &x2, &y2);
 
@@ -245,18 +231,14 @@ void CameraCaptureWindow::refreshLayout () {
 }
 
 void CameraCaptureWindow::syncRecordStore () {
-	RecordStore *store;
-	SystemInterface *interface;
 	Json *agentstatus, serverstatus;
 	int64_t t;
 
-	store = &(App::instance->agentControl.recordStore);
-	interface = &(App::instance->systemInterface);
-	agentstatus = store->findRecord (RecordStore::matchAgentStatusSource, &agentId);
+	agentstatus = RecordStore::instance->findRecord (RecordStore::matchAgentStatusSource, &agentId);
 	if (! agentstatus) {
 		return;
 	}
-	if (interface->getCommandObjectParam (agentstatus, "cameraServerStatus", &serverstatus)) {
+	if (SystemInterface::instance->getCommandObjectParam (agentstatus, "cameraServerStatus", &serverstatus)) {
 		captureImagePath = serverstatus.getString ("captureImagePath", "");
 		lastCaptureWidth = serverstatus.getNumber ("lastCaptureWidth", (int) 0);
 		lastCaptureHeight = serverstatus.getNumber ("lastCaptureHeight", (int) 0);
@@ -270,7 +252,7 @@ void CameraCaptureWindow::syncRecordStore () {
 
 				if (! captureImagePath.empty ()) {
 					thumbnailImage->setLoadSprite (NULL);
-					thumbnailImage->setImageUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetCaptureImage, SystemInterface::Constant_Camera), captureImagePath));
+					thumbnailImage->setImageUrl (AgentControl::instance->getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetCaptureImage), captureImagePath));
 					thumbnailImage->reload ();
 				}
 			}
@@ -290,12 +272,7 @@ void CameraCaptureWindow::reloadCaptureImage () {
 }
 
 void CameraCaptureWindow::viewButtonClicked (void *windowPtr, Widget *widgetPtr) {
-	CameraCaptureWindow *window;
-
-	window = (CameraCaptureWindow *) windowPtr;
-	if (window->viewButtonClickCallback.callback) {
-		window->viewButtonClickCallback.callback (window->viewButtonClickCallback.callbackData, window);
-	}
+	((CameraCaptureWindow *) windowPtr)->eventCallback (((CameraCaptureWindow *) windowPtr)->viewButtonClickCallback);
 }
 
 void CameraCaptureWindow::thumbnailImageLongPressed (void *windowPtr, Widget *widgetPtr) {
@@ -308,40 +285,34 @@ void CameraCaptureWindow::thumbnailImageLongPressed (void *windowPtr, Widget *wi
 void CameraCaptureWindow::thumbnailImageLoaded (void *windowPtr, Widget *widgetPtr) {
 	CameraCaptureWindow *window;
 	ImageWindow *image;
-	UiConfiguration *uiconfig;
 	StdString text;
 
 	window = (CameraCaptureWindow *) windowPtr;
 	image = (ImageWindow *) widgetPtr;
-	uiconfig = &(App::instance->uiConfig);
 	window->displayCaptureWidth = image->imageLoadSourceWidth;
 	window->displayCaptureHeight = image->imageLoadSourceHeight;
 
 	text = OsUtil::getTimestampDisplayString (window->displayCaptureTime);
 	if (! text.equals (window->timeLabel->text)) {
 		window->timeLabel->setText (text);
-		window->timeLabel->textColor.assign (uiconfig->primaryTextColor);
-		window->timeLabel->textColor.translate (uiconfig->lightPrimaryTextColor, uiconfig->longColorTranslateDuration);
+		window->timeLabel->textColor.assign (UiConfiguration::instance->primaryTextColor);
+		window->timeLabel->textColor.translate (UiConfiguration::instance->lightPrimaryTextColor, UiConfiguration::instance->longColorTranslateDuration);
 	}
 }
 
 void CameraCaptureWindow::selectToggleStateChanged (void *windowPtr, Widget *widgetPtr) {
 	CameraCaptureWindow *window;
 	Toggle *toggle;
-	UiConfiguration *uiconfig;
 
 	window = (CameraCaptureWindow *) windowPtr;
 	toggle = (Toggle *) widgetPtr;
-	uiconfig = &(App::instance->uiConfig);
 
 	window->isSelected = toggle->isChecked;
 	if (window->isSelected) {
-		window->setCornerRadius (0, uiconfig->cornerRadius, 0, uiconfig->cornerRadius);
+		window->setCornerRadius (0, UiConfiguration::instance->cornerRadius, 0, UiConfiguration::instance->cornerRadius);
 	}
 	else {
-		window->setCornerRadius (uiconfig->cornerRadius);
+		window->setCornerRadius (UiConfiguration::instance->cornerRadius);
 	}
-	if (window->selectStateChangeCallback.callback) {
-		window->selectStateChangeCallback.callback (window->selectStateChangeCallback.callbackData, window);
-	}
+	window->eventCallback (window->selectStateChangeCallback);
 }

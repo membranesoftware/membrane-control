@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -40,6 +40,13 @@ public:
 	Agent ();
 	~Agent ();
 
+	// Agent types
+	enum {
+		Monitor = 0,
+		Media = 1,
+		Camera = 2
+	};
+
 	// Read-write data members
 	StdString id;
 	bool isAttached;
@@ -65,6 +72,9 @@ public:
 	// Return a string representation of the agent
 	StdString toString ();
 
+	// Copy non-private data fields from other
+	void copyDisplayData (const Agent &other);
+
 	// Update the agent's fields with information from the provided AgentStatus command
 	void readCommand (Json *command);
 
@@ -73,6 +83,9 @@ public:
 
 	// Update the agent's fields with state information from the provided Json object and return a Result value
 	int readState (Json *state);
+
+	// Return a boolean value indicating if the agent was successfully contacted by the last connection attempt
+	bool isContacted ();
 
 	// Return the URL that should be used for invoke operations targeting the agent
 	StdString getInvokeUrl ();
@@ -85,6 +98,15 @@ public:
 
 	// Return the URL that should be used for retrieving news related to the agent's application, or an empty string if no URL is available
 	StdString getApplicationNewsUrl ();
+
+	// Return the agent name value appearing in the provided AgentStatus command object, or an empty string if no such value was found
+	static StdString getCommandAgentName (Json *command);
+
+	// Return the agent address value appearing in the provided AgentStatus command object, or an empty string if no such value was found
+	static StdString getCommandAgentAddress (Json *command);
+
+	// sort predicate function
+	static bool compareAscending (const Agent &a, const Agent &b);
 
 private:
 	// Object field names

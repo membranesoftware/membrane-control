@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -74,9 +74,6 @@ public:
 	// Execute operations appropriate when an agent control link client becomes connected
 	void handleLinkClientConnect (const StdString &agentId);
 
-	// Execute actions appropriate for a command received from an agent control link client
-	void handleLinkClientCommand (const StdString &agentId, int commandId, Json *command);
-
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
 	StdString getSpritePath ();
@@ -124,6 +121,7 @@ private:
 	static void playToggleStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void capturePlayThumbnailImageLoaded (void *uiPtr, Widget *widgetPtr);
 	static void selectToggleStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void receiveFindCaptureImages (void *uiPtr, const StdString &agentId, Json *command);
 
 	static const float TimelineWindowScale;
 	static const int PageSize;

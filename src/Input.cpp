@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -31,11 +31,12 @@
 #include <stdlib.h>
 #include <vector>
 #include "SDL2/SDL.h"
-#include "Result.h"
 #include "App.h"
 #include "Log.h"
 #include "OsUtil.h"
 #include "Input.h"
+
+Input *Input::instance = NULL;
 
 Input::Input ()
 : keyRepeatStartThreshold (680)
@@ -52,6 +53,7 @@ Input::Input ()
 , mouseRightUpCount (0)
 , mouseWheelDownCount (0)
 , mouseWheelUpCount (0)
+, windowCloseCount (0)
 , isKeyPressListPopulated (false)
 , isKeyRepeating (false)
 , keyRepeatCode (SDLK_UNKNOWN)
@@ -67,7 +69,7 @@ Input::~Input () {
 	}
 }
 
-int Input::start () {
+OsUtil::Result Input::start () {
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_a, false));
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_b, false));
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_c, false));
@@ -143,8 +145,7 @@ int Input::start () {
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_LGUI, false));
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_RGUI, false));
 #endif
-
-	return (Result::Success);
+	return (OsUtil::Result::Success);
 }
 
 void Input::stop () {
@@ -164,7 +165,6 @@ void Input::pollEvents () {
 				if (i == keyDownMap.end ()) {
 					break;
 				}
-
 				if (! i->second) {
 					i->second = true;
 					isKeyRepeating = false;
@@ -183,7 +183,6 @@ void Input::pollEvents () {
 				if (i == keyDownMap.end ()) {
 					break;
 				}
-
 				i->second = false;
 				if (event.key.keysym.sym == keyRepeatCode) {
 					isKeyRepeating = false;
@@ -234,7 +233,7 @@ void Input::pollEvents () {
 			}
 			case SDL_WINDOWEVENT: {
 				if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
-					App::instance->shutdown ();
+					++windowCloseCount;
 				}
 				break;
 			}
@@ -251,7 +250,6 @@ void Input::pollEvents () {
 				keyRepeatStartTime = 0;
 			}
 		}
-
 		if (isKeyRepeating) {
 			if ((keyRepeatStartTime <= 0) || ((now - keyRepeatStartTime) >= keyRepeatDelay)) {
 				keyRepeatStartTime = now;
@@ -275,7 +273,6 @@ bool Input::isKeyDown (SDL_Keycode keycode) {
 	if (i == keyDownMap.end ()) {
 		return (false);
 	}
-
 	return (i->second);
 }
 
@@ -303,7 +300,6 @@ void Input::pollKeyPressEvents (std::vector<SDL_Keycode> *destVector) {
 	if (! isKeyPressListPopulated) {
 		return;
 	}
-
 	SDL_LockMutex (keyPressListMutex);
 	i = keyPressList.begin ();
 	end = keyPressList.end ();
@@ -314,6 +310,10 @@ void Input::pollKeyPressEvents (std::vector<SDL_Keycode> *destVector) {
 	keyPressList.clear ();
 	isKeyPressListPopulated = false;
 	SDL_UnlockMutex (keyPressListMutex);
+}
+
+void Input::windowClose () {
+	++windowCloseCount;
 }
 
 char Input::getKeyCharacter (SDL_Keycode keycode, bool isShiftDown) {
@@ -367,6 +367,5 @@ char Input::getKeyCharacter (SDL_Keycode keycode, bool isShiftDown) {
 		case SDLK_QUOTE: { return (isShiftDown ? '"' : '\''); }
 		case SDLK_BACKSLASH: { return (isShiftDown ? '|' : '\\'); }
 	}
-
 	return (0);
 }

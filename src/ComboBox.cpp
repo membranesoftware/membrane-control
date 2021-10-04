@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -31,7 +31,6 @@
 #include <stdlib.h>
 #include <math.h>
 #include "App.h"
-#include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "Ui.h"
@@ -58,19 +57,15 @@ ComboBox::ComboBox ()
 , selectedItemLabel (NULL)
 , maxTextWidth (0.0f)
 {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::instance->uiConfig);
-
-	normalBgColor.assign (uiconfig->lightBackgroundColor);
-	normalBorderColor.assign (uiconfig->darkBackgroundColor);
-	focusBgColor.assign (uiconfig->darkBackgroundColor);
-	focusBorderColor.assign (uiconfig->lightBackgroundColor);
-	disabledBgColor.assign (uiconfig->darkBackgroundColor);
-	disabledBorderColor.assign (uiconfig->mediumBackgroundColor);
-	normalItemTextColor.assign (uiconfig->lightPrimaryColor);
-	focusItemTextColor.assign (uiconfig->primaryTextColor);
-	disabledTextColor.assign (uiconfig->lightPrimaryTextColor);
+	normalBgColor.assign (UiConfiguration::instance->lightBackgroundColor);
+	normalBorderColor.assign (UiConfiguration::instance->darkBackgroundColor);
+	focusBgColor.assign (UiConfiguration::instance->darkBackgroundColor);
+	focusBorderColor.assign (UiConfiguration::instance->lightBackgroundColor);
+	disabledBgColor.assign (UiConfiguration::instance->darkBackgroundColor);
+	disabledBorderColor.assign (UiConfiguration::instance->mediumBackgroundColor);
+	normalItemTextColor.assign (UiConfiguration::instance->lightPrimaryColor);
+	focusItemTextColor.assign (UiConfiguration::instance->primaryTextColor);
+	disabledTextColor.assign (UiConfiguration::instance->lightPrimaryTextColor);
 
 	setFillBg (true, normalBgColor);
 	setBorder (true, normalBorderColor);
@@ -95,35 +90,32 @@ void ComboBox::setDisabled (bool disabled) {
 
 void ComboBox::setInverseColor (bool inverse) {
 	std::list<ComboBox::Item>::iterator i, end;
-	UiConfiguration *uiconfig;
 
 	if (isInverseColor == inverse) {
 		return;
 	}
-
-	uiconfig = &(App::instance->uiConfig);
 	isInverseColor = inverse;
 	if (isInverseColor) {
-		normalBgColor.assign (uiconfig->darkInverseBackgroundColor);
-		normalBorderColor.assign (uiconfig->lightInverseBackgroundColor);
-		focusBgColor.assign (uiconfig->lightInverseBackgroundColor);
-		focusBorderColor.assign (uiconfig->darkInverseBackgroundColor);
-		disabledBgColor.assign (uiconfig->lightInverseBackgroundColor);
-		disabledBorderColor.assign (uiconfig->darkInverseBackgroundColor);
-		normalItemTextColor.assign (uiconfig->darkInverseTextColor);
-		focusItemTextColor.assign (uiconfig->inverseTextColor);
-		disabledTextColor.assign (uiconfig->darkInverseTextColor);
+		normalBgColor.assign (UiConfiguration::instance->darkInverseBackgroundColor);
+		normalBorderColor.assign (UiConfiguration::instance->lightInverseBackgroundColor);
+		focusBgColor.assign (UiConfiguration::instance->lightInverseBackgroundColor);
+		focusBorderColor.assign (UiConfiguration::instance->darkInverseBackgroundColor);
+		disabledBgColor.assign (UiConfiguration::instance->lightInverseBackgroundColor);
+		disabledBorderColor.assign (UiConfiguration::instance->darkInverseBackgroundColor);
+		normalItemTextColor.assign (UiConfiguration::instance->darkInverseTextColor);
+		focusItemTextColor.assign (UiConfiguration::instance->inverseTextColor);
+		disabledTextColor.assign (UiConfiguration::instance->darkInverseTextColor);
 	}
 	else {
-		normalBgColor.assign (uiconfig->lightBackgroundColor);
-		normalBorderColor.assign (uiconfig->darkBackgroundColor);
-		focusBgColor.assign (uiconfig->darkBackgroundColor);
-		focusBorderColor.assign (uiconfig->lightBackgroundColor);
-		disabledBgColor.assign (uiconfig->darkBackgroundColor);
-		disabledBorderColor.assign (uiconfig->mediumBackgroundColor);
-		normalItemTextColor.assign (uiconfig->lightPrimaryColor);
-		focusItemTextColor.assign (uiconfig->primaryTextColor);
-		disabledTextColor.assign (uiconfig->lightPrimaryTextColor);
+		normalBgColor.assign (UiConfiguration::instance->lightBackgroundColor);
+		normalBorderColor.assign (UiConfiguration::instance->darkBackgroundColor);
+		focusBgColor.assign (UiConfiguration::instance->darkBackgroundColor);
+		focusBorderColor.assign (UiConfiguration::instance->lightBackgroundColor);
+		disabledBgColor.assign (UiConfiguration::instance->darkBackgroundColor);
+		disabledBorderColor.assign (UiConfiguration::instance->mediumBackgroundColor);
+		normalItemTextColor.assign (UiConfiguration::instance->lightPrimaryColor);
+		focusItemTextColor.assign (UiConfiguration::instance->primaryTextColor);
+		disabledTextColor.assign (UiConfiguration::instance->lightPrimaryTextColor);
 	}
 
 	bgColor.assign (normalBgColor);
@@ -160,8 +152,8 @@ void ComboBox::setValue (const StdString &value, bool shouldSkipChangeCallback) 
 
 	if (found) {
 		refreshLayout ();
-		if (valueChangeCallback.callback && (! shouldSkipChangeCallback)) {
-			valueChangeCallback.callback (valueChangeCallback.callbackData, this);
+		if (! shouldSkipChangeCallback) {
+			eventCallback (valueChangeCallback);
 		}
 	}
 }
@@ -190,8 +182,8 @@ void ComboBox::setValueByItemData (const StdString &itemData, bool shouldSkipCha
 
 	if (found) {
 		refreshLayout ();
-		if (valueChangeCallback.callback && (! shouldSkipChangeCallback)) {
-			valueChangeCallback.callback (valueChangeCallback.callbackData, this);
+		if (! shouldSkipChangeCallback) {
+			eventCallback (valueChangeCallback);
 		}
 	}
 }
@@ -200,17 +192,14 @@ StdString ComboBox::getValue () {
 	if (hasItemData) {
 		return (selectedItemData);
 	}
-
 	return (selectedItemValue);
 }
 
 void ComboBox::addItem (const StdString &itemValue) {
-	UiConfiguration *uiconfig;
 	ComboBox::Item item;
 	LabelWindow *label;
 
-	uiconfig = &(App::instance->uiConfig);
-	label = (LabelWindow *) addWidget (new LabelWindow (new Label (Label::getTruncatedText (itemValue, UiConfiguration::CaptionFont, uiconfig->comboBoxLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, Label::DotTruncateSuffix), UiConfiguration::CaptionFont, normalItemTextColor)));
+	label = (LabelWindow *) addWidget (new LabelWindow (new Label (UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->truncatedText (itemValue, UiConfiguration::instance->comboBoxLineLength * UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, Font::DotTruncateSuffix), UiConfiguration::CaptionFont, normalItemTextColor)));
 	label->setFillBg (true, normalBgColor);
 	label->setBorder (true, normalBorderColor);
 	if (label->width > maxTextWidth) {
@@ -230,12 +219,10 @@ void ComboBox::addItem (const StdString &itemValue) {
 }
 
 void ComboBox::addItem (const StdString &itemValue, const StdString &itemData) {
-	UiConfiguration *uiconfig;
 	ComboBox::Item item;
 	LabelWindow *label;
 
-	uiconfig = &(App::instance->uiConfig);
-	label = (LabelWindow *) addWidget (new LabelWindow (new Label (Label::getTruncatedText (itemValue, UiConfiguration::CaptionFont, uiconfig->comboBoxLineLength * uiconfig->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, Label::DotTruncateSuffix), UiConfiguration::CaptionFont, normalItemTextColor)));
+	label = (LabelWindow *) addWidget (new LabelWindow (new Label (UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->truncatedText (itemValue, UiConfiguration::instance->comboBoxLineLength * UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, Font::DotTruncateSuffix), UiConfiguration::CaptionFont, normalItemTextColor)));
 	label->setFillBg (true, normalBgColor);
 	label->setBorder (true, normalBorderColor);
 	if (label->width > maxTextWidth) {
@@ -279,23 +266,21 @@ void ComboBox::addItems (HashMap *itemMap) {
 }
 
 void ComboBox::refreshLayout () {
-	UiConfiguration *uiconfig;
 	std::list<ComboBox::Item>::iterator i, end;
 	LabelWindow *label;
 	float x, y;
 
-	uiconfig = &(App::instance->uiConfig);
 	if (isDisabled) {
-		bgColor.translate (disabledBgColor, uiconfig->shortColorTranslateDuration);
-		borderColor.translate (disabledBorderColor, uiconfig->shortColorTranslateDuration);
+		bgColor.translate (disabledBgColor, UiConfiguration::instance->shortColorTranslateDuration);
+		borderColor.translate (disabledBorderColor, UiConfiguration::instance->shortColorTranslateDuration);
 	}
 	else if (isFocused) {
-		bgColor.translate (focusBgColor, uiconfig->shortColorTranslateDuration);
-		borderColor.translate (focusBorderColor, uiconfig->shortColorTranslateDuration);
+		bgColor.translate (focusBgColor, UiConfiguration::instance->shortColorTranslateDuration);
+		borderColor.translate (focusBorderColor, UiConfiguration::instance->shortColorTranslateDuration);
 	}
 	else {
-		bgColor.translate (normalBgColor, uiconfig->shortColorTranslateDuration);
-		borderColor.translate (normalBorderColor, uiconfig->shortColorTranslateDuration);
+		bgColor.translate (normalBgColor, UiConfiguration::instance->shortColorTranslateDuration);
+		borderColor.translate (normalBorderColor, UiConfiguration::instance->shortColorTranslateDuration);
 	}
 
 	x = 0.0f;
@@ -308,22 +293,22 @@ void ComboBox::refreshLayout () {
 			label->isVisible = false;
 		}
 		else {
-			label->setWindowWidth (maxTextWidth + (uiconfig->paddingSize * 2.0f), true);
+			label->setWindowWidth (maxTextWidth + (UiConfiguration::instance->paddingSize * 2.0f), true);
 			label->position.assign (x, y);
 			if (isDisabled) {
-				label->bgColor.translate (disabledBgColor, uiconfig->shortColorTranslateDuration);
-				label->borderColor.translate (disabledBorderColor, uiconfig->shortColorTranslateDuration);
-				label->translateTextColor (disabledTextColor, uiconfig->shortColorTranslateDuration);
+				label->bgColor.translate (disabledBgColor, UiConfiguration::instance->shortColorTranslateDuration);
+				label->borderColor.translate (disabledBorderColor, UiConfiguration::instance->shortColorTranslateDuration);
+				label->translateTextColor (disabledTextColor, UiConfiguration::instance->shortColorTranslateDuration);
 			}
 			else if (isFocused) {
-				label->bgColor.translate (focusBgColor, uiconfig->shortColorTranslateDuration);
-				label->borderColor.translate (focusBorderColor, uiconfig->shortColorTranslateDuration);
-				label->translateTextColor (focusItemTextColor, uiconfig->shortColorTranslateDuration);
+				label->bgColor.translate (focusBgColor, UiConfiguration::instance->shortColorTranslateDuration);
+				label->borderColor.translate (focusBorderColor, UiConfiguration::instance->shortColorTranslateDuration);
+				label->translateTextColor (focusItemTextColor, UiConfiguration::instance->shortColorTranslateDuration);
 			}
 			else {
-				label->bgColor.translate (normalBgColor, uiconfig->shortColorTranslateDuration);
-				label->borderColor.translate (normalBorderColor, uiconfig->shortColorTranslateDuration);
-				label->translateTextColor (normalItemTextColor, uiconfig->shortColorTranslateDuration);
+				label->bgColor.translate (normalBgColor, UiConfiguration::instance->shortColorTranslateDuration);
+				label->borderColor.translate (normalBorderColor, UiConfiguration::instance->shortColorTranslateDuration);
+				label->translateTextColor (normalItemTextColor, UiConfiguration::instance->shortColorTranslateDuration);
 			}
 			y += label->height;
 			label->isVisible = true;
@@ -350,7 +335,6 @@ bool ComboBox::doProcessMouseState (const Widget::MouseState &mouseState) {
 	if (isDisabled) {
 		return (false);
 	}
-
 	if (isExpanded) {
 		setFocused (false);
 		if (mouseState.isLeftClicked) {
@@ -362,8 +346,8 @@ bool ComboBox::doProcessMouseState (const Widget::MouseState &mouseState) {
 
 			scrollview = (ScrollView *) expandView.widget;
 			if ((! shouldunexpand) && scrollview) {
-				x = App::instance->input.mouseX;
-				y = App::instance->input.mouseY;
+				x = Input::instance->mouseX;
+				y = Input::instance->mouseY;
 				x1 = (int) scrollview->screenX;
 				y1 = (int) scrollview->screenY;
 				x2 = x1 + (int) scrollview->width;
@@ -384,12 +368,10 @@ bool ComboBox::doProcessMouseState (const Widget::MouseState &mouseState) {
 	if (mouseState.isEntered && mouseState.isLeftClicked) {
 		expand ();
 	}
-
 	return (false);
 }
 
 void ComboBox::expand () {
-	UiConfiguration *uiconfig;
 	std::list<ComboBox::Item>::iterator i, end;
 	ScrollView *scrollview;
 	ScrollBar *scrollbar;
@@ -405,16 +387,15 @@ void ComboBox::expand () {
 		return;
 	}
 
-	uiconfig = &(App::instance->uiConfig);
 	scrollview = new ScrollView ();
 	scrollview->setFillBg (true, normalBgColor);
 	scrollview->setBorder (true, normalBorderColor);
-	scrollview->setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
+	scrollview->setDropShadow (true, UiConfiguration::instance->dropShadowColor, UiConfiguration::instance->dropShadowWidth);
 
 	count = 0;
 	x = 0.0f;
 	y = 0.0f;
-	w = maxTextWidth + (uiconfig->paddingSize * 2.0f);
+	w = maxTextWidth + (UiConfiguration::instance->paddingSize * 2.0f);
 	h = 0.0f;
 	i = itemList.begin ();
 	end = itemList.end ();
@@ -424,9 +405,9 @@ void ComboBox::expand () {
 			label->mouseClickCallback = Widget::EventCallbackContext (ComboBox::expandItemClicked, this);
 			label->setFillBg (true, normalBgColor);
 			label->setWindowWidth (w);
-			label->setMouseoverHighlight (true, normalItemTextColor, normalBgColor, focusItemTextColor, focusBgColor, uiconfig->shortColorTranslateDuration);
+			label->setMouseoverHighlight (true, normalItemTextColor, normalBgColor, focusItemTextColor, focusBgColor, UiConfiguration::instance->shortColorTranslateDuration);
 			y += label->height;
-			if (count < uiconfig->comboBoxExpandViewItems) {
+			if (count < UiConfiguration::instance->comboBoxExpandViewItems) {
 				h = y;
 			}
 			++count;
@@ -437,7 +418,7 @@ void ComboBox::expand () {
 
 	scrollview->setViewSize (w, h);
 	scrollview->setVerticalScrollBounds (0.0f, y - h);
-	if (count > uiconfig->comboBoxExpandViewItems) {
+	if (count > UiConfiguration::instance->comboBoxExpandViewItems) {
 		scrollview->isMouseWheelScrollEnabled = true;
 		scrollbar = (ScrollBar *) scrollview->addWidget (new ScrollBar (h));
 		scrollbar->positionChangeCallback = Widget::EventCallbackContext (ComboBox::scrollBarPositionChanged, this);
@@ -457,7 +438,6 @@ void ComboBox::expand () {
 		y = screenY - scrollview->height;
 	}
 	App::instance->rootPanel->addWidget (scrollview, x, y, App::instance->rootPanel->maxWidgetZLevel + 1);
-
 	isExpanded = true;
 }
 
@@ -540,11 +520,10 @@ void ComboBox::setValue (LabelWindow *choiceLabel, bool shouldSkipChangeCallback
 		}
 		++i;
 	}
-
 	if (found) {
 		refreshLayout ();
-		if (valueChangeCallback.callback && (! shouldSkipChangeCallback)) {
-			valueChangeCallback.callback (valueChangeCallback.callbackData, this);
+		if (! shouldSkipChangeCallback) {
+			eventCallback (valueChangeCallback);
 		}
 	}
 }

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -97,6 +97,9 @@ public:
 	// Toggle the visible state of the help window
 	void toggleHelpWindow ();
 
+	// Toggle the visible state of the console window
+	void toggleConsoleWindow ();
+
 	// Show the provided panel as a dialog
 	void showDialog (Panel *dialog);
 
@@ -144,6 +147,12 @@ private:
 	// Reset toolbar content as appropriate for the active Ui item. This method should be invoked only while holding a lock on uiMutex.
 	void resetToolbars ();
 
+	// Remove and destroy overlay widgets
+	void clearOverlay ();
+
+	// Return a boolean value indicating if any active overlay widgets require the darkened background panel
+	bool isDarkenOverlayActive ();
+
 	std::list<Ui *> uiList;
 	Ui *activeUi;
 	SDL_mutex *uiMutex;
@@ -158,6 +167,7 @@ private:
 	WidgetHandle settingsWindow;
 	WidgetHandle helpWindow;
 	WidgetHandle dialogWindow;
+	WidgetHandle consoleWindow;
 	bool isUiInputSuspended;
 	int mouseHoverClock;
 	bool isMouseHoverActive;

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,7 +29,6 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
@@ -52,13 +51,9 @@ SliderWindow::SliderWindow (Slider *slider)
 , valueLabel (NULL)
 , valueNameFunction (NULL)
 {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::instance->uiConfig);
-
 	value = slider->value;
 	addWidget (slider);
-	valueLabel = (Label *) addWidget (new Label (StdString::createSprintf ("%.2f", slider->value), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	valueLabel = (Label *) addWidget (new Label (StdString::createSprintf ("%.2f", slider->value), UiConfiguration::CaptionFont, UiConfiguration::instance->lightPrimaryTextColor));
 
 	slider->valueChangeCallback = Widget::EventCallbackContext (SliderWindow::sliderValueChanged, this);
 	slider->valueHoverCallback = Widget::EventCallbackContext (SliderWindow::sliderValueHovered, this);
@@ -108,11 +103,9 @@ void SliderWindow::setIcon (Sprite *iconSprite) {
 }
 
 void SliderWindow::refreshLayout () {
-	UiConfiguration *uiconfig;
 	Color color;
 	float x, y, x2, y2;
 
-	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	x2 = 0.0f;
@@ -121,19 +114,19 @@ void SliderWindow::refreshLayout () {
 		iconImage->flowRight (&x, y, &x2, &y2);
 	}
 	valueLabel->flowRight (&x, y, &x2, &y2);
-	slider->position.assign (valueLabel->position.x, y + valueLabel->maxLineHeight + (uiconfig->marginSize / 2.0f));
+	slider->position.assign (valueLabel->position.x, y + valueLabel->maxLineHeight + (UiConfiguration::instance->marginSize / 2.0f));
 	resetSize ();
 	if (iconImage) {
 		iconImage->centerVertical (0.0f, height);
 	}
 
 	if (isDisabled) {
-		color.assign (isInverseColor ? uiconfig->darkInverseTextColor : uiconfig->lightPrimaryTextColor);
+		color.assign (isInverseColor ? UiConfiguration::instance->darkInverseTextColor : UiConfiguration::instance->lightPrimaryTextColor);
 	}
 	else {
-		color.assign (isInverseColor ? uiconfig->darkBackgroundColor : uiconfig->lightPrimaryColor);
+		color.assign (isInverseColor ? UiConfiguration::instance->darkBackgroundColor : UiConfiguration::instance->lightPrimaryColor);
 	}
-	valueLabel->textColor.translate (color, uiconfig->shortColorTranslateDuration);
+	valueLabel->textColor.translate (color, UiConfiguration::instance->shortColorTranslateDuration);
 }
 
 void SliderWindow::setValueNameFunction (SliderWindow::ValueNameFunction fn) {
@@ -182,10 +175,7 @@ void SliderWindow::sliderValueChanged (void *windowPtr, Widget *widgetPtr) {
 		window->valueLabel->setText (StdString::createSprintf ("%.2f", slider->value));
 	}
 	window->refreshLayout ();
-
-	if (window->valueChangeCallback.callback) {
-		window->valueChangeCallback.callback (window->valueChangeCallback.callbackData, window);
-	}
+	window->eventCallback (window->valueChangeCallback);
 }
 
 void SliderWindow::sliderValueHovered (void *windowPtr, Widget *widgetPtr) {

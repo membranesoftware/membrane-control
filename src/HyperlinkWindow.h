@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -41,10 +41,15 @@
 
 class HyperlinkWindow : public Panel {
 public:
-	HyperlinkWindow (const StdString &linkText = StdString (""), const StdString &linkUrl = StdString (""), int fontType = UiConfiguration::CaptionFont);
+	HyperlinkWindow (const StdString &linkText = StdString (""), const StdString &linkUrl = StdString (""), UiConfiguration::FontType fontType = UiConfiguration::CaptionFont);
 	virtual ~HyperlinkWindow ();
 
+	// Read-write data members
+	Widget::EventCallbackContext linkOpenCallback;
+
 	// Read-only data members
+	StdString url;
+	int linkOpenResult;
 	float maxLineHeight;
 
 	// Set the link's text and target URL
@@ -70,7 +75,6 @@ private:
 	static void windowMouseExited (void *windowPtr, Widget *widgetPtr);
 
 	Label *label;
-	StdString url;
 	float labelWidth;
 	float labelHeight;
 };

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -70,7 +70,6 @@ StdString MediaUtil::getAspectRatioDisplayString (float ratio) {
 	if (fabs (ratio - 3.0f) <= MediaUtil::AspectRatioMatchEpsilon) {
 		return (StdString ("3:1"));
 	}
-
 	return (StdString (""));
 }
 
@@ -78,11 +77,9 @@ StdString MediaUtil::getBitrateDisplayString (int64_t bitsPerSecond) {
 	if (bitsPerSecond <= 0) {
 		return (StdString ("0kbps"));
 	}
-
 	if (bitsPerSecond < 1024) {
 		return (StdString::createSprintf ("%ibps", (int) bitsPerSecond));
 	}
-
 	return (StdString::createSprintf ("%llikbps", (long long int) (bitsPerSecond / 1024)));
 }
 
@@ -141,50 +138,119 @@ StdString MediaUtil::getFrameSizeName (int width, int height) {
 	return (StdString (""));
 }
 
-StdString MediaUtil::getStreamProfileDescription (int streamProfile) {
-	UiText *uitext;
-
-	uitext = &(App::instance->uiText);
+StdString MediaUtil::getStreamProfileName (int streamProfile) {
 	switch (streamProfile) {
 		case SystemInterface::Constant_DefaultStreamProfile: {
-			return (uitext->getText (UiTextString::NormalVideoQualityDescription));
+			return (UiText::instance->getText (UiTextString::SourceMatchStreamProfileName));
 		}
 		case SystemInterface::Constant_CompressedStreamProfile: {
-			return (uitext->getText (UiTextString::CompressedVideoQualityDescription));
+			return (UiText::instance->getText (UiTextString::CompressedVideoQualityName));
 		}
 		case SystemInterface::Constant_LowQualityStreamProfile: {
-			return (uitext->getText (UiTextString::LowVideoQualityDescription));
+			return (UiText::instance->getText (UiTextString::LowVideoQualityName));
 		}
 		case SystemInterface::Constant_LowestQualityStreamProfile: {
-			return (uitext->getText (UiTextString::LowestVideoQualityDescription));
+			return (UiText::instance->getText (UiTextString::LowestVideoQualityName));
+		}
+		case SystemInterface::Constant_HighBitrateStreamProfile: {
+			return (UiText::instance->getText (UiTextString::HighBitrateStreamProfileName));
+		}
+		case SystemInterface::Constant_MediumBitrateStreamProfile: {
+			return (UiText::instance->getText (UiTextString::MediumBitrateStreamProfileName));
+		}
+		case SystemInterface::Constant_LowBitrateStreamProfile: {
+			return (UiText::instance->getText (UiTextString::LowBitrateStreamProfileName));
+		}
+		case SystemInterface::Constant_LowestBitrateStreamProfile: {
+			return (UiText::instance->getText (UiTextString::LowestBitrateStreamProfileName));
+		}
+		case SystemInterface::Constant_SourceMatchStreamProfile: {
+			return (UiText::instance->getText (UiTextString::SourceMatchStreamProfileName));
+		}
+		case SystemInterface::Constant_PreviewStreamProfile: {
+			return (UiText::instance->getText (UiTextString::PreviewStreamProfileName));
+		}
+		case SystemInterface::Constant_FastPreviewStreamProfile: {
+			return (UiText::instance->getText (UiTextString::FastPreviewStreamProfileName));
 		}
 	}
+	return (StdString (""));
+}
 
+StdString MediaUtil::getStreamProfileDescription (int streamProfile) {
+	switch (streamProfile) {
+		case SystemInterface::Constant_DefaultStreamProfile: {
+			return (UiText::instance->getText (UiTextString::SourceMatchStreamProfileDescription));
+		}
+		case SystemInterface::Constant_HighBitrateStreamProfile: {
+			return (UiText::instance->getText (UiTextString::HighBitrateStreamProfileDescription));
+		}
+		case SystemInterface::Constant_MediumBitrateStreamProfile: {
+			return (UiText::instance->getText (UiTextString::MediumBitrateStreamProfileDescription));
+		}
+		case SystemInterface::Constant_LowBitrateStreamProfile: {
+			return (UiText::instance->getText (UiTextString::LowBitrateStreamProfileDescription));
+		}
+		case SystemInterface::Constant_LowestBitrateStreamProfile: {
+			return (UiText::instance->getText (UiTextString::LowestBitrateStreamProfileDescription));
+		}
+		case SystemInterface::Constant_SourceMatchStreamProfile: {
+			return (UiText::instance->getText (UiTextString::SourceMatchStreamProfileDescription));
+		}
+		case SystemInterface::Constant_PreviewStreamProfile: {
+			return (UiText::instance->getText (UiTextString::PreviewStreamProfileDescription));
+		}
+		case SystemInterface::Constant_FastPreviewStreamProfile: {
+			return (UiText::instance->getText (UiTextString::FastPreviewStreamProfileDescription));
+		}
+	}
 	return (StdString (""));
 }
 
 int MediaUtil::getStreamProfile (const StdString &description) {
-	UiText *uitext;
-
-	uitext = &(App::instance->uiText);
-	if (description.equals (uitext->getText (UiTextString::CompressedVideoQualityDescription))) {
+	if (description.equals (UiText::instance->getText (UiTextString::HighBitrateStreamProfileName))) {
+		return (SystemInterface::Constant_HighBitrateStreamProfile);
+	}
+	if (description.equals (UiText::instance->getText (UiTextString::MediumBitrateStreamProfileName))) {
+		return (SystemInterface::Constant_MediumBitrateStreamProfile);
+	}
+	if (description.equals (UiText::instance->getText (UiTextString::LowBitrateStreamProfileName))) {
+		return (SystemInterface::Constant_LowBitrateStreamProfile);
+	}
+	if (description.equals (UiText::instance->getText (UiTextString::LowestBitrateStreamProfileName))) {
+		return (SystemInterface::Constant_LowestBitrateStreamProfile);
+	}
+	if (description.equals (UiText::instance->getText (UiTextString::SourceMatchStreamProfileName))) {
+		return (SystemInterface::Constant_SourceMatchStreamProfile);
+	}
+	if (description.equals (UiText::instance->getText (UiTextString::PreviewStreamProfileName))) {
+		return (SystemInterface::Constant_PreviewStreamProfile);
+	}
+	if (description.equals (UiText::instance->getText (UiTextString::FastPreviewStreamProfileName))) {
+		return (SystemInterface::Constant_FastPreviewStreamProfile);
+	}
+	if (description.equals (UiText::instance->getText (UiTextString::CompressedVideoQualityName))) {
 		return (SystemInterface::Constant_CompressedStreamProfile);
 	}
-	if (description.equals (uitext->getText (UiTextString::LowVideoQualityDescription))) {
+	if (description.equals (UiText::instance->getText (UiTextString::LowVideoQualityName))) {
 		return (SystemInterface::Constant_LowQualityStreamProfile);
 	}
-	if (description.equals (uitext->getText (UiTextString::LowestVideoQualityDescription))) {
+	if (description.equals (UiText::instance->getText (UiTextString::LowestVideoQualityName))) {
 		return (SystemInterface::Constant_LowestQualityStreamProfile);
 	}
-
 	return (SystemInterface::Constant_DefaultStreamProfile);
 }
 
-int64_t MediaUtil::getStreamSize (int64_t mediaSize, int streamProfile) {
+int64_t MediaUtil::getStreamSize (int64_t mediaSize, int64_t mediaBitrate, float mediaDuration, int streamProfile) {
+	const int64_t HighBitrate = 4096 * 1024;
+	const int64_t MediumBitrate = 2048 * 1024;
+	const int64_t LowBitrate = 1024 * 1024;
+	const int64_t LowestBitrate = 512 * 1024;
+	int64_t bitrate;
+
 	if (mediaSize <= 0) {
 		return (0);
 	}
-
 	switch (streamProfile) {
 		case SystemInterface::Constant_CompressedStreamProfile: {
 			return (mediaSize);
@@ -195,7 +261,33 @@ int64_t MediaUtil::getStreamSize (int64_t mediaSize, int streamProfile) {
 		case SystemInterface::Constant_LowestQualityStreamProfile: {
 			return (mediaSize / 2);
 		}
+		case SystemInterface::Constant_SourceMatchStreamProfile: {
+			return (mediaSize * 2);
+		}
+		case SystemInterface::Constant_HighBitrateStreamProfile: {
+			bitrate = (mediaBitrate < HighBitrate) ? mediaBitrate : HighBitrate;
+			return ((int64_t) ((mediaDuration / 1000.0f) * ((float) bitrate) / 8.0f * 2.0f));
+		}
+		case SystemInterface::Constant_MediumBitrateStreamProfile: {
+			bitrate = (mediaBitrate < MediumBitrate) ? mediaBitrate : MediumBitrate;
+			return ((int64_t) ((mediaDuration / 1000.0f) * ((float) bitrate) / 8.0f * 2.0f));
+		}
+		case SystemInterface::Constant_LowBitrateStreamProfile: {
+			bitrate = (mediaBitrate < LowBitrate) ? mediaBitrate : LowBitrate;
+			return ((int64_t) ((mediaDuration / 1000.0f) * ((float) bitrate) / 8.0f * 2.0f));
+		}
+		case SystemInterface::Constant_LowestBitrateStreamProfile: {
+			bitrate = (mediaBitrate < LowestBitrate) ? mediaBitrate : LowestBitrate;
+			return ((int64_t) ((mediaDuration / 1000.0f) * ((float) bitrate) / 8.0f * 2.0f));
+		}
+		case SystemInterface::Constant_PreviewStreamProfile: {
+			bitrate = (mediaBitrate < LowestBitrate) ? mediaBitrate : LowestBitrate;
+			return ((int64_t) ((mediaDuration / 1000.0f) * ((float) bitrate) / 8.0f * 2.0f));
+		}
+		case SystemInterface::Constant_FastPreviewStreamProfile: {
+			bitrate = (mediaBitrate < LowestBitrate) ? mediaBitrate : LowestBitrate;
+			return ((int64_t) ((mediaDuration / 1000.0f) * ((float) bitrate) / 8.0f * 2.0f));
+		}
 	}
-
 	return (mediaSize * 2);
 }

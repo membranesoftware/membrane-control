@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -67,11 +67,12 @@ public:
   static const char *Command_EndSet;
   static const char *Command_FindCaptureImages;
   static const char *Command_FindCaptureImagesResult;
-  static const char *Command_FindItems;
-  static const char *Command_FindMediaResult;
+  static const char *Command_FindMediaItems;
+  static const char *Command_FindMediaItemsResult;
   static const char *Command_FindMediaStreams;
   static const char *Command_FindMediaStreamsResult;
-  static const char *Command_FindStreamsResult;
+  static const char *Command_FindStreamItems;
+  static const char *Command_FindStreamItemsResult;
   static const char *Command_GetAgentConfiguration;
   static const char *Command_GetCameraStream;
   static const char *Command_GetCameraStreamResult;
@@ -106,6 +107,7 @@ public:
   static const char *Command_SetIntentActive;
   static const char *Command_ShowAgentStatus;
   static const char *Command_ShowCameraImage;
+  static const char *Command_ShowDesktopCountdown;
   static const char *Command_ShowWebUrl;
   static const char *Command_ShutdownAgent;
   static const char *Command_StartServers;
@@ -118,7 +120,6 @@ public:
   static const char *Command_TimelapseCaptureIntentState;
   static const char *Command_UpdateAgentConfiguration;
   static const char *Command_UpdateIntentState;
-  static const char *Command_WatchEvents;
   static const char *Command_WatchStatus;
   static const char *Command_WatchTasks;
   static const char *Command_WebDisplayIntentState;
@@ -149,11 +150,12 @@ public:
   static const int CommandId_EndSet = 21;
   static const int CommandId_FindCaptureImages = 74;
   static const int CommandId_FindCaptureImagesResult = 75;
-  static const int CommandId_FindItems = 3;
-  static const int CommandId_FindMediaResult = 48;
+  static const int CommandId_FindMediaItems = 3;
+  static const int CommandId_FindMediaItemsResult = 48;
   static const int CommandId_FindMediaStreams = 78;
   static const int CommandId_FindMediaStreamsResult = 79;
-  static const int CommandId_FindStreamsResult = 4;
+  static const int CommandId_FindStreamItems = 211;
+  static const int CommandId_FindStreamItemsResult = 4;
   static const int CommandId_GetAgentConfiguration = 44;
   static const int CommandId_GetCameraStream = 100;
   static const int CommandId_GetCameraStreamResult = 101;
@@ -188,6 +190,7 @@ public:
   static const int CommandId_SetIntentActive = 38;
   static const int CommandId_ShowAgentStatus = 41;
   static const int CommandId_ShowCameraImage = 105;
+  static const int CommandId_ShowDesktopCountdown = 218;
   static const int CommandId_ShowWebUrl = 34;
   static const int CommandId_ShutdownAgent = 43;
   static const int CommandId_StartServers = 47;
@@ -200,7 +203,6 @@ public:
   static const int CommandId_TimelapseCaptureIntentState = 71;
   static const int CommandId_UpdateAgentConfiguration = 42;
   static const int CommandId_UpdateIntentState = 39;
-  static const int CommandId_WatchEvents = 27;
   static const int CommandId_WatchStatus = 82;
   static const int CommandId_WatchTasks = 7;
   static const int CommandId_WebDisplayIntentState = 49;
@@ -214,57 +216,56 @@ public:
   static const int ParamFlag_RangedNumber = 128;
   static const int ParamFlag_Command = 256;
   static const int ParamFlag_EnumValue = 512;
-  static const int Constant_MaxCommandPriority = 100;
-  static const char *Constant_CreateTimePrefixField;
   static const char *Constant_AgentIdPrefixField;
-  static const char *Constant_UserIdPrefixField;
-  static const char *Constant_PriorityPrefixField;
-  static const char *Constant_StartTimePrefixField;
-  static const char *Constant_DurationPrefixField;
+  static const char *Constant_AuthorizationHashAlgorithm;
   static const char *Constant_AuthorizationHashPrefixField;
   static const char *Constant_AuthorizationTokenPrefixField;
-  static const char *Constant_AuthorizationHashAlgorithm;
-  static const char *Constant_WebSocketEvent;
-  static const char *Constant_UrlQueryParameter;
+  static const int Constant_CompressedStreamProfile = 1;
+  static const char *Constant_CreateTimePrefixField;
+  static const char *Constant_DefaultAuthorizePath;
+  static const int Constant_DefaultDisplayState = 0;
+  static const int Constant_DefaultImageProfile = 0;
+  static const char *Constant_DefaultInvokePath;
+  static const char *Constant_DefaultLinkPath;
+  static const int Constant_DefaultSortOrder = 0;
+  static const int Constant_DefaultStreamProfile = 0;
   static const int Constant_DefaultTcpPort1 = 63738;
   static const int Constant_DefaultTcpPort2 = 63739;
   static const int Constant_DefaultUdpPort = 63738;
-  static const char *Constant_DefaultInvokePath;
-  static const char *Constant_DefaultAuthorizePath;
-  static const char *Constant_DefaultLinkPath;
-  static const int Constant_DefaultCommandType = 0;
-  static const int Constant_Stream = 1;
-  static const int Constant_Media = 2;
-  static const int Constant_Monitor = 3;
-  static const int Constant_Event = 4;
-  static const int Constant_Master = 5;
-  static const int Constant_Admin = 6;
-  static const int Constant_Camera = 7;
-  static const int Constant_CommandTypeCount = 8;
-  static const int Constant_DefaultDisplayState = 0;
-  static const int Constant_ShowUrlDisplayState = 1;
-  static const int Constant_PlayMediaDisplayState = 2;
-  static const int Constant_ShowImageDisplayState = 3;
-  static const int Constant_PlayCameraStreamDisplayState = 4;
-  static const int Constant_DefaultSortOrder = 0;
+  static const char *Constant_DisplayCondition;
+  static const char *Constant_DurationPrefixField;
+  static const int Constant_FastPreviewStreamProfile = 10;
+  static const int Constant_HighBitrateStreamProfile = 4;
+  static const int Constant_HighQualityImageProfile = 1;
+  static const int Constant_HorizontalAndVerticalFlip = 3;
+  static const int Constant_HorizontalFlip = 1;
+  static const int Constant_LowBitrateStreamProfile = 6;
+  static const int Constant_LowQualityImageProfile = 2;
+  static const int Constant_LowQualityStreamProfile = 2;
+  static const int Constant_LowestBitrateStreamProfile = 7;
+  static const int Constant_LowestQualityImageProfile = 3;
+  static const int Constant_LowestQualityStreamProfile = 3;
+  static const int Constant_MaxCommandPriority = 100;
+  static const int Constant_MediumBitrateStreamProfile = 5;
   static const int Constant_NameSort = 0;
   static const int Constant_NewestSort = 1;
-  static const int Constant_DefaultStreamProfile = 0;
-  static const int Constant_CompressedStreamProfile = 1;
-  static const int Constant_LowQualityStreamProfile = 2;
-  static const int Constant_LowestQualityStreamProfile = 3;
-  static const int Constant_DefaultImageProfile = 0;
-  static const int Constant_HighQualityImageProfile = 1;
-  static const int Constant_LowQualityImageProfile = 2;
-  static const int Constant_LowestQualityImageProfile = 3;
   static const int Constant_NoFlip = 0;
-  static const int Constant_HorizontalFlip = 1;
+  static const int Constant_PlayCameraStreamDisplayState = 4;
+  static const int Constant_PlayMediaDisplayState = 2;
+  static const int Constant_PreviewStreamProfile = 9;
+  static const char *Constant_PriorityPrefixField;
+  static const int Constant_ShowImageDisplayState = 3;
+  static const int Constant_ShowUrlDisplayState = 1;
+  static const int Constant_SourceMatchStreamProfile = 8;
+  static const char *Constant_StartTimePrefixField;
+  static const char *Constant_UrlQueryParameter;
+  static const char *Constant_UserIdPrefixField;
   static const int Constant_VerticalFlip = 2;
-  static const int Constant_HorizontalAndVerticalFlip = 3;
-  static const char *Constant_DisplayCondition;
+  static const char *Constant_WebSocketEvent;
   void populate ();
 	SystemInterface ();
 	~SystemInterface ();
+	static SystemInterface *instance;
 
 	struct Prefix {
 		StdString agentId;
@@ -308,7 +309,7 @@ public:
 	std::map<StdString, SystemInterface::HashFieldsFunction> hashFieldsMap;
 
 	// Return a newly created Json object containing a command item, or NULL if the command could not be created. commandParams can be NULL if not needed, causing the resulting command to contain empty parameter fields. If commandParams is not NULL, this method becomes responsible for freeing the object when it's no longer needed.
-	Json *createCommand (const SystemInterface::Prefix &prefix, const char *commandName, int commandType, Json *commandParams);
+	Json *createCommand (const SystemInterface::Prefix &prefix, const char *commandName, Json *commandParams = NULL);
 
 	// Populate a command's authorization prefix field using the provided values and hash functions. Returns a boolean value indicating if the field was successfully generated.
 	bool setCommandAuthorization (Json *command, const StdString &authSecret, const StdString &authToken, SystemInterface::HashUpdateFunction hashUpdateFn, SystemInterface::HashDigestFunction hashDigestFn, void *hashContextPtr);
@@ -345,15 +346,6 @@ public:
 
 	// Return the params.id value appearing in the provided command object, or an empty string if no such value was found
 	StdString getCommandRecordId (Json *command);
-
-	// Return the agent name value appearing in the provided AgentStatus command object, or an empty string if no such value was found
-	StdString getCommandAgentName (Json *command);
-
-	// Return the agent address value appearing in the provided AgentStatus command object, or an empty string if no such value was found
-	StdString getCommandAgentAddress (Json *command);
-
-	// Return a boolean value indicating if the provided command object is a record that holds the closed state
-	bool isRecordClosed (Json *command);
 
 	// Return a boolean value indicating if the provided string matches a Windows platform identifier
 	bool isWindowsPlatform (const StdString &platform);
@@ -440,11 +432,12 @@ public:
   static void getParams_EmptyObject (std::list<SystemInterface::Param> *destList);
   static void getParams_FindCaptureImages (std::list<SystemInterface::Param> *destList);
   static void getParams_FindCaptureImagesResult (std::list<SystemInterface::Param> *destList);
-  static void getParams_FindItems (std::list<SystemInterface::Param> *destList);
-  static void getParams_FindMediaResult (std::list<SystemInterface::Param> *destList);
+  static void getParams_FindMediaItems (std::list<SystemInterface::Param> *destList);
+  static void getParams_FindMediaItemsResult (std::list<SystemInterface::Param> *destList);
   static void getParams_FindMediaStreams (std::list<SystemInterface::Param> *destList);
   static void getParams_FindMediaStreamsResult (std::list<SystemInterface::Param> *destList);
-  static void getParams_FindStreamsResult (std::list<SystemInterface::Param> *destList);
+  static void getParams_FindStreamItems (std::list<SystemInterface::Param> *destList);
+  static void getParams_FindStreamItemsResult (std::list<SystemInterface::Param> *destList);
   static void getParams_GetCameraStream (std::list<SystemInterface::Param> *destList);
   static void getParams_GetCameraStreamResult (std::list<SystemInterface::Param> *destList);
   static void getParams_GetCaptureImage (std::list<SystemInterface::Param> *destList);
@@ -479,6 +472,7 @@ public:
   static void getParams_SetIntentActive (std::list<SystemInterface::Param> *destList);
   static void getParams_ShowAgentStatus (std::list<SystemInterface::Param> *destList);
   static void getParams_ShowCameraImage (std::list<SystemInterface::Param> *destList);
+  static void getParams_ShowDesktopCountdown (std::list<SystemInterface::Param> *destList);
   static void getParams_ShowWebUrl (std::list<SystemInterface::Param> *destList);
   static void getParams_StreamCacheDisplayIntentState (std::list<SystemInterface::Param> *destList);
   static void getParams_StreamItem (std::list<SystemInterface::Param> *destList);
@@ -489,7 +483,6 @@ public:
   static void getParams_TimelapseCaptureIntentState (std::list<SystemInterface::Param> *destList);
   static void getParams_UpdateAgentConfiguration (std::list<SystemInterface::Param> *destList);
   static void getParams_UpdateIntentState (std::list<SystemInterface::Param> *destList);
-  static void getParams_WatchEvents (std::list<SystemInterface::Param> *destList);
   static void getParams_WatchTasks (std::list<SystemInterface::Param> *destList);
   static void getParams_WebDisplayIntentState (std::list<SystemInterface::Param> *destList);
   static void populateDefaultFields_AgentConfiguration (Json *destObject);
@@ -518,11 +511,12 @@ public:
   static void populateDefaultFields_EmptyObject (Json *destObject);
   static void populateDefaultFields_FindCaptureImages (Json *destObject);
   static void populateDefaultFields_FindCaptureImagesResult (Json *destObject);
-  static void populateDefaultFields_FindItems (Json *destObject);
-  static void populateDefaultFields_FindMediaResult (Json *destObject);
+  static void populateDefaultFields_FindMediaItems (Json *destObject);
+  static void populateDefaultFields_FindMediaItemsResult (Json *destObject);
   static void populateDefaultFields_FindMediaStreams (Json *destObject);
   static void populateDefaultFields_FindMediaStreamsResult (Json *destObject);
-  static void populateDefaultFields_FindStreamsResult (Json *destObject);
+  static void populateDefaultFields_FindStreamItems (Json *destObject);
+  static void populateDefaultFields_FindStreamItemsResult (Json *destObject);
   static void populateDefaultFields_GetCameraStream (Json *destObject);
   static void populateDefaultFields_GetCameraStreamResult (Json *destObject);
   static void populateDefaultFields_GetCaptureImage (Json *destObject);
@@ -557,6 +551,7 @@ public:
   static void populateDefaultFields_SetIntentActive (Json *destObject);
   static void populateDefaultFields_ShowAgentStatus (Json *destObject);
   static void populateDefaultFields_ShowCameraImage (Json *destObject);
+  static void populateDefaultFields_ShowDesktopCountdown (Json *destObject);
   static void populateDefaultFields_ShowWebUrl (Json *destObject);
   static void populateDefaultFields_StreamCacheDisplayIntentState (Json *destObject);
   static void populateDefaultFields_StreamItem (Json *destObject);
@@ -567,7 +562,6 @@ public:
   static void populateDefaultFields_TimelapseCaptureIntentState (Json *destObject);
   static void populateDefaultFields_UpdateAgentConfiguration (Json *destObject);
   static void populateDefaultFields_UpdateIntentState (Json *destObject);
-  static void populateDefaultFields_WatchEvents (Json *destObject);
   static void populateDefaultFields_WatchTasks (Json *destObject);
   static void populateDefaultFields_WebDisplayIntentState (Json *destObject);
   static void hashFields_AgentConfiguration (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
@@ -596,11 +590,12 @@ public:
   static void hashFields_EmptyObject (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_FindCaptureImages (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_FindCaptureImagesResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
-  static void hashFields_FindItems (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
-  static void hashFields_FindMediaResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_FindMediaItems (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_FindMediaItemsResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_FindMediaStreams (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_FindMediaStreamsResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
-  static void hashFields_FindStreamsResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_FindStreamItems (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_FindStreamItemsResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_GetCameraStream (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_GetCameraStreamResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_GetCaptureImage (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
@@ -635,6 +630,7 @@ public:
   static void hashFields_SetIntentActive (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_ShowAgentStatus (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_ShowCameraImage (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_ShowDesktopCountdown (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_ShowWebUrl (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_StreamCacheDisplayIntentState (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_StreamItem (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
@@ -645,7 +641,6 @@ public:
   static void hashFields_TimelapseCaptureIntentState (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_UpdateAgentConfiguration (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_UpdateIntentState (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
-  static void hashFields_WatchEvents (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_WatchTasks (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_WebDisplayIntentState (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
 };

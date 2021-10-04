@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,7 +29,6 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
@@ -37,7 +36,7 @@
 #include "Widget.h"
 #include "Panel.h"
 #include "Label.h"
-#include "TextArea.h"
+#include "TextFlow.h"
 #include "Image.h"
 #include "UiConfiguration.h"
 #include "HyperlinkWindow.h"
@@ -51,19 +50,16 @@ IconCardWindow::IconCardWindow (Sprite *iconSprite, const StdString &cardName, c
 , detailText (NULL)
 , linkWindow (NULL)
 {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::instance->uiConfig);
-	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	setFillBg (true, uiconfig->mediumBackgroundColor);
+	setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
+	setFillBg (true, UiConfiguration::instance->mediumBackgroundColor);
 
 	iconImage = (Image *) addWidget (new Image (iconSprite));
-	nameLabel = (Label *) addWidget (new Label (cardName, UiConfiguration::HeadlineFont, uiconfig->primaryTextColor));
+	nameLabel = (Label *) addWidget (new Label (cardName, UiConfiguration::HeadlineFont, UiConfiguration::instance->primaryTextColor));
 	if (! cardSubtitle.empty ()) {
-		subtitleLabel = (Label *) addWidget (new Label (cardSubtitle, UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
+		subtitleLabel = (Label *) addWidget (new Label (cardSubtitle, UiConfiguration::CaptionFont, UiConfiguration::instance->primaryTextColor));
 	}
 	if (! cardDetailText.empty ()) {
-		detailText = (TextArea *) addWidget (new TextArea (UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
+		detailText = (TextFlow *) addWidget (new TextFlow (UiConfiguration::instance->textFieldMediumLineLength * UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, UiConfiguration::CaptionFont));
 		detailText->setText (cardDetailText);
 	}
 
@@ -79,9 +75,6 @@ StdString IconCardWindow::toStringDetail () {
 }
 
 void IconCardWindow::setDetailText (const StdString &text) {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::instance->uiConfig);
 	if (text.empty ()) {
 		if (detailText) {
 			detailText->isDestroyed = true;
@@ -91,7 +84,7 @@ void IconCardWindow::setDetailText (const StdString &text) {
 	}
 	else {
 		if (! detailText) {
-			detailText = (TextArea *) addWidget (new TextArea (UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
+			detailText = (TextFlow *) addWidget (new TextFlow (UiConfiguration::instance->textFieldMediumLineLength * UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, UiConfiguration::CaptionFont));
 		}
 		detailText->setText (text);
 		refreshLayout ();
@@ -103,31 +96,30 @@ void IconCardWindow::setLink (const StdString &text, const StdString &url) {
 		linkWindow->isDestroyed = true;
 	}
 	linkWindow = (HyperlinkWindow *) addWidget (new HyperlinkWindow (text, url));
+	linkWindow->linkOpenCallback = Widget::EventCallbackContext (App::hyperlinkOpened, this);
 	refreshLayout ();
 }
 
 void IconCardWindow::refreshLayout () {
-	UiConfiguration *uiconfig;
 	float x, y, ymin;
 
-	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	ymin = 0.0f;
 
 	iconImage->position.assign (x, y);
-	x += iconImage->width + uiconfig->marginSize;
-	ymin = y + iconImage->height + uiconfig->marginSize;
+	x += iconImage->width + UiConfiguration::instance->marginSize;
+	ymin = y + iconImage->height + UiConfiguration::instance->marginSize;
 
 	if (subtitleLabel) {
 		nameLabel->position.assign (x, y);
-		y += nameLabel->maxLineHeight + uiconfig->textLineHeightMargin;
+		y += nameLabel->maxLineHeight + UiConfiguration::instance->textLineHeightMargin;
 		subtitleLabel->position.assign (x, y);
 		y += subtitleLabel->maxLineHeight;
 	}
 	else {
 		nameLabel->position.assign (x, y + (iconImage->height / 2.0f) - (nameLabel->maxLineHeight / 2.0f));
-		y += nameLabel->maxLineHeight + uiconfig->textLineHeightMargin;
+		y += nameLabel->maxLineHeight + UiConfiguration::instance->textLineHeightMargin;
 	}
 
 	if (y < ymin) {
@@ -137,11 +129,11 @@ void IconCardWindow::refreshLayout () {
 	x = widthPadding;
 	if (detailText) {
 		detailText->position.assign (x, y);
-		y += detailText->height + uiconfig->marginSize;
+		y += detailText->height + UiConfiguration::instance->marginSize;
 	}
 	if (linkWindow) {
 		linkWindow->position.assign (x, y);
-		y += linkWindow->height + uiconfig->marginSize;
+		y += linkWindow->height + UiConfiguration::instance->marginSize;
 	}
 
 	resetSize ();
@@ -149,6 +141,6 @@ void IconCardWindow::refreshLayout () {
 	x = width - widthPadding;
 	if (linkWindow) {
 		linkWindow->position.assignX (x - linkWindow->width);
-		x -= (linkWindow->width + uiconfig->marginSize);
+		x -= (linkWindow->width + UiConfiguration::instance->marginSize);
 	}
 }

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,9 +29,8 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include "Result.h"
-#include "StdString.h"
 #include "App.h"
+#include "StdString.h"
 #include "UiText.h"
 #include "UiConfiguration.h"
 #include "OsUtil.h"
@@ -48,14 +47,11 @@ LogoWindow::LogoWindow ()
 , timeLabel (NULL)
 , lastDisplayTime (0)
 {
-	UiConfiguration *uiconfig;
+	logoImage = (Image *) addWidget (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::AppLogoSprite)));
+	logoImage->setDrawColor (true, UiConfiguration::instance->mediumSecondaryColor);
 
-	uiconfig = &(App::instance->uiConfig);
-	logoImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::AppLogoSprite)));
-	logoImage->setDrawColor (true, uiconfig->mediumSecondaryColor);
-
-	dateLabel = (Label *) addWidget (new Label (OsUtil::getDateString (), UiConfiguration::CaptionFont, uiconfig->inverseTextColor));
-	timeLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->inverseTextColor));
+	dateLabel = (Label *) addWidget (new Label (OsUtil::getDateString (), UiConfiguration::CaptionFont, UiConfiguration::instance->inverseTextColor));
+	timeLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->inverseTextColor));
 	timeLabel->setText (OsUtil::getTimeString ());
 	if (! App::instance->isMainToolbarClockEnabled) {
 		dateLabel->isVisible = false;
@@ -89,19 +85,17 @@ void LogoWindow::doRefresh () {
 }
 
 void LogoWindow::refreshLayout () {
-	UiConfiguration *uiconfig;
 	float x, y;
 
-	uiconfig = &(App::instance->uiConfig);
 	x = 0.0f;
 	y = 0.0f;
 	logoImage->position.assign (x, y);
-	x += logoImage->width + uiconfig->marginSize;
+	x += logoImage->width + UiConfiguration::instance->marginSize;
 
 	if (dateLabel->isVisible) {
-		y += (uiconfig->textLineHeightMargin * 2.0f);
+		y += (UiConfiguration::instance->textLineHeightMargin * 2.0f);
 		dateLabel->position.assign (x, dateLabel->getLinePosition (y));
-		y += dateLabel->maxLineHeight + uiconfig->textLineHeightMargin;
+		y += dateLabel->maxLineHeight + UiConfiguration::instance->textLineHeightMargin;
 	}
 	if (timeLabel->isVisible) {
 		timeLabel->position.assign (x, timeLabel->getLinePosition (y));

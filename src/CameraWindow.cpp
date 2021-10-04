@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,16 +29,17 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include "Result.h"
+#include "App.h"
 #include "ClassId.h"
 #include "Log.h"
 #include "StdString.h"
-#include "App.h"
 #include "UiConfiguration.h"
 #include "UiText.h"
 #include "OsUtil.h"
 #include "Widget.h"
 #include "SystemInterface.h"
+#include "RecordStore.h"
+#include "Agent.h"
 #include "Color.h"
 #include "Image.h"
 #include "Sprite.h"
@@ -71,67 +72,63 @@ CameraWindow::CameraWindow (const StdString &agentId, SpriteGroup *cameraUiSprit
 , selectToggle (NULL)
 , expandToggle (NULL)
 {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
-
 	classId = ClassId::CameraWindow;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-	setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
-	setCornerRadius (uiconfig->cornerRadius);
-  setFillBg (true, uiconfig->mediumBackgroundColor);
 
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeCameraIconSprite)));
-	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::BodyFont, uiconfig->primaryTextColor));
+	setPadding (UiConfiguration::instance->paddingSize / 2.0f, UiConfiguration::instance->paddingSize / 2.0f);
+	setCornerRadius (UiConfiguration::instance->cornerRadius);
+	setFillBg (true, UiConfiguration::instance->mediumBackgroundColor);
 
-	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	iconImage = (Image *) addWidget (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeCameraIconSprite)));
+	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::BodyFont, UiConfiguration::instance->primaryTextColor));
+
+	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->lightPrimaryTextColor));
 	descriptionLabel->isVisible = false;
 
 	dividerPanel = (Panel *) addWidget (new Panel ());
-	dividerPanel->setFillBg (true, uiconfig->dividerColor);
-	dividerPanel->setFixedSize (true, 1.0f, uiconfig->headlineDividerLineWidth);
+	dividerPanel->setFillBg (true, UiConfiguration::instance->dividerColor);
+	dividerPanel->setFixedSize (true, 1.0f, UiConfiguration::instance->headlineDividerLineWidth);
 	dividerPanel->isPanelSizeClipEnabled = true;
 	dividerPanel->isVisible = false;
 
-	statusIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::InactiveStateIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	statusIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::InactiveStateIconSprite), StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->lightPrimaryTextColor));
 	statusIcon->setPadding (0.0f, 0.0f);
-	statusIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
-	statusIcon->setMouseHoverTooltip (uitext->getText (UiTextString::CameraActivityIconTooltip));
+	statusIcon->setTextChangeHighlight (true, UiConfiguration::instance->primaryTextColor);
+	statusIcon->setMouseHoverTooltip (UiText::instance->getText (UiTextString::CameraActivityIconTooltip));
 	statusIcon->isVisible = false;
 
-	storageIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::StorageIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	storageIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::StorageIconSprite), StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->lightPrimaryTextColor));
 	storageIcon->setPadding (0.0f, 0.0f);
-	storageIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
-	storageIcon->setMouseHoverTooltip (uitext->getText (UiTextString::StorageTooltip));
+	storageIcon->setTextChangeHighlight (true, UiConfiguration::instance->primaryTextColor);
+	storageIcon->setMouseHoverTooltip (UiText::instance->getText (UiTextString::StorageTooltip));
 	storageIcon->isVisible = false;
 
-	imageQualityIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (CameraUi::ImageQualityIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	imageQualityIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (CameraUi::ImageQualityIconSprite), StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->lightPrimaryTextColor));
 	imageQualityIcon->setPadding (0.0f, 0.0f);
-	imageQualityIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
-	imageQualityIcon->setMouseHoverTooltip (uitext->getText (UiTextString::CaptureQuality).capitalized ());
+	imageQualityIcon->setTextChangeHighlight (true, UiConfiguration::instance->primaryTextColor);
+	imageQualityIcon->setMouseHoverTooltip (UiText::instance->getText (UiTextString::CaptureQuality).capitalized ());
 	imageQualityIcon->isVisible = false;
 
-	capturePeriodIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (CameraUi::CapturePeriodIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	capturePeriodIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (CameraUi::CapturePeriodIconSprite), StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->lightPrimaryTextColor));
 	capturePeriodIcon->setPadding (0.0f, 0.0f);
-	capturePeriodIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
-	capturePeriodIcon->setMouseHoverTooltip (uitext->getText (UiTextString::CapturePeriod).capitalized ());
+	capturePeriodIcon->setTextChangeHighlight (true, UiConfiguration::instance->primaryTextColor);
+	capturePeriodIcon->setMouseHoverTooltip (UiText::instance->getText (UiTextString::CapturePeriod).capitalized ());
 	capturePeriodIcon->isVisible = false;
 
-	flipIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (CameraUi::FlipIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	flipIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (CameraUi::FlipIconSprite), StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->lightPrimaryTextColor));
 	flipIcon->setPadding (0.0f, 0.0f);
-	flipIcon->setTextChangeHighlight (true, uiconfig->primaryTextColor);
-	flipIcon->setMouseHoverTooltip (uitext->getText (UiTextString::ImageFlip).capitalized ());
+	flipIcon->setTextChangeHighlight (true, UiConfiguration::instance->primaryTextColor);
+	flipIcon->setMouseHoverTooltip (UiText::instance->getText (UiTextString::ImageFlip).capitalized ());
 	flipIcon->isVisible = false;
 
-	selectToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::StarOutlineButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::StarButtonSprite)));
+	selectToggle = (Toggle *) addWidget (new Toggle (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::StarOutlineButtonSprite), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::StarButtonSprite)));
 	selectToggle->stateChangeCallback = Widget::EventCallbackContext (CameraWindow::selectToggleStateChanged, this);
-	selectToggle->setImageColor (uiconfig->flatButtonTextColor);
-	selectToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::UnselectedToggleTooltip), uitext->getText (UiTextString::SelectedToggleTooltip));
+	selectToggle->setImageColor (UiConfiguration::instance->flatButtonTextColor);
+	selectToggle->setStateMouseHoverTooltips (UiText::instance->getText (UiTextString::UnselectedToggleTooltip), UiText::instance->getText (UiTextString::SelectedToggleTooltip));
 
-	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
+	expandToggle = (Toggle *) addWidget (new Toggle (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
 	expandToggle->stateChangeCallback = Widget::EventCallbackContext (CameraWindow::expandToggleStateChanged, this);
-	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
-	expandToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::Expand).capitalized (), uitext->getText (UiTextString::Minimize).capitalized ());
+	expandToggle->setImageColor (UiConfiguration::instance->flatButtonTextColor);
+	expandToggle->setStateMouseHoverTooltips (UiText::instance->getText (UiTextString::Expand).capitalized (), UiText::instance->getText (UiTextString::Minimize).capitalized ());
 
 	refreshLayout ();
 }
@@ -153,10 +150,8 @@ CameraWindow *CameraWindow::castWidget (Widget *widget) {
 }
 
 void CameraWindow::refreshLayout () {
-	UiConfiguration *uiconfig;
 	float x, y, x0, y0, x2, y2;
 
-	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	x0 = x;
@@ -170,7 +165,7 @@ void CameraWindow::refreshLayout () {
 		descriptionLabel->flowRight (&x, y, &x2, &y2);
 	}
 
-	x = x2 + uiconfig->marginSize;
+	x = x2 + UiConfiguration::instance->marginSize;
 	y = y0;
 	expandToggle->flowRight (&x, y, &x2, &y2);
 	selectToggle->flowDown (x, &y, &x2, &y2);
@@ -179,7 +174,7 @@ void CameraWindow::refreshLayout () {
 	}
 
 	x = x0;
-	y = y2 + uiconfig->marginSize;
+	y = y2 + UiConfiguration::instance->marginSize;
 	x2 = 0.0f;
 	if (statusIcon->isVisible) {
 		statusIcon->flowDown (x, &y, &x2, &y2);
@@ -200,7 +195,7 @@ void CameraWindow::refreshLayout () {
 	resetSize ();
 
 	if (dividerPanel->isVisible) {
-		dividerPanel->setFixedSize (true, width, uiconfig->headlineDividerLineWidth);
+		dividerPanel->setFixedSize (true, width, UiConfiguration::instance->headlineDividerLineWidth);
 	}
 
 	x = width - widthPadding;
@@ -214,38 +209,30 @@ void CameraWindow::resetNameLabel () {
 	w = App::instance->windowWidth;
 	if (isExpanded) {
 		w *= CameraWindow::ExpandedTextTruncateScale;
-		nameLabel->setText (Label::getTruncatedText (agentName, UiConfiguration::HeadlineFont, w, Label::DotTruncateSuffix));
+		nameLabel->setText (UiConfiguration::instance->fonts[UiConfiguration::HeadlineFont]->truncatedText (agentName, w, Font::DotTruncateSuffix));
 	}
 	else {
 		w *= CameraWindow::UnexpandedTextTruncateScale;
-		nameLabel->setText (Label::getTruncatedText (agentName, UiConfiguration::BodyFont, w, Label::DotTruncateSuffix));
+		nameLabel->setText (UiConfiguration::instance->fonts[UiConfiguration::BodyFont]->truncatedText (agentName, w, Font::DotTruncateSuffix));
 	}
 	refreshLayout ();
 }
 
 void CameraWindow::syncRecordStore () {
-	RecordStore *store;
-	SystemInterface *interface;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	Json *record, serverstatus;
 	StdString videomonitor;
 	int captureperiod, flip;
 
-	store = &(App::instance->agentControl.recordStore);
-	interface = &(App::instance->systemInterface);
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-	record = store->findRecord (agentId, SystemInterface::CommandId_AgentStatus);
+	record = RecordStore::instance->findRecord (agentId, SystemInterface::CommandId_AgentStatus);
 	if (! record) {
 		return;
 	}
-	if (! interface->getCommandObjectParam (record, "cameraServerStatus", &serverstatus)) {
+	if (! SystemInterface::instance->getCommandObjectParam (record, "cameraServerStatus", &serverstatus)) {
 		return;
 	}
 
-	agentName.assign (interface->getCommandAgentName (record));
-	descriptionLabel->setText (interface->getCommandStringParam (record, "applicationName", ""));
+	agentName.assign (Agent::getCommandAgentName (record));
+	descriptionLabel->setText (SystemInterface::instance->getCommandStringParam (record, "applicationName", ""));
 
 	isCapturing = serverstatus.getBoolean ("isCapturing", false);
 	storageIcon->setText (OsUtil::getStorageAmountDisplayString (serverstatus.getNumber ("freeStorage", (int64_t) 0), serverstatus.getNumber ("totalStorage", (int64_t) 0)));
@@ -253,7 +240,7 @@ void CameraWindow::syncRecordStore () {
 
 	captureperiod = serverstatus.getNumber ("capturePeriod", (int) 0) * 1000;
 	if (captureperiod <= 0) {
-		capturePeriodIcon->setText (uitext->getText (UiTextString::Continuous).capitalized ());
+		capturePeriodIcon->setText (UiText::instance->getText (UiTextString::Continuous).capitalized ());
 	}
 	else {
 		capturePeriodIcon->setText (OsUtil::getDurationDisplayString (captureperiod));
@@ -262,37 +249,37 @@ void CameraWindow::syncRecordStore () {
 	flip = serverstatus.getNumber ("flip", SystemInterface::Constant_NoFlip);
 	switch (flip) {
 		case SystemInterface::Constant_HorizontalFlip: {
-			flipIcon->setText (uitext->getText (UiTextString::HorizontalAbbreviation));
+			flipIcon->setText (UiText::instance->getText (UiTextString::HorizontalAbbreviation));
 			break;
 		}
 		case SystemInterface::Constant_VerticalFlip: {
-			flipIcon->setText (uitext->getText (UiTextString::VerticalAbbreviation));
+			flipIcon->setText (UiText::instance->getText (UiTextString::VerticalAbbreviation));
 			break;
 		}
 		case SystemInterface::Constant_HorizontalAndVerticalFlip: {
-			flipIcon->setText (StdString::createSprintf ("%s/%s", uitext->getText (UiTextString::HorizontalAbbreviation).c_str (), uitext->getText (UiTextString::VerticalAbbreviation).c_str ()));
+			flipIcon->setText (StdString::createSprintf ("%s/%s", UiText::instance->getText (UiTextString::HorizontalAbbreviation).c_str (), UiText::instance->getText (UiTextString::VerticalAbbreviation).c_str ()));
 			break;
 		}
 		default: {
-			flipIcon->setText (uitext->getText (UiTextString::None).capitalized ());
+			flipIcon->setText (UiText::instance->getText (UiTextString::None).capitalized ());
 			break;
 		}
 	}
 
 	videomonitor = serverstatus.getString ("videoMonitor", "");
 	if (! videomonitor.empty ()) {
-		statusIcon->setIconSprite (uiconfig->coreSprites.getSprite (UiConfiguration::ActiveStateIconSprite));
-		statusIcon->setText (Label::getTruncatedText (StdString::createSprintf ("%s: %s", uitext->getText (UiTextString::ShowingLiveVideo).capitalized ().c_str (), videomonitor.c_str ()), UiConfiguration::CaptionFont, ((float) App::instance->windowWidth) * CameraWindow::ExpandedTextTruncateScale, Label::DotTruncateSuffix));
+		statusIcon->setIconSprite (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ActiveStateIconSprite));
+		statusIcon->setText (UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->truncatedText (StdString::createSprintf ("%s: %s", UiText::instance->getText (UiTextString::ShowingLiveVideo).capitalized ().c_str (), videomonitor.c_str ()), ((float) App::instance->windowWidth) * CameraWindow::ExpandedTextTruncateScale, Font::DotTruncateSuffix));
 		capturePeriodIcon->isVisible = false;
 	}
 	else if (isCapturing) {
-		statusIcon->setIconSprite (uiconfig->coreSprites.getSprite (UiConfiguration::ActiveStateIconSprite));
-		statusIcon->setText (uitext->getText (UiTextString::CapturingImages).capitalized ());
+		statusIcon->setIconSprite (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ActiveStateIconSprite));
+		statusIcon->setText (UiText::instance->getText (UiTextString::CapturingImages).capitalized ());
 		capturePeriodIcon->isVisible = isExpanded;
 	}
 	else {
-		statusIcon->setIconSprite (uiconfig->coreSprites.getSprite (UiConfiguration::InactiveStateIconSprite));
-		statusIcon->setText (uitext->getText (UiTextString::Inactive).capitalized ());
+		statusIcon->setIconSprite (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::InactiveStateIconSprite));
+		statusIcon->setText (UiText::instance->getText (UiTextString::Inactive).capitalized ());
 		capturePeriodIcon->isVisible = false;
 	}
 
@@ -302,35 +289,27 @@ void CameraWindow::syncRecordStore () {
 }
 
 void CameraWindow::setSelected (bool selected, bool shouldSkipStateChangeCallback) {
-	UiConfiguration *uiconfig;
-
 	if (selected == isSelected) {
 		return;
 	}
-
-	uiconfig = &(App::instance->uiConfig);
 	isSelected = selected;
 	selectToggle->setChecked (isSelected, shouldSkipStateChangeCallback);
 	if (isSelected) {
-		setCornerRadius (0, uiconfig->cornerRadius, 0, uiconfig->cornerRadius);
+		setCornerRadius (0, UiConfiguration::instance->cornerRadius, 0, UiConfiguration::instance->cornerRadius);
 	}
 	else {
-		setCornerRadius (uiconfig->cornerRadius);
+		setCornerRadius (UiConfiguration::instance->cornerRadius);
 	}
 	refreshLayout ();
 }
 
 void CameraWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallback) {
-	UiConfiguration *uiconfig;
-
 	if (expanded == isExpanded) {
 		return;
 	}
-
-	uiconfig = &(App::instance->uiConfig);
 	isExpanded = expanded;
 	if (isExpanded) {
-		setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
+		setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
 		expandToggle->setChecked (true, shouldSkipStateChangeCallback);
 		nameLabel->setFont (UiConfiguration::HeadlineFont);
 		descriptionLabel->isVisible = true;
@@ -342,7 +321,7 @@ void CameraWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallbac
 		capturePeriodIcon->isVisible = isCapturing;
 	}
 	else {
-		setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
+		setPadding (UiConfiguration::instance->paddingSize / 2.0f, UiConfiguration::instance->paddingSize / 2.0f);
 		expandToggle->setChecked (false, shouldSkipStateChangeCallback);
 		nameLabel->setFont (UiConfiguration::BodyFont);
 		statusIcon->isVisible = false;
@@ -361,22 +340,18 @@ void CameraWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallbac
 void CameraWindow::selectToggleStateChanged (void *windowPtr, Widget *widgetPtr) {
 	CameraWindow *window;
 	Toggle *toggle;
-	UiConfiguration *uiconfig;
 
 	window = (CameraWindow *) windowPtr;
 	toggle = (Toggle *) widgetPtr;
-	uiconfig = &(App::instance->uiConfig);
 
 	window->isSelected = toggle->isChecked;
 	if (window->isSelected) {
-		window->setCornerRadius (0, uiconfig->cornerRadius, 0, uiconfig->cornerRadius);
+		window->setCornerRadius (0, UiConfiguration::instance->cornerRadius, 0, UiConfiguration::instance->cornerRadius);
 	}
 	else {
-		window->setCornerRadius (uiconfig->cornerRadius);
+		window->setCornerRadius (UiConfiguration::instance->cornerRadius);
 	}
-	if (window->selectStateChangeCallback.callback) {
-		window->selectStateChangeCallback.callback (window->selectStateChangeCallback.callbackData, window);
-	}
+	window->eventCallback (window->selectStateChangeCallback);
 }
 
 void CameraWindow::expandToggleStateChanged (void *windowPtr, Widget *widgetPtr) {
@@ -386,7 +361,5 @@ void CameraWindow::expandToggleStateChanged (void *windowPtr, Widget *widgetPtr)
 	window = (CameraWindow *) windowPtr;
 	toggle = (Toggle *) widgetPtr;
 	window->setExpanded (toggle->isChecked, true);
-	if (window->expandStateChangeCallback.callback) {
-		window->expandStateChangeCallback.callback (window->expandStateChangeCallback.callbackData, window);
-	}
+	window->eventCallback (window->expandStateChangeCallback);
 }

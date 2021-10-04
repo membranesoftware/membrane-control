@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -37,7 +37,6 @@
 #include "Color.h"
 #include "Font.h"
 #include "SpriteGroup.h"
-#include "Widget.h"
 
 class UiConfiguration {
 public:
@@ -131,17 +130,8 @@ public:
 		LargeWebKioskIconSprite = 85,
 		SmallWebKioskIconSprite = 86,
 		ClockIconSprite = 87,
-		SmallKeyIconSprite = 88
-	};
-
-	// Font types
-	enum {
-		CaptionFont = 0,
-		BodyFont = 1,
-		ButtonFont = 2,
-		TitleFont = 3,
-		HeadlineFont = 4,
-		FontCount = 5
+		SmallKeyIconSprite = 88,
+		ConsoleIconSprite = 89
 	};
 
 	// Sprite frame indexes
@@ -153,8 +143,22 @@ public:
 		ChipIconFrame = 0
 	};
 
+	enum FontType {
+		CaptionFont = 0,
+		BodyFont = 1,
+		ButtonFont = 2,
+		TitleFont = 3,
+		HeadlineFont = 4,
+		ConsoleFont = 5,
+		NoFont = -1
+	};
+	enum {
+		FontCount = 6
+	};
+
 	UiConfiguration ();
 	~UiConfiguration ();
+	static UiConfiguration *instance;
 
 	// Load resources referenced by the UiConfiguration and return a result value
 	int load (float fontScale = 1.0f);
@@ -173,6 +177,8 @@ public:
 	float marginSize;
 	int shortColorTranslateDuration; // ms
 	int longColorTranslateDuration; // ms
+	int shortColorAnimateDuration; // ms
+	int longColorAnimateDuration; // ms
 	int mouseHoverThreshold;
 	int blinkDuration; // ms
 	int backgroundCrossFadeDuration; // ms
@@ -229,9 +235,9 @@ public:
 	float sliderThumbSize;
 	float sliderTrackWidth;
 	float sliderTrackHeight;
-	int textAreaShortLineLength;
-	int textAreaMediumLineLength;
-	int textAreaLongLineLength;
+	int textAreaSmallLineCount;
+	int textAreaMediumLineCount;
+	int textAreaLargeLineCount;
 	int textFieldShortLineLength;
 	int textFieldMediumLineLength;
 	int textFieldLongLineLength;

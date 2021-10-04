@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -109,9 +109,6 @@ public:
 	// Execute actions appropriate when an agent control link client becomes disconnected
 	virtual void handleLinkClientDisconnect (const StdString &agentId, const StdString &errorDescription);
 
-	// Execute actions appropriate for a command received from an agent control link client
-	virtual void handleLinkClientCommand (const StdString &agentId, int commandId, Json *command);
-
 	// Execute actions to sync state with records present in the application's RecordStore object, which has been locked prior to invocation
 	void syncRecordStore ();
 
@@ -154,6 +151,9 @@ protected:
 
 	// Execute subclass-specific actions appropriate for a received keypress event and return a boolean value indicating if the event was consumed and should no longer be processed
 	virtual bool doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
+
+	// Execute subclass-specific actions appropriate for a received window close event and return a boolean value indicating if the event was consumed and should no longer be processed
+	virtual bool doProcessWindowCloseEvent ();
 
 	// Add subclass-specific items to the provided main toolbar object
 	virtual void doAddMainToolbarItems (Toolbar *toolbar);
@@ -211,6 +211,7 @@ private:
 
 	int refcount;
 	SDL_mutex *refcountMutex;
+	int lastWindowCloseCount;
 };
 
 #endif

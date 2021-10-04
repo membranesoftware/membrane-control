@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -43,19 +43,17 @@ BannerWindow::BannerWindow (float windowWidth)
 , iconImage (NULL)
 , actionButton (NULL)
 {
-	UiConfiguration *uiconfig;
-
 	classId = ClassId::BannerWindow;
-	uiconfig = &(App::instance->uiConfig);
-	setPadding (uiconfig->paddingSize, uiconfig->paddingSize / 2.0f);
-	setFillBg (true, uiconfig->darkPrimaryColor);
 
-	messageLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::ButtonFont, uiconfig->inverseTextColor)));
+	setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize / 2.0f);
+	setFillBg (true, UiConfiguration::instance->darkPrimaryColor);
+
+	messageLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::ButtonFont, UiConfiguration::instance->inverseTextColor)));
 	messageLabel->setPadding (0.0f, 0.0f);
 
 	actionButton = (Button *) addWidget (new Button ());
-	actionButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
-	actionButton->setTextColor (uiconfig->raisedButtonTextColor);
+	actionButton->setRaised (true, UiConfiguration::instance->raisedButtonBackgroundColor);
+	actionButton->setTextColor (UiConfiguration::instance->raisedButtonTextColor);
 	actionButton->zLevel = 2;
 	actionButton->isVisible = false;
 
@@ -84,14 +82,12 @@ void BannerWindow::setWindowWidth (float fixedWidth) {
 }
 
 void BannerWindow::setBanner (const StdString &messageText, Sprite *iconSprite, const StdString &actionText, Widget::EventCallbackContext actionClickCallback) {
-	UiConfiguration *uiconfig;
 	float w;
 
-	uiconfig = &(App::instance->uiConfig);
 	messageLabel->setFitWidth ();
 	messageLabel->setCrawl (false);
 	messageLabel->setText (messageText);
-	messageLabel->translateTextColor (bgColor, uiconfig->inverseTextColor, uiconfig->longColorTranslateDuration);
+	messageLabel->translateTextColor (bgColor, UiConfiguration::instance->inverseTextColor, UiConfiguration::instance->longColorTranslateDuration);
 	w = windowWidth - (widthPadding * 2.0f);
 
 	if (iconImage) {
@@ -100,9 +96,9 @@ void BannerWindow::setBanner (const StdString &messageText, Sprite *iconSprite, 
 	}
 	if (iconSprite) {
 		iconImage = (Image *) addWidget (new Image (iconSprite));
-		iconImage->setDrawColor (true, uiconfig->mediumSecondaryColor);
-		iconImage->translateAlpha (0.0f, 1.0f, uiconfig->longColorTranslateDuration);
-		w -= (iconImage->width + uiconfig->marginSize);
+		iconImage->setDrawColor (true, UiConfiguration::instance->mediumSecondaryColor);
+		iconImage->translateAlpha (0.0f, 1.0f, UiConfiguration::instance->longColorTranslateDuration);
+		w -= (iconImage->width + UiConfiguration::instance->marginSize);
 	}
 	if ((! actionClickCallback.callback) || actionText.empty ()) {
 		actionButton->isVisible = false;
@@ -111,7 +107,7 @@ void BannerWindow::setBanner (const StdString &messageText, Sprite *iconSprite, 
 		actionButton->setText (actionText.uppercased ());
 		actionButton->mouseClickCallback = actionClickCallback;
 		actionButton->isVisible = true;
-		w -= (actionButton->width + uiconfig->marginSize);
+		w -= (actionButton->width + UiConfiguration::instance->marginSize);
 	}
 
 	if (messageLabel->width > w) {
@@ -122,10 +118,8 @@ void BannerWindow::setBanner (const StdString &messageText, Sprite *iconSprite, 
 }
 
 void BannerWindow::refreshLayout () {
-	UiConfiguration *uiconfig;
 	float x, y;
 
-	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 
@@ -136,7 +130,7 @@ void BannerWindow::refreshLayout () {
 	if (actionButton->isVisible) {
 		actionButton->flowRight (&x, y);
 	}
-	setFixedSize (true, windowWidth, messageLabel->height + (uiconfig->paddingSize * 2.0f));
+	setFixedSize (true, windowWidth, messageLabel->height + (UiConfiguration::instance->paddingSize * 2.0f));
 	messageLabel->position.assignY ((height / 2.0f) - (messageLabel->height / 2.0f));
 	if (iconImage) {
 		iconImage->position.assignY ((height / 2.0f) - (iconImage->height / 2.0f));

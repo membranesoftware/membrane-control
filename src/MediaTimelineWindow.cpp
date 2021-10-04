@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -32,11 +32,12 @@
 #include <math.h>
 #include <vector>
 #include <list>
-#include "Result.h"
+#include "App.h"
 #include "Log.h"
 #include "StdString.h"
-#include "App.h"
 #include "OsUtil.h"
+#include "SystemInterface.h"
+#include "RecordStore.h"
 #include "Widget.h"
 #include "Color.h"
 #include "Panel.h"
@@ -60,29 +61,26 @@ MediaTimelineWindow::MediaTimelineWindow (float barWidth, const StdString &recor
 , barWidth (barWidth)
 , barHeight (0.0f)
 , duration (0.0f)
-, minDurationUnitType (0)
+, minDurationUnitType (OsUtil::MillisecondsUnit)
 , thumbnailCount (0)
 {
-	UiConfiguration *uiconfig;
+	setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 
-	uiconfig = &(App::instance->uiConfig);
-	setFillBg (true, uiconfig->lightBackgroundColor);
-
-	startTimeLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->darkBackgroundColor)));
-	startTimeLabel->setPadding (uiconfig->paddingSize / 2.0f, uiconfig->textLineHeightMargin);
-	startTimeLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
+	startTimeLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->darkBackgroundColor)));
+	startTimeLabel->setPadding (UiConfiguration::instance->paddingSize / 2.0f, UiConfiguration::instance->textLineHeightMargin);
+	startTimeLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, UiConfiguration::instance->scrimBackgroundAlpha));
 	startTimeLabel->isInputSuspended = true;
 	startTimeLabel->zLevel = 2;
 
-	endTimeLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->darkBackgroundColor)));
-	endTimeLabel->setPadding (uiconfig->paddingSize / 2.0, uiconfig->textLineHeightMargin);
-	endTimeLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
+	endTimeLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->darkBackgroundColor)));
+	endTimeLabel->setPadding (UiConfiguration::instance->paddingSize / 2.0, UiConfiguration::instance->textLineHeightMargin);
+	endTimeLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, UiConfiguration::instance->scrimBackgroundAlpha));
 	endTimeLabel->isInputSuspended = true;
 	endTimeLabel->zLevel = 2;
 
-	highlightTimeLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->darkBackgroundColor)));
-	highlightTimeLabel->setPadding (uiconfig->paddingSize / 2.0, uiconfig->textLineHeightMargin);
-	highlightTimeLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
+	highlightTimeLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->darkBackgroundColor)));
+	highlightTimeLabel->setPadding (UiConfiguration::instance->paddingSize / 2.0, UiConfiguration::instance->textLineHeightMargin);
+	highlightTimeLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, UiConfiguration::instance->scrimBackgroundAlpha));
 	highlightTimeLabel->isInputSuspended = true;
 	highlightTimeLabel->zLevel = 3;
 	highlightTimeLabel->isVisible = false;
@@ -101,34 +99,29 @@ StdString MediaTimelineWindow::toStringDetail () {
 }
 
 void MediaTimelineWindow::syncRecordStore () {
-	RecordStore *store;
-	SystemInterface *interface;
 	Json *record, *agentstatus, serverstatus;
 
-	store = &(App::instance->agentControl.recordStore);
-	interface = &(App::instance->systemInterface);
-
-	record = store->findRecord (recordId, SystemInterface::CommandId_MediaItem);
+	record = RecordStore::instance->findRecord (recordId, SystemInterface::CommandId_MediaItem);
 	if (record) {
 		recordType = SystemInterface::CommandId_MediaItem;
-		agentId = interface->getCommandAgentId (record);
-		duration = interface->getCommandNumberParam (record, "duration", (float) 0.0f);
-		agentstatus = store->findRecord (RecordStore::matchAgentStatusSource, &agentId);
+		agentId = SystemInterface::instance->getCommandAgentId (record);
+		duration = SystemInterface::instance->getCommandNumberParam (record, "duration", (float) 0.0f);
+		agentstatus = RecordStore::instance->findRecord (RecordStore::matchAgentStatusSource, &agentId);
 		if (agentstatus) {
-			if (interface->getCommandObjectParam (agentstatus, "mediaServerStatus", &serverstatus)) {
+			if (SystemInterface::instance->getCommandObjectParam (agentstatus, "mediaServerStatus", &serverstatus)) {
 				thumbnailCount = serverstatus.getNumber ("thumbnailCount", (int) 0);
 			}
 		}
 	}
 
 	if (! record) {
-		record = store->findRecord (recordId, SystemInterface::CommandId_StreamItem);
+		record = RecordStore::instance->findRecord (recordId, SystemInterface::CommandId_StreamItem);
 		if (record) {
 			recordType = SystemInterface::CommandId_StreamItem;
-			agentId = interface->getCommandAgentId (record);
-			duration = interface->getCommandNumberParam (record, "duration", (float) 0.0f);
-			thumbnailCount = interface->getCommandNumberParam (record, "segmentCount", (int) 0);
-			interface->getCommandNumberArrayParam (record, "segmentPositions", &segmentPositionList, true);
+			agentId = SystemInterface::instance->getCommandAgentId (record);
+			duration = SystemInterface::instance->getCommandNumberParam (record, "duration", (float) 0.0f);
+			thumbnailCount = SystemInterface::instance->getCommandNumberParam (record, "segmentCount", (int) 0);
+			SystemInterface::instance->getCommandNumberArrayParam (record, "segmentPositions", &segmentPositionList, true);
 		}
 	}
 
@@ -149,22 +142,20 @@ void MediaTimelineWindow::populateMarkers () {
 
 	switch (recordType) {
 		case SystemInterface::CommandId_MediaItem: {
-			UiConfiguration *uiconfig;
 			Panel *panel;
 			float x, dx;
 			int i;
 
 			if (thumbnailCount > 0) {
-				uiconfig = &(App::instance->uiConfig);
 				dx = barWidth / (float) thumbnailCount;
 				if (dx < 1.0f) {
 					dx = 1.0f;
 				}
 				x = (dx / 2.0f);
 				for (i = 0; i < thumbnailCount; ++i) {
-					panel = (Panel *) addWidget (new Panel (), x - (uiconfig->timelineMarkerWidth / 2.0f), 1.0f);
-					panel->setFillBg (true, uiconfig->darkInverseBackgroundColor);
-					panel->setFixedSize (true, uiconfig->timelineMarkerWidth, barHeight - 2.0f);
+					panel = (Panel *) addWidget (new Panel (), x - (UiConfiguration::instance->timelineMarkerWidth / 2.0f), 1.0f);
+					panel->setFillBg (true, UiConfiguration::instance->darkInverseBackgroundColor);
+					panel->setFixedSize (true, UiConfiguration::instance->timelineMarkerWidth, barHeight - 2.0f);
 					panel->isInputSuspended = true;
 					markerList.push_back (panel);
 					x += dx;
@@ -173,11 +164,9 @@ void MediaTimelineWindow::populateMarkers () {
 			break;
 		}
 		case SystemInterface::CommandId_StreamItem: {
-			UiConfiguration *uiconfig;
 			Panel *panel;
 			float x, dx;
 
-			uiconfig = &(App::instance->uiConfig);
 			x = 0.0f;
 			dx = barWidth / (float) MediaTimelineWindow::GuideSegmentCount;
 			if (dx < 1.0f) {
@@ -186,7 +175,7 @@ void MediaTimelineWindow::populateMarkers () {
 			x += dx;
 			while (x < barWidth) {
 				panel = (Panel *) addWidget (new Panel (), x, 1.0f);
-				panel->setFillBg (true, uiconfig->primaryTextColor);
+				panel->setFillBg (true, UiConfiguration::instance->primaryTextColor);
 				panel->setFixedSize (true, 1.0f, barHeight - 2.0f);
 				panel->isInputSuspended = true;
 				markerList.push_back (panel);
@@ -204,12 +193,10 @@ void MediaTimelineWindow::setHighlightColor (const Color &color) {
 void MediaTimelineWindow::setHighlightedMarker (int markerIndex) {
 	std::list<Panel *>::iterator i, end;
 	Panel *panel;
-	UiConfiguration *uiconfig;
 	float x, t, dt;
 	int curindex;
 	bool found;
 
-	uiconfig = &(App::instance->uiConfig);
 	switch (recordType) {
 		case SystemInterface::CommandId_MediaItem: {
 			if (markerIndex >= (int) markerList.size ()) {
@@ -222,7 +209,7 @@ void MediaTimelineWindow::setHighlightedMarker (int markerIndex) {
 			while (i != end) {
 				panel = *i;
 				if (curindex == markerIndex) {
-					panel->bgColor.translate (uiconfig->lightPrimaryColor, uiconfig->shortColorTranslateDuration);
+					panel->bgColor.translate (UiConfiguration::instance->lightPrimaryColor, UiConfiguration::instance->shortColorTranslateDuration);
 					if ((thumbnailCount > 0) && (duration > 0.0f)) {
 						found = true;
 						dt = duration / (float) thumbnailCount;
@@ -240,7 +227,7 @@ void MediaTimelineWindow::setHighlightedMarker (int markerIndex) {
 					}
 				}
 				else {
-					panel->bgColor.translate (uiconfig->darkInverseBackgroundColor, uiconfig->shortColorTranslateDuration);
+					panel->bgColor.translate (UiConfiguration::instance->darkInverseBackgroundColor, UiConfiguration::instance->shortColorTranslateDuration);
 				}
 				++curindex;
 				++i;
@@ -254,8 +241,8 @@ void MediaTimelineWindow::setHighlightedMarker (int markerIndex) {
 		case SystemInterface::CommandId_StreamItem: {
 			found = false;
 			if (streamHighlightMarker) {
-				streamHighlightMarker->bgColor.translate (uiconfig->lightBackgroundColor, uiconfig->shortColorTranslateDuration);
-				streamHighlightMarker->setDestroyDelay (uiconfig->shortColorTranslateDuration);
+				streamHighlightMarker->bgColor.translate (UiConfiguration::instance->lightBackgroundColor, UiConfiguration::instance->shortColorTranslateDuration);
+				streamHighlightMarker->setDestroyDelay (UiConfiguration::instance->shortColorTranslateDuration);
 				streamHighlightMarker = NULL;
 			}
 
@@ -264,10 +251,10 @@ void MediaTimelineWindow::setHighlightedMarker (int markerIndex) {
 				if (x > barWidth) {
 					x = barWidth;
 				}
-				streamHighlightMarker = (Panel *) addWidget (new Panel (), x - (uiconfig->timelineMarkerWidth / 2.0f), 1.0f);
-				streamHighlightMarker->setFillBg (true, uiconfig->lightBackgroundColor);
-				streamHighlightMarker->bgColor.translate (uiconfig->darkPrimaryColor, uiconfig->shortColorTranslateDuration);
-				streamHighlightMarker->setFixedSize (true, uiconfig->timelineMarkerWidth, barHeight - 2.0f);
+				streamHighlightMarker = (Panel *) addWidget (new Panel (), x - (UiConfiguration::instance->timelineMarkerWidth / 2.0f), 1.0f);
+				streamHighlightMarker->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
+				streamHighlightMarker->bgColor.translate (UiConfiguration::instance->darkPrimaryColor, UiConfiguration::instance->shortColorTranslateDuration);
+				streamHighlightMarker->setFixedSize (true, UiConfiguration::instance->timelineMarkerWidth, barHeight - 2.0f);
 				streamHighlightMarker->isInputSuspended = true;
 				streamHighlightMarker->zLevel = 1;
 
@@ -306,24 +293,18 @@ bool MediaTimelineWindow::doProcessMouseState (const Widget::MouseState &mouseSt
 	if (mouseState.isEntered) {
 		if (! FLOAT_EQUALS (hoverPosition, mouseState.enterDeltaX)) {
 			hoverPosition = mouseState.enterDeltaX;
-			if (positionHoverCallback.callback) {
-				positionHoverCallback.callback (positionHoverCallback.callbackData, this);
-			}
+			eventCallback (positionHoverCallback);
 		}
 
 		if (mouseState.isLeftClicked) {
 			clickPosition = mouseState.enterDeltaX;
-			if (positionClickCallback.callback) {
-				positionClickCallback.callback (positionClickCallback.callbackData, this);
-			}
+			eventCallback (positionClickCallback);
 		}
 	}
 	else {
 		if (hoverPosition >= 0.0f) {
 			hoverPosition = -1.0f;
-			if (positionHoverCallback.callback) {
-				positionHoverCallback.callback (positionHoverCallback.callbackData, this);
-			}
+			eventCallback (positionHoverCallback);
 		}
 	}
 

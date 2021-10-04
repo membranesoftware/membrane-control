@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -31,7 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "SDL2/SDL.h"
-#include "Result.h"
+#include "OsUtil.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
@@ -39,11 +39,15 @@
 #include "Font.h"
 #include "UiConfiguration.h"
 
+UiConfiguration *UiConfiguration::instance = NULL;
+
 UiConfiguration::UiConfiguration ()
 : paddingSize (12.0f)
 , marginSize (12.0f)
 , shortColorTranslateDuration (120)
 , longColorTranslateDuration (768)
+, shortColorAnimateDuration (1024)
+, longColorAnimateDuration (2048)
 , mouseHoverThreshold (1000)
 , blinkDuration (486)
 , backgroundCrossFadeDuration (140)
@@ -87,7 +91,7 @@ UiConfiguration::UiConfiguration ()
 , waitingShadeAlpha (0.81f)
 , progressBarHeight (8.0f)
 , mouseWheelScrollSpeed (0.1f)
-, textLineHeightMargin (1.0f)
+, textLineHeightMargin (2.0f)
 , textUnderlineMargin (2.0f)
 , menuDividerLineWidth (2.0f)
 , headlineDividerLineWidth (2.0f)
@@ -96,9 +100,9 @@ UiConfiguration::UiConfiguration ()
 , sliderThumbSize (16.0f)
 , sliderTrackWidth (200.0f)
 , sliderTrackHeight (6.0f)
-, textAreaShortLineLength (30)
-, textAreaMediumLineLength (60)
-, textAreaLongLineLength (75)
+, textAreaSmallLineCount (8)
+, textAreaMediumLineCount (16)
+, textAreaLargeLineCount (30)
 , textFieldShortLineLength (16)
 , textFieldMediumLineLength (32)
 , textFieldLongLineLength (60)
@@ -134,6 +138,9 @@ UiConfiguration::UiConfiguration ()
 
 	fontNames[UiConfiguration::HeadlineFont].assign ("font/Roboto-Regular.ttf");
 	fontBaseSizes[UiConfiguration::HeadlineFont] = 16;
+
+	fontNames[UiConfiguration::ConsoleFont].assign ("font/IBMPlexMono-Regular.ttf");
+	fontBaseSizes[UiConfiguration::ConsoleFont] = 10;
 }
 
 UiConfiguration::~UiConfiguration () {
@@ -146,13 +153,11 @@ int UiConfiguration::load (float fontScale) {
 	int i, result, sz;
 
 	if (fontScale <= 0.0f) {
-		return (Result::InvalidParamError);
+		return (OsUtil::Result::InvalidParamError);
 	}
-
 	if (isLoaded) {
-		return (Result::Success);
+		return (OsUtil::Result::Success);
 	}
-
 	resource = &(App::instance->resource);
 
 	for (i = 0; i < UiConfiguration::FontCount; ++i) {
@@ -162,7 +167,7 @@ int UiConfiguration::load (float fontScale) {
 		}
 		font = resource->loadFont (fontNames[i], sz);
 		if (! font) {
-			return (Result::FreetypeOperationFailedError);
+			return (OsUtil::Result::FreetypeOperationFailedError);
 		}
 		fonts[i] = font;
 		fontSizes[i] = sz;
@@ -170,14 +175,12 @@ int UiConfiguration::load (float fontScale) {
 
 	if (! coreSpritesPath.empty ()) {
 		result = coreSprites.load (coreSpritesPath);
-		if (result != Result::Success) {
+		if (result != OsUtil::Result::Success) {
 			return (result);
 		}
 	}
-
-
 	isLoaded = true;
-	return (Result::Success);
+	return (OsUtil::Result::Success);
 }
 
 void UiConfiguration::unload () {
@@ -203,9 +206,8 @@ int UiConfiguration::reloadFonts (float fontScale) {
 	int i, sz;
 
 	if (fontScale <= 0.0f) {
-		return (Result::InvalidParamError);
+		return (OsUtil::Result::InvalidParamError);
 	}
-
 	resource = &(App::instance->resource);
 
 	for (i = 0; i < UiConfiguration::FontCount; ++i) {
@@ -215,7 +217,7 @@ int UiConfiguration::reloadFonts (float fontScale) {
 		}
 		font = resource->loadFont (fontNames[i], sz);
 		if (! font) {
-			return (Result::FreetypeOperationFailedError);
+			return (OsUtil::Result::FreetypeOperationFailedError);
 		}
 		if (fonts[i]) {
 			resource->unloadFont (fontNames[i], fontSizes[i]);
@@ -223,9 +225,9 @@ int UiConfiguration::reloadFonts (float fontScale) {
 		fonts[i] = font;
 		fontSizes[i] = sz;
 	}
-	Log::debug ("Fonts reloaded; fontScale=%.2f captionFontSize=%i bodyFontSize=%i buttonFontSize=%i titleFontSize=%i headlineFontSize=%i", fontScale, fontSizes[UiConfiguration::CaptionFont], fontSizes[UiConfiguration::BodyFont], fontSizes[UiConfiguration::ButtonFont], fontSizes[UiConfiguration::TitleFont], fontSizes[UiConfiguration::HeadlineFont]);
+	Log::debug ("Fonts reloaded; fontScale=%.2f captionFontSize=%i bodyFontSize=%i buttonFontSize=%i titleFontSize=%i headlineFontSize=%i consoleFontSize=%i", fontScale, fontSizes[UiConfiguration::CaptionFont], fontSizes[UiConfiguration::BodyFont], fontSizes[UiConfiguration::ButtonFont], fontSizes[UiConfiguration::TitleFont], fontSizes[UiConfiguration::HeadlineFont], fontSizes[UiConfiguration::ConsoleFont]);
 
-	return (Result::Success);
+	return (OsUtil::Result::Success);
 }
 
 void UiConfiguration::resetScale () {
@@ -234,81 +236,97 @@ void UiConfiguration::resetScale () {
 			paddingSize = 6.0f;
 			marginSize = 6.0f;
 			cornerRadius = 3;
+			progressBarHeight = 8.0f;
 			sliderTrackWidth = 100.0f;
 			sliderTrackHeight = 4.0f;
 			timelineMarkerWidth = 12.0f;
+			dropShadowWidth = 2.0f;
 			comboBoxExpandViewItems = 6;
 			fontBaseSizes[UiConfiguration::CaptionFont] = 8;
 			fontBaseSizes[UiConfiguration::BodyFont] = 10;
 			fontBaseSizes[UiConfiguration::ButtonFont] = 10;
 			fontBaseSizes[UiConfiguration::TitleFont] = 12;
 			fontBaseSizes[UiConfiguration::HeadlineFont] = 14;
+			fontBaseSizes[UiConfiguration::ConsoleFont] = 8;
 			break;
 		}
 		case 1: {
 			paddingSize = 12.0f;
 			marginSize = 12.0f;
 			cornerRadius = 6;
+			progressBarHeight = 8.0f;
 			sliderTrackWidth = 130.0f;
 			sliderTrackHeight = 4.0f;
 			timelineMarkerWidth = 16.0f;
+			dropShadowWidth = 2.0f;
 			comboBoxExpandViewItems = 6;
 			fontBaseSizes[UiConfiguration::CaptionFont] = 8;
 			fontBaseSizes[UiConfiguration::BodyFont] = 10;
 			fontBaseSizes[UiConfiguration::ButtonFont] = 10;
 			fontBaseSizes[UiConfiguration::TitleFont] = 12;
 			fontBaseSizes[UiConfiguration::HeadlineFont] = 14;
+			fontBaseSizes[UiConfiguration::ConsoleFont] = 8;
 			break;
 		}
 		case 2: {
 			paddingSize = 16.0f;
 			marginSize = 16.0f;
 			cornerRadius = 8;
+			progressBarHeight = 10.0f;
 			sliderTrackWidth = 180.0f;
 			sliderTrackHeight = 5.0f;
 			timelineMarkerWidth = 16.0f;
+			dropShadowWidth = 3.0f;
 			comboBoxExpandViewItems = 7;
 			fontBaseSizes[UiConfiguration::CaptionFont] = 10;
 			fontBaseSizes[UiConfiguration::BodyFont] = 12;
 			fontBaseSizes[UiConfiguration::ButtonFont] = 12;
 			fontBaseSizes[UiConfiguration::TitleFont] = 14;
 			fontBaseSizes[UiConfiguration::HeadlineFont] = 16;
+			fontBaseSizes[UiConfiguration::ConsoleFont] = 10;
 			break;
 		}
 		case 3: {
 			paddingSize = 16.0f;
 			marginSize = 16.0f;
 			cornerRadius = 8;
+			progressBarHeight = 10.0f;
 			sliderTrackWidth = 240.0f;
 			sliderTrackHeight = 5.0f;
 			timelineMarkerWidth = 20.0f;
+			dropShadowWidth = 3.0f;
 			comboBoxExpandViewItems = 8;
 			fontBaseSizes[UiConfiguration::CaptionFont] = 10;
 			fontBaseSizes[UiConfiguration::BodyFont] = 12;
 			fontBaseSizes[UiConfiguration::ButtonFont] = 12;
 			fontBaseSizes[UiConfiguration::TitleFont] = 16;
 			fontBaseSizes[UiConfiguration::HeadlineFont] = 20;
+			fontBaseSizes[UiConfiguration::ConsoleFont] = 10;
 			break;
 		}
 		case 4: {
 			paddingSize = 20.0f;
 			marginSize = 20.0f;
 			cornerRadius = 10;
+			progressBarHeight = 12.0f;
 			sliderTrackWidth = 300.0f;
 			sliderTrackHeight = 6.0f;
 			timelineMarkerWidth = 20.0f;
+			dropShadowWidth = 3.0f;
 			comboBoxExpandViewItems = 8;
 			fontBaseSizes[UiConfiguration::CaptionFont] = 10;
 			fontBaseSizes[UiConfiguration::BodyFont] = 12;
 			fontBaseSizes[UiConfiguration::ButtonFont] = 12;
 			fontBaseSizes[UiConfiguration::TitleFont] = 16;
 			fontBaseSizes[UiConfiguration::HeadlineFont] = 20;
+			fontBaseSizes[UiConfiguration::ConsoleFont] = 10;
 			break;
 		}
 		default: {
 			paddingSize = 16.0f;
 			marginSize = 16.0f;
 			cornerRadius = 8;
+			progressBarHeight = 8.0f;
 			sliderTrackWidth = 200.0f;
 			sliderTrackHeight = 6.0f;
 			timelineMarkerWidth = 16.0f;
@@ -318,6 +336,7 @@ void UiConfiguration::resetScale () {
 			fontBaseSizes[UiConfiguration::ButtonFont] = 12;
 			fontBaseSizes[UiConfiguration::TitleFont] = 14;
 			fontBaseSizes[UiConfiguration::HeadlineFont] = 16;
+			fontBaseSizes[UiConfiguration::ConsoleFont] = 10;
 			break;
 		}
 	}

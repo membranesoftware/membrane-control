@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,15 +30,14 @@
 #include "Config.h"
 #include <stdlib.h>
 #include <math.h>
-#include "Result.h"
-#include "StdString.h"
 #include "App.h"
+#include "StdString.h"
 #include "UiText.h"
 #include "Widget.h"
 #include "Panel.h"
 #include "Label.h"
 #include "LabelWindow.h"
-#include "TextArea.h"
+#include "TextFlow.h"
 #include "Image.h"
 #include "UiConfiguration.h"
 #include "HyperlinkWindow.h"
@@ -51,17 +50,15 @@ HelpActionWindow::HelpActionWindow (float windowWidth, const StdString &helpActi
 , actionText (NULL)
 , linkWindow (NULL)
 {
-	UiConfiguration *uiconfig;
+	iconImage = (Image *) addWidget (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::InfoIconSprite)));
 
-	uiconfig = &(App::instance->uiConfig);
-
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::InfoIconSprite)));
-
-	actionText = (TextArea *) addWidget (new TextArea (UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor, uiconfig->textAreaMediumLineLength, windowWidth - iconImage->width - (uiconfig->paddingSize * 2.0f)));
+	actionText = (TextFlow *) addWidget (new TextFlow (windowWidth - iconImage->width - (UiConfiguration::instance->paddingSize * 2.0f), UiConfiguration::CaptionFont));
+	actionText->setTextColor (UiConfiguration::instance->lightPrimaryTextColor);
 	actionText->setText (helpActionText);
 
 	if ((! helpLinkText.empty ()) && (! helpLinkUrl.empty ())) {
 		linkWindow = (HyperlinkWindow *) addWidget (new HyperlinkWindow (helpLinkText, helpLinkUrl));
+		linkWindow->linkOpenCallback = Widget::EventCallbackContext (App::hyperlinkOpened, this);
 	}
 
 	refreshLayout ();
@@ -76,36 +73,30 @@ StdString HelpActionWindow::toStringDetail () {
 }
 
 void HelpActionWindow::setWindowWidth (float windowWidthValue) {
-	UiConfiguration *uiconfig;
-
 	if (FLOAT_EQUALS (windowWidthValue, windowWidth)) {
 		return;
 	}
-
-	uiconfig = &(App::instance->uiConfig);
 	windowWidth = windowWidthValue;
-	actionText->setMaxLineWidth (windowWidth - iconImage->width - (uiconfig->paddingSize * 2.0f));
+	actionText->setViewWidth (windowWidth - iconImage->width - (UiConfiguration::instance->paddingSize * 2.0f));
 	refreshLayout ();
 }
 
 void HelpActionWindow::refreshLayout () {
-	UiConfiguration *uiconfig;
 	float x, y, h;
 
-	uiconfig = &(App::instance->uiConfig);
 	x = 0.0f;
 	y = 0.0f;
 	iconImage->position.assign (x, y);
-	x += iconImage->width + uiconfig->marginSize;
+	x += iconImage->width + UiConfiguration::instance->marginSize;
 
 	actionText->position.assign (x, y);
-	y += actionText->height + uiconfig->marginSize;
+	y += actionText->height + UiConfiguration::instance->marginSize;
 
 	if (linkWindow) {
-		linkWindow->position.assign (windowWidth - uiconfig->paddingSize - linkWindow->width, y);
+		linkWindow->position.assign (windowWidth - UiConfiguration::instance->paddingSize - linkWindow->width, y);
 	}
 
 	resetSize ();
-	h = maxWidgetY + uiconfig->paddingSize;
+	h = maxWidgetY + UiConfiguration::instance->paddingSize;
 	setFixedSize (true, windowWidth, h);
 }

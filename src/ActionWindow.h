@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -38,7 +38,7 @@
 #include "StringList.h"
 #include "HashMap.h"
 #include "Label.h"
-#include "TextArea.h"
+#include "TextFlow.h"
 #include "Button.h"
 #include "ComboBox.h"
 #include "TextField.h"
@@ -145,7 +145,7 @@ private:
 		StdString name;
 		int type;
 		Label *nameLabel;
-		TextArea *descriptionText;
+		TextFlow *descriptionText;
 		Widget *optionWidget;
 		bool isNotEmptyString;
 		bool isDisabled;
@@ -163,7 +163,7 @@ private:
 
 	std::list<ActionWindow::Item> itemList;
 	Label *titleLabel;
-	TextArea *descriptionText;
+	TextFlow *headerDescriptionText;
 	Panel *footerPanel;
 	Button *confirmButton;
 	StdString confirmButtonTooltipText;

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,12 +29,12 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include "Result.h"
+#include "App.h"
 #include "ClassId.h"
 #include "Log.h"
 #include "StdString.h"
-#include "App.h"
 #include "SystemInterface.h"
+#include "Agent.h"
 #include "AgentControl.h"
 #include "UiConfiguration.h"
 #include "UiText.h"
@@ -59,33 +59,29 @@ ServerAttachWindow::ServerAttachWindow (const StdString &agentId)
 , attachButton (NULL)
 , removeButton (NULL)
 {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
-
 	classId = ClassId::ServerAttachWindow;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	setCornerRadius (uiconfig->cornerRadius);
-	setFillBg (true, uiconfig->mediumBackgroundColor);
 
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeServerIconSprite)));
-	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::BodyFont, uiconfig->primaryTextColor));
-	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
+	setCornerRadius (UiConfiguration::instance->cornerRadius);
+	setFillBg (true, UiConfiguration::instance->mediumBackgroundColor);
 
-	attachButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::AttachServerButtonSprite)));
+	iconImage = (Image *) addWidget (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeServerIconSprite)));
+	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::BodyFont, UiConfiguration::instance->primaryTextColor));
+	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->lightPrimaryTextColor));
+
+	attachButton = (Button *) addWidget (new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::AttachServerButtonSprite)));
 	attachButton->mouseClickCallback = Widget::EventCallbackContext (ServerAttachWindow::attachButtonClicked, this);
-	attachButton->setImageColor (uiconfig->flatButtonTextColor);
-	attachButton->setMouseHoverTooltip (uitext->getText (UiTextString::AttachServerTooltip));
+	attachButton->setImageColor (UiConfiguration::instance->flatButtonTextColor);
+	attachButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::AttachServerTooltip));
 
-	removeButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
+	removeButton = (Button *) addWidget (new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
 	removeButton->mouseClickCallback = Widget::EventCallbackContext (ServerAttachWindow::removeButtonClicked, this);
-	removeButton->setImageColor (uiconfig->flatButtonTextColor);
-	removeButton->setMouseHoverTooltip (uitext->getText (UiTextString::RemoveServer).capitalized ());
+	removeButton->setImageColor (UiConfiguration::instance->flatButtonTextColor);
+	removeButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::RemoveServer).capitalized ());
 
 	statsWindow = (StatsWindow *) addWidget (new StatsWindow ());
-	statsWindow->setPadding (uiconfig->paddingSize, 0.0f);
-	statsWindow->setItem (uitext->getText (UiTextString::Address).capitalized (), StdString (""));
+	statsWindow->setPadding (UiConfiguration::instance->paddingSize, 0.0f);
+	statsWindow->setItem (UiText::instance->getText (UiTextString::Address).capitalized (), StdString (""));
 }
 
 ServerAttachWindow::~ServerAttachWindow () {
@@ -109,39 +105,32 @@ Widget::Rectangle ServerAttachWindow::getRemoveButtonScreenRect () {
 }
 
 void ServerAttachWindow::refreshAgentData () {
-	AgentControl *agentcontrol;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	int type;
 
-	agentcontrol = &(App::instance->agentControl);
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
+	agentDisplayName = AgentControl::instance->getAgentDisplayName (agentId);
+	nameLabel->setText (UiConfiguration::instance->fonts[UiConfiguration::BodyFont]->truncatedText (agentDisplayName, (float) App::instance->windowWidth * ServerAttachWindow::NameTruncateScale, Font::DotTruncateSuffix));
+	descriptionLabel->setText (AgentControl::instance->getAgentApplicationName (agentId));
+	statsWindow->setItem (UiText::instance->getText (UiTextString::Address).capitalized (), AgentControl::instance->getAgentHostAddress (agentId));
 
-	agentDisplayName = agentcontrol->getAgentDisplayName (agentId);
-	nameLabel->setText (Label::getTruncatedText (agentDisplayName, UiConfiguration::BodyFont, (float) App::instance->windowWidth * ServerAttachWindow::NameTruncateScale, Label::DotTruncateSuffix));
-	descriptionLabel->setText (agentcontrol->getAgentApplicationName (agentId));
-	statsWindow->setItem (uitext->getText (UiTextString::Address).capitalized (), agentcontrol->getAgentHostAddress (agentId));
-
-	type = agentcontrol->getAgentServerType (agentId);
+	type = AgentControl::instance->getAgentServerType (agentId);
 	if (type != serverType) {
 		serverType = type;
 		iconImage->isDestroyed = true;
 		switch (serverType) {
-			case SystemInterface::Constant_Monitor: {
-				iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeDisplayIconSprite)));
+			case Agent::Monitor: {
+				iconImage = (Image *) addWidget (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeDisplayIconSprite)));
 				break;
 			}
-			case SystemInterface::Constant_Media: {
-				iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeMediaIconSprite)));
+			case Agent::Media: {
+				iconImage = (Image *) addWidget (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeMediaIconSprite)));
 				break;
 			}
-			case SystemInterface::Constant_Camera: {
-				iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeCameraIconSprite)));
+			case Agent::Camera: {
+				iconImage = (Image *) addWidget (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeCameraIconSprite)));
 				break;
 			}
 			default: {
-				iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeServerIconSprite)));
+				iconImage = (Image *) addWidget (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeServerIconSprite)));
 				break;
 			}
 		}
@@ -151,10 +140,8 @@ void ServerAttachWindow::refreshAgentData () {
 }
 
 void ServerAttachWindow::refreshLayout () {
-	UiConfiguration *uiconfig;
 	float x, y, x0, x2, y2;
 
-	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	x0 = x;
@@ -165,14 +152,14 @@ void ServerAttachWindow::refreshLayout () {
 	nameLabel->flowDown (x, &y, &x2, &y2);
 	descriptionLabel->flowDown (x, &y, &x2, &y2);
 
-	x = x0 + uiconfig->marginSize;
-	y = y2 + uiconfig->marginSize;
+	x = x0 + UiConfiguration::instance->marginSize;
+	y = y2 + UiConfiguration::instance->marginSize;
 	x2 = 0.0f;
 	y2 = 0.0f;
 	statsWindow->flowDown (x, &y, &x2, &y2);
 
 	x = x0;
-	y = y2 + uiconfig->marginSize;
+	y = y2 + UiConfiguration::instance->marginSize;
 	attachButton->flowRight (&x, y);
 	removeButton->flowRight (&x, y);
 
@@ -184,19 +171,9 @@ void ServerAttachWindow::refreshLayout () {
 }
 
 void ServerAttachWindow::attachButtonClicked (void *windowPtr, Widget *widgetPtr) {
-	ServerAttachWindow *window;
-
-	window = (ServerAttachWindow *) windowPtr;
-	if (window->attachClickCallback.callback) {
-		window->attachClickCallback.callback (window->attachClickCallback.callbackData, window);
-	}
+	((ServerAttachWindow *) windowPtr)->eventCallback (((ServerAttachWindow *) windowPtr)->attachClickCallback);
 }
 
 void ServerAttachWindow::removeButtonClicked (void *windowPtr, Widget *widgetPtr) {
-	ServerAttachWindow *window;
-
-	window = (ServerAttachWindow *) windowPtr;
-	if (window->removeClickCallback.callback) {
-		window->removeClickCallback.callback (window->removeClickCallback.callbackData, window);
-	}
+	((ServerAttachWindow *) windowPtr)->eventCallback (((ServerAttachWindow *) windowPtr)->removeClickCallback);
 }

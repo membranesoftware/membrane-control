@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,7 +29,6 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
@@ -47,10 +46,7 @@ StatsWindow::StatsWindow ()
 , isEmptyItemValueIgnored (false)
 , maxLineHeight (0.0f)
 {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::instance->uiConfig);
-	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
+	setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
 }
 
 StatsWindow::~StatsWindow () {
@@ -81,7 +77,6 @@ void StatsWindow::clearItems () {
 }
 
 void StatsWindow::setItem (const StdString &itemName, const StdString &itemValue) {
-	UiConfiguration *uiconfig;
 	std::list<StatsWindow::Item>::iterator i, end;
 	StatsWindow::Item item;
 	Label *label;
@@ -90,8 +85,6 @@ void StatsWindow::setItem (const StdString &itemName, const StdString &itemValue
 	if (isEmptyItemValueIgnored && itemValue.empty ()) {
 		return;
 	}
-
-	uiconfig = &(App::instance->uiConfig);
 	found = false;
 	i = itemList.begin ();
 	end = itemList.end ();
@@ -101,8 +94,8 @@ void StatsWindow::setItem (const StdString &itemName, const StdString &itemValue
 			label = i->valueLabel;
 			if (! label->text.equals (itemValue)) {
 				if (! label->text.empty ()) {
-					label->textColor.assign (uiconfig->primaryTextColor);
-					label->textColor.translate (uiconfig->lightPrimaryTextColor, uiconfig->longColorTranslateDuration);
+					label->textColor.assign (UiConfiguration::instance->primaryTextColor);
+					label->textColor.translate (UiConfiguration::instance->lightPrimaryTextColor, UiConfiguration::instance->longColorTranslateDuration);
 				}
 				label->setText (itemValue);
 				refreshLayout ();
@@ -114,13 +107,13 @@ void StatsWindow::setItem (const StdString &itemName, const StdString &itemValue
 	}
 
 	if (! found) {
-		label = (Label *) addWidget (new Label (itemName, UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
+		label = (Label *) addWidget (new Label (itemName, UiConfiguration::CaptionFont, UiConfiguration::instance->primaryTextColor));
 		if (label->maxLineHeight > maxLineHeight) {
 			maxLineHeight = label->maxLineHeight;
 		}
 		item.nameLabel = label;
 
-		label = (Label *) addWidget (new Label (itemValue, UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+		label = (Label *) addWidget (new Label (itemValue, UiConfiguration::CaptionFont, UiConfiguration::instance->lightPrimaryTextColor));
 		if (label->maxLineHeight > maxLineHeight) {
 			maxLineHeight = label->maxLineHeight;
 		}
@@ -161,16 +154,13 @@ void StatsWindow::doRefresh () {
 }
 
 void StatsWindow::refreshLayout () {
-	UiConfiguration *uiconfig;
 	std::list<StatsWindow::Item>::iterator i, end;
 	Label *label;
 	float x, y, w;
 
-	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	w = 0.0f;
-
 	i = itemList.begin ();
 	end = itemList.end ();
 	while (i != end) {
@@ -187,8 +177,8 @@ void StatsWindow::refreshLayout () {
 		label = i->nameLabel;
 		label->position.assign (x + w - label->width, label->getLinePosition (y));
 		label = i->valueLabel;
-		label->position.assign (x + w + uiconfig->marginSize, label->getLinePosition (y));
-		y += maxLineHeight + uiconfig->textLineHeightMargin;
+		label->position.assign (x + w + UiConfiguration::instance->marginSize, label->getLinePosition (y));
+		y += maxLineHeight + UiConfiguration::instance->textLineHeightMargin;
 		++i;
 	}
 

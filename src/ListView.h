@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -43,7 +43,7 @@
 
 class ListView : public ScrollView {
 public:
-	ListView (float viewWidth, int minViewItems = 4, int maxViewItems = 4, int itemFontType = UiConfiguration::BodyFont, const StdString &emptyStateText = StdString (""));
+	ListView (float viewWidth, int minViewItems = 4, int maxViewItems = 4, UiConfiguration::FontType itemFontType = UiConfiguration::BodyFont, const StdString &emptyStateText = StdString (""));
 	~ListView ();
 
 	// Read-write data members
@@ -123,7 +123,7 @@ private:
 	float viewWidth;
 	int minViewItems;
 	int maxViewItems;
-	int itemFontType;
+	UiConfiguration::FontType itemFontType;
 	std::vector<ListView::Item> itemList;
 	ScrollBar *scrollBar;
 	Label *emptyStateLabel;

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,7 +29,6 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
@@ -44,14 +43,11 @@ Chip::Chip (const StdString &chipText, Sprite *iconSprite, bool shouldDestroySpr
 , textLabel (NULL)
 , iconImage (NULL)
 {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::instance->uiConfig);
-	setPadding (uiconfig->paddingSize, uiconfig->paddingSize / 2.0f);
-	setFillBg (true, uiconfig->mediumPrimaryColor);
+	setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize / 2.0f);
+	setFillBg (true, UiConfiguration::instance->mediumPrimaryColor);
 
 	if (! chipText.empty ()) {
-		textLabel = (Label *) addWidget (new Label (chipText, UiConfiguration::CaptionFont, uiconfig->inverseTextColor));
+		textLabel = (Label *) addWidget (new Label (chipText, UiConfiguration::CaptionFont, UiConfiguration::instance->inverseTextColor));
 	}
 	if (iconSprite) {
 		iconImage = (Image *) addWidget (new Image (iconSprite, UiConfiguration::ChipIconFrame, shouldDestroySprite));
@@ -69,9 +65,6 @@ StdString Chip::toStringDetail () {
 }
 
 void Chip::setText (const StdString &text) {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::instance->uiConfig);
 	if (text.empty ()) {
 		if (textLabel) {
 			textLabel->isDestroyed = true;
@@ -80,7 +73,7 @@ void Chip::setText (const StdString &text) {
 	}
 	else {
 		if (! textLabel) {
-			textLabel = (Label *) addWidget (new Label (text, UiConfiguration::CaptionFont, uiconfig->inverseTextColor));
+			textLabel = (Label *) addWidget (new Label (text, UiConfiguration::CaptionFont, UiConfiguration::instance->inverseTextColor));
 		}
 		else {
 			textLabel->setText (text);
@@ -101,16 +94,14 @@ void Chip::setIconSprite (Sprite *iconSprite, bool shouldDestroySprite) {
 }
 
 void Chip::refreshLayout () {
-	UiConfiguration *uiconfig;
 	float x, y;
 
-	uiconfig = &(App::instance->uiConfig);
-	x = uiconfig->paddingSize;
-	y = uiconfig->paddingSize;
+	x = UiConfiguration::instance->paddingSize;
+	y = UiConfiguration::instance->paddingSize;
 
 	if (iconImage) {
 		iconImage->position.assign (x, y);
-		x += iconImage->width + uiconfig->marginSize;
+		x += iconImage->width + UiConfiguration::instance->marginSize;
 	}
 	if (textLabel) {
 		textLabel->position.assign (x, y);

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -36,13 +36,13 @@
 #include "SDL2/SDL.h"
 #include "libwebsockets.h"
 #include "App.h"
-#include "Result.h"
 #include "StdString.h"
 #include "StringList.h"
 #include "Log.h"
 #include "OsUtil.h"
 #include "Json.h"
 #include "SystemInterface.h"
+#include "AgentControl.h"
 #include "LinkClient.h"
 
 const int LinkClient::DefaultPingInterval = 25000; // milliseconds
@@ -140,7 +140,6 @@ LinkContext::~LinkContext () {
 void LinkClient::start () {
 	int level;
 
-	level = 0;
 	lws_set_log_level (level, LinkClient::logCallback);
 }
 
@@ -214,6 +213,7 @@ void LinkClient::update (int msElapsed) {
 				i->second->agentId.assign (ctx->agentId);
 				i->second->usageCount = ctx->usageCount;
 				i->second->linkUrl.assign (ctx->linkUrl);
+				i->second->serverName.assign (ctx->serverName);
 				i->second->callbackData = callbackData;
 				i->second->connectCallback = connectCallback;
 				i->second->commandCallback = commandCallback;
@@ -286,6 +286,9 @@ void LinkClient::updateActiveContext (LinkContext *ctx, int msElapsed) {
 		contextinfo.gid = -1;
 		contextinfo.uid = -1;
 		contextinfo.ws_ping_pong_interval = 0;
+		if (! ctx->serverName.empty ()) {
+			contextinfo.vhost_name = ctx->serverName.c_str ();
+		}
 		contextinfo.extensions = LibwebsocketExts;
 		contextinfo.user = ctx;
 		if (App::instance->isHttpsEnabled) {
@@ -371,7 +374,6 @@ void LinkClient::connect (const StdString &agentId, const StdString &linkUrl) {
 	if (agentId.empty () || linkUrl.empty ()) {
 		return;
 	}
-
 	SDL_LockMutex (contextMutex);
 	pos = contextMap.find (agentId);
 	if (pos != contextMap.end ()) {
@@ -386,6 +388,7 @@ void LinkClient::connect (const StdString &agentId, const StdString &linkUrl) {
 		ctx->agentId.assign (agentId);
 		ctx->usageCount = 1;
 		ctx->linkUrl.assign (linkUrl);
+		ctx->serverName.assign (AgentControl::instance->agentServerName);
 		ctx->callbackData = callbackData;
 		ctx->connectCallback = connectCallback;
 		ctx->commandCallback = commandCallback;
@@ -453,6 +456,7 @@ void LinkClient::setLinkUrl (const StdString &agentId, const StdString &linkUrl)
 			pos->second->agentId.assign (ctx->agentId);
 			pos->second->usageCount = ctx->usageCount;
 			pos->second->linkUrl.assign (linkUrl);
+			pos->second->serverName.assign (ctx->serverName);
 			pos->second->callbackData = callbackData;
 			pos->second->connectCallback = connectCallback;
 			pos->second->commandCallback = commandCallback;
@@ -683,7 +687,7 @@ void LinkContext::writeCommand (Json *sourceCommand) {
 	else {
 		cmd = new Json ();
 		cmd->copyValue (sourceCommand);
-		if (! App::instance->agentControl.setCommandAuthorization (cmd, authorizeSecretIndex, authorizeToken)) {
+		if (! AgentControl::instance->setCommandAuthorization (cmd, authorizeSecretIndex, authorizeToken)) {
 			authorizeToken.assign ("");
 			writeCommand (sourceCommand->toString ());
 		}
@@ -781,7 +785,7 @@ void LinkContext::processCommandMessage (char *data, int dataLength) {
 	--pos2;
 
 	s.assign (s.substr (pos1, pos2 - pos1 + 1));
-	if (! App::instance->systemInterface.parseCommand (s, &cmd)) {
+	if (! SystemInterface::instance->parseCommand (s, &cmd)) {
 		if (commandBuffer.empty ()) {
 			commandBuffer.add ((uint8_t *) data, dataLength);
 		}
@@ -792,14 +796,14 @@ void LinkContext::processCommandMessage (char *data, int dataLength) {
 	}
 	commandBuffer.reset ();
 
-	commandid = App::instance->systemInterface.getCommandId (cmd);
+	commandid = SystemInterface::instance->getCommandId (cmd);
 	switch (commandid) {
 		case SystemInterface::CommandId_AuthorizationRequired: {
 			authorize ();
 			break;
 		}
 		case SystemInterface::CommandId_AuthorizeResult: {
-			authorizeToken = App::instance->systemInterface.getCommandStringParam (cmd, "token", "");
+			authorizeToken = SystemInterface::instance->getCommandStringParam (cmd, "token", "");
 			break;
 		}
 		case SystemInterface::CommandId_LinkSuccess: {
@@ -843,9 +847,9 @@ void LinkContext::authorize () {
 	authorizeToken.assign ("");
 	params = new Json ();
 	params->set ("token", App::instance->getRandomString (64));
-	cmd = App::instance->createCommand (SystemInterface::Command_Authorize, SystemInterface::Constant_DefaultCommandType, params);
+	cmd = App::instance->createCommand (SystemInterface::Command_Authorize, params);
 	if (cmd) {
-		if (App::instance->agentControl.setCommandAuthorization (cmd, authorizeSecretIndex)) {
+		if (AgentControl::instance->setCommandAuthorization (cmd, authorizeSecretIndex)) {
 			writeCommand (cmd);
 			sent = true;
 		}

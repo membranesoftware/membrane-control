@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,13 +29,14 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include "Result.h"
+#include "App.h"
 #include "ClassId.h"
 #include "StdString.h"
-#include "App.h"
 #include "UiText.h"
 #include "UiConfiguration.h"
 #include "SystemInterface.h"
+#include "RecordStore.h"
+#include "Agent.h"
 #include "OsUtil.h"
 #include "MediaUtil.h"
 #include "Widget.h"
@@ -60,27 +61,23 @@ CameraDetailWindow::CameraDetailWindow (const StdString &agentId, SpriteGroup *c
 , captureTimespanIcon (NULL)
 , selectedTimespanIcon (NULL)
 {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
-
 	classId = ClassId::CameraDetailWindow;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	setCornerRadius (uiconfig->cornerRadius);
-	setFillBg (true, uiconfig->mediumBackgroundColor);
 
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeCameraIconSprite)));
-	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::TitleFont, uiconfig->primaryTextColor));
+	setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
+	setCornerRadius (UiConfiguration::instance->cornerRadius);
+	setFillBg (true, UiConfiguration::instance->mediumBackgroundColor);
 
-	captureTimespanIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (CameraTimelineUi::TimeIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	iconImage = (Image *) addWidget (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeCameraIconSprite)));
+	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::TitleFont, UiConfiguration::instance->primaryTextColor));
+
+	captureTimespanIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (CameraTimelineUi::TimeIconSprite), StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->lightPrimaryTextColor));
 	captureTimespanIcon->setPadding (0.0f, 0.0f);
-	captureTimespanIcon->setMouseHoverTooltip (uitext->getText (UiTextString::CaptureTimespanTooltip));
+	captureTimespanIcon->setMouseHoverTooltip (UiText::instance->getText (UiTextString::CaptureTimespanTooltip));
 	captureTimespanIcon->isVisible = false;
 
-	selectedTimespanIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (CameraTimelineUi::SelectedTimespanIconSprite), StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
+	selectedTimespanIcon = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (CameraTimelineUi::SelectedTimespanIconSprite), StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->lightPrimaryTextColor));
 	selectedTimespanIcon->setPadding (0.0f, 0.0f);
-	selectedTimespanIcon->setMouseHoverTooltip (uitext->getText (UiTextString::SelectedCaptureTimespanTooltip));
+	selectedTimespanIcon->setMouseHoverTooltip (UiText::instance->getText (UiTextString::SelectedCaptureTimespanTooltip));
 	selectedTimespanIcon->isVisible = false;
 
 	refreshLayout ();
@@ -103,22 +100,18 @@ CameraDetailWindow *CameraDetailWindow::castWidget (Widget *widget) {
 }
 
 void CameraDetailWindow::syncRecordStore () {
-	RecordStore *store;
-	SystemInterface *interface;
 	Json *record, serverstatus;
 	int64_t t1, t2;
 
-	store = &(App::instance->agentControl.recordStore);
-	interface = &(App::instance->systemInterface);
-	record = store->findRecord (agentId, SystemInterface::CommandId_AgentStatus);
+	record = RecordStore::instance->findRecord (agentId, SystemInterface::CommandId_AgentStatus);
 	if (! record) {
 		return;
 	}
-	if (! interface->getCommandObjectParam (record, "cameraServerStatus", &serverstatus)) {
+	if (! SystemInterface::instance->getCommandObjectParam (record, "cameraServerStatus", &serverstatus)) {
 		return;
 	}
 
-	nameLabel->setText (Label::getTruncatedText (interface->getCommandAgentName (record), UiConfiguration::TitleFont, (float) App::instance->windowWidth * CameraDetailWindow::NameTruncateScale, Label::DotTruncateSuffix));
+	nameLabel->setText (UiConfiguration::instance->fonts[UiConfiguration::TitleFont]->truncatedText (Agent::getCommandAgentName (record), (float) App::instance->windowWidth * CameraDetailWindow::NameTruncateScale, Font::DotTruncateSuffix));
 	t1 = serverstatus.getNumber ("minCaptureTime", (int64_t) 0);
 	t2 = serverstatus.getNumber ("lastCaptureTime", (int64_t) 0);
 	if ((t1 <= 0) || (t2 <= 0)) {
@@ -136,10 +129,8 @@ void CameraDetailWindow::syncRecordStore () {
 }
 
 void CameraDetailWindow::refreshLayout () {
-	UiConfiguration *uiconfig;
 	float x, y, x0, y2;
 
-	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	x0 = x;
@@ -148,7 +139,7 @@ void CameraDetailWindow::refreshLayout () {
 	iconImage->flowRight (&x, y, NULL, &y2);
 	nameLabel->flowRight (&x, y, NULL, &y2);
 
-	y = y2 + uiconfig->marginSize;
+	y = y2 + UiConfiguration::instance->marginSize;
 	x = x0;
 	captureTimespanIcon->flowDown (x, &y, NULL, &y2);
 	selectedTimespanIcon->flowDown (x, &y, NULL, &y2);
@@ -157,14 +148,11 @@ void CameraDetailWindow::refreshLayout () {
 }
 
 void CameraDetailWindow::setSelectedTimespan (int64_t selectedTime, bool isDescending) {
-	UiText *uitext;
-
-	uitext = &(App::instance->uiText);
 	if (selectedTime <= 0) {
 		selectedTimespanIcon->setText (StdString (""));
 	}
 	else {
-		selectedTimespanIcon->setText (StdString::createSprintf ("%s: %s", uitext->getText (isDescending ? UiTextString::Before : UiTextString::After).capitalized ().c_str (), OsUtil::getTimestampDisplayString (selectedTime).c_str ()));
+		selectedTimespanIcon->setText (StdString::createSprintf ("%s: %s", UiText::instance->getText (isDescending ? UiTextString::Before : UiTextString::After).capitalized ().c_str (), OsUtil::getTimestampDisplayString (selectedTime).c_str ()));
 	}
 	refreshLayout ();
 }

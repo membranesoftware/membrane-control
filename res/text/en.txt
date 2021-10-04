@@ -1,13 +1,46 @@
-WindowTitle Membrane Control
-ShuttingDownApp Shutting down Membrane Control
+ConsoleStartText1 Application started in console mode
+ConsoleStartText2 Enter commands as statements for Lua
+ConsoleStartText3 For more information, see https://www.lua.org
+ConsoleStartText4 For a list of functions type help()
+ConsoleWindowPrompt (Enter Lua script)
+LuaScriptHelpHelpText Print a list of functions available for execution
+LuaScriptQuitHelpText Exit the application
+LuaScriptPrintHelpText Print any number of values to the console
+LuaScriptDofileHelpText Execute "filename" as a Lua script
+LuaScriptSleepHelpText Delay script execution
+LuaScriptPrintserversHelpText Print status information of known servers
+LuaScriptAttachHelpText Maintain a connection to "server" (name or ID)
+LuaScriptDetachHelpText Remove attachment to "server" (name or ID)
+LuaScriptInfoHelpText Print information about "server" (name or ID)
+LuaScriptContactHelpText Contact a new server at "address"
+LuaScriptUnlistHelpText Disconnect and delete contact information from "server"
+LuaSyntaxErrorText Lua script parse failed (check syntax)
+LuaParseErrorText Lua script parse failed (internal error)
+LuaScriptExecutionErrorText Lua script execution failed
+EnvironmentVariables environment variables
+LuaScriptRunScriptHelpText Lua script that should execute on application launch
+LuaScriptMissingFunctionArgumentErrorText missing function argument
+LuaScriptEmptyStringArgumentErrorText string argument cannot be empty
+LuaScriptLoadScriptErrorText failed to load script (internal error)
+LuaScriptLoadScriptFileErrorText failed to load script (file not found)
+LuaScriptLoadScriptSyntaxErrorText invalid syntax in loaded script file
+LuaScriptLoadScriptExecutionErrorText script execution failed
+LuaScriptEmptyServerArgumentErrorText server must be a non-empty string
+LuaScriptTargetServerNotFoundErrorText target server not found
+LuaScriptMultipleServersFoundErrorText multiple name matches, use ID instead
+LuaScriptInternalErrorText internal error
+LuaScriptEmptyAddressArgumentErrorText address must be a non-empty string
+LuaScriptAddressParseErrorText invalid address
 Ok ok
 Yes yes
 No no
+ShuttingDown shutting down
 Cancel cancel
 Confirm confirm
 Edit edit
 Help help
 Remove remove
+Console console
 Rename rename
 Name name
 Password password
@@ -333,11 +366,23 @@ SetAdminPassword set admin password
 AdminPasswordNamePrompt (Enter a name)
 AdminPasswordPrompt (Enter a password)
 EmptyAdminSecretListText (No passwords stored)
-NormalVideoQualityDescription Normal
-CompressedVideoQualityDescription High-compression
-LowVideoQualityDescription Low
-LowestVideoQualityDescription Lowest
-VideoQualityDescription High-compression: less storage space consumed, slower stream creation time. Low/Lowest: grainier picture, much less storage space consumed, faster stream creation time.
+CompressedVideoQualityName High-compression
+LowVideoQualityName Low
+LowestVideoQualityName Lowest
+HighBitrateStreamProfileName High/4Mb
+MediumBitrateStreamProfileName Medium/2Mb
+LowBitrateStreamProfileName Low/1Mb
+LowestBitrateStreamProfileName Lowest/512Kb
+SourceMatchStreamProfileName Match original
+PreviewStreamProfileName Preview
+FastPreviewStreamProfileName Fast preview
+HighBitrateStreamProfileDescription 4 Megabit/1080p - Best quality, playable on fast networks
+MediumBitrateStreamProfileDescription 2 Megabit/1080p - Full HD
+LowBitrateStreamProfileDescription 1 Megabit/720p - HD
+LowestBitrateStreamProfileDescription 512 Kilobit/480p - Suitable for slower networks
+SourceMatchStreamProfileDescription Copy bitrate and frame size values from source media
+PreviewStreamProfileDescription 512 Kilobit/480p - Lower quality, fast encoding
+FastPreviewStreamProfileDescription 512 Kilobit/480p - Lower quality, fastest encoding
 FirstLaunchBannerMessage Welcome to Membrane Control. Need information to get started?
 HelpKeyBannerMessage Press Ctrl-h to open Membrane Control's help window.
 FreeApplicationBannerMessage Membrane Control is free to download, requires no signup or account creation, and contains no ads or in-app purchases. Tell your friends!
@@ -445,3 +490,4 @@ AddTimelapses add timelapses
 CapturingImages capturing images
 ShowingLiveVideo showing live video
 ShowingImage showing image
+ImageDialogLoadError An error occurred in loading the image.

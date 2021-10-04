@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -40,7 +40,7 @@
 #include "LabelWindow.h"
 #include "Image.h"
 #include "ImageWindow.h"
-#include "TextArea.h"
+#include "TextFlow.h"
 #include "Button.h"
 #include "Json.h"
 #include "HelpActionWindow.h"
@@ -83,7 +83,7 @@ private:
 	LabelWindow *titleLabel;
 	Button *closeButton;
 	Label *helpTitleLabel;
-	TextArea *helpText;
+	TextFlow *helpText;
 	Label *linkTitleLabel;
 	Image *linkIconImage;
 	std::list<HelpActionWindow *> actionList;

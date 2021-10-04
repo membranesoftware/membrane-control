@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -39,7 +39,12 @@ Color::Color (float r, float g, float b, float a)
 , b (b)
 , a (a)
 , isTranslating (false)
+, isAnimating (false)
 , translateDuration (0)
+, animateDuration (0)
+, animateRepeatDelay (0)
+, animateStage (0)
+, animateClock (0)
 , targetR (0.0f)
 , targetG (0.0f)
 , targetB (0.0f)
@@ -48,6 +53,14 @@ Color::Color (float r, float g, float b, float a)
 , deltaG (0.0f)
 , deltaB (0.0f)
 , deltaA (0.0f)
+, animateColor1R (0.0f)
+, animateColor1G (0.0f)
+, animateColor1B (0.0f)
+, animateColor1A (0.0f)
+, animateColor2R (0.0f)
+, animateColor2G (0.0f)
+, animateColor2B (0.0f)
+, animateColor2A (0.0f)
 {
 	normalize ();
 }
@@ -223,6 +236,35 @@ void Color::update (int msElapsed) {
 			isTranslating = false;
 		}
 	}
+
+	if (isAnimating) {
+		switch (animateStage) {
+			case 0: {
+				if (! isTranslating) {
+					translate (animateColor2R, animateColor2G, animateColor2B, animateColor2A, animateDuration / 2);
+					animateStage = 1;
+				}
+				break;
+			}
+			case 1: {
+				if (! isTranslating) {
+					translate (animateColor1R, animateColor1G, animateColor1B, animateColor1A, animateDuration / 2);
+					animateStage = 2;
+					animateClock = animateRepeatDelay;
+				}
+				break;
+			}
+			case 2: {
+				if (! isTranslating) {
+					animateClock -= msElapsed;
+					if (animateClock <= 0) {
+						animateStage = 0;
+					}
+				}
+				break;
+			}
+		}
+	}
 }
 
 void Color::translate (float translateTargetR, float translateTargetG, float translateTargetB, int durationMs) {
@@ -341,6 +383,29 @@ void Color::translate (const Color &targetColor, int durationMs) {
 void Color::translate (const Color &startColor, const Color &targetColor, int durationMs) {
 	assign (startColor);
 	translate (targetColor.r, targetColor.g, targetColor.b, targetColor.a, durationMs);
+}
+
+void Color::animate (const Color &color1, const Color &color2, int durationMs, int repeatDelayMs) {
+	assign (color1);
+	if (durationMs <= 0) {
+		return;
+	}
+	animateColor1R = color1.r;
+	animateColor1G = color1.g;
+	animateColor1B = color1.b;
+	animateColor1A = color1.a;
+	animateColor2R = color2.r;
+	animateColor2G = color2.g;
+	animateColor2B = color2.b;
+	animateColor2A = color2.a;
+	animateDuration = durationMs;
+	animateRepeatDelay = repeatDelayMs;
+	if (animateRepeatDelay < 0) {
+		animateRepeatDelay = 0;
+	}
+	animateStage = 0;
+	animateClock = 0;
+	isAnimating = true;
 }
 
 bool Color::equals (const Color &other) const {

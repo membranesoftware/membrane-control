@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -31,14 +31,15 @@
 #include <stdlib.h>
 #include <map>
 #include "SDL2/SDL.h"
-#include "Result.h"
+#include "App.h"
 #include "StdString.h"
 #include "Log.h"
-#include "App.h"
 #include "UiConfiguration.h"
 #include "UiText.h"
 #include "OsUtil.h"
+#include "AgentControl.h"
 #include "RecordStore.h"
+#include "Agent.h"
 #include "Chip.h"
 #include "Button.h"
 #include "CardView.h"
@@ -96,40 +97,33 @@ StdString CameraUi::getSpritePath () {
 }
 
 Widget *CameraUi::createBreadcrumbWidget () {
-	return (new Chip (App::instance->uiText.getText (UiTextString::Cameras).capitalized (), sprites.getSprite (CameraUi::BreadcrumbIconSprite)));
+	return (new Chip (UiText::instance->getText (UiTextString::Cameras).capitalized (), sprites.getSprite (CameraUi::BreadcrumbIconSprite)));
 }
 
 void CameraUi::setHelpWindowContent (HelpWindow *helpWindow) {
-	UiText *uitext;
-
-	uitext = &(App::instance->uiText);
-	helpWindow->setHelpText (uitext->getText (UiTextString::CameraUiHelpTitle), uitext->getText (UiTextString::CameraUiHelpText));
+	helpWindow->setHelpText (UiText::instance->getText (UiTextString::CameraUiHelpTitle), UiText::instance->getText (UiTextString::CameraUiHelpText));
 	if (cameraCount <= 0) {
-		helpWindow->addAction (uitext->getText (UiTextString::CameraUiHelpAction1Text), uitext->getText (UiTextString::LearnMore).capitalized (), App::getHelpUrl ("servers"));
+		helpWindow->addAction (UiText::instance->getText (UiTextString::CameraUiHelpAction1Text), UiText::instance->getText (UiTextString::LearnMore).capitalized (), App::getHelpUrl ("servers"));
 	}
 	else {
-		helpWindow->addAction (uitext->getText (UiTextString::CameraUiHelpAction2Text));
-		helpWindow->addAction (uitext->getText (UiTextString::CameraUiHelpAction3Text));
+		helpWindow->addAction (UiText::instance->getText (UiTextString::CameraUiHelpAction2Text));
+		helpWindow->addAction (UiText::instance->getText (UiTextString::CameraUiHelpAction3Text));
 	}
-
-	helpWindow->addTopicLink (uitext->getText (UiTextString::SearchForHelp).capitalized (), App::getHelpUrl (""));
+	helpWindow->addTopicLink (UiText::instance->getText (UiTextString::SearchForHelp).capitalized (), App::getHelpUrl (""));
 }
 
 StdString CameraUi::getImageQualityDescription (int imageQuality) {
-	UiText *uitext;
-
-	uitext = &(App::instance->uiText);
 	if (imageQuality == SystemInterface::Constant_DefaultImageProfile) {
-		return (uitext->getText (UiTextString::NormalImageQualityDescription));
+		return (UiText::instance->getText (UiTextString::NormalImageQualityDescription));
 	}
 	if (imageQuality == SystemInterface::Constant_HighQualityImageProfile) {
-		return (uitext->getText (UiTextString::HighImageQualityDescription));
+		return (UiText::instance->getText (UiTextString::HighImageQualityDescription));
 	}
 	if (imageQuality == SystemInterface::Constant_LowQualityImageProfile) {
-		return (uitext->getText (UiTextString::LowImageQualityDescription));
+		return (UiText::instance->getText (UiTextString::LowImageQualityDescription));
 	}
 	if (imageQuality == SystemInterface::Constant_LowestQualityImageProfile) {
-		return (uitext->getText (UiTextString::LowestImageQualityDescription));
+		return (UiText::instance->getText (UiTextString::LowestImageQualityDescription));
 	}
 
 	return (StdString (""));
@@ -149,14 +143,9 @@ std::map<StdString, CameraUi::AutoReloadInfo>::iterator CameraUi::getAutoReloadI
 
 int CameraUi::doLoad () {
 	HashMap *prefs;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	Panel *panel;
 	Toggle *toggle;
 	Button *button;
-
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
 
 	cameraCount = 0;
 	prefs = App::instance->lockPrefs ();
@@ -165,38 +154,38 @@ int CameraUi::doLoad () {
 	App::instance->unlockPrefs ();
 
 	panel = new Panel ();
-	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
-	toggle = (Toggle *) panel->addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandAllLessButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandAllMoreButtonSprite)));
+	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, UiConfiguration::instance->scrimBackgroundAlpha));
+	toggle = (Toggle *) panel->addWidget (new Toggle (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ExpandAllLessButtonSprite), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ExpandAllMoreButtonSprite)));
 	toggle->stateChangeCallback = Widget::EventCallbackContext (CameraUi::expandAgentsToggleStateChanged, this);
 	toggle->setInverseColor (true);
-	toggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::MinimizeAll).capitalized (), uitext->getText (UiTextString::ExpandAll).capitalized ());
+	toggle->setStateMouseHoverTooltips (UiText::instance->getText (UiTextString::MinimizeAll).capitalized (), UiText::instance->getText (UiTextString::ExpandAll).capitalized ());
 	expandAgentsToggle.assign (toggle);
-	cardView->addItem (createRowHeaderPanel (uitext->getText (UiTextString::CameraUiAgentRowHeaderText), panel), StdString (""), CameraUi::AgentToggleRow);
+	cardView->addItem (createRowHeaderPanel (UiText::instance->getText (UiTextString::CameraUiAgentRowHeaderText), panel), StdString (""), CameraUi::AgentToggleRow);
 
 	cardView->setRowReverseSorted (CameraUi::ExpandedAgentRow, true);
 
 	panel = new Panel ();
-	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
-	toggle = (Toggle *) panel->addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandAllLessButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandAllMoreButtonSprite)));
+	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, UiConfiguration::instance->scrimBackgroundAlpha));
+	toggle = (Toggle *) panel->addWidget (new Toggle (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ExpandAllLessButtonSprite), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ExpandAllMoreButtonSprite)));
 	toggle->stateChangeCallback = Widget::EventCallbackContext (CameraUi::expandPlaylistsToggleStateChanged, this);
 	toggle->setInverseColor (true);
-	toggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::MinimizeAll).capitalized (), uitext->getText (UiTextString::ExpandAll).capitalized ());
+	toggle->setStateMouseHoverTooltips (UiText::instance->getText (UiTextString::MinimizeAll).capitalized (), UiText::instance->getText (UiTextString::ExpandAll).capitalized ());
 	expandPlaylistsToggle.assign (toggle);
 
 	button = (Button *) panel->addWidget (new Button (sprites.getSprite (CameraUi::CreatePlaylistButtonSprite)));
 	button->mouseClickCallback = Widget::EventCallbackContext (CameraUi::createPlaylistButtonClicked, this);
 	button->setInverseColor (true);
-	button->setMouseHoverTooltip (uitext->getText (UiTextString::CameraUiAddPlaylistTooltip));
+	button->setMouseHoverTooltip (UiText::instance->getText (UiTextString::CameraUiAddPlaylistTooltip));
 
 	panel->setLayout (Panel::HorizontalLayout);
-	cardView->addItem (createRowHeaderPanel (uitext->getText (UiTextString::Playlists).capitalized (), panel), StdString (""), CameraUi::PlaylistToggleRow);
+	cardView->addItem (createRowHeaderPanel (UiText::instance->getText (UiTextString::Playlists).capitalized (), panel), StdString (""), CameraUi::PlaylistToggleRow);
 
 	cardView->setRowReverseSorted (CameraUi::ExpandedPlaylistRow, true);
 
-	cardView->setRowHeader (CameraUi::CaptureRow, createRowHeaderPanel (uitext->getText (UiTextString::TimelapseImages).capitalized ()));
+	cardView->setRowHeader (CameraUi::CaptureRow, createRowHeaderPanel (UiText::instance->getText (UiTextString::TimelapseImages).capitalized ()));
 	cardView->setRowDetail (CameraUi::CaptureRow, cardDetail);
 
-	return (Result::Success);
+	return (OsUtil::Result::Success);
 }
 
 void CameraUi::doUnload () {
@@ -215,30 +204,27 @@ void CameraUi::doUnload () {
 void CameraUi::doAddMainToolbarItems (Toolbar *toolbar) {
 	Button *button;
 
-	button = new Button (App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::SelectImageSizeButtonSprite));
+	button = new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SelectImageSizeButtonSprite));
 	button->mouseClickCallback = Widget::EventCallbackContext (CameraUi::imageSizeButtonClicked, this);
 	button->setInverseColor (true);
-	button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::ThumbnailImageSizeTooltip));
+	button->setMouseHoverTooltip (UiText::instance->getText (UiTextString::ThumbnailImageSizeTooltip));
 	toolbar->addRightItem (button);
 
-	button = new Button (App::instance->uiConfig.coreSprites.getSprite (UiConfiguration::ReloadButtonSprite));
+	button = new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ReloadButtonSprite));
 	button->mouseClickCallback = Widget::EventCallbackContext (CameraUi::reloadButtonClicked, this);
 	button->setInverseColor (true);
-	button->setMouseHoverTooltip (App::instance->uiText.getText (UiTextString::ReloadTooltip));
+	button->setMouseHoverTooltip (UiText::instance->getText (UiTextString::ReloadTooltip));
 	toolbar->addRightItem (button);
 }
 
 void CameraUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
 	HashMap *prefs;
-	UiText *uitext;
 	Toggle *toggle;
-
-	uitext = &(App::instance->uiText);
 
 	toggle = new Toggle (sprites.getSprite (CameraUi::TimelineRefreshOffButtonSprite), sprites.getSprite (CameraUi::TimelineRefreshOnButtonSprite));
 	toggle->stateChangeCallback = Widget::EventCallbackContext (CameraUi::autoReloadToggleStateChanged, this);
 	toggle->setInverseColor (true);
-	toggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::CameraUiAutoReloadOffTooltip), uitext->getText (UiTextString::CameraUiAutoReloadOnTooltip));
+	toggle->setStateMouseHoverTooltips (UiText::instance->getText (UiTextString::CameraUiAutoReloadOffTooltip), UiText::instance->getText (UiTextString::CameraUiAutoReloadOnTooltip));
 	toolbar->addLeftItem (toggle);
 	if (isAutoReloading) {
 		toggle->setChecked (true, true);
@@ -255,17 +241,12 @@ void CameraUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
 }
 
 void CameraUi::setToolbarMode (int mode, bool forceReset) {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	Toolbar *toolbar;
 	Button *button;
 
 	if ((toolbarMode == mode) && (! forceReset)) {
 		return;
 	}
-
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
 	toolbar = App::instance->uiStack.secondaryToolbar;
 	toolbar->clearRightItems ();
 	configureCameraButton = NULL;
@@ -275,10 +256,10 @@ void CameraUi::setToolbarMode (int mode, bool forceReset) {
 	playCameraStreamButton = NULL;
 	clearDisplayButton = NULL;
 
-	button = new Button (uiconfig->coreSprites.getSprite (UiConfiguration::ToolsButtonSprite));
+	button = new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ToolsButtonSprite));
 	button->mouseClickCallback = Widget::EventCallbackContext (CameraUi::modeButtonClicked, this);
 	button->setInverseColor (true);
-	button->setMouseHoverTooltip (uitext->getText (UiTextString::ToolbarModeButtonTooltip), Widget::LeftAlignment);
+	button->setMouseHoverTooltip (UiText::instance->getText (UiTextString::ToolbarModeButtonTooltip), Widget::LeftAlignment);
 	toolbar->addRightItem (button);
 
 	toolbarMode = mode;
@@ -289,7 +270,7 @@ void CameraUi::setToolbarMode (int mode, bool forceReset) {
 			configureCameraButton->mouseEnterCallback = Widget::EventCallbackContext (CameraUi::commandButtonMouseEntered, this);
 			configureCameraButton->mouseExitCallback = Widget::EventCallbackContext (CameraUi::commandButtonMouseExited, this);
 			configureCameraButton->setInverseColor (true);
-			configureCameraButton->setMouseHoverTooltip (uitext->getText (UiTextString::CameraUiConfigureCameraTooltip), Widget::LeftAlignment);
+			configureCameraButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::CameraUiConfigureCameraTooltip), Widget::LeftAlignment);
 			toolbar->addRightItem (configureCameraButton);
 
 			clearTimelapseButton = new Button (sprites.getSprite (CameraUi::ClearTimelapseButtonSprite));
@@ -297,7 +278,7 @@ void CameraUi::setToolbarMode (int mode, bool forceReset) {
 			clearTimelapseButton->mouseEnterCallback = Widget::EventCallbackContext (CameraUi::commandButtonMouseEntered, this);
 			clearTimelapseButton->mouseExitCallback = Widget::EventCallbackContext (CameraUi::commandButtonMouseExited, this);
 			clearTimelapseButton->setInverseColor (true);
-			clearTimelapseButton->setMouseHoverTooltip (uitext->getText (UiTextString::CameraUiClearTimelapseTooltip), Widget::LeftAlignment);
+			clearTimelapseButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::CameraUiClearTimelapseTooltip), Widget::LeftAlignment);
 			toolbar->addRightItem (clearTimelapseButton);
 			break;
 		}
@@ -307,7 +288,7 @@ void CameraUi::setToolbarMode (int mode, bool forceReset) {
 			showCameraImageButton->mouseEnterCallback = Widget::EventCallbackContext (CameraUi::commandButtonMouseEntered, this);
 			showCameraImageButton->mouseExitCallback = Widget::EventCallbackContext (CameraUi::commandButtonMouseExited, this);
 			showCameraImageButton->setInverseColor (true);
-			showCameraImageButton->setMouseHoverTooltip (uitext->getText (UiTextString::CameraUiShowCameraImageTooltip), Widget::LeftAlignment);
+			showCameraImageButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::CameraUiShowCameraImageTooltip), Widget::LeftAlignment);
 			showCameraImageButton->shortcutKey = SDLK_F4;
 			toolbar->addRightItem (showCameraImageButton);
 
@@ -316,7 +297,7 @@ void CameraUi::setToolbarMode (int mode, bool forceReset) {
 			showCapturePlaylistButton->mouseEnterCallback = Widget::EventCallbackContext (CameraUi::commandButtonMouseEntered, this);
 			showCapturePlaylistButton->mouseExitCallback = Widget::EventCallbackContext (CameraUi::commandButtonMouseExited, this);
 			showCapturePlaylistButton->setInverseColor (true);
-			showCapturePlaylistButton->setMouseHoverTooltip (uitext->getText (UiTextString::CameraUiShowCapturePlaylistTooltip), Widget::LeftAlignment);
+			showCapturePlaylistButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::CameraUiShowCapturePlaylistTooltip), Widget::LeftAlignment);
 			showCapturePlaylistButton->shortcutKey = SDLK_F3;
 			toolbar->addRightItem (showCapturePlaylistButton);
 
@@ -325,7 +306,7 @@ void CameraUi::setToolbarMode (int mode, bool forceReset) {
 			playCameraStreamButton->mouseEnterCallback = Widget::EventCallbackContext (CameraUi::commandButtonMouseEntered, this);
 			playCameraStreamButton->mouseExitCallback = Widget::EventCallbackContext (CameraUi::commandButtonMouseExited, this);
 			playCameraStreamButton->setInverseColor (true);
-			playCameraStreamButton->setMouseHoverTooltip (uitext->getText (UiTextString::CameraUiPlayCameraStreamTooltip), Widget::LeftAlignment);
+			playCameraStreamButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::CameraUiPlayCameraStreamTooltip), Widget::LeftAlignment);
 			playCameraStreamButton->shortcutKey = SDLK_F2;
 			toolbar->addRightItem (playCameraStreamButton);
 
@@ -334,7 +315,7 @@ void CameraUi::setToolbarMode (int mode, bool forceReset) {
 			clearDisplayButton->mouseEnterCallback = Widget::EventCallbackContext (CameraUi::commandButtonMouseEntered, this);
 			clearDisplayButton->mouseExitCallback = Widget::EventCallbackContext (CameraUi::commandButtonMouseExited, this);
 			clearDisplayButton->setInverseColor (true);
-			clearDisplayButton->setMouseHoverTooltip (uitext->getText (UiTextString::CameraUiClearDisplayTooltip), Widget::LeftAlignment);
+			clearDisplayButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::CameraUiClearDisplayTooltip), Widget::LeftAlignment);
 			clearDisplayButton->shortcutKey = SDLK_F1;
 			toolbar->addRightItem (clearDisplayButton);
 			break;
@@ -344,12 +325,9 @@ void CameraUi::setToolbarMode (int mode, bool forceReset) {
 
 void CameraUi::modeButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	CameraUi *ui;
-	UiText *uitext;
 	Menu *menu;
 
 	ui = (CameraUi *) uiPtr;
-	uitext = &(App::instance->uiText);
-
 	App::instance->uiStack.suspendMouseHover ();
 	if (ui->clearActionPopup (widgetPtr, CameraUi::modeButtonClicked)) {
 		return;
@@ -357,8 +335,8 @@ void CameraUi::modeButtonClicked (void *uiPtr, Widget *widgetPtr) {
 
 	menu = new Menu ();
 	menu->isClickDestroyEnabled = true;
-	menu->addItem (uitext->getText (UiTextString::ManageCameras).capitalized (), ui->sprites.getSprite (CameraUi::ConfigureTimelapseButtonSprite), CameraUi::cameraModeActionClicked, ui, 0, ui->toolbarMode == CameraUi::CameraMode);
-	menu->addItem (uitext->getText (UiTextString::ViewCameraImages).capitalized (), ui->sprites.getSprite (CameraUi::ShowCameraImageButtonSprite), CameraUi::monitorModeActionClicked, ui, 0, ui->toolbarMode == CameraUi::MonitorMode);
+	menu->addItem (UiText::instance->getText (UiTextString::ManageCameras).capitalized (), ui->sprites.getSprite (CameraUi::ConfigureTimelapseButtonSprite), CameraUi::cameraModeActionClicked, ui, 0, ui->toolbarMode == CameraUi::CameraMode);
+	menu->addItem (UiText::instance->getText (UiTextString::ViewCameraImages).capitalized (), ui->sprites.getSprite (CameraUi::ShowCameraImageButtonSprite), CameraUi::monitorModeActionClicked, ui, 0, ui->toolbarMode == CameraUi::MonitorMode);
 
 	ui->showActionPopup (menu, widgetPtr, CameraUi::modeButtonClicked, widgetPtr->getScreenRect (), Ui::RightEdgeAlignment, Ui::TopOfAlignment);
 }
@@ -515,7 +493,6 @@ void CameraUi::doResume () {
 
 void CameraUi::doUpdate (int msElapsed) {
 	std::map<StdString, CameraUi::AutoReloadInfo>::iterator i, end;
-	AgentControl *agentcontrol;
 	int64_t now, t;
 
 	autoReloadToggle.compact ();
@@ -526,7 +503,6 @@ void CameraUi::doUpdate (int msElapsed) {
 	targetCapture.compact ();
 
 	if (isAutoReloading) {
-		agentcontrol = &(App::instance->agentControl);
 		now = OsUtil::getTime ();
 		i = autoReloadMap.begin ();
 		end = autoReloadMap.end ();
@@ -545,8 +521,8 @@ void CameraUi::doUpdate (int msElapsed) {
 					t += (i->second.capturePeriod * 1000);
 				}
 
-				if ((now >= t) && (! agentcontrol->isAgentInvoking (i->first))) {
-					agentcontrol->refreshAgentStatus (i->first);
+				if ((now >= t) && (! AgentControl::instance->isAgentInvoking (i->first))) {
+					AgentControl::instance->refreshAgentStatus (i->first);
 					i->second.lastSendTime = now;
 				}
 			}
@@ -556,7 +532,7 @@ void CameraUi::doUpdate (int msElapsed) {
 }
 
 void CameraUi::handleLinkClientConnect (const StdString &agentId) {
-	App::instance->agentControl.writeLinkCommand (App::instance->createCommand (SystemInterface::Command_WatchStatus, SystemInterface::Constant_Admin), agentId);
+	AgentControl::instance->writeLinkCommand (App::instance->createCommand (SystemInterface::Command_WatchStatus), agentId);
 }
 
 bool CameraUi::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown) {
@@ -575,23 +551,17 @@ bool CameraUi::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool is
 }
 
 void CameraUi::doSyncRecordStore () {
-	RecordStore *store;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	IconCardWindow *window;
 
-	store = &(App::instance->agentControl.recordStore);
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
 	cameraCount = 0;
-	store->processAgentRecords ("cameraServerStatus", CameraUi::doSyncRecordStore_processCameraAgent, this);
-	store->processAgentRecords ("monitorServerStatus", CameraUi::doSyncRecordStore_processMonitorAgent, this);
+	RecordStore::instance->processAgentRecords ("cameraServerStatus", CameraUi::doSyncRecordStore_processCameraAgent, this);
+	RecordStore::instance->processAgentRecords ("monitorServerStatus", CameraUi::doSyncRecordStore_processMonitorAgent, this);
 
 	window = (IconCardWindow *) emptyStateWindow.widget;
 	if (cameraCount <= 0) {
 		if (! window) {
-			window = new IconCardWindow (uiconfig->coreSprites.getSprite (UiConfiguration::LargeServerIconSprite), uitext->getText (UiTextString::CameraUiEmptyAgentStatusTitle), StdString (""), uitext->getText (UiTextString::CameraUiEmptyAgentStatusText));
-			window->setLink (uitext->getText (UiTextString::LearnMore).capitalized (), App::getHelpUrl ("servers"));
+			window = new IconCardWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeServerIconSprite), UiText::instance->getText (UiTextString::CameraUiEmptyAgentStatusTitle), StdString (""), UiText::instance->getText (UiTextString::CameraUiEmptyAgentStatusText));
+			window->setLink (UiText::instance->getText (UiTextString::LearnMore).capitalized (), App::getHelpUrl ("servers"));
 			emptyStateWindow.assign (window);
 
 			window->itemId.assign (cardView->getAvailableItemId ());
@@ -629,7 +599,7 @@ StdString CameraUi::getSelectedCameraNames (float maxWidth) {
 
 	names.sort (StringList::compareCaseInsensitiveAscending);
 	text.assign (names.join (", "));
-	Label::truncateText (&text, UiConfiguration::CaptionFont, maxWidth, StdString::createSprintf ("... (%i)", count));
+	UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->truncateText (&text, maxWidth, StdString::createSprintf ("... (%i)", count));
 
 	return (text);
 }
@@ -653,7 +623,7 @@ StdString CameraUi::getSelectedMonitorNames (float maxWidth) {
 
 	names.sort (StringList::compareCaseInsensitiveAscending);
 	text.assign (names.join (", "));
-	Label::truncateText (&text, UiConfiguration::CaptionFont, maxWidth, StdString::createSprintf ("... (%i)", count));
+	UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->truncateText (&text, maxWidth, StdString::createSprintf ("... (%i)", count));
 
 	return (text);
 }
@@ -677,14 +647,13 @@ StdString CameraUi::getSelectedCaptureNames (float maxWidth) {
 
 	names.sort (StringList::compareCaseInsensitiveAscending);
 	text.assign (names.join (", "));
-	Label::truncateText (&text, UiConfiguration::CaptionFont, maxWidth, StdString::createSprintf ("... (%i)", count));
+	UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->truncateText (&text, maxWidth, StdString::createSprintf ("... (%i)", count));
 
 	return (text);
 }
 
 void CameraUi::doSyncRecordStore_processCameraAgent (void *uiPtr, Json *record, const StdString &recordId) {
 	CameraUi *ui;
-	SystemInterface *interface;
 	HashMap *prefs;
 	CameraWindow *camera;
 	CameraCaptureWindow *capture;
@@ -696,7 +665,6 @@ void CameraUi::doSyncRecordStore_processCameraAgent (void *uiPtr, Json *record, 
 	int row, pos, captureid;
 
 	ui = (CameraUi *) uiPtr;
-	interface = &(App::instance->systemInterface);
 	++(ui->cameraCount);
 	if (! ui->cardView->contains (recordId)) {
 		camera = new CameraWindow (recordId, &(ui->sprites));
@@ -707,7 +675,7 @@ void CameraUi::doSyncRecordStore_processCameraAgent (void *uiPtr, Json *record, 
 		prefs->find (CameraUi::SelectedAgentsKey, &items);
 		if (items.contains (recordId)) {
 			camera->setSelected (true, true);
-			ui->selectedCameraMap.insert (recordId, interface->getCommandAgentName (record));
+			ui->selectedCameraMap.insert (recordId, Agent::getCommandAgentName (record));
 		}
 		prefs->find (CameraUi::ExpandedAgentsKey, &items);
 		App::instance->unlockPrefs ();
@@ -715,7 +683,7 @@ void CameraUi::doSyncRecordStore_processCameraAgent (void *uiPtr, Json *record, 
 		pos = items.indexOf (recordId);
 		if (pos < 0) {
 			row = CameraUi::UnexpandedAgentRow;
-			camera->sortKey.sprintf ("a%s", interface->getCommandAgentName (record).lowercased ().c_str ());
+			camera->sortKey.sprintf ("a%s", Agent::getCommandAgentName (record).lowercased ().c_str ());
 		}
 		else {
 			row = CameraUi::ExpandedAgentRow;
@@ -725,12 +693,12 @@ void CameraUi::doSyncRecordStore_processCameraAgent (void *uiPtr, Json *record, 
 
 		ui->cardView->addItem (camera, recordId, row);
 		camera->animateNewCard ();
-		App::instance->agentControl.refreshAgentStatus (recordId);
+		AgentControl::instance->refreshAgentStatus (recordId);
 	}
 
 	captureid = 0;
 	cardid.sprintf ("%s_%i", recordId.c_str (), captureid);
-	if (interface->getCommandObjectParam (record, "cameraServerStatus", &serverstatus) && (serverstatus.getNumber ("lastCaptureTime", (int64_t) 0) > 0)) {
+	if (SystemInterface::instance->getCommandObjectParam (record, "cameraServerStatus", &serverstatus) && (serverstatus.getNumber ("lastCaptureTime", (int64_t) 0) > 0)) {
 		if (! ui->cardView->contains (cardid)) {
 			capture = new CameraCaptureWindow (record, captureid, &(ui->sprites));
 			capture->selectStateChangeCallback = Widget::EventCallbackContext (CameraUi::captureSelectStateChanged, ui);
@@ -755,14 +723,14 @@ void CameraUi::doSyncRecordStore_processCameraAgent (void *uiPtr, Json *record, 
 	}
 
 	if (ui->isAutoReloading) {
-		prefix = interface->getCommandPrefix (record);
+		prefix = SystemInterface::instance->getCommandPrefix (record);
 		info = ui->getAutoReloadInfo (recordId);
 		if (info->second.lastStatusCreateTime != prefix.createTime) {
 			info->second.lastStatusCreateTime = prefix.createTime;
 			info->second.lastReceiveTime = OsUtil::getTime ();
 		}
 
-		if (interface->getCommandObjectParam (record, "cameraServerStatus", &serverstatus)) {
+		if (SystemInterface::instance->getCommandObjectParam (record, "cameraServerStatus", &serverstatus)) {
 			info->second.isCapturing = serverstatus.getBoolean ("isCapturing", false);
 			info->second.capturePeriod = serverstatus.getNumber ("capturePeriod", (int) 0);
 		}
@@ -771,14 +739,12 @@ void CameraUi::doSyncRecordStore_processCameraAgent (void *uiPtr, Json *record, 
 
 void CameraUi::doSyncRecordStore_processMonitorAgent (void *uiPtr, Json *record, const StdString &recordId) {
 	CameraUi *ui;
-	SystemInterface *interface;
 	HashMap *prefs;
 	MonitorWindow *monitor;
 	StringList items;
 	int pos, row;
 
 	ui = (CameraUi *) uiPtr;
-	interface = &(App::instance->systemInterface);
 	if (! ui->cardView->contains (recordId)) {
 		monitor = new MonitorWindow (recordId);
 		monitor->selectStateChangeCallback = Widget::EventCallbackContext (CameraUi::monitorSelectStateChanged, ui);
@@ -791,7 +757,7 @@ void CameraUi::doSyncRecordStore_processMonitorAgent (void *uiPtr, Json *record,
 		prefs->find (CameraUi::SelectedAgentsKey, &items);
 		if (items.contains (recordId)) {
 			monitor->setSelected (true, true);
-			ui->selectedMonitorMap.insert (recordId, interface->getCommandAgentName (record));
+			ui->selectedMonitorMap.insert (recordId, Agent::getCommandAgentName (record));
 		}
 		prefs->find (CameraUi::ExpandedAgentsKey, &items);
 		App::instance->unlockPrefs ();
@@ -799,7 +765,7 @@ void CameraUi::doSyncRecordStore_processMonitorAgent (void *uiPtr, Json *record,
 		pos = items.indexOf (recordId);
 		if (pos < 0) {
 			row = CameraUi::UnexpandedAgentRow;
-			monitor->sortKey.sprintf ("b%s", interface->getCommandAgentName (record).lowercased ().c_str ());
+			monitor->sortKey.sprintf ("b%s", Agent::getCommandAgentName (record).lowercased ().c_str ());
 		}
 		else {
 			row = CameraUi::ExpandedAgentRow;
@@ -894,14 +860,9 @@ void CameraUi::monitorScreenshotLoaded (void *uiPtr, Widget *widgetPtr) {
 
 void CameraUi::imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	CameraUi *ui;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	Menu *menu;
 
 	ui = (CameraUi *) uiPtr;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-
 	App::instance->uiStack.suspendMouseHover ();
 	if (ui->clearActionPopup (widgetPtr, CameraUi::imageSizeButtonClicked)) {
 		return;
@@ -909,8 +870,8 @@ void CameraUi::imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr) {
 
 	menu = new Menu ();
 	menu->isClickDestroyEnabled = true;
-	menu->addItem (uitext->getText (UiTextString::Small).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::SmallSizeButtonSprite), CameraUi::smallImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::MediumDetail);
-	menu->addItem (uitext->getText (UiTextString::Large).capitalized (), uiconfig->coreSprites.getSprite (UiConfiguration::LargeSizeButtonSprite), CameraUi::largeImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::HighDetail);
+	menu->addItem (UiText::instance->getText (UiTextString::Small).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallSizeButtonSprite), CameraUi::smallImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::MediumDetail);
+	menu->addItem (UiText::instance->getText (UiTextString::Large).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeSizeButtonSprite), CameraUi::largeImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::HighDetail);
 
 	ui->showActionPopup (menu, widgetPtr, CameraUi::imageSizeButtonClicked, widgetPtr->getScreenRect (), Ui::RightEdgeAlignment, Ui::BottomOfAlignment);
 }
@@ -1079,7 +1040,7 @@ void CameraUi::reloadAgent (void *uiPtr, Widget *widgetPtr) {
 	ui = (CameraUi *) uiPtr;
 	camera = CameraWindow::castWidget (widgetPtr);
 	if (camera) {
-		App::instance->agentControl.refreshAgentStatus (camera->agentId);
+		AgentControl::instance->refreshAgentStatus (camera->agentId);
 		if (ui->isAutoReloading) {
 			info = ui->getAutoReloadInfo (camera->agentId);
 			info->second.lastSendTime = OsUtil::getTime ();
@@ -1088,7 +1049,7 @@ void CameraUi::reloadAgent (void *uiPtr, Widget *widgetPtr) {
 	}
 	monitor = MonitorWindow::castWidget (widgetPtr);
 	if (monitor) {
-		App::instance->agentControl.refreshAgentStatus (monitor->agentId);
+		AgentControl::instance->refreshAgentStatus (monitor->agentId);
 		return;
 	}
 }
@@ -1122,8 +1083,6 @@ void CameraUi::autoReloadToggleStateChanged (void *uiPtr, Widget *widgetPtr) {
 void CameraUi::commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr) {
 	CameraUi *ui;
 	Button *button;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	Panel *panel;
 	LabelWindow *label;
 	IconLabelWindow *icon;
@@ -1133,133 +1092,131 @@ void CameraUi::commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr) {
 
 	ui = (CameraUi *) uiPtr;
 	button = (Button *) widgetPtr;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
 	Button::mouseEntered (button, button);
 
 	ui->commandPopup.destroyAndClear ();
 	ui->commandPopupSource.assign (button);
 	panel = (Panel *) App::instance->rootPanel->addWidget (new Panel ());
 	ui->commandPopup.assign (panel);
-	panel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->overlayWindowAlpha));
-	panel->setBorder (true, Color (uiconfig->darkBackgroundColor.r, uiconfig->darkBackgroundColor.g, uiconfig->darkBackgroundColor.b, uiconfig->overlayWindowAlpha));
+	panel->setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
+	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, UiConfiguration::instance->overlayWindowAlpha));
+	panel->setBorder (true, Color (UiConfiguration::instance->darkBackgroundColor.r, UiConfiguration::instance->darkBackgroundColor.g, UiConfiguration::instance->darkBackgroundColor.b, UiConfiguration::instance->overlayWindowAlpha));
 
 	label = NULL;
 	if (button == ui->configureCameraButton) {
-		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::ConfigureCamera).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
+		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (UiText::instance->getText (UiTextString::ConfigureCamera).capitalized (), UiConfiguration::TitleFont, UiConfiguration::instance->inverseTextColor)));
 
 		text.assign (ui->getSelectedCameraNames (App::instance->rootPanel->width * 0.25f));
-		color.assign (uiconfig->primaryTextColor);
+		color.assign (UiConfiguration::instance->primaryTextColor);
 		if (text.empty ()) {
-			text.assign (uitext->getText (UiTextString::NoCameraSelectedPrompt));
-			color.assign (uiconfig->errorTextColor);
+			text.assign (UiText::instance->getText (UiTextString::NoCameraSelectedPrompt));
+			color.assign (UiConfiguration::instance->errorTextColor);
 		}
-		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallCameraIconSprite), text, UiConfiguration::CaptionFont, color));
-		icon->setFillBg (true, uiconfig->lightBackgroundColor);
+		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallCameraIconSprite), text, UiConfiguration::CaptionFont, color));
+		icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 		icon->setRightAligned (true);
 	}
 	else if (button == ui->clearTimelapseButton) {
-		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::ClearTimelapse).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
+		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (UiText::instance->getText (UiTextString::ClearTimelapse).capitalized (), UiConfiguration::TitleFont, UiConfiguration::instance->inverseTextColor)));
 
 		text.assign (ui->getSelectedCameraNames (App::instance->rootPanel->width * 0.25f));
-		color.assign (uiconfig->primaryTextColor);
+		color.assign (UiConfiguration::instance->primaryTextColor);
 		if (text.empty ()) {
-			text.assign (uitext->getText (UiTextString::NoCameraSelectedPrompt));
-			color.assign (uiconfig->errorTextColor);
+			text.assign (UiText::instance->getText (UiTextString::NoCameraSelectedPrompt));
+			color.assign (UiConfiguration::instance->errorTextColor);
 		}
-		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallCameraIconSprite), text, UiConfiguration::CaptionFont, color));
-		icon->setFillBg (true, uiconfig->lightBackgroundColor);
+		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallCameraIconSprite), text, UiConfiguration::CaptionFont, color));
+		icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 		icon->setRightAligned (true);
 	}
 	else if (button == ui->showCameraImageButton) {
-		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::ShowImage).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
+		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (UiText::instance->getText (UiTextString::ShowImage).capitalized (), UiConfiguration::TitleFont, UiConfiguration::instance->inverseTextColor)));
 
 		text.assign (ui->getSelectedCaptureNames (App::instance->rootPanel->width * 0.25f));
-		color.assign (uiconfig->primaryTextColor);
+		color.assign (UiConfiguration::instance->primaryTextColor);
 		if (text.empty ()) {
-			text.assign (uitext->getText (UiTextString::NoCaptureSelectedPrompt));
-			color.assign (uiconfig->errorTextColor);
+			text.assign (UiText::instance->getText (UiTextString::NoCaptureSelectedPrompt));
+			color.assign (UiConfiguration::instance->errorTextColor);
 		}
 		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (ui->sprites.getSprite (CameraUi::TimelapseIconSprite), text, UiConfiguration::CaptionFont, color));
-		icon->setFillBg (true, uiconfig->lightBackgroundColor);
+		icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 		icon->setRightAligned (true);
 
 		text.assign (ui->getSelectedMonitorNames (App::instance->rootPanel->width * 0.25f));
-		color.assign (uiconfig->primaryTextColor);
+		color.assign (UiConfiguration::instance->primaryTextColor);
 		if (text.empty ()) {
-			text.assign (uitext->getText (UiTextString::NoMonitorSelectedPrompt));
-			color.assign (uiconfig->errorTextColor);
+			text.assign (UiText::instance->getText (UiTextString::NoMonitorSelectedPrompt));
+			color.assign (UiConfiguration::instance->errorTextColor);
 		}
-		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallDisplayIconSprite), text, UiConfiguration::CaptionFont, color));
-		icon->setFillBg (true, uiconfig->lightBackgroundColor);
+		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallDisplayIconSprite), text, UiConfiguration::CaptionFont, color));
+		icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 		icon->setRightAligned (true);
 	}
 	else if (button == ui->showCapturePlaylistButton) {
-		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::RunPlaylist).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
+		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (UiText::instance->getText (UiTextString::RunPlaylist).capitalized (), UiConfiguration::TitleFont, UiConfiguration::instance->inverseTextColor)));
 
 		playlist = CapturePlaylistWindow::castWidget (ui->cardView->getItem (ui->selectedPlaylistId));
 		if (! playlist) {
-			text.assign (uitext->getText (UiTextString::NoPlaylistSelectedPrompt));
-			color.assign (uiconfig->errorTextColor);
+			text.assign (UiText::instance->getText (UiTextString::NoPlaylistSelectedPrompt));
+			color.assign (UiConfiguration::instance->errorTextColor);
 		}
 		else if (playlist->getItemCount () <= 0) {
-			text.assign (uitext->getText (UiTextString::EmptyPlaylistSelectedPrompt));
-			color.assign (uiconfig->errorTextColor);
+			text.assign (UiText::instance->getText (UiTextString::EmptyPlaylistSelectedPrompt));
+			color.assign (UiConfiguration::instance->errorTextColor);
 		}
 		else {
 			text.assign (playlist->playlistName);
-			color.assign (uiconfig->primaryTextColor);
+			color.assign (UiConfiguration::instance->primaryTextColor);
 		}
 
-		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallPlaylistIconSprite), text, UiConfiguration::CaptionFont, color));
-		icon->setFillBg (true, uiconfig->lightBackgroundColor);
+		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallPlaylistIconSprite), text, UiConfiguration::CaptionFont, color));
+		icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 		icon->setRightAligned (true);
 
 		text.assign (ui->getSelectedMonitorNames (App::instance->rootPanel->width * 0.25f));
-		color.assign (uiconfig->primaryTextColor);
+		color.assign (UiConfiguration::instance->primaryTextColor);
 		if (text.empty ()) {
-			text.assign (uitext->getText (UiTextString::NoMonitorSelectedPrompt));
-			color.assign (uiconfig->errorTextColor);
+			text.assign (UiText::instance->getText (UiTextString::NoMonitorSelectedPrompt));
+			color.assign (UiConfiguration::instance->errorTextColor);
 		}
-		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallDisplayIconSprite), text, UiConfiguration::CaptionFont, color));
-		icon->setFillBg (true, uiconfig->lightBackgroundColor);
+		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallDisplayIconSprite), text, UiConfiguration::CaptionFont, color));
+		icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 		icon->setRightAligned (true);
 	}
 	else if (button == ui->playCameraStreamButton) {
-		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::ShowLiveVideo).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
+		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (UiText::instance->getText (UiTextString::ShowLiveVideo).capitalized (), UiConfiguration::TitleFont, UiConfiguration::instance->inverseTextColor)));
 
 		text.assign (ui->getSelectedCameraNames (App::instance->rootPanel->width * 0.25f));
-		color.assign (uiconfig->primaryTextColor);
+		color.assign (UiConfiguration::instance->primaryTextColor);
 		if (text.empty ()) {
-			text.assign (uitext->getText (UiTextString::NoCameraSelectedPrompt));
-			color.assign (uiconfig->errorTextColor);
+			text.assign (UiText::instance->getText (UiTextString::NoCameraSelectedPrompt));
+			color.assign (UiConfiguration::instance->errorTextColor);
 		}
-		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallCameraIconSprite), text, UiConfiguration::CaptionFont, color));
-		icon->setFillBg (true, uiconfig->lightBackgroundColor);
+		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallCameraIconSprite), text, UiConfiguration::CaptionFont, color));
+		icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 		icon->setRightAligned (true);
 
 		text.assign (ui->getSelectedMonitorNames (App::instance->rootPanel->width * 0.25f));
-		color.assign (uiconfig->primaryTextColor);
+		color.assign (UiConfiguration::instance->primaryTextColor);
 		if (text.empty ()) {
-			text.assign (uitext->getText (UiTextString::NoMonitorSelectedPrompt));
-			color.assign (uiconfig->errorTextColor);
+			text.assign (UiText::instance->getText (UiTextString::NoMonitorSelectedPrompt));
+			color.assign (UiConfiguration::instance->errorTextColor);
 		}
-		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallDisplayIconSprite), text, UiConfiguration::CaptionFont, color));
-		icon->setFillBg (true, uiconfig->lightBackgroundColor);
+		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallDisplayIconSprite), text, UiConfiguration::CaptionFont, color));
+		icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 		icon->setRightAligned (true);
 	}
 	else if (button == ui->clearDisplayButton) {
-		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::Clear).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
+		label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (UiText::instance->getText (UiTextString::Clear).capitalized (), UiConfiguration::TitleFont, UiConfiguration::instance->inverseTextColor)));
 
 		text.assign (ui->getSelectedMonitorNames (App::instance->rootPanel->width * 0.25f));
-		color.assign (uiconfig->primaryTextColor);
+		color.assign (UiConfiguration::instance->primaryTextColor);
 		if (text.empty ()) {
-			text.assign (uitext->getText (UiTextString::NoMonitorSelectedPrompt));
-			color.assign (uiconfig->errorTextColor);
+			text.assign (UiText::instance->getText (UiTextString::NoMonitorSelectedPrompt));
+			color.assign (UiConfiguration::instance->errorTextColor);
 		}
-		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallDisplayIconSprite), text, UiConfiguration::CaptionFont, color));
-		icon->setFillBg (true, uiconfig->lightBackgroundColor);
+		icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallDisplayIconSprite), text, UiConfiguration::CaptionFont, color));
+		icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 		icon->setRightAligned (true);
 	}
 
@@ -1268,7 +1225,7 @@ void CameraUi::commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr) {
 	}
 	panel->setLayout (Panel::VerticalRightJustifiedLayout);
 	panel->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
-	panel->position.assign (App::instance->windowWidth - panel->width - uiconfig->paddingSize, App::instance->windowHeight - App::instance->uiStack.bottomBarHeight - panel->height - uiconfig->marginSize);
+	panel->position.assign (App::instance->windowWidth - panel->width - UiConfiguration::instance->paddingSize, App::instance->windowHeight - App::instance->uiStack.bottomBarHeight - panel->height - UiConfiguration::instance->marginSize);
 }
 
 void CameraUi::commandButtonMouseExited (void *uiPtr, Widget *widgetPtr) {
@@ -1287,10 +1244,6 @@ void CameraUi::commandButtonMouseExited (void *uiPtr, Widget *widgetPtr) {
 
 void CameraUi::configureCameraButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	CameraUi *ui;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
-	SystemInterface *interface;
-	RecordStore *store;
 	ActionWindow *action;
 	Toggle *toggle;
 	ComboBox *combobox;
@@ -1311,21 +1264,16 @@ void CameraUi::configureCameraButtonClicked (void *uiPtr, Widget *widgetPtr) {
 		return;
 	}
 
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-	interface = &(App::instance->systemInterface);
-	store = &(App::instance->agentControl.recordStore);
-
 	enabled = true;
 	imagequality = SystemInterface::Constant_DefaultImageProfile;
 	captureperiod = CameraUi::DefaultCapturePeriodIndex;
 	flip = SystemInterface::Constant_NoFlip;
-	store->lock ();
+	RecordStore::instance->lock ();
 	i = ui->selectedCameraMap.begin ();
 	while (ui->selectedCameraMap.hasNext (&i)) {
 		id = ui->selectedCameraMap.next (&i);
-		agentstatus = store->findRecord (id, SystemInterface::CommandId_AgentStatus);
-		if (agentstatus && interface->getCommandObjectParam (agentstatus, "cameraServerStatus", &serverstatus)) {
+		agentstatus = RecordStore::instance->findRecord (id, SystemInterface::CommandId_AgentStatus);
+		if (agentstatus && SystemInterface::instance->getCommandObjectParam (agentstatus, "cameraServerStatus", &serverstatus)) {
 			enabled = serverstatus.getBoolean ("isCapturing", false);
 			imagequality = serverstatus.getNumber ("imageProfile", SystemInterface::Constant_DefaultImageProfile);
 
@@ -1342,18 +1290,18 @@ void CameraUi::configureCameraButtonClicked (void *uiPtr, Widget *widgetPtr) {
 			break;
 		}
 	}
-	store->unlock ();
+	RecordStore::instance->unlock ();
 
 	action = new ActionWindow ();
-	action->setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
+	action->setDropShadow (true, UiConfiguration::instance->dropShadowColor, UiConfiguration::instance->dropShadowWidth);
 	action->setInverseColor (true);
-	action->setTitleText (uitext->getText (UiTextString::ConfigureCamera).capitalized ());
+	action->setTitleText (UiText::instance->getText (UiTextString::ConfigureCamera).capitalized ());
 	action->optionChangeCallback = Widget::EventCallbackContext (CameraUi::configureCameraActionOptionChanged, ui);
 	action->closeCallback = Widget::EventCallbackContext (CameraUi::configureCameraActionClosed, ui);
 
 	toggle = new Toggle ();
 	toggle->setChecked (enabled);
-	action->addOption (uitext->getText (UiTextString::EnableTimelapse).capitalized (), toggle);
+	action->addOption (UiText::instance->getText (UiTextString::EnableTimelapse).capitalized (), toggle);
 
 	count = sizeof (CameraUi::CapturePeriods) / sizeof (CameraUi::CapturePeriods[0]);
 	slider = new SliderWindow (new Slider (0.0f, (float) count));
@@ -1363,7 +1311,7 @@ void CameraUi::configureCameraButtonClicked (void *uiPtr, Widget *widgetPtr) {
 		slider->addSnapValue ((float) j);
 	}
 	slider->setValue (captureperiod);
-	action->addOption (uitext->getText (UiTextString::CapturePeriod).capitalized (), slider, uitext->getText (UiTextString::CapturePeriodDescription));
+	action->addOption (UiText::instance->getText (UiTextString::CapturePeriod).capitalized (), slider, UiText::instance->getText (UiTextString::CapturePeriodDescription));
 
 	combobox = new ComboBox ();
 	combobox->addItem (getImageQualityDescription (SystemInterface::Constant_DefaultImageProfile), StdString::createSprintf ("%i", SystemInterface::Constant_DefaultImageProfile));
@@ -1371,18 +1319,18 @@ void CameraUi::configureCameraButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	combobox->addItem (getImageQualityDescription (SystemInterface::Constant_LowQualityImageProfile), StdString::createSprintf ("%i", SystemInterface::Constant_LowQualityImageProfile));
 	combobox->addItem (getImageQualityDescription (SystemInterface::Constant_LowestQualityImageProfile), StdString::createSprintf ("%i", SystemInterface::Constant_LowestQualityImageProfile));
 	combobox->setValueByItemData (StdString::createSprintf ("%i", imagequality));
-	action->addOption (uitext->getText (UiTextString::CaptureQuality).capitalized (), combobox, uitext->getText (UiTextString::CaptureQualityDescription));
+	action->addOption (UiText::instance->getText (UiTextString::CaptureQuality).capitalized (), combobox, UiText::instance->getText (UiTextString::CaptureQualityDescription));
 
 	combobox = new ComboBox ();
-	combobox->addItem (uitext->getText (UiTextString::None).capitalized (), StdString::createSprintf ("%i", SystemInterface::Constant_NoFlip));
-	combobox->addItem (uitext->getText (UiTextString::Horizontal).capitalized (), StdString::createSprintf ("%i", SystemInterface::Constant_HorizontalFlip));
-	combobox->addItem (uitext->getText (UiTextString::Vertical).capitalized (), StdString::createSprintf ("%i", SystemInterface::Constant_VerticalFlip));
-	combobox->addItem (StdString::createSprintf ("%s %s %s", uitext->getText (UiTextString::Horizontal).capitalized ().c_str (), uitext->getText (UiTextString::And).c_str (), uitext->getText (UiTextString::Vertical).c_str ()), StdString::createSprintf ("%i", SystemInterface::Constant_HorizontalAndVerticalFlip));
+	combobox->addItem (UiText::instance->getText (UiTextString::None).capitalized (), StdString::createSprintf ("%i", SystemInterface::Constant_NoFlip));
+	combobox->addItem (UiText::instance->getText (UiTextString::Horizontal).capitalized (), StdString::createSprintf ("%i", SystemInterface::Constant_HorizontalFlip));
+	combobox->addItem (UiText::instance->getText (UiTextString::Vertical).capitalized (), StdString::createSprintf ("%i", SystemInterface::Constant_VerticalFlip));
+	combobox->addItem (StdString::createSprintf ("%s %s %s", UiText::instance->getText (UiTextString::Horizontal).capitalized ().c_str (), UiText::instance->getText (UiTextString::And).c_str (), UiText::instance->getText (UiTextString::Vertical).c_str ()), StdString::createSprintf ("%i", SystemInterface::Constant_HorizontalAndVerticalFlip));
 	combobox->setValueByItemData (StdString::createSprintf ("%i", flip));
-	action->addOption (uitext->getText (UiTextString::ImageFlip).capitalized (), combobox);
+	action->addOption (UiText::instance->getText (UiTextString::ImageFlip).capitalized (), combobox);
 
 	if (! enabled) {
-		action->setOptionDisabled (uitext->getText (UiTextString::CapturePeriod).capitalized (), true);
+		action->setOptionDisabled (UiText::instance->getText (UiTextString::CapturePeriod).capitalized (), true);
 	}
 
 	ui->showActionPopup (action, widgetPtr, CameraUi::configureCameraButtonClicked, widgetPtr->getScreenRect (), Ui::RightEdgeAlignment, Ui::TopOfAlignment);
@@ -1398,7 +1346,7 @@ StdString CameraUi::capturePeriodValueName (float sliderValue) {
 	}
 
 	if (CameraUi::CapturePeriods[i] == 0) {
-		return (App::instance->uiText.getText (UiTextString::Continuous).capitalized ());
+		return (UiText::instance->getText (UiTextString::Continuous).capitalized ());
 	}
 
 	return (OsUtil::getDurationDisplayString (CameraUi::CapturePeriods[i] * 1000));
@@ -1406,19 +1354,16 @@ StdString CameraUi::capturePeriodValueName (float sliderValue) {
 
 void CameraUi::configureCameraActionOptionChanged (void *uiPtr, Widget *widgetPtr) {
 	ActionWindow *action;
-	UiText *uitext;
 	bool disabled;
 
 	action = (ActionWindow *) widgetPtr;
-	uitext = &(App::instance->uiText);
-	disabled = (! action->getBooleanValue (uitext->getText (UiTextString::EnableTimelapse).capitalized (), false));
-	action->setOptionDisabled (uitext->getText (UiTextString::CapturePeriod).capitalized (), disabled);
+	disabled = (! action->getBooleanValue (UiText::instance->getText (UiTextString::EnableTimelapse).capitalized (), false));
+	action->setOptionDisabled (UiText::instance->getText (UiTextString::CapturePeriod).capitalized (), disabled);
 }
 
 void CameraUi::configureCameraActionClosed (void *uiPtr, Widget *widgetPtr) {
 	CameraUi *ui;
 	ActionWindow *action;
-	UiText *uitext;
 	HashMap::Iterator i;
 	StdString id;
 	Json *params;
@@ -1430,18 +1375,17 @@ void CameraUi::configureCameraActionClosed (void *uiPtr, Widget *widgetPtr) {
 		return;
 	}
 
-	uitext = &(App::instance->uiText);
 	count = 0;
 	i = ui->selectedCameraMap.begin ();
 	while (ui->selectedCameraMap.hasNext (&i)) {
 		id = ui->selectedCameraMap.next (&i);
 
 		params = new Json ();
-		params->set ("isCaptureEnabled", action->getBooleanValue (uitext->getText (UiTextString::EnableTimelapse).capitalized (), false));
-		params->set ("capturePeriod", CameraUi::CapturePeriods[action->getNumberValue (uitext->getText (UiTextString::CapturePeriod).capitalized (), CameraUi::DefaultCapturePeriodIndex)]);
-		params->set ("flip", action->getNumberValue (uitext->getText (UiTextString::ImageFlip).capitalized (), SystemInterface::Constant_NoFlip));
+		params->set ("isCaptureEnabled", action->getBooleanValue (UiText::instance->getText (UiTextString::EnableTimelapse).capitalized (), false));
+		params->set ("capturePeriod", CameraUi::CapturePeriods[action->getNumberValue (UiText::instance->getText (UiTextString::CapturePeriod).capitalized (), CameraUi::DefaultCapturePeriodIndex)]);
+		params->set ("flip", action->getNumberValue (UiText::instance->getText (UiTextString::ImageFlip).capitalized (), SystemInterface::Constant_NoFlip));
 
-		quality = action->getNumberValue (uitext->getText (UiTextString::CaptureQuality).capitalized (), SystemInterface::Constant_DefaultImageProfile);
+		quality = action->getNumberValue (UiText::instance->getText (UiTextString::CaptureQuality).capitalized (), SystemInterface::Constant_DefaultImageProfile);
 		params->set ("imageProfile", quality);
 		switch (quality) {
 			case SystemInterface::Constant_HighQualityImageProfile: {
@@ -1462,28 +1406,26 @@ void CameraUi::configureCameraActionClosed (void *uiPtr, Widget *widgetPtr) {
 			}
 		}
 
-		result = App::instance->agentControl.invokeCommand (id, App::instance->createCommand (SystemInterface::Command_ConfigureCamera, SystemInterface::Constant_Camera, params));
-		if (result != Result::Success) {
+		result = AgentControl::instance->invokeCommand (id, App::instance->createCommand (SystemInterface::Command_ConfigureCamera, params));
+		if (result != OsUtil::Result::Success) {
 			Log::debug ("Failed to invoke camera command; err=%i agentId=\"%s\"", result, id.c_str ());
 		}
 		else {
 			++count;
-			App::instance->agentControl.refreshAgentStatus (id);
+			AgentControl::instance->refreshAgentStatus (id);
 		}
 	}
 
 	if (count <= 0) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
 	}
 	else {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::ConfigureCameraMessage));
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::ConfigureCameraMessage));
 	}
 }
 
 void CameraUi::clearTimelapseButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	CameraUi *ui;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	ActionWindow *action;
 
 	ui = (CameraUi *) uiPtr;
@@ -1494,15 +1436,12 @@ void CameraUi::clearTimelapseButtonClicked (void *uiPtr, Widget *widgetPtr) {
 		return;
 	}
 
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-
 	action = new ActionWindow ();
 	action->setInverseColor (true);
-	action->setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
-	action->setTitleText (uitext->getText (UiTextString::ClearTimelapse).capitalized ());
-	action->setDescriptionText (uitext->getText (UiTextString::ClearTimelapseActionText));
-	action->setConfirmTooltipText (uitext->getText (UiTextString::Clear).capitalized ());
+	action->setDropShadow (true, UiConfiguration::instance->dropShadowColor, UiConfiguration::instance->dropShadowWidth);
+	action->setTitleText (UiText::instance->getText (UiTextString::ClearTimelapse).capitalized ());
+	action->setDescriptionText (UiText::instance->getText (UiTextString::ClearTimelapseActionText));
+	action->setConfirmTooltipText (UiText::instance->getText (UiTextString::Clear).capitalized ());
 	action->closeCallback = Widget::EventCallbackContext (CameraUi::clearTimelapseActionClosed, ui);
 
 	ui->showActionPopup (action, widgetPtr, CameraUi::clearTimelapseButtonClicked, widgetPtr->getScreenRect (), Ui::RightEdgeAlignment, Ui::TopOfAlignment);
@@ -1525,22 +1464,22 @@ void CameraUi::clearTimelapseActionClosed (void *uiPtr, Widget *widgetPtr) {
 	i = ui->selectedCameraMap.begin ();
 	while (ui->selectedCameraMap.hasNext (&i)) {
 		id = ui->selectedCameraMap.next (&i);
-		result = App::instance->agentControl.invokeCommand (id, App::instance->createCommand (SystemInterface::Command_ClearTimelapse, SystemInterface::Constant_Camera));
+		result = AgentControl::instance->invokeCommand (id, App::instance->createCommand (SystemInterface::Command_ClearTimelapse));
 
-		if (result != Result::Success) {
+		if (result != OsUtil::Result::Success) {
 			Log::debug ("Failed to invoke camera command; err=%i agentId=\"%s\"", result, id.c_str ());
 		}
 		else {
 			++count;
-			App::instance->agentControl.refreshAgentStatus (id);
+			AgentControl::instance->refreshAgentStatus (id);
 		}
 	}
 
 	if (count <= 0) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
 	}
 	else {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::ClearCameraTimelapseMessage));
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::ClearCameraTimelapseMessage));
 	}
 }
 
@@ -1570,12 +1509,12 @@ void CameraUi::showCameraImageButtonClicked (void *uiPtr, Widget *widgetPtr) {
 
 		capture = CameraCaptureWindow::castWidget (ui->cardView->getItem (captureid));
 		if (capture) {
-			hostname = App::instance->agentControl.getAgentHostAddress (capture->agentId);
+			hostname = AgentControl::instance->getAgentHostAddress (capture->agentId);
 			if (! hostname.empty ()) {
 				params = new Json ();
 				agenthost = new Json ();
 				agenthost->set ("hostname", hostname);
-				if (App::instance->agentControl.getAgentAuthorization (capture->agentId, &authpath, &authsecret)) {
+				if (AgentControl::instance->getAgentAuthorization (capture->agentId, &authpath, &authsecret)) {
 					agenthost->set ("authorizePath", authpath);
 					agenthost->set ("authorizeSecret", authsecret);
 				}
@@ -1584,23 +1523,23 @@ void CameraUi::showCameraImageButtonClicked (void *uiPtr, Widget *widgetPtr) {
 				if (capture->selectedTime >= 0) {
 					params->set ("imageTime", capture->selectedTime);
 				}
-				result = App::instance->agentControl.invokeCommand (monitorid, App::instance->createCommand (SystemInterface::Command_ShowCameraImage, SystemInterface::Constant_Monitor, params));
-				if (result != Result::Success) {
+				result = AgentControl::instance->invokeCommand (monitorid, App::instance->createCommand (SystemInterface::Command_ShowCameraImage, params));
+				if (result != OsUtil::Result::Success) {
 					Log::debug ("Failed to invoke monitor command; err=%i agentId=\"%s\"", result, monitorid.c_str ());
 				}
 				else {
 					++count;
-					App::instance->agentControl.refreshAgentStatus (monitorid);
+					AgentControl::instance->refreshAgentStatus (monitorid);
 				}
 			}
 		}
 	}
 
 	if (count <= 0) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
 	}
 	else {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::ShowCameraImageMessage));
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::ShowCameraImageMessage));
 	}
 }
 
@@ -1621,13 +1560,13 @@ void CameraUi::showCapturePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr)
 	}
 
 	ui->clearPopupWidgets ();
-	count = App::instance->agentControl.invokeCommand (&idlist, playlist->createCommand ());
+	count = AgentControl::instance->invokeCommand (&idlist, playlist->createCommand ());
 	if (count <= 0) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
 	}
 	else {
-		App::instance->agentControl.refreshAgentStatus (&idlist);
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::ShowCapturePlaylistMessage));
+		AgentControl::instance->refreshAgentStatus (&idlist);
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::ShowCapturePlaylistMessage));
 	}
 }
 
@@ -1656,34 +1595,34 @@ void CameraUi::playCameraStreamButtonClicked (void *uiPtr, Widget *widgetPtr) {
 
 		camera = CameraWindow::castWidget (ui->cardView->getItem (cameraid));
 		if (camera) {
-			hostname = App::instance->agentControl.getAgentHostAddress (camera->agentId);
+			hostname = AgentControl::instance->getAgentHostAddress (camera->agentId);
 			if (! hostname.empty ()) {
 				params = new Json ();
 				agenthost = new Json ();
 				agenthost->set ("hostname", hostname);
-				if (App::instance->agentControl.getAgentAuthorization (camera->agentId, &authpath, &authsecret)) {
+				if (AgentControl::instance->getAgentAuthorization (camera->agentId, &authpath, &authsecret)) {
 					agenthost->set ("authorizePath", authpath);
 					agenthost->set ("authorizeSecret", authsecret);
 				}
 				params->set ("host", agenthost);
 
-				result = App::instance->agentControl.invokeCommand (monitorid, App::instance->createCommand (SystemInterface::Command_PlayCameraStream, SystemInterface::Constant_Monitor, params));
-				if (result != Result::Success) {
+				result = AgentControl::instance->invokeCommand (monitorid, App::instance->createCommand (SystemInterface::Command_PlayCameraStream, params));
+				if (result != OsUtil::Result::Success) {
 					Log::debug ("Failed to invoke monitor command; err=%i agentId=\"%s\"", result, monitorid.c_str ());
 				}
 				else {
 					++count;
-					App::instance->agentControl.refreshAgentStatus (monitorid);
+					AgentControl::instance->refreshAgentStatus (monitorid);
 				}
 			}
 		}
 	}
 
 	if (count <= 0) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
 	}
 	else {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::PlayCameraStreamMessage));
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::PlayCameraStreamMessage));
 	}
 }
 
@@ -1699,13 +1638,13 @@ void CameraUi::clearDisplayButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	}
 
 	ui->clearPopupWidgets ();
-	count = App::instance->agentControl.invokeCommand (&idlist, App::instance->createCommand (SystemInterface::Command_ClearDisplay, SystemInterface::Constant_Monitor));
+	count = AgentControl::instance->invokeCommand (&idlist, App::instance->createCommand (SystemInterface::Command_ClearDisplay));
 	if (count <= 0) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
 	}
 	else {
-		App::instance->agentControl.refreshAgentStatus (&idlist);
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InvokeClearDisplayMessage));
+		AgentControl::instance->refreshAgentStatus (&idlist);
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InvokeClearDisplayMessage));
 	}
 }
 
@@ -1728,7 +1667,7 @@ void CameraUi::createPlaylistButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	ui->cardView->refresh ();
 	ui->clearPopupWidgets ();
 	ui->resetExpandToggles ();
-	App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s: %s", App::instance->uiText.getText (UiTextString::CreatedPlaylist).capitalized ().c_str (), name.c_str ()));
+	App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s: %s", UiText::instance->getText (UiTextString::CreatedPlaylist).capitalized ().c_str (), name.c_str ()));
 }
 
 void CameraUi::captureViewButtonClicked (void *uiPtr, Widget *widgetPtr) {
@@ -1845,7 +1784,7 @@ StdString CameraUi::getAvailablePlaylistName (const StdString &baseName) {
 	int i;
 
 	if (baseName.empty ()) {
-		base.assign (App::instance->uiText.getText (UiTextString::TimelapseList).capitalized ());
+		base.assign (UiText::instance->getText (UiTextString::TimelapseList).capitalized ());
 	}
 	else {
 		base.assign (baseName);
@@ -1930,22 +1869,18 @@ void CameraUi::playlistExpandStateChanged (void *uiPtr, Widget *widgetPtr) {
 
 void CameraUi::playlistNameClicked (void *uiPtr, Widget *widgetPtr) {
 	CameraUi *ui;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	CapturePlaylistWindow *playlist;
 	TextFieldWindow *textfield;
 
 	ui = (CameraUi *) uiPtr;
 	playlist = (CapturePlaylistWindow *) widgetPtr;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
 
 	ui->clearPopupWidgets ();
-	textfield = new TextFieldWindow (playlist->windowWidth, uitext->getText (UiTextString::EnterPlaylistNamePrompt));
+	textfield = new TextFieldWindow (playlist->windowWidth, UiText::instance->getText (UiTextString::EnterPlaylistNamePrompt));
 	textfield->setValue (playlist->playlistName);
 	textfield->valueEditCallback = Widget::EventCallbackContext (CameraUi::playlistNameEdited, ui);
 	textfield->enterButtonClickCallback = Widget::EventCallbackContext (CameraUi::playlistNameEditEnterButtonClicked, ui);
-	textfield->setFillBg (true, uiconfig->lightPrimaryColor);
+	textfield->setFillBg (true, UiConfiguration::instance->lightPrimaryColor);
 	textfield->setButtonsEnabled (true, true, true, true);
 	textfield->shouldSkipTextClearCallbacks = true;
 	textfield->assignKeyFocus ();
@@ -2004,9 +1939,9 @@ void CameraUi::playlistAddItemActionClicked (void *uiPtr, Widget *widgetPtr) {
 		id = ui->selectedCaptureMap.next (&i);
 		capture = CameraCaptureWindow::castWidget (ui->cardView->getItem (id));
 		if (capture) {
-			hostname = App::instance->agentControl.getAgentHostAddress (capture->agentId);
+			hostname = AgentControl::instance->getAgentHostAddress (capture->agentId);
 			if (! hostname.empty ()) {
-				App::instance->agentControl.getAgentAuthorization (capture->agentId, &authpath, &authsecret);
+				AgentControl::instance->getAgentAuthorization (capture->agentId, &authpath, &authsecret);
 				playlist->addItem (hostname, authpath, authsecret, StdString (""), capture->captureId, capture->captureName);
 				++count;
 			}
@@ -2014,37 +1949,32 @@ void CameraUi::playlistAddItemActionClicked (void *uiPtr, Widget *widgetPtr) {
 	}
 
 	if (count <= 0) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::InternalError));
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
 	}
 	else if (count == 1) {
-		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s: %s", playlist->playlistName.c_str (), App::instance->uiText.getText (UiTextString::AddedPlaylistItem).c_str ()));
+		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s: %s", playlist->playlistName.c_str (), UiText::instance->getText (UiTextString::AddedPlaylistItem).c_str ()));
 	}
 	else {
-		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s: %s (%i)", playlist->playlistName.c_str (), App::instance->uiText.getText (UiTextString::AddedPlaylistItems).c_str (), count));
+		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s: %s (%i)", playlist->playlistName.c_str (), UiText::instance->getText (UiTextString::AddedPlaylistItems).c_str (), count));
 	}
 }
 
 void CameraUi::playlistRemoveActionClicked (void *uiPtr, Widget *widgetPtr) {
 	CameraUi *ui;
 	CapturePlaylistWindow *playlist;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	ActionWindow *action;
 
 	ui = (CameraUi *) uiPtr;
 	playlist = (CapturePlaylistWindow *) widgetPtr;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-
 	if (ui->clearActionPopup (widgetPtr, CameraUi::playlistRemoveActionClicked)) {
 		return;
 	}
 
 	action = new ActionWindow ();
-	action->setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
+	action->setDropShadow (true, UiConfiguration::instance->dropShadowColor, UiConfiguration::instance->dropShadowWidth);
 	action->setInverseColor (true);
-	action->setTitleText (Label::getTruncatedText (playlist->playlistName, UiConfiguration::TitleFont, playlist->width * 0.34f, Label::DotTruncateSuffix));
-	action->setDescriptionText (uitext->getText (UiTextString::RemovePlaylistDescription));
+	action->setTitleText (UiConfiguration::instance->fonts[UiConfiguration::TitleFont]->truncatedText (playlist->playlistName, playlist->width * 0.34f, Font::DotTruncateSuffix));
+	action->setDescriptionText (UiText::instance->getText (UiTextString::RemovePlaylistDescription));
 	action->closeCallback = Widget::EventCallbackContext (CameraUi::playlistRemoveActionClosed, ui);
 
 	ui->showActionPopup (action, widgetPtr, CameraUi::playlistRemoveActionClicked, playlist->getRemoveButtonScreenRect (), Ui::LeftEdgeAlignment, Ui::TopOfAlignment);
@@ -2071,8 +2001,6 @@ void CameraUi::playlistRemoveActionClosed (void *uiPtr, Widget *widgetPtr) {
 void CameraUi::playlistAddItemMouseEntered (void *uiPtr, Widget *widgetPtr) {
 	CameraUi *ui;
 	CapturePlaylistWindow *playlist;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	Panel *panel;
 	LabelWindow *label;
 	IconLabelWindow *icon;
@@ -2081,33 +2009,31 @@ void CameraUi::playlistAddItemMouseEntered (void *uiPtr, Widget *widgetPtr) {
 
 	ui = (CameraUi *) uiPtr;
 	playlist = (CapturePlaylistWindow *) widgetPtr;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
 
 	ui->commandPopup.destroyAndClear ();
 	ui->commandPopupSource.assign (widgetPtr);
 	panel = (Panel *) App::instance->rootPanel->addWidget (new Panel ());
 	ui->commandPopup.assign (panel);
-	panel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->overlayWindowAlpha));
-	panel->setBorder (true, Color (uiconfig->darkBackgroundColor.r, uiconfig->darkBackgroundColor.g, uiconfig->darkBackgroundColor.b, uiconfig->overlayWindowAlpha));
+	panel->setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
+	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, UiConfiguration::instance->overlayWindowAlpha));
+	panel->setBorder (true, Color (UiConfiguration::instance->darkBackgroundColor.r, UiConfiguration::instance->darkBackgroundColor.g, UiConfiguration::instance->darkBackgroundColor.b, UiConfiguration::instance->overlayWindowAlpha));
 
-	label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (uitext->getText (UiTextString::AddTimelapses).capitalized (), UiConfiguration::TitleFont, uiconfig->inverseTextColor)));
+	label = (LabelWindow *) panel->addWidget (new LabelWindow (new Label (UiText::instance->getText (UiTextString::AddTimelapses).capitalized (), UiConfiguration::TitleFont, UiConfiguration::instance->inverseTextColor)));
 	label->setPadding (0.0f, 0.0f);
 	text.assign (playlist->playlistName);
-	Label::truncateText (&text, UiConfiguration::CaptionFont, App::instance->rootPanel->width * 0.20f, Label::DotTruncateSuffix);
-	icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallPlaylistIconSprite), text, UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
-	icon->setFillBg (true, uiconfig->lightBackgroundColor);
+	UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->truncateText (&text, App::instance->rootPanel->width * 0.20f, Font::DotTruncateSuffix);
+	icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallPlaylistIconSprite), text, UiConfiguration::CaptionFont, UiConfiguration::instance->primaryTextColor));
+	icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 	icon->setRightAligned (true);
 
 	text.assign (ui->getSelectedCaptureNames (App::instance->rootPanel->width * 0.25f));
-	color.assign (uiconfig->primaryTextColor);
+	color.assign (UiConfiguration::instance->primaryTextColor);
 	if (text.empty ()) {
-		text.assign (uitext->getText (UiTextString::NoCaptureSelectedPrompt));
-		color.assign (uiconfig->errorTextColor);
+		text.assign (UiText::instance->getText (UiTextString::NoCaptureSelectedPrompt));
+		color.assign (UiConfiguration::instance->errorTextColor);
 	}
 	icon = (IconLabelWindow *) panel->addWidget (new IconLabelWindow (ui->sprites.getSprite (CameraUi::TimelapseIconSprite), text, UiConfiguration::CaptionFont, color));
-	icon->setFillBg (true, uiconfig->lightBackgroundColor);
+	icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 	icon->setRightAligned (true);
 
 	panel->setLayout (Panel::VerticalRightJustifiedLayout);

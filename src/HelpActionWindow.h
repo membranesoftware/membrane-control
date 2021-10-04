@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -33,7 +33,7 @@
 #define HELP_ACTION_WINDOW_H
 
 #include "StdString.h"
-#include "TextArea.h"
+#include "TextFlow.h"
 #include "Label.h"
 #include "Image.h"
 #include "HyperlinkWindow.h"
@@ -57,7 +57,7 @@ protected:
 private:
 	float windowWidth;
 	Image *iconImage;
-	TextArea *actionText;
+	TextFlow *actionText;
 	HyperlinkWindow *linkWindow;
 };
 

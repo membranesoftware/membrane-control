@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,7 +29,6 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include "Result.h"
 #include "ClassId.h"
 #include "Log.h"
 #include "StdString.h"
@@ -65,57 +64,53 @@ TextFieldWindow::TextFieldWindow (float windowWidth, const StdString &promptText
 , visibilityToggle (NULL)
 , isCancelled (false)
 {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	Image *image;
 
 	classId = ClassId::TextFieldWindow;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-	setPadding (uiconfig->paddingSize, uiconfig->paddingSize / 2.0f);
+	setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize / 2.0f);
 
-	textField = (TextField *) addWidget (new TextField (windowWidth - uiconfig->marginSize - uiconfig->paddingSize, promptText));
+	textField = (TextField *) addWidget (new TextField (windowWidth - UiConfiguration::instance->marginSize - UiConfiguration::instance->paddingSize, promptText));
 	textField->valueChangeCallback = Widget::EventCallbackContext (TextFieldWindow::textFieldValueChanged, this);
 	textField->valueEditCallback = Widget::EventCallbackContext (TextFieldWindow::textFieldValueEdited, this);
 	if (iconSprite) {
 		image = new Image (iconSprite);
 		iconImage = (ImageWindow *) addWidget (new ImageWindow (image));
-		iconImage->setFillBg (true, uiconfig->darkBackgroundColor);
-		iconImage->setWindowSize (image->width + uiconfig->paddingSize, textField->height);
+		iconImage->setFillBg (true, UiConfiguration::instance->darkBackgroundColor);
+		iconImage->setWindowSize (image->width + UiConfiguration::instance->paddingSize, textField->height);
 	}
 
-	enterButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::EnterTextButtonSprite)));
+	enterButton = (Button *) addWidget (new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::EnterTextButtonSprite)));
 	enterButton->zLevel = 1;
 	enterButton->setInverseColor (true);
 	enterButton->mouseClickCallback = Widget::EventCallbackContext (TextFieldWindow::enterButtonClicked, this);
-	enterButton->setMouseHoverTooltip (uitext->getText (UiTextString::TextFieldEnterTooltip));
+	enterButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::TextFieldEnterTooltip));
 	enterButton->isVisible = false;
 
-	cancelButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::CancelButtonSprite)));
+	cancelButton = (Button *) addWidget (new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::CancelButtonSprite)));
 	cancelButton->zLevel = 1;
 	cancelButton->setInverseColor (true);
 	cancelButton->mouseClickCallback = Widget::EventCallbackContext (TextFieldWindow::cancelButtonClicked, this);
-	cancelButton->setMouseHoverTooltip (uitext->getText (UiTextString::Cancel).capitalized ());
+	cancelButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::Cancel).capitalized ());
 	cancelButton->isVisible = false;
 
-	pasteButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::PasteButtonSprite)));
+	pasteButton = (Button *) addWidget (new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::PasteButtonSprite)));
 	pasteButton->zLevel = 1;
 	pasteButton->mouseClickCallback = Widget::EventCallbackContext (TextFieldWindow::pasteButtonClicked, this);
-	pasteButton->setMouseHoverTooltip (uitext->getText (UiTextString::TextFieldPasteTooltip));
+	pasteButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::TextFieldPasteTooltip));
 	pasteButton->isFocusDropShadowDisabled = true;
 	pasteButton->isVisible = false;
 
-	clearButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::ClearButtonSprite)));
+	clearButton = (Button *) addWidget (new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ClearButtonSprite)));
 	clearButton->zLevel = 1;
 	clearButton->mouseClickCallback = Widget::EventCallbackContext (TextFieldWindow::clearButtonClicked, this);
-	clearButton->setMouseHoverTooltip (uitext->getText (UiTextString::TextFieldClearTooltip));
+	clearButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::TextFieldClearTooltip));
 	clearButton->isFocusDropShadowDisabled = true;
 	clearButton->isVisible = false;
 
-	randomizeButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::RandomizeButtonSprite)));
+	randomizeButton = (Button *) addWidget (new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::RandomizeButtonSprite)));
 	randomizeButton->zLevel = 1;
 	randomizeButton->mouseClickCallback = Widget::EventCallbackContext (TextFieldWindow::randomizeButtonClicked, this);
-	randomizeButton->setMouseHoverTooltip (uitext->getText (UiTextString::TextFieldRandomizeTooltip));
+	randomizeButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::TextFieldRandomizeTooltip));
 	randomizeButton->isFocusDropShadowDisabled = true;
 	randomizeButton->isVisible = false;
 
@@ -142,7 +137,6 @@ void TextFieldWindow::setDisabled (bool disabled) {
 	if (isDisabled == disabled) {
 		return;
 	}
-
 	isDisabled = disabled;
 	textField->setDisabled (isDisabled);
 	enterButton->setDisabled (isDisabled);
@@ -156,11 +150,14 @@ void TextFieldWindow::setDisabled (bool disabled) {
 	refreshLayout ();
 }
 
+void TextFieldWindow::setRetainFocusOnReturnKey (bool enable) {
+	textField->shouldRetainFocusOnReturnKey = enable;
+}
+
 void TextFieldWindow::setInverseColor (bool inverse) {
 	if (isInverseColor == inverse) {
 		return;
 	}
-
 	isInverseColor = inverse;
 	textField->setInverseColor (isInverseColor);
 	enterButton->setInverseColor (isInverseColor);
@@ -179,15 +176,9 @@ void TextFieldWindow::setPromptErrorColor (bool enable) {
 }
 
 void TextFieldWindow::setObscured (bool enable) {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
-
 	if (isObscured == enable) {
 		return;
 	}
-
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
 	if (visibilityToggle) {
 		visibilityToggle->isDestroyed = true;
 		visibilityToggle = NULL;
@@ -195,10 +186,10 @@ void TextFieldWindow::setObscured (bool enable) {
 	isObscured = enable;
 	if (isObscured) {
 		textField->setObscured (true);
-		visibilityToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::VisibilityOffButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::VisibilityOnButtonSprite)));
+		visibilityToggle = (Toggle *) addWidget (new Toggle (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::VisibilityOffButtonSprite), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::VisibilityOnButtonSprite)));
 		visibilityToggle->stateChangeCallback = Widget::EventCallbackContext (TextFieldWindow::visibilityToggleStateChanged, this);
 		visibilityToggle->setInverseColor (isInverseColor);
-		visibilityToggle->setMouseHoverTooltip (uitext->getText (UiTextString::TextFieldVisibilityToggleTooltip));
+		visibilityToggle->setMouseHoverTooltip (UiText::instance->getText (UiTextString::TextFieldVisibilityToggleTooltip));
 		visibilityToggle->zLevel = 1;
 	}
 	else {
@@ -224,11 +215,8 @@ void TextFieldWindow::assignKeyFocus () {
 }
 
 void TextFieldWindow::setWindowWidth (float fixedWidth) {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::instance->uiConfig);
 	windowWidth = fixedWidth;
-	textField->setFieldWidth (windowWidth - uiconfig->marginSize - uiconfig->paddingSize);
+	textField->setFieldWidth (windowWidth - UiConfiguration::instance->marginSize - UiConfiguration::instance->paddingSize);
 	refreshLayout ();
 }
 
@@ -248,11 +236,9 @@ void TextFieldWindow::setButtonsEnabled (bool enableEnterButton, bool enableCanc
 }
 
 void TextFieldWindow::refreshLayout () {
-	UiConfiguration *uiconfig;
 	float x, y, w, h;
 	bool found;
 
-	uiconfig = &(App::instance->uiConfig);
 	x = 0.0f;
 	y = heightPadding;
 	w = windowWidth;
@@ -262,11 +248,11 @@ void TextFieldWindow::refreshLayout () {
 		found = true;
 	}
 	if (enterButton->isVisible) {
-		w -= enterButton->width + uiconfig->marginSize;
+		w -= enterButton->width + UiConfiguration::instance->marginSize;
 		found = true;
 	}
 	if (cancelButton->isVisible) {
-		w -= cancelButton->width + uiconfig->marginSize;
+		w -= cancelButton->width + UiConfiguration::instance->marginSize;
 		found = true;
 	}
 	if (found) {
@@ -295,7 +281,7 @@ void TextFieldWindow::refreshLayout () {
 		}
 	}
 	textField->position.assign (x, y);
-	x += textField->width + uiconfig->marginSize;
+	x += textField->width + UiConfiguration::instance->marginSize;
 
 	if (cancelButton->isVisible) {
 		if (isFixedHeight) {
@@ -307,7 +293,7 @@ void TextFieldWindow::refreshLayout () {
 			}
 		}
 		cancelButton->position.assign (x, y);
-		x += cancelButton->width + uiconfig->marginSize;
+		x += cancelButton->width + UiConfiguration::instance->marginSize;
 	}
 
 	if (enterButton->isVisible) {
@@ -320,7 +306,7 @@ void TextFieldWindow::refreshLayout () {
 			}
 		}
 		enterButton->position.assign (x, y);
-		x += enterButton->width + uiconfig->marginSize;
+		x += enterButton->width + UiConfiguration::instance->marginSize;
 	}
 
 	if (iconImage) {
@@ -357,21 +343,11 @@ void TextFieldWindow::refreshLayout () {
 }
 
 void TextFieldWindow::textFieldValueChanged (void *windowPtr, Widget *widgetPtr) {
-	TextFieldWindow *window;
-
-	window = (TextFieldWindow *) windowPtr;
-	if (window->valueChangeCallback.callback) {
-		window->valueChangeCallback.callback (window->valueChangeCallback.callbackData, window);
-	}
+	((TextFieldWindow *) windowPtr)->eventCallback (((TextFieldWindow *) windowPtr)->valueChangeCallback);
 }
 
 void TextFieldWindow::textFieldValueEdited (void *windowPtr, Widget *widgetPtr) {
-	TextFieldWindow *window;
-
-	window = (TextFieldWindow *) windowPtr;
-	if (window->valueEditCallback.callback) {
-		window->valueEditCallback.callback (window->valueEditCallback.callbackData, window);
-	}
+	((TextFieldWindow *) windowPtr)->eventCallback (((TextFieldWindow *) windowPtr)->valueEditCallback);
 }
 
 void TextFieldWindow::enterButtonClicked (void *windowPtr, Widget *widgetPtr) {
@@ -379,9 +355,7 @@ void TextFieldWindow::enterButtonClicked (void *windowPtr, Widget *widgetPtr) {
 
 	window = (TextFieldWindow *) windowPtr;
 	window->textField->setKeyFocus (false);
-	if (window->enterButtonClickCallback.callback) {
-		window->enterButtonClickCallback.callback (window->enterButtonClickCallback.callbackData, window);
-	}
+	window->eventCallback (window->enterButtonClickCallback);
 }
 
 void TextFieldWindow::cancelButtonClicked (void *windowPtr, Widget *widgetPtr) {

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,13 +30,15 @@
 #include "Config.h"
 #include <stdlib.h>
 #include <math.h>
-#include "Result.h"
+#include "App.h"
 #include "ClassId.h"
 #include "Log.h"
 #include "StdString.h"
-#include "App.h"
 #include "UiConfiguration.h"
 #include "SystemInterface.h"
+#include "AgentControl.h"
+#include "RecordStore.h"
+#include "Agent.h"
 #include "OsUtil.h"
 #include "MediaUtil.h"
 #include "Json.h"
@@ -48,7 +50,7 @@
 #include "Label.h"
 #include "Image.h"
 #include "Button.h"
-#include "TextArea.h"
+#include "TextFlow.h"
 #include "CardView.h"
 #include "MediaUi.h"
 #include "MediaWindow.h"
@@ -79,88 +81,82 @@ MediaWindow::MediaWindow (Json *mediaItem, SpriteGroup *mediaUiSpriteGroup)
 , streamIconImage (NULL)
 , createStreamUnavailableIconImage (NULL)
 {
-	SystemInterface *interface;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
-
 	classId = ClassId::MediaWindow;
-	interface = &(App::instance->systemInterface);
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
 
-	setFillBg (true, uiconfig->mediumBackgroundColor);
-	mediaId = interface->getCommandStringParam (mediaItem, "id", "");
-	mediaName = interface->getCommandStringParam (mediaItem, "name", "");
-	agentId = interface->getCommandAgentId (mediaItem);
-	mediaWidth = interface->getCommandNumberParam (mediaItem, "width", (int) 0);
-	mediaHeight = interface->getCommandNumberParam (mediaItem, "height", (int) 0);
+	setFillBg (true, UiConfiguration::instance->mediumBackgroundColor);
+	mediaId = SystemInterface::instance->getCommandStringParam (mediaItem, "id", "");
+	mediaName = SystemInterface::instance->getCommandStringParam (mediaItem, "name", "");
+	agentId = SystemInterface::instance->getCommandAgentId (mediaItem);
+	mediaWidth = SystemInterface::instance->getCommandNumberParam (mediaItem, "width", (int) 0);
+	mediaHeight = SystemInterface::instance->getCommandNumberParam (mediaItem, "height", (int) 0);
 
-	mediaImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
+	mediaImage = (ImageWindow *) addWidget (new ImageWindow (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
 	mediaImage->loadCallback = Widget::EventCallbackContext (MediaWindow::mediaImageLoaded, this);
 	mediaImage->mouseClickCallback = Widget::EventCallbackContext (MediaWindow::mediaImageClicked, this);
 	mediaImage->mouseLongPressCallback = Widget::EventCallbackContext (MediaWindow::mediaImageLongPressed, this);
-	mediaImage->setLoadSprite (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
+	mediaImage->setLoadSprite (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
 
-	nameLabel = (Label *) addWidget (new Label (mediaName, UiConfiguration::BodyFont, uiconfig->primaryTextColor));
+	nameLabel = (Label *) addWidget (new Label (mediaName, UiConfiguration::BodyFont, UiConfiguration::instance->primaryTextColor));
 	nameLabel->isInputSuspended = true;
 
-	detailText = (TextArea *) addWidget (new TextArea (UiConfiguration::CaptionFont, uiconfig->inverseTextColor));
-	detailText->setPadding (uiconfig->paddingSize, uiconfig->paddingSize / 2.0f);
-	detailText->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
+	detailText = (TextFlow *) addWidget (new TextFlow (UiConfiguration::instance->textFieldMediumLineLength * UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, UiConfiguration::CaptionFont));
+	detailText->setTextColor (UiConfiguration::instance->inverseTextColor);
+	detailText->setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize / 2.0f);
+	detailText->setFillBg (true, Color (0.0f, 0.0f, 0.0f, UiConfiguration::instance->scrimBackgroundAlpha));
 	detailText->zLevel = 2;
 	detailText->isInputSuspended = true;
 	detailText->isVisible = false;
 
-	mouseoverLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->inverseTextColor)));
+	mouseoverLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->inverseTextColor)));
 	mouseoverLabel->zLevel = 1;
-	mouseoverLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
+	mouseoverLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, UiConfiguration::instance->scrimBackgroundAlpha));
 	mouseoverLabel->isTextureTargetDrawEnabled = false;
 	mouseoverLabel->isInputSuspended = true;
 	mouseoverLabel->isVisible = false;
 
-	detailNameLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (mediaName, UiConfiguration::HeadlineFont, uiconfig->inverseTextColor)));
+	detailNameLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (mediaName, UiConfiguration::HeadlineFont, UiConfiguration::instance->inverseTextColor)));
 	detailNameLabel->zLevel = 1;
-	detailNameLabel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	detailNameLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
+	detailNameLabel->setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
+	detailNameLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, UiConfiguration::instance->scrimBackgroundAlpha));
 	detailNameLabel->isInputSuspended = true;
 	detailNameLabel->isVisible = false;
 
-	viewButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::ImageButtonSprite)));
+	viewButton = (Button *) addWidget (new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ImageButtonSprite)));
 	viewButton->mouseClickCallback = Widget::EventCallbackContext (MediaWindow::viewButtonClicked, this);
 	viewButton->zLevel = 4;
 	viewButton->isTextureTargetDrawEnabled = false;
-	viewButton->setImageColor (uiconfig->flatButtonTextColor);
-	viewButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
-	viewButton->setMouseHoverTooltip (uitext->getText (UiTextString::ViewTimelineImagesTooltip));
+	viewButton->setImageColor (UiConfiguration::instance->flatButtonTextColor);
+	viewButton->setRaised (true, UiConfiguration::instance->raisedButtonBackgroundColor);
+	viewButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::ViewTimelineImagesTooltip));
 
 	browserPlayButton = (Button *) addWidget (new Button (sprites->getSprite (MediaUi::BrowserPlayButtonSprite)));
 	browserPlayButton->mouseClickCallback = Widget::EventCallbackContext (MediaWindow::browserPlayButtonClicked, this);
 	browserPlayButton->zLevel = 4;
 	browserPlayButton->isTextureTargetDrawEnabled = false;
-	browserPlayButton->setImageColor (uiconfig->flatButtonTextColor);
-	browserPlayButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
-	browserPlayButton->setMouseHoverTooltip (uitext->getText (UiTextString::MediaUiBrowserPlayTooltip));
+	browserPlayButton->setImageColor (UiConfiguration::instance->flatButtonTextColor);
+	browserPlayButton->setRaised (true, UiConfiguration::instance->raisedButtonBackgroundColor);
+	browserPlayButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::MediaUiBrowserPlayTooltip));
 	browserPlayButton->isVisible = false;
 
-	timestampLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->primaryTextColor)));
+	timestampLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->primaryTextColor)));
 	timestampLabel->zLevel = 2;
-	timestampLabel->setFillBg (true, uiconfig->darkBackgroundColor);
-	timestampLabel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize / 2.0f);
+	timestampLabel->setFillBg (true, UiConfiguration::instance->darkBackgroundColor);
+	timestampLabel->setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize / 2.0f);
 	timestampLabel->isInputSuspended = true;
 	timestampLabel->isVisible = false;
 
-	streamIconImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite))));
+	streamIconImage = (ImageWindow *) addWidget (new ImageWindow (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite))));
 	streamIconImage->zLevel = 3;
-	streamIconImage->setFillBg (true, uiconfig->darkBackgroundColor);
-	streamIconImage->setPadding (uiconfig->paddingSize / 2.0f, 0.0f);
-	streamIconImage->setMouseHoverTooltip (uitext->getText (UiTextString::StreamIconTooltip));
+	streamIconImage->setFillBg (true, UiConfiguration::instance->darkBackgroundColor);
+	streamIconImage->setPadding (UiConfiguration::instance->paddingSize / 2.0f, 0.0f);
+	streamIconImage->setMouseHoverTooltip (UiText::instance->getText (UiTextString::StreamIconTooltip));
 	streamIconImage->isVisible = false;
 
-	createStreamUnavailableIconImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::SmallErrorIconSprite))));
+	createStreamUnavailableIconImage = (ImageWindow *) addWidget (new ImageWindow (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallErrorIconSprite))));
 	createStreamUnavailableIconImage->zLevel = 3;
-	createStreamUnavailableIconImage->setFillBg (true, uiconfig->darkBackgroundColor);
-	createStreamUnavailableIconImage->setPadding (uiconfig->paddingSize / 2.0f, 0.0f);
-	createStreamUnavailableIconImage->setMouseHoverTooltip (uitext->getText (UiTextString::CreateStreamUnavailableTooltip));
+	createStreamUnavailableIconImage->setFillBg (true, UiConfiguration::instance->darkBackgroundColor);
+	createStreamUnavailableIconImage->setPadding (UiConfiguration::instance->paddingSize / 2.0f, 0.0f);
+	createStreamUnavailableIconImage->setMouseHoverTooltip (UiText::instance->getText (UiTextString::CreateStreamUnavailableTooltip));
 	createStreamUnavailableIconImage->isVisible = false;
 }
 
@@ -197,22 +193,19 @@ void MediaWindow::setDisplayTimestamp (float timestamp) {
 }
 
 void MediaWindow::setSelected (bool selected, bool shouldSkipStateChangeCallback) {
-	UiConfiguration *uiconfig;
-
 	if (selected == isSelected) {
 		return;
 	}
-	uiconfig = &(App::instance->uiConfig);
 	isSelected = selected;
 	if (isSelected) {
-		setBorder (true, uiconfig->mediumSecondaryColor.copy (uiconfig->selectionBorderAlpha), uiconfig->selectionBorderWidth);
+		setBorder (true, UiConfiguration::instance->mediumSecondaryColor.copy (UiConfiguration::instance->selectionBorderAlpha), UiConfiguration::instance->selectionBorderWidth);
 	}
 	else {
 		setBorder (false);
 	}
 	refreshLayout ();
-	if (selectStateChangeCallback.callback && (! shouldSkipStateChangeCallback)) {
-		selectStateChangeCallback.callback (selectStateChangeCallback.callbackData, this);
+	if (! shouldSkipStateChangeCallback) {
+		eventCallback (selectStateChangeCallback);
 	}
 	shouldRefreshTexture = true;
 }
@@ -232,24 +225,20 @@ void MediaWindow::setThumbnail (const StdString &imageUrl, int thumbnailIndex) {
 }
 
 void MediaWindow::syncRecordStore () {
-	RecordStore *store;
-	SystemInterface *interface;
 	Json *mediaitem, *agentstatus, serverstatus, *streamitem, *params;
 	StdString agentid, recordid, agentname, hlspath, htmlpath;
 
-	store = &(App::instance->agentControl.recordStore);
-	interface = &(App::instance->systemInterface);
-	mediaitem = store->findRecord (mediaId, SystemInterface::CommandId_MediaItem);
+	mediaitem = RecordStore::instance->findRecord (mediaId, SystemInterface::CommandId_MediaItem);
 	if (! mediaitem) {
 		return;
 	}
 
-	agentid = interface->getCommandAgentId (mediaitem);
-	agentstatus = store->findRecord (RecordStore::matchAgentStatusSource, &agentid);
+	agentid = SystemInterface::instance->getCommandAgentId (mediaitem);
+	agentstatus = RecordStore::instance->findRecord (RecordStore::matchAgentStatusSource, &agentid);
 	if (! agentstatus) {
 		return;
 	}
-	if (! interface->getCommandObjectParam (agentstatus, "mediaServerStatus", &serverstatus)) {
+	if (! SystemInterface::instance->getCommandObjectParam (agentstatus, "mediaServerStatus", &serverstatus)) {
 		return;
 	}
 
@@ -260,12 +249,12 @@ void MediaWindow::syncRecordStore () {
 		return;
 	}
 
-	mediaDuration = interface->getCommandNumberParam (mediaitem, "duration", (float) 0.0f);
-	mediaFrameRate = interface->getCommandNumberParam (mediaitem, "frameRate", (float) 0.0f);
-	mediaSize = interface->getCommandNumberParam (mediaitem, "size", (int64_t) 0);
-	mediaBitrate = interface->getCommandNumberParam (mediaitem, "bitrate", (int64_t) 0);
+	mediaDuration = SystemInterface::instance->getCommandNumberParam (mediaitem, "duration", (float) 0.0f);
+	mediaFrameRate = SystemInterface::instance->getCommandNumberParam (mediaitem, "frameRate", (float) 0.0f);
+	mediaSize = SystemInterface::instance->getCommandNumberParam (mediaitem, "size", (int64_t) 0);
+	mediaBitrate = SystemInterface::instance->getCommandNumberParam (mediaitem, "bitrate", (int64_t) 0);
 
-	streamitem = store->findRecord (MediaWindow::matchStreamSourceId, &mediaId);
+	streamitem = RecordStore::instance->findRecord (MediaWindow::matchStreamSourceId, &mediaId);
 	if (! streamitem) {
 		streamAgentId.assign ("");
 		streamId.assign ("");
@@ -278,15 +267,15 @@ void MediaWindow::syncRecordStore () {
 		browserPlayButton->isVisible = false;
 	}
 	else {
-		recordid = interface->getCommandRecordId (streamitem);
+		recordid = SystemInterface::instance->getCommandRecordId (streamitem);
 		if (! recordid.empty ()) {
-			agentid = interface->getCommandAgentId (streamitem);
+			agentid = SystemInterface::instance->getCommandAgentId (streamitem);
 		}
 		if (! agentid.empty ()) {
-			agentstatus = store->findRecord (RecordStore::matchAgentStatusSource, &agentid);
+			agentstatus = RecordStore::instance->findRecord (RecordStore::matchAgentStatusSource, &agentid);
 			if (agentstatus) {
-				agentname = interface->getCommandAgentName (agentstatus);
-				if (interface->getCommandObjectParam (agentstatus, "streamServerStatus", &serverstatus)) {
+				agentname = Agent::getCommandAgentName (agentstatus);
+				if (SystemInterface::instance->getCommandObjectParam (agentstatus, "streamServerStatus", &serverstatus)) {
 					hlspath = serverstatus.getString ("hlsStreamPath", "");
 					htmlpath = serverstatus.getString ("htmlPlayerPath", "");
 					streamThumbnailPath = serverstatus.getString ("thumbnailPath", "");
@@ -304,13 +293,13 @@ void MediaWindow::syncRecordStore () {
 			streamAgentName.assign (agentname);
 			hlsStreamPath.assign (hlspath);
 			htmlPlayerPath.assign (htmlpath);
-			streamSize = interface->getCommandNumberParam (streamitem, "size", (int64_t) 0);
+			streamSize = SystemInterface::instance->getCommandNumberParam (streamitem, "size", (int64_t) 0);
 			streamIconImage->isVisible = true;
 			browserPlayButton->isVisible = true;
 		}
 	}
 
-	isCreateStreamAvailable = interface->getCommandBooleanParam (mediaitem, "isCreateStreamAvailable", true);
+	isCreateStreamAvailable = SystemInterface::instance->getCommandBooleanParam (mediaitem, "isCreateStreamAvailable", true);
 	if (isCreateStreamAvailable) {
 		createStreamUnavailableIconImage->isVisible = false;
 	}
@@ -320,12 +309,12 @@ void MediaWindow::syncRecordStore () {
 
 	if (hasThumbnails () && mediaImage->isImageUrlEmpty ()) {
 		if (streamitem) {
-			playThumbnailIndex = interface->getCommandNumberParam (streamitem, "segmentCount", (int) 0) / 4;
+			playThumbnailIndex = SystemInterface::instance->getCommandNumberParam (streamitem, "segmentCount", (int) 0) / 4;
 		}
 		params = new Json ();
 		params->set ("id", mediaId);
 		params->set ("thumbnailIndex", (thumbnailCount / 4));
-		playThumbnailUrl = App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetThumbnailImage, SystemInterface::Constant_Media, params), thumbnailPath);
+		playThumbnailUrl = AgentControl::instance->getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetThumbnailImage, params), thumbnailPath);
 		mediaImage->setImageUrl (playThumbnailUrl);
 	}
 
@@ -335,25 +324,17 @@ void MediaWindow::syncRecordStore () {
 
 bool MediaWindow::matchStreamSourceId (void *idStringPtr, Json *record) {
 	StdString *id;
-	SystemInterface *interface;
 
-	interface = &(App::instance->systemInterface);
-	if (interface->isRecordClosed (record)) {
+	if (SystemInterface::instance->getCommandId (record) != SystemInterface::CommandId_StreamItem) {
 		return (false);
 	}
-	if (interface->getCommandId (record) != SystemInterface::CommandId_StreamItem) {
-		return (false);
-	}
-
 	id = (StdString *) idStringPtr;
-	return (id->equals (App::instance->systemInterface.getCommandStringParam (record, "sourceId", "")));
+	return (id->equals (SystemInterface::instance->getCommandStringParam (record, "sourceId", "")));
 }
 
 void MediaWindow::refreshLayout () {
-	UiConfiguration *uiconfig;
 	float x, y;
 
-	uiconfig = &(App::instance->uiConfig);
 	mouseoverLabel->isVisible = false;
 	x = 0.0f;
 	y = 0.0f;
@@ -376,7 +357,7 @@ void MediaWindow::refreshLayout () {
 			mouseoverLabel->position.assign (0.0f, 0.0f);
 
 			setFixedSize (true, mediaImage->width, mediaImage->height);
-			viewButton->position.assign (mediaImage->position.x + mediaImage->width - viewButton->width - uiconfig->dropShadowWidth, mediaImage->position.y + mediaImage->height - viewButton->height);
+			viewButton->position.assign (mediaImage->position.x + mediaImage->width - viewButton->width - UiConfiguration::instance->dropShadowWidth, mediaImage->position.y + mediaImage->height - viewButton->height);
 			browserPlayButton->position.assign (mediaImage->position.x, mediaImage->position.y + mediaImage->height - browserPlayButton->height);
 			break;
 		}
@@ -384,8 +365,8 @@ void MediaWindow::refreshLayout () {
 			detailNameLabel->isVisible = false;
 			detailText->isVisible = false;
 
-			x += uiconfig->paddingSize;
-			y += mediaImage->height + uiconfig->marginSize;
+			x += UiConfiguration::instance->paddingSize;
+			y += mediaImage->height + UiConfiguration::instance->marginSize;
 			nameLabel->position.assign (x, y);
 			nameLabel->isVisible = true;
 
@@ -399,11 +380,11 @@ void MediaWindow::refreshLayout () {
 				x += streamIconImage->width;
 			}
 
-			viewButton->position.assign (mediaImage->position.x + mediaImage->width - viewButton->width - uiconfig->dropShadowWidth, mediaImage->position.y + mediaImage->height - viewButton->height);
+			viewButton->position.assign (mediaImage->position.x + mediaImage->width - viewButton->width - UiConfiguration::instance->dropShadowWidth, mediaImage->position.y + mediaImage->height - viewButton->height);
 			browserPlayButton->position.assign (mediaImage->position.x, mediaImage->position.y + mediaImage->height - browserPlayButton->height);
 
 			resetSize ();
-			setFixedSize (true, mediaImage->width, maxWidgetY + uiconfig->paddingSize);
+			setFixedSize (true, mediaImage->width, maxWidgetY + UiConfiguration::instance->paddingSize);
 			break;
 		}
 		case CardView::HighDetail: {
@@ -425,7 +406,7 @@ void MediaWindow::refreshLayout () {
 			detailText->position.assign (x, mediaImage->position.y + mediaImage->height - detailText->height);
 			detailText->isVisible = true;
 			setFixedSize (true, mediaImage->width, mediaImage->height);
-			viewButton->position.assign (mediaImage->position.x + mediaImage->width - viewButton->width - uiconfig->dropShadowWidth, mediaImage->position.y + mediaImage->height - viewButton->height);
+			viewButton->position.assign (mediaImage->position.x + mediaImage->width - viewButton->width - UiConfiguration::instance->dropShadowWidth, mediaImage->position.y + mediaImage->height - viewButton->height);
 			browserPlayButton->position.assign (mediaImage->position.x, mediaImage->position.y + mediaImage->height - browserPlayButton->height);
 			break;
 		}
@@ -480,12 +461,7 @@ void MediaWindow::setLayout (int layoutType, float maxPanelWidth) {
 }
 
 void MediaWindow::mediaImageClicked (void *windowPtr, Widget *widgetPtr) {
-	MediaWindow *window;
-
-	window = (MediaWindow *) windowPtr;
-	if (window->mediaImageClickCallback.callback) {
-		window->mediaImageClickCallback.callback (window->mediaImageClickCallback.callbackData, window);
-	}
+	((MediaWindow *) windowPtr)->eventCallback (((MediaWindow *) windowPtr)->mediaImageClickCallback);
 }
 
 void MediaWindow::mediaImageLongPressed (void *windowPtr, Widget *widgetPtr) {
@@ -497,25 +473,20 @@ void MediaWindow::mediaImageLongPressed (void *windowPtr, Widget *widgetPtr) {
 
 void MediaWindow::mediaImageLoaded (void *windowPtr, Widget *widgetPtr) {
 	MediaWindow *window;
+	ImageWindow *image;
 
 	window = (MediaWindow *) windowPtr;
+	image = (ImageWindow *) widgetPtr;
+	if (! image->isLoaded ()) {
+		return;
+	}
 	window->shouldRefreshTexture = true;
 }
 
 void MediaWindow::viewButtonClicked (void *windowPtr, Widget *widgetPtr) {
-	MediaWindow *window;
-
-	window = (MediaWindow *) windowPtr;
-	if (window->viewButtonClickCallback.callback) {
-		window->viewButtonClickCallback.callback (window->viewButtonClickCallback.callbackData, window);
-	}
+	((MediaWindow *) windowPtr)->eventCallback (((MediaWindow *) windowPtr)->viewButtonClickCallback);
 }
 
 void MediaWindow::browserPlayButtonClicked (void *windowPtr, Widget *widgetPtr) {
-	MediaWindow *window;
-
-	window = (MediaWindow *) windowPtr;
-	if (window->browserPlayButtonClickCallback.callback) {
-		window->browserPlayButtonClickCallback.callback (window->browserPlayButtonClickCallback.callbackData, window);
-	}
+	((MediaWindow *) windowPtr)->eventCallback (((MediaWindow *) windowPtr)->browserPlayButtonClickCallback);
 }

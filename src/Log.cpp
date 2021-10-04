@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -45,18 +45,26 @@
 #include <fcntl.h>
 #include "SDL2/SDL.h"
 #include "App.h"
-#include "Result.h"
 #include "StdString.h"
 #include "OsUtil.h"
 #include "Log.h"
 
-const char *Log::LevelNames[Log::LevelCount] = { "ERR", "WARNING", "NOTICE", "INFO", "DEBUG", "DEBUG1", "DEBUG2", "DEBUG3", "DEBUG4" };
+const char *Log::LevelNames[Log::LevelCount] = {
+	"ERR",
+	"WARNING",
+	"NOTICE",
+	"INFO",
+	"DEBUG",
+	"DEBUG1",
+	"DEBUG2",
+	"DEBUG3",
+	"DEBUG4"
+};
 
 Log::Log ()
-: writeLevel (Log::ErrLevel)
-, outputFilename ("")
-, isStderrOutputEnabled (false)
-, isFileOutputEnabled (false)
+: isStdoutWriteEnabled (false)
+, isFileWriteEnabled (false)
+, writeLevel (Log::ErrLevel)
 , isFileErrorLogged (false)
 , mutex (NULL)
 {
@@ -70,36 +78,34 @@ Log::~Log () {
 	}
 }
 
-void Log::setLevel (int level) {
-	if ((level >= 0) && (level < Log::LevelCount)) {
+void Log::setLevel (Log::LogLevel level) {
+	if ((level >= 0) && ((int) level < Log::LevelCount)) {
 		writeLevel = level;
 	}
 }
 
-int Log::setLevelByName (const char *name) {
-	int rval, i;
+OsUtil::Result Log::setLevelByName (const char *name) {
+	StdString s;
+	int i;
+	OsUtil::Result result;
 
-	rval = Result::InvalidParamError;
+	result = OsUtil::Result::InvalidParamError;
+	s.assign (StdString (name).uppercased ());
 	for (i = 0; i < Log::LevelCount; ++i) {
-		if (! strcmp (name, Log::LevelNames[i])) {
-			setLevel (i);
-			rval = Result::Success;
+		if (s.equals (Log::LevelNames[i])) {
+			setLevel ((Log::LogLevel) i);
+			result = OsUtil::Result::Success;
 			break;
 		}
 	}
-
-	return (rval);
+	return (result);
 }
 
-int Log::setLevelByName (const StdString &name) {
+OsUtil::Result Log::setLevelByName (const StdString &name) {
 	return (setLevelByName (name.c_str ()));
 }
 
-void Log::setStderrOutput (bool enable) {
-	isStderrOutputEnabled = enable;
-}
-
-int Log::setFileOutput (bool enable, const char *filename) {
+OsUtil::Result Log::openLogFile (const char *filename) {
 	StdString fname;
 	int fd;
 #if PLATFORM_LINUX || PLATFORM_MACOS
@@ -107,13 +113,12 @@ int Log::setFileOutput (bool enable, const char *filename) {
 	int sz;
 #endif
 
-	if (! enable) {
-		isFileOutputEnabled = false;
-		outputFilename.assign ("");
-		return (Result::Success);
-	}
-
 	fname.assign (filename);
+	if (fname.empty ()) {
+		isFileWriteEnabled = false;
+		writeFilename.assign ("");
+		return (OsUtil::Result::Success);
+	}
 #if PLATFORM_LINUX || PLATFORM_MACOS
 	if (filename[0] != '/') {
 		c = NULL;
@@ -126,13 +131,11 @@ int Log::setFileOutput (bool enable, const char *filename) {
 			if (c) {
 				break;
 			}
-
 			if (errno != ERANGE) {
-				fprintf (stderr, "Failed to open log file %s - %s\n", filename, strerror (errno));
+				::printf ("Failed to open log file %s - %s\n", filename, strerror (errno));
 				break;
 			}
 		} while (sz < 8192);
-
 		if (c && cwd) {
 			fname.sprintf ("%s/%s", cwd, filename);
 		}
@@ -141,46 +144,43 @@ int Log::setFileOutput (bool enable, const char *filename) {
 			free (cwd);
 		}
 		if (! c) {
-			return (Result::FileOpenFailedError);
+			return (OsUtil::Result::FileOpenFailedError);
 		}
 	}
 #endif
-
 #if PLATFORM_WINDOWS
 	fd = _open (fname.c_str (), _O_APPEND | _O_WRONLY | _O_CREAT | _O_BINARY, _S_IREAD | _S_IWRITE);
 #else
 	fd = open (fname.c_str (), O_APPEND | O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 #endif
 	if (fd < 0) {
-		fprintf (stderr, "Failed to open log file %s - %s\n", fname.c_str (), strerror (errno));
-		return (Result::FileOpenFailedError);
+		::printf ("Failed to open log file %s - %s\n", fname.c_str (), strerror (errno));
+		return (OsUtil::Result::FileOpenFailedError);
 	}
 	close (fd);
 
-	isFileOutputEnabled = true;
-	outputFilename.assign (fname);
-
-	return (Result::Success);
+	isFileWriteEnabled = true;
+	writeFilename.assign (fname);
+	return (OsUtil::Result::Success);
 }
 
-int Log::setFileOutput (bool enable, const StdString &filename) {
-	return (setFileOutput (enable, filename.c_str ()));
+OsUtil::Result Log::openLogFile (const StdString &filename) {
+	return (openLogFile (filename.c_str ()));
 }
 
-void Log::voutput (int level, const char *str, va_list args) {
+void Log::voutput (Log::LogLevel level, const char *str, va_list args) {
 	FILE *fp;
 	int64_t now;
 	va_list argscopy;
 	StdString text;
 
-	if (!(isStderrOutputEnabled || isFileOutputEnabled)) {
+	if (!(isStdoutWriteEnabled || isFileWriteEnabled)) {
 		return;
 	}
 
-	if ((level < 0) || (level >= Log::LevelCount)) {
+	if ((level < 0) || ((int) level >= Log::LevelCount)) {
 		level = Log::NoLevel;
 	}
-
 	if (level != Log::NoLevel) {
 		if (level > writeLevel) {
 			return;
@@ -199,15 +199,14 @@ void Log::voutput (int level, const char *str, va_list args) {
 	va_end (argscopy);
 
 	SDL_LockMutex (mutex);
-	if (isStderrOutputEnabled) {
-		fprintf (stderr, "%s%s", text.c_str (), CONFIG_NEWLINE);
+	if (isStdoutWriteEnabled) {
+		::printf ("%s%s", text.c_str (), CONFIG_NEWLINE);
 	}
-
-	if (isFileOutputEnabled) {
-		fp = fopen (outputFilename.c_str (), "ab");
+	if (isFileWriteEnabled) {
+		fp = fopen (writeFilename.c_str (), "ab");
 		if (! fp) {
 			if (! isFileErrorLogged) {
-				fprintf (stderr, "Warning: could not open log file %s for writing - %s\n", outputFilename.c_str (), strerror (errno));
+				::printf ("Warning: could not open log file %s for writing - %s\n", writeFilename.c_str (), strerror (errno));
 				isFileErrorLogged = true;
 			}
 		}
@@ -219,7 +218,7 @@ void Log::voutput (int level, const char *str, va_list args) {
 	SDL_UnlockMutex (mutex);
 }
 
-void Log::write (int level, const char *str, ...) {
+void Log::write (Log::LogLevel level, const char *str, ...) {
 	va_list ap;
 
 	va_start (ap, str);
@@ -227,16 +226,19 @@ void Log::write (int level, const char *str, ...) {
 	va_end (ap);
 }
 
-void Log::write (int level, const char *str, va_list args) {
+void Log::write (Log::LogLevel level, const char *str, va_list args) {
 	App::instance->log.voutput (level, str, args);
 }
 
 void Log::printf (const char *str, ...) {
 	va_list ap;
+	StdString text;
 
 	va_start (ap, str);
-	App::instance->log.voutput (Log::NoLevel, str, ap);
+	text.vsprintf (str, ap);
 	va_end (ap);
+	::printf ("[%s] %s\n", OsUtil::getTimestampString (OsUtil::getTime (), true).c_str (), text.c_str ());
+	App::instance->writeConsoleOutput (text);
 }
 
 void Log::err (const char *str, ...) {

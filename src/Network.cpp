@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -59,21 +59,24 @@
 #include "curl/curl.h"
 #include "openssl/ssl.h"
 #include "App.h"
-#include "Result.h"
 #include "Log.h"
 #include "Buffer.h"
+#include "OsUtil.h"
 #include "StdString.h"
 #include "Ipv4Address.h"
 #include "Network.h"
 
-const int Network::DefaultRequestThreadCount = 8;
+Network *Network::instance = NULL;
+const StdString Network::LocalhostAddress = StdString ("127.0.0.1");
+const int Network::DefaultMaxRequestThreads = 8;
 const int Network::MaxDatagramSize = 1500; // bytes
 
 Network::Network ()
-: isStarted (false)
+: maxRequestThreads (Network::DefaultMaxRequestThreads)
+, enableDatagramSocket (false)
+, isStarted (false)
 , isStopped (false)
 , datagramPort (0)
-, httpRequestThreadCount (Network::DefaultRequestThreadCount)
 , datagramSendThread (NULL)
 , datagramReceiveThread (NULL)
 , datagramSendMutex (NULL)
@@ -155,9 +158,10 @@ void Network::waitHttpRequestThreads () {
 	httpRequestThreadList.clear ();
 }
 
-int Network::start (int requestThreadCount) {
+OsUtil::Result Network::start () {
 	struct sockaddr_in saddr;
-	int result, i;
+	OsUtil::Result result;
+	int i, cresult;
 	socklen_t namelen;
 	SDL_Thread *thread;
 #if PLATFORM_LINUX || PLATFORM_MACOS
@@ -171,22 +175,20 @@ int Network::start (int requestThreadCount) {
 #endif
 
 	if (isStarted) {
-		return (Result::Success);
+		return (OsUtil::Result::Success);
 	}
-
-	if (requestThreadCount <= 0) {
-		Log::warning ("Invalid preferences value %s %i, ignored", App::NetworkThreadsKey, requestThreadCount);
-		requestThreadCount = Network::DefaultRequestThreadCount;
+	if (maxRequestThreads <= 0) {
+		Log::warning ("Invalid preferences value %s %i, ignored", App::NetworkThreadsKey, maxRequestThreads);
+		maxRequestThreads = Network::DefaultMaxRequestThreads;
 	}
-	httpRequestThreadCount = requestThreadCount;
 
 #if PLATFORM_WINDOWS
 	if (! isWsaStarted) {
 		versionrequested = MAKEWORD (2, 2);
-		result = WSAStartup (versionrequested, &wsadata);
-		if (result != 0) {
-			Log::err ("Network start failed; err=\"WSAStartup: %i\"", result);
-			return (Result::SocketOperationFailedError);
+		cresult = WSAStartup (versionrequested, &wsadata);
+		if (cresult != 0) {
+			Log::err ("Network start failed; err=\"WSAStartup: %i\"", cresult);
+			return (OsUtil::Result::SocketOperationFailedError);
 		}
 		Log::debug ("WSAStartup; wsaVersion=%i.%i", HIBYTE (wsadata.wVersion), LOBYTE (wsadata.wVersion));
 		isWsaStarted = true;
@@ -194,87 +196,88 @@ int Network::start (int requestThreadCount) {
 #endif
 
 	SSL_library_init ();
-	result = curl_global_init (CURL_GLOBAL_ALL);
-	if (result != 0) {
-		return (Result::LibcurlOperationFailedError);
+	cresult = curl_global_init (CURL_GLOBAL_ALL);
+	if (cresult != 0) {
+		return (OsUtil::Result::LibcurlOperationFailedError);
 	}
-
 	result = resetInterfaces ();
-	if (result != Result::Success) {
+	if (result != OsUtil::Result::Success) {
 		return (result);
 	}
 
 	datagramSocket = -1;
+	datagramPort = 0;
+	if (enableDatagramSocket) {
 #if PLATFORM_LINUX || PLATFORM_MACOS
-	proto = getprotobyname ("udp");
-	if (! proto) {
-		Log::err ("Network start failed; err=\"getprotobyname: %s\"", strerror (errno));
-		return (Result::SocketOperationFailedError);
-	}
-	datagramSocket = socket (PF_INET, SOCK_DGRAM, proto->p_proto);
-	endprotoent ();
+		proto = getprotobyname ("udp");
+		if (! proto) {
+			Log::err ("Network start failed; err=\"getprotobyname: %s\"", strerror (errno));
+			return (OsUtil::Result::SocketOperationFailedError);
+		}
+		datagramSocket = socket (PF_INET, SOCK_DGRAM, proto->p_proto);
+		endprotoent ();
 #endif
 #if PLATFORM_WINDOWS
-	datagramSocket = socket (AF_INET, SOCK_DGRAM, 0);
+		datagramSocket = socket (AF_INET, SOCK_DGRAM, 0);
 #endif
-	if (datagramSocket < 0) {
-		Log::err ("Network start failed; err=\"socket: %s\"", strerror (errno));
-		return (Result::SocketOperationFailedError);
-	}
-
-	sockopt = 1;
-	if (setsockopt (datagramSocket, SOL_SOCKET, SO_REUSEADDR, &sockopt, sizeof (sockopt)) < 0) {
-		Log::err ("Network start failed; err=\"setsockopt SO_REUSEADDR: %s\"", strerror (errno));
-		return (Result::SocketOperationFailedError);
-	}
-
-	sockopt = 1;
-	if (setsockopt (datagramSocket, SOL_SOCKET, SO_BROADCAST, &sockopt, sizeof (sockopt)) < 0) {
-		Log::err ("Network start failed; err=\"setsockopt SO_BROADCAST: %s\"", strerror (errno));
-		return (Result::SocketOperationFailedError);
-	}
-
-	memset (&saddr, 0, sizeof (struct sockaddr_in));
-	saddr.sin_family = AF_INET;
-	saddr.sin_addr.s_addr = htonl (INADDR_ANY);
-	if (bind (datagramSocket, (struct sockaddr *) (&saddr), sizeof (struct sockaddr_in)) < 0) {
-		Log::err ("Network start failed; err=\"bind: %s\"", strerror (errno));
-		return (Result::SocketOperationFailedError);
-	}
-
-	memset (&saddr, 0, sizeof (struct sockaddr_in));
-	namelen = sizeof (struct sockaddr_in);
-	if (getsockname (datagramSocket, (struct sockaddr *) &saddr, &namelen) < 0) {
-		Log::err ("Network start failed; err=\"getsockname: %s\"", strerror (errno));
-		return (Result::SocketOperationFailedError);
-	}
-	datagramPort = (int) ntohs (saddr.sin_port);
-
-	datagramReceiveThread = SDL_CreateThread (Network::runDatagramReceiveThread, "runDatagramReceiveThread", (void *) this);
-	if (! datagramReceiveThread) {
-		Log::err ("Network start failed; err=\"thread create failed\"");
-		return (Result::ThreadCreateFailedError);
-	}
-
-	datagramSendThread = SDL_CreateThread (Network::runDatagramSendThread, "runDatagramSendThread", (void *) this);
-	if (! datagramSendThread) {
-		Log::err ("Network start failed; err=\"thread create failed\"");
-		return (Result::ThreadCreateFailedError);
-	}
-
-	for (i = 0; i < httpRequestThreadCount; ++i) {
-		thread = SDL_CreateThread (Network::runHttpRequestThread, StdString::createSprintf ("runHttpRequestThread_%i", i).c_str (), (void *) this);
-		if (! thread) {
-			return (Result::ThreadCreateFailedError);
+		if (datagramSocket < 0) {
+			Log::err ("Network start failed; err=\"socket: %s\"", strerror (errno));
+			return (OsUtil::Result::SocketOperationFailedError);
 		}
 
+		sockopt = 1;
+		if (setsockopt (datagramSocket, SOL_SOCKET, SO_REUSEADDR, &sockopt, sizeof (sockopt)) < 0) {
+			Log::err ("Network start failed; err=\"setsockopt SO_REUSEADDR: %s\"", strerror (errno));
+			return (OsUtil::Result::SocketOperationFailedError);
+		}
+
+		sockopt = 1;
+		if (setsockopt (datagramSocket, SOL_SOCKET, SO_BROADCAST, &sockopt, sizeof (sockopt)) < 0) {
+			Log::err ("Network start failed; err=\"setsockopt SO_BROADCAST: %s\"", strerror (errno));
+			return (OsUtil::Result::SocketOperationFailedError);
+		}
+
+		memset (&saddr, 0, sizeof (struct sockaddr_in));
+		saddr.sin_family = AF_INET;
+		saddr.sin_addr.s_addr = htonl (INADDR_ANY);
+		if (bind (datagramSocket, (struct sockaddr *) (&saddr), sizeof (struct sockaddr_in)) < 0) {
+			Log::err ("Network start failed; err=\"bind: %s\"", strerror (errno));
+			return (OsUtil::Result::SocketOperationFailedError);
+		}
+
+		memset (&saddr, 0, sizeof (struct sockaddr_in));
+		namelen = sizeof (struct sockaddr_in);
+		if (getsockname (datagramSocket, (struct sockaddr *) &saddr, &namelen) < 0) {
+			Log::err ("Network start failed; err=\"getsockname: %s\"", strerror (errno));
+			return (OsUtil::Result::SocketOperationFailedError);
+		}
+		datagramPort = (int) ntohs (saddr.sin_port);
+
+		datagramReceiveThread = SDL_CreateThread (Network::runDatagramReceiveThread, "runDatagramReceiveThread", (void *) this);
+		if (! datagramReceiveThread) {
+			Log::err ("Network start failed; err=\"thread create failed\"");
+			return (OsUtil::Result::ThreadCreateFailedError);
+		}
+
+		datagramSendThread = SDL_CreateThread (Network::runDatagramSendThread, "runDatagramSendThread", (void *) this);
+		if (! datagramSendThread) {
+			Log::err ("Network start failed; err=\"thread create failed\"");
+			return (OsUtil::Result::ThreadCreateFailedError);
+		}
+	}
+
+	for (i = 0; i < maxRequestThreads; ++i) {
+		thread = SDL_CreateThread (Network::runHttpRequestThread, StdString::createSprintf ("runHttpRequestThread_%i", i).c_str (), (void *) this);
+		if (! thread) {
+			return (OsUtil::Result::ThreadCreateFailedError);
+		}
 		httpRequestThreadList.push_back (thread);
 	}
 
 	isStarted = true;
-	Log::debug ("Network start; datagramSocket=%i datagramPort=%i httpRequestThreadCount=%i", datagramSocket, datagramPort, httpRequestThreadCount);
+	Log::debug ("Network start; datagramSocket=%i datagramPort=%i maxRequestThreads=%i", datagramSocket, datagramPort, maxRequestThreads);
 
-	return (Result::Success);
+	return (OsUtil::Result::Success);
 }
 
 void Network::stop () {
@@ -285,11 +288,9 @@ void Network::stop () {
 		WSACleanup ();
 	}
 #endif
-
 	if ((! isStarted) || isStopped) {
 		return;
 	}
-
 	isStopped = true;
 	if (datagramSocket >= 0) {
 		shutdown (datagramSocket, SHUT_RDWR);
@@ -322,16 +323,17 @@ void Network::waitThreads () {
 }
 
 bool Network::isStopComplete () {
-	return (isStopped && (httpRequestThreadStopCount >= httpRequestThreadCount));
+	return (isStopped && (httpRequestThreadStopCount >= maxRequestThreads));
 }
 
-int Network::resetInterfaces () {
+OsUtil::Result Network::resetInterfaces () {
 #if PLATFORM_LINUX
 	struct ifreq req, *i, *end;
 	struct ifconf conf;
 	struct sockaddr_in *addr;
 	char confbuf[1024], addrbuf[1024];
-	int fd, result, id;
+	int fd, id;
+	OsUtil::Result result;
 	StdString name;
 	Network::Interface interface;
 
@@ -339,7 +341,7 @@ int Network::resetInterfaces () {
 	if (fd < 0) {
 		Log::err ("Failed to detect network interfaces; err=\"socket: %s\"", strerror (errno));
 		close (fd);
-		return (Result::SocketOperationFailedError);
+		return (OsUtil::Result::SocketOperationFailedError);
 	}
 
 	conf.ifc_len = sizeof (confbuf);
@@ -347,12 +349,12 @@ int Network::resetInterfaces () {
 	if (ioctl (fd, SIOCGIFCONF, &conf) < 0) {
 		Log::err ("Failed to detect network interfaces; err=\"ioctl SIOCGIFCONF: %s\"", strerror (errno));
 		close (fd);
-		return (Result::SocketOperationFailedError);
+		return (OsUtil::Result::SocketOperationFailedError);
 	}
 
 	interfaceMap.clear ();
 	id = 0;
-	result = Result::Success;
+	result = OsUtil::Result::Success;
 	i = conf.ifc_req;
 	end = i + (conf.ifc_len / sizeof (struct ifreq));
 	while (i != end) {
@@ -422,7 +424,7 @@ int Network::resetInterfaces () {
 	result = getifaddrs (&ifp);
 	if (result != 0) {
 		Log::warning ("Failed to detect network interfaces; err=\"getifaddrs: %s\"", strerror (errno));
-		return (Result::SocketOperationFailedError);
+		return (OsUtil::Result::SocketOperationFailedError);
 	}
 
 	id = 0;
@@ -473,7 +475,7 @@ int Network::resetInterfaces () {
 	}
 
 	freeifaddrs (ifp);
-	return (Result::Success);
+	return (OsUtil::Result::Success);
 #endif
 #if PLATFORM_WINDOWS
 	PMIB_IPADDRTABLE table;
@@ -489,7 +491,7 @@ int Network::resetInterfaces () {
 	table = (MIB_IPADDRTABLE *) malloc (sizeof (MIB_IPADDRTABLE));
 	if (! table) {
 		Log::err ("Failed to detect network interfaces (out of memory)");
-		return (Result::OutOfMemoryError);
+		return (OsUtil::Result::OutOfMemoryError);
 	}
 
 	retval = GetIpAddrTable (table, &sz, 0);
@@ -498,16 +500,15 @@ int Network::resetInterfaces () {
 		table = (MIB_IPADDRTABLE *) malloc (sz);
 		if (! table) {
 			Log::err ("Failed to detect network interfaces (out of memory)");
-			return (Result::OutOfMemoryError);
+			return (OsUtil::Result::OutOfMemoryError);
 		}
-
 		retval = GetIpAddrTable (table, &sz, 0);
 	}
 
 	if (retval != NO_ERROR) {
 		free (table);
 		Log::err ("Failed to detect network interfaces (GetIpAddrTable); result=%i", (int) retval);
-		return (Result::SystemOperationFailedError);
+		return (OsUtil::Result::SystemOperationFailedError);
 	}
 
 	id = 0;
@@ -538,7 +539,7 @@ int Network::resetInterfaces () {
 		free (table);
 		table = NULL;
 	}
-	return (Result::Success);
+	return (OsUtil::Result::Success);
 #endif
 }
 
@@ -559,16 +560,9 @@ StdString Network::getPrimaryInterfaceAddress () {
 				address = interface->address;
 			}
 		}
-
 		++i;
 	}
-
 	return (address);
-}
-
-void Network::addDatagramCallback (Network::DatagramCallback callback, void *callbackData) {
-	// TODO: Possibly add a mutex lock here
-	datagramCallbackList.push_back (Network::DatagramCallbackContext (callback, callbackData));
 }
 
 int Network::runDatagramReceiveThread (void *networkPtr) {
@@ -577,14 +571,12 @@ int Network::runDatagramReceiveThread (void *networkPtr) {
 	socklen_t addrlen;
 	int msglen;
 	char buf[Network::MaxDatagramSize], host[NI_MAXHOST];
-	std::list<Network::DatagramCallbackContext>::iterator i, end;
 
 	network = (Network *) networkPtr;
 	while (true) {
 		if (network->isStopped || (network->datagramSocket < 0)) {
 			break;
 		}
-
 		addrlen = sizeof (struct sockaddr_in);
 		msglen = recvfrom (network->datagramSocket, buf, sizeof (buf), 0, (struct sockaddr *) &srcaddr, &addrlen);
 		if (msglen < 0) {
@@ -593,15 +585,11 @@ int Network::runDatagramReceiveThread (void *networkPtr) {
 		if (msglen == 0) {
 			break;
 		}
-
 		if (getnameinfo ((struct sockaddr *) &srcaddr, addrlen, host, sizeof (host), NULL, 0, NI_NUMERICHOST | NI_NUMERICSERV) != 0) {
 			memset (host, 0, sizeof (host));
 		}
-		i = network->datagramCallbackList.begin ();
-		end = network->datagramCallbackList.end ();
-		while (i != end) {
-			i->callback (i->callbackData, buf, msglen, host, (int) srcaddr.sin_port);
-			++i;
+		if (network->datagramCallback.callback) {
+			network->datagramCallback.callback (network->datagramCallback.callbackData, buf, msglen, host, (int) srcaddr.sin_port);
 		}
 	}
 
@@ -619,7 +607,6 @@ int Network::runDatagramSendThread (void *networkPtr) {
 		if (network->isStopped || (network->datagramSocket < 0)) {
 			break;
 		}
-
 		if (network->datagramQueue.empty ()) {
 			SDL_CondWait (network->datagramSendCond, network->datagramSendMutex);
 			continue;
@@ -640,7 +627,7 @@ int Network::runDatagramSendThread (void *networkPtr) {
 				result = network->sendTo (item.targetHostname, item.targetPort, item.messageData);
 			}
 
-			if (result != Result::Success) {
+			if (result != OsUtil::Result::Success) {
 			}
 			delete (item.messageData);
 			item.messageData = NULL;
@@ -677,27 +664,27 @@ void Network::sendBroadcastDatagram (int targetPort, Buffer *messageData) {
 	SDL_UnlockMutex (datagramSendMutex);
 }
 
-void Network::sendHttpGet (const StdString &targetUrl, Network::HttpRequestCallback callback, void *callbackData) {
+void Network::sendHttpGet (const StdString &targetUrl, Network::HttpRequestCallbackContext callback, const StdString &targetServerName) {
 	Network::HttpRequestContext item;
 
 	item.method.assign ("GET");
 	item.url.assign (targetUrl);
 	item.callback = callback;
-	item.callbackData = callbackData;
+	item.serverName.assign (targetServerName);
 	SDL_LockMutex (httpRequestQueueMutex);
 	httpRequestQueue.push (item);
 	SDL_CondSignal (httpRequestQueueCond);
 	SDL_UnlockMutex (httpRequestQueueMutex);
 }
 
-void Network::sendHttpPost (const StdString &targetUrl, const StdString &postData, Network::HttpRequestCallback callback, void *callbackData) {
+void Network::sendHttpPost (const StdString &targetUrl, const StdString &postData, Network::HttpRequestCallbackContext callback, const StdString &targetServerName) {
 	Network::HttpRequestContext item;
 
 	item.method.assign ("POST");
 	item.url.assign (targetUrl);
 	item.postData.assign (postData);
+	item.serverName.assign (targetServerName);
 	item.callback = callback;
-	item.callbackData = callbackData;
 	SDL_LockMutex (httpRequestQueueMutex);
 	httpRequestQueue.push (item);
 	SDL_CondSignal (httpRequestQueueCond);
@@ -711,9 +698,8 @@ int Network::sendTo (const StdString &targetHostname, int targetPort, Buffer *me
 	int result;
 
 	if ((! isStarted) || (datagramSocket < 0)) {
-		return (Result::SocketNotConnectedError);
+		return (OsUtil::Result::SocketNotConnectedError);
 	}
-
 	memset (&hints, 0, sizeof (struct addrinfo));
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
@@ -725,20 +711,18 @@ int Network::sendTo (const StdString &targetHostname, int targetPort, Buffer *me
 	portstr.sprintf ("%i", targetPort);
 	result = getaddrinfo (targetHostname.c_str (), portstr.c_str (), &hints, &addr);
 	if (result != 0) {
-		return (Result::UnknownHostnameError);
+		return (OsUtil::Result::UnknownHostnameError);
 	}
 	if (! addr) {
-		return (Result::SocketOperationFailedError);
+		return (OsUtil::Result::SocketOperationFailedError);
 	}
 
 	result = sendto (datagramSocket, (char *) messageData->data, messageData->length, 0, addr->ai_addr, addr->ai_addrlen);
 	freeaddrinfo (addr);
-
 	if (result < 0) {
-		return (Result::SocketOperationFailedError);
+		return (OsUtil::Result::SocketOperationFailedError);
 	}
-
-	return (Result::Success);
+	return (OsUtil::Result::Success);
 }
 
 int Network::broadcastSendTo (int targetPort, Buffer *messageData) {
@@ -746,7 +730,7 @@ int Network::broadcastSendTo (int targetPort, Buffer *messageData) {
 	Network::Interface *interface;
 	int result, sendtoresult, successcount;
 
-	result = Result::Success;
+	result = OsUtil::Result::Success;
 	successcount = 0;
 	i = interfaceMap.begin ();
 	end = interfaceMap.end ();
@@ -754,21 +738,19 @@ int Network::broadcastSendTo (int targetPort, Buffer *messageData) {
 		interface = &(i->second);
 		if (interface->isBroadcast && interface->isUp && (! interface->isLoopback) && (! interface->broadcastAddress.empty ()) && (! interface->broadcastAddress.equals ("0.0.0.0"))) {
 			sendtoresult = sendTo (interface->broadcastAddress, targetPort, messageData);
-			if (sendtoresult == Result::Success) {
+			if (sendtoresult == OsUtil::Result::Success) {
 				++successcount;
 			}
 			else {
 				result = sendtoresult;
 			}
 		}
-
 		++i;
 	}
 
-	if ((result != Result::Success) && (successcount > 0)) {
-		result = Result::Success;
+	if ((result != OsUtil::Result::Success) && (successcount > 0)) {
+		result = OsUtil::Result::Success;
 	}
-
 	return (result);
 }
 
@@ -785,7 +767,6 @@ int Network::runHttpRequestThread (void *networkPtr) {
 		if (network->isStopped) {
 			break;
 		}
-
 		if (network->httpRequestQueue.empty ()) {
 			SDL_CondWait (network->httpRequestQueueCond, network->httpRequestQueueMutex);
 			continue;
@@ -798,11 +779,11 @@ int Network::runHttpRequestThread (void *networkPtr) {
 		statuscode = 0;
 		responsebuffer = NULL;
 		result = network->sendHttpRequest (&item, &statuscode, &responsebuffer);
-		if (result != Result::Success) {
+		if (result != OsUtil::Result::Success) {
 			statuscode = 0;
 		}
-		if (item.callback) {
-			item.callback (item.callbackData, item.url, statuscode, responsebuffer);
+		if (item.callback.callback) {
+			item.callback.callback (item.callback.callbackData, item.url, statuscode, responsebuffer);
 		}
 		if (responsebuffer) {
 			responsebuffer->release ();
@@ -817,19 +798,20 @@ int Network::runHttpRequestThread (void *networkPtr) {
 	return (0);
 }
 
-int Network::sendHttpRequest (Network::HttpRequestContext *item, int *statusCode, SharedBuffer **responseBuffer) {
+OsUtil::Result Network::sendHttpRequest (Network::HttpRequestContext *item, int *statusCode, SharedBuffer **responseBuffer) {
 	CURL *curl;
+	struct curl_slist *headers;
 	CURLcode code;
 	SharedBuffer *buffer;
 	long responsecode;
-	int result;
+	OsUtil::Result result;
 
 	curl = curl_easy_init ();
 	if (! curl) {
-		return (Result::LibcurlOperationFailedError);
+		return (OsUtil::Result::LibcurlOperationFailedError);
 	}
-
-	result = Result::Success;
+	result = OsUtil::Result::Success;
+	headers = NULL;
 	code = CURLE_UNKNOWN_OPTION;
 	buffer = new SharedBuffer ();
 	buffer->retain ();
@@ -839,6 +821,12 @@ int Network::sendHttpRequest (Network::HttpRequestContext *item, int *statusCode
 	curl_easy_setopt (curl, CURLOPT_WRITEDATA, buffer);
 	curl_easy_setopt (curl, CURLOPT_NOPROGRESS, 0);
 	curl_easy_setopt (curl, CURLOPT_PROGRESSFUNCTION, Network::curlProgress);
+
+	if (! item->serverName.empty ()) {
+		headers = curl_slist_append (headers, StdString::createSprintf ("Host: %s", item->serverName.c_str ()).c_str ());
+		curl_easy_setopt (curl, CURLOPT_HTTPHEADER, headers);
+	}
+
 	curl_easy_setopt (curl, CURLOPT_URL, item->url.c_str ());
 	if (! httpUserAgent.empty ()) {
 		curl_easy_setopt (curl, CURLOPT_USERAGENT, httpUserAgent.c_str ());
@@ -862,16 +850,16 @@ int Network::sendHttpRequest (Network::HttpRequestContext *item, int *statusCode
 		code = curl_easy_perform (curl);
 	}
 	else {
-		result = Result::UnknownMethodError;
+		result = OsUtil::Result::UnknownMethodError;
 	}
 
-	if (result == Result::Success) {
+	if (result == OsUtil::Result::Success) {
 		if (code != CURLE_OK) {
-			result = Result::LibcurlOperationFailedError;
+			result = OsUtil::Result::LibcurlOperationFailedError;
 		}
 	}
 
-	if (result != Result::Success) {
+	if (result != OsUtil::Result::Success) {
 		delete (buffer);
 	}
 	else {
@@ -881,7 +869,6 @@ int Network::sendHttpRequest (Network::HttpRequestContext *item, int *statusCode
 				*statusCode = (int) responsecode;
 			}
 		}
-
 		if (responseBuffer) {
 			*responseBuffer = buffer;
 		}
@@ -891,6 +878,10 @@ int Network::sendHttpRequest (Network::HttpRequestContext *item, int *statusCode
 	}
 
 	curl_easy_cleanup (curl);
+	if (headers) {
+		curl_slist_free_all (headers);
+		headers = NULL;
+	}
 	return (result);
 }
 
@@ -901,7 +892,6 @@ size_t Network::curlWrite (char *ptr, size_t size, size_t nmemb, void *userdata)
 	buffer = (SharedBuffer *) userdata;
 	total = size * nmemb;
 	buffer->add ((uint8_t *) ptr, (int) total);
-
 	return (total);
 }
 
@@ -909,6 +899,5 @@ int Network::curlProgress (void *clientp, double dltotal, double dlnow, double u
 	if (App::instance->isShuttingDown || App::instance->isShutdown) {
 		return (-1);
 	}
-
 	return (0);
 }

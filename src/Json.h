@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -242,6 +242,9 @@ public:
 
 	// Return a newly created JsonList object with contents copied from this object
 	JsonList *copy ();
+
+	// Return the Json object at the specified list index, or NULL if no object was found
+	Json *at (int index);
 };
 
 #endif

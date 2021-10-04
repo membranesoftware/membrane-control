@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -31,7 +31,6 @@
 #include <stdlib.h>
 #include <math.h>
 #include "App.h"
-#include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "Ui.h"
@@ -58,11 +57,8 @@ ScrollView::~ScrollView () {
 }
 
 void ScrollView::setViewSize (float viewWidth, float viewHeight) {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::instance->uiConfig);
 	setFixedSize (true, viewWidth, viewHeight);
-	setVerticalScrollSpeed (height * uiconfig->mouseWheelScrollSpeed);
+	setVerticalScrollSpeed (height * UiConfiguration::instance->mouseWheelScrollSpeed);
 }
 
 void ScrollView::setVerticalScrollSpeed (float speed) {

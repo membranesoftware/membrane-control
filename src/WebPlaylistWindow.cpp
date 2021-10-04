@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,11 +30,11 @@
 #include "Config.h"
 #include <stdlib.h>
 #include <math.h>
-#include "Result.h"
+#include "App.h"
 #include "ClassId.h"
 #include "Log.h"
 #include "StdString.h"
-#include "App.h"
+#include "UiConfiguration.h"
 #include "UiText.h"
 #include "OsUtil.h"
 #include "Widget.h"
@@ -45,13 +45,11 @@
 #include "Json.h"
 #include "Panel.h"
 #include "Label.h"
-#include "TextArea.h"
 #include "Toggle.h"
 #include "ToggleWindow.h"
 #include "Slider.h"
 #include "SliderWindow.h"
 #include "SystemInterface.h"
-#include "UiConfiguration.h"
 #include "WebKioskUi.h"
 #include "WebPlaylistWindow.h"
 
@@ -82,34 +80,30 @@ WebPlaylistWindow::WebPlaylistWindow (SpriteGroup *webKioskUiSpriteGroup)
 , removeButton (NULL)
 , addItemButton (NULL)
 {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
-
 	classId = ClassId::WebPlaylistWindow;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-	setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
-	setCornerRadius (uiconfig->cornerRadius);
-	setFillBg (true, uiconfig->mediumBackgroundColor);
+
+	setPadding (UiConfiguration::instance->paddingSize / 2.0f, UiConfiguration::instance->paddingSize / 2.0f);
+	setCornerRadius (UiConfiguration::instance->cornerRadius);
+	setFillBg (true, UiConfiguration::instance->mediumBackgroundColor);
 	windowWidth = App::instance->windowWidth * WebPlaylistWindow::WindowWidthMultiplier;
 
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::PlaylistIconSprite)));
-	nameLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::BodyFont, uiconfig->primaryTextColor)));
+	iconImage = (Image *) addWidget (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::PlaylistIconSprite)));
+	nameLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::BodyFont, UiConfiguration::instance->primaryTextColor)));
 	nameLabel->mouseClickCallback = Widget::EventCallbackContext (WebPlaylistWindow::nameLabelClicked, this);
 	nameLabel->setPadding (0.0f, 0.0f);
-	nameLabel->setMouseHoverTooltip (uitext->getText (UiTextString::ClickRenameTooltip));
+	nameLabel->setMouseHoverTooltip (UiText::instance->getText (UiTextString::ClickRenameTooltip));
 
 	dividerPanel = (Panel *) addWidget (new Panel ());
-	dividerPanel->setFillBg (true, uiconfig->dividerColor);
-	dividerPanel->setFixedSize (true, 1.0f, uiconfig->headlineDividerLineWidth);
+	dividerPanel->setFillBg (true, UiConfiguration::instance->dividerColor);
+	dividerPanel->setFixedSize (true, 1.0f, UiConfiguration::instance->headlineDividerLineWidth);
 	dividerPanel->isPanelSizeClipEnabled = true;
 	dividerPanel->isVisible = false;
 
 	shuffleToggle = (ToggleWindow *) addWidget (new ToggleWindow (new Toggle ()));
 	shuffleToggle->setIcon (sprites->getSprite (WebKioskUi::ShuffleIconSprite));
 	shuffleToggle->setRightAligned (true);
-	shuffleToggle->setImageColor (uiconfig->flatButtonTextColor);
-	shuffleToggle->setMouseHoverTooltip (uitext->getText (UiTextString::ShuffleTooltip));
+	shuffleToggle->setImageColor (UiConfiguration::instance->flatButtonTextColor);
+	shuffleToggle->setMouseHoverTooltip (UiText::instance->getText (UiTextString::ShuffleTooltip));
 	shuffleToggle->zLevel = 1;
 	shuffleToggle->isVisible = false;
 
@@ -119,45 +113,45 @@ WebPlaylistWindow::WebPlaylistWindow (SpriteGroup *webKioskUiSpriteGroup)
 	itemDisplayDurationSlider->addSnapValue (0.5f);
 	itemDisplayDurationSlider->addSnapValue (0.75f);
 	itemDisplayDurationSlider->addSnapValue (1.0f);
-	itemDisplayDurationSlider->setPadding (uiconfig->paddingSize, 0.0f);
+	itemDisplayDurationSlider->setPadding (UiConfiguration::instance->paddingSize, 0.0f);
 	itemDisplayDurationSlider->setTrackWidthScale (0.75f);
 	itemDisplayDurationSlider->setValueNameFunction (WebPlaylistWindow::itemDisplayDurationSliderValueName);
 	itemDisplayDurationSlider->setIcon (sprites->getSprite (WebKioskUi::SpeedIconSprite));
-	itemDisplayDurationSlider->setMouseHoverTooltip (uitext->getText (UiTextString::PlaylistSpeedTooltip));
+	itemDisplayDurationSlider->setMouseHoverTooltip (UiText::instance->getText (UiTextString::PlaylistSpeedTooltip));
 	itemDisplayDurationSlider->zLevel = 1;
 	itemDisplayDurationSlider->isVisible = false;
 
-	selectToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::StarOutlineButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::StarButtonSprite)));
+	selectToggle = (Toggle *) addWidget (new Toggle (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::StarOutlineButtonSprite), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::StarButtonSprite)));
 	selectToggle->stateChangeCallback = Widget::EventCallbackContext (WebPlaylistWindow::selectToggleStateChanged, this);
-	selectToggle->setImageColor (uiconfig->flatButtonTextColor);
-	selectToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::UnselectedToggleTooltip), uitext->getText (UiTextString::SelectedToggleTooltip));
+	selectToggle->setImageColor (UiConfiguration::instance->flatButtonTextColor);
+	selectToggle->setStateMouseHoverTooltips (UiText::instance->getText (UiTextString::UnselectedToggleTooltip), UiText::instance->getText (UiTextString::SelectedToggleTooltip));
 
-	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
+	expandToggle = (Toggle *) addWidget (new Toggle (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
 	expandToggle->stateChangeCallback = Widget::EventCallbackContext (WebPlaylistWindow::expandToggleStateChanged, this);
-	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
-	expandToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::Expand).capitalized (), uitext->getText (UiTextString::Minimize).capitalized ());
+	expandToggle->setImageColor (UiConfiguration::instance->flatButtonTextColor);
+	expandToggle->setStateMouseHoverTooltips (UiText::instance->getText (UiTextString::Expand).capitalized (), UiText::instance->getText (UiTextString::Minimize).capitalized ());
 
-	urlCountLabel = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::WebLinkIconSprite), StdString ("0"), UiConfiguration::TitleFont, uiconfig->lightPrimaryTextColor));
+	urlCountLabel = (IconLabelWindow *) addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::WebLinkIconSprite), StdString ("0"), UiConfiguration::TitleFont, UiConfiguration::instance->lightPrimaryTextColor));
 	urlCountLabel->setPadding (0.0f, 0.0f);
-	urlCountLabel->setMouseHoverTooltip (uitext->getCountText (0, UiTextString::WebPlaylistItem, UiTextString::WebPlaylistItems));
-	urlCountLabel->setTextChangeHighlight (true, uiconfig->primaryTextColor);
+	urlCountLabel->setMouseHoverTooltip (UiText::instance->getCountText (0, UiTextString::WebPlaylistItem, UiTextString::WebPlaylistItems));
+	urlCountLabel->setTextChangeHighlight (true, UiConfiguration::instance->primaryTextColor);
 
-	urlListView = (ListView *) addWidget (new ListView (windowWidth - (widthPadding * 2.0f), 8, 8, UiConfiguration::CaptionFont, uitext->getText (UiTextString::EmptyWebPlaylistAddressListPrompt)));
+	urlListView = (ListView *) addWidget (new ListView (windowWidth - (widthPadding * 2.0f), 8, 8, UiConfiguration::CaptionFont, UiText::instance->getText (UiTextString::EmptyWebPlaylistAddressListPrompt)));
 	urlListView->listChangeCallback = Widget::EventCallbackContext (WebPlaylistWindow::urlListChanged, this);
-	urlListView->setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
+	urlListView->setDropShadow (true, UiConfiguration::instance->dropShadowColor, UiConfiguration::instance->dropShadowWidth);
 	urlListView->isVisible = false;
 
-	removeButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
+	removeButton = (Button *) addWidget (new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
 	removeButton->mouseClickCallback = Widget::EventCallbackContext (WebPlaylistWindow::removeButtonClicked, this);
-	removeButton->setImageColor (uiconfig->flatButtonTextColor);
-	removeButton->setMouseHoverTooltip (uitext->getText (UiTextString::DeletePlaylist).capitalized ());
+	removeButton->setImageColor (UiConfiguration::instance->flatButtonTextColor);
+	removeButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::DeletePlaylist).capitalized ());
 	removeButton->isVisible = false;
 
 	addItemButton = (Button *) addWidget (new Button (sprites->getSprite (WebKioskUi::AddUrlButtonSprite)));
 	addItemButton->mouseClickCallback = Widget::EventCallbackContext (WebPlaylistWindow::addItemButtonClicked, this);
 	addItemButton->mouseEnterCallback = Widget::EventCallbackContext (WebPlaylistWindow::addItemButtonMouseEntered, this);
 	addItemButton->mouseExitCallback = Widget::EventCallbackContext (WebPlaylistWindow::addItemButtonMouseExited, this);
-	addItemButton->setImageColor (uiconfig->flatButtonTextColor);
+	addItemButton->setImageColor (UiConfiguration::instance->flatButtonTextColor);
 	addItemButton->isVisible = false;
 
 	refreshLayout ();
@@ -180,20 +174,16 @@ WebPlaylistWindow *WebPlaylistWindow::castWidget (Widget *widget) {
 }
 
 void WebPlaylistWindow::setSelected (bool selected, bool shouldSkipStateChangeCallback) {
-	UiConfiguration *uiconfig;
-
 	if (selected == isSelected) {
 		return;
 	}
-
-	uiconfig = &(App::instance->uiConfig);
 	isSelected = selected;
 	selectToggle->setChecked (isSelected, shouldSkipStateChangeCallback);
 	if (isSelected) {
-		setCornerRadius (0, uiconfig->cornerRadius, 0, uiconfig->cornerRadius);
+		setCornerRadius (0, UiConfiguration::instance->cornerRadius, 0, UiConfiguration::instance->cornerRadius);
 	}
 	else {
-		setCornerRadius (uiconfig->cornerRadius);
+		setCornerRadius (UiConfiguration::instance->cornerRadius);
 	}
 	refreshLayout ();
 }
@@ -206,15 +196,12 @@ void WebPlaylistWindow::setPlaylistName (const StdString &name) {
 }
 
 void WebPlaylistWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallback) {
-	UiConfiguration *uiconfig;
-
 	if (expanded == isExpanded) {
 		return;
 	}
-	uiconfig = &(App::instance->uiConfig);
 	isExpanded = expanded;
 	if (isExpanded) {
-		setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
+		setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
 		nameLabel->setFont (UiConfiguration::HeadlineFont);
 		urlCountLabel->setTextFont (UiConfiguration::HeadlineFont);
 		dividerPanel->isVisible = true;
@@ -225,7 +212,7 @@ void WebPlaylistWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCa
 		addItemButton->isVisible = true;
 	}
 	else {
-		setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
+		setPadding (UiConfiguration::instance->paddingSize / 2.0f, UiConfiguration::instance->paddingSize / 2.0f);
 		nameLabel->setFont (UiConfiguration::BodyFont);
 		urlCountLabel->setTextFont (UiConfiguration::BodyFont);
 		dividerPanel->isVisible = false;
@@ -241,10 +228,8 @@ void WebPlaylistWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCa
 }
 
 void WebPlaylistWindow::refreshLayout () {
-	UiConfiguration *uiconfig;
 	float x, y, x0, y0, x2, y2;
 
-	uiconfig = &(App::instance->uiConfig);
 	x0 = widthPadding;
 	y0 = heightPadding;
 	x = x0;
@@ -258,7 +243,7 @@ void WebPlaylistWindow::refreshLayout () {
 		urlCountLabel->flowRight (&x, y, &x2, &y2);
 	}
 
-	x = x2 + uiconfig->marginSize;
+	x = x2 + UiConfiguration::instance->marginSize;
 	y = y0;
 	if (isExpanded) {
 		removeButton->flowRight (&x, y, &x2, &y2);
@@ -271,13 +256,13 @@ void WebPlaylistWindow::refreshLayout () {
 
 	x = x0;
 	x2 = 0.0f;
-	y = y2 + uiconfig->marginSize;
+	y = y2 + UiConfiguration::instance->marginSize;
 	y0 = y;
 	if (isExpanded) {
 		dividerPanel->flowDown (0.0f, &y, &x2, &y2);
 		urlListView->flowDown (x, &y, &x2, &y2);
 
-		y = y2 + uiconfig->marginSize;
+		y = y2 + UiConfiguration::instance->marginSize;
 		y0 = y;
 		shuffleToggle->flowRight (&x, y, &x2, &y2);
 		itemDisplayDurationSlider->flowRight (&x, y, &x2, &y2);
@@ -291,7 +276,7 @@ void WebPlaylistWindow::refreshLayout () {
 
 		setFixedSize (true, windowWidth, y2 + heightPadding);
 
-		dividerPanel->setFixedSize (true, windowWidth, uiconfig->headlineDividerLineWidth);
+		dividerPanel->setFixedSize (true, windowWidth, UiConfiguration::instance->headlineDividerLineWidth);
 
 		x = width - widthPadding;
 		addItemButton->flowLeft (&x);
@@ -311,20 +296,18 @@ void WebPlaylistWindow::refreshLayout () {
 }
 
 void WebPlaylistWindow::resetNameLabel () {
-	UiConfiguration *uiconfig;
 	float w;
 
-	uiconfig = &(App::instance->uiConfig);
 	if (isExpanded) {
 		w = removeButton->position.x;
 		w -= nameLabel->position.x;
-		w -= uiconfig->marginSize;
-		nameLabel->setText (Label::getTruncatedText (playlistName, UiConfiguration::HeadlineFont, w, Label::DotTruncateSuffix));
+		w -= UiConfiguration::instance->marginSize;
+		nameLabel->setText (UiConfiguration::instance->fonts[UiConfiguration::HeadlineFont]->truncatedText (playlistName, w, Font::DotTruncateSuffix));
 	}
 	else {
 		w = windowWidth * 0.63f;
 		w -= (iconImage->width + expandToggle->width + selectToggle->width);
-		nameLabel->setText (Label::getTruncatedText (playlistName, UiConfiguration::BodyFont, w, Label::DotTruncateSuffix));
+		nameLabel->setText (UiConfiguration::instance->fonts[UiConfiguration::BodyFont]->truncatedText (playlistName, w, Font::DotTruncateSuffix));
 	}
 	refreshLayout ();
 }
@@ -336,33 +319,24 @@ void WebPlaylistWindow::doRefresh () {
 }
 
 void WebPlaylistWindow::nameLabelClicked (void *windowPtr, Widget *widgetPtr) {
-	WebPlaylistWindow *window;
-
-	window = (WebPlaylistWindow *) windowPtr;
-	if (window->nameClickCallback.callback) {
-		window->nameClickCallback.callback (window->nameClickCallback.callbackData, window);
-	}
+	((WebPlaylistWindow *) windowPtr)->eventCallback (((WebPlaylistWindow *) windowPtr)->nameClickCallback);
 }
 
 void WebPlaylistWindow::selectToggleStateChanged (void *windowPtr, Widget *widgetPtr) {
 	WebPlaylistWindow *window;
 	Toggle *toggle;
-	UiConfiguration *uiconfig;
 
 	window = (WebPlaylistWindow *) windowPtr;
 	toggle = (Toggle *) widgetPtr;
-	uiconfig = &(App::instance->uiConfig);
 
 	window->isSelected = toggle->isChecked;
 	if (window->isSelected) {
-		window->setCornerRadius (0, uiconfig->cornerRadius, 0, uiconfig->cornerRadius);
+		window->setCornerRadius (0, UiConfiguration::instance->cornerRadius, 0, UiConfiguration::instance->cornerRadius);
 	}
 	else {
-		window->setCornerRadius (uiconfig->cornerRadius);
+		window->setCornerRadius (UiConfiguration::instance->cornerRadius);
 	}
-	if (window->selectStateChangeCallback.callback) {
-		window->selectStateChangeCallback.callback (window->selectStateChangeCallback.callbackData, window);
-	}
+	window->eventCallback (window->selectStateChangeCallback);
 }
 
 void WebPlaylistWindow::expandToggleStateChanged (void *windowPtr, Widget *widgetPtr) {
@@ -372,44 +346,27 @@ void WebPlaylistWindow::expandToggleStateChanged (void *windowPtr, Widget *widge
 	window = (WebPlaylistWindow *) windowPtr;
 	toggle = (Toggle *) widgetPtr;
 	window->setExpanded (toggle->isChecked, true);
-	if (window->expandStateChangeCallback.callback) {
-		window->expandStateChangeCallback.callback (window->expandStateChangeCallback.callbackData, window);
-	}
+	window->eventCallback (window->expandStateChangeCallback);
 }
 
 void WebPlaylistWindow::urlListChanged (void *windowPtr, Widget *widgetPtr) {
 	WebPlaylistWindow *window;
-	UiText *uitext;
 	int count;
 
 	window = (WebPlaylistWindow *) windowPtr;
-	uitext = &(App::instance->uiText);
 	count = window->urlListView->getItemCount ();
 	window->urlCountLabel->setText (StdString::createSprintf ("%i", count));
-	window->urlCountLabel->tooltipText.assign (uitext->getCountText (count, UiTextString::WebPlaylistItem, UiTextString::WebPlaylistItems));
+	window->urlCountLabel->tooltipText.assign (UiText::instance->getCountText (count, UiTextString::WebPlaylistItem, UiTextString::WebPlaylistItems));
 	window->refreshLayout ();
-
-	if (window->urlListChangeCallback.callback) {
-		window->urlListChangeCallback.callback (window->urlListChangeCallback.callbackData, window);
-	}
+	window->eventCallback (window->urlListChangeCallback);
 }
 
 void WebPlaylistWindow::removeButtonClicked (void *windowPtr, Widget *widgetPtr) {
-	WebPlaylistWindow *window;
-
-	window = (WebPlaylistWindow *) windowPtr;
-	if (window->removeClickCallback.callback) {
-		window->removeClickCallback.callback (window->removeClickCallback.callbackData, window);
-	}
+	((WebPlaylistWindow *) windowPtr)->eventCallback (((WebPlaylistWindow *) windowPtr)->removeClickCallback);
 }
 
 void WebPlaylistWindow::addItemButtonClicked (void *windowPtr, Widget *widgetPtr) {
-	WebPlaylistWindow *window;
-
-	window = (WebPlaylistWindow *) windowPtr;
-	if (window->addItemClickCallback.callback) {
-		window->addItemClickCallback.callback (window->addItemClickCallback.callbackData, window);
-	}
+	((WebPlaylistWindow *) windowPtr)->eventCallback (((WebPlaylistWindow *) windowPtr)->addItemClickCallback);
 }
 
 void WebPlaylistWindow::addItemButtonMouseEntered (void *windowPtr, Widget *widgetPtr) {
@@ -419,9 +376,7 @@ void WebPlaylistWindow::addItemButtonMouseEntered (void *windowPtr, Widget *widg
 	window = (WebPlaylistWindow *) windowPtr;
 	button = (Button *) widgetPtr;
 	Button::mouseEntered (button, button);
-	if (window->addItemMouseEnterCallback.callback) {
-		window->addItemMouseEnterCallback.callback (window->addItemMouseEnterCallback.callbackData, window);
-	}
+	window->eventCallback (window->addItemMouseEnterCallback);
 }
 
 void WebPlaylistWindow::addItemButtonMouseExited (void *windowPtr, Widget *widgetPtr) {
@@ -431,9 +386,7 @@ void WebPlaylistWindow::addItemButtonMouseExited (void *windowPtr, Widget *widge
 	window = (WebPlaylistWindow *) windowPtr;
 	button = (Button *) widgetPtr;
 	Button::mouseExited (button, button);
-	if (window->addItemMouseExitCallback.callback) {
-		window->addItemMouseExitCallback.callback (window->addItemMouseExitCallback.callbackData, window);
-	}
+	window->eventCallback (window->addItemMouseExitCallback);
 }
 
 int WebPlaylistWindow::getItemCount () {
@@ -455,19 +408,19 @@ Widget::Rectangle WebPlaylistWindow::getRemoveButtonScreenRect () {
 
 StdString WebPlaylistWindow::itemDisplayDurationSliderValueName (float sliderValue) {
 	if (FLOAT_EQUALS (sliderValue, 0.0f)) {
-		return (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::Slowest).capitalized ().c_str (), OsUtil::getDurationDisplayString (WebPlaylistWindow::ItemDisplayDurations[0] * 1000).c_str ()));
+		return (StdString::createSprintf ("%s - %s", UiText::instance->getText (UiTextString::Slowest).capitalized ().c_str (), OsUtil::getDurationDisplayString (WebPlaylistWindow::ItemDisplayDurations[0] * 1000).c_str ()));
 	}
 	if (FLOAT_EQUALS (sliderValue, 0.25f)) {
-		return (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::Slow).capitalized ().c_str (), OsUtil::getDurationDisplayString (WebPlaylistWindow::ItemDisplayDurations[1] * 1000).c_str ()));
+		return (StdString::createSprintf ("%s - %s", UiText::instance->getText (UiTextString::Slow).capitalized ().c_str (), OsUtil::getDurationDisplayString (WebPlaylistWindow::ItemDisplayDurations[1] * 1000).c_str ()));
 	}
 	if (FLOAT_EQUALS (sliderValue, 0.5f)) {
-		return (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::Medium).capitalized ().c_str (), OsUtil::getDurationDisplayString (WebPlaylistWindow::ItemDisplayDurations[2] * 1000).c_str ()));
+		return (StdString::createSprintf ("%s - %s", UiText::instance->getText (UiTextString::Medium).capitalized ().c_str (), OsUtil::getDurationDisplayString (WebPlaylistWindow::ItemDisplayDurations[2] * 1000).c_str ()));
 	}
 	if (FLOAT_EQUALS (sliderValue, 0.75f)) {
-		return (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::Fast).capitalized ().c_str (), OsUtil::getDurationDisplayString (WebPlaylistWindow::ItemDisplayDurations[3] * 1000).c_str ()));
+		return (StdString::createSprintf ("%s - %s", UiText::instance->getText (UiTextString::Fast).capitalized ().c_str (), OsUtil::getDurationDisplayString (WebPlaylistWindow::ItemDisplayDurations[3] * 1000).c_str ()));
 	}
 	if (FLOAT_EQUALS (sliderValue, 1.0f)) {
-		return (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::Fastest).capitalized ().c_str (), OsUtil::getDurationDisplayString (WebPlaylistWindow::ItemDisplayDurations[4] * 1000).c_str ()));
+		return (StdString::createSprintf ("%s - %s", UiText::instance->getText (UiTextString::Fastest).capitalized ().c_str (), OsUtil::getDurationDisplayString (WebPlaylistWindow::ItemDisplayDurations[4] * 1000).c_str ()));
 	}
 
 	return (StdString (""));
@@ -565,5 +518,5 @@ Json *WebPlaylistWindow::createCommand () {
 	obj->set ("minItemDisplayDuration", getItemDisplayDuration ());
 	obj->set ("maxItemDisplayDuration", getItemDisplayDuration ());
 
-	return (App::instance->createCommand (SystemInterface::Command_CreateWebDisplayIntent, SystemInterface::Constant_Monitor, obj));
+	return (App::instance->createCommand (SystemInterface::Command_CreateWebDisplayIntent, obj));
 }

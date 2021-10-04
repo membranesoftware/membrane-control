@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -43,7 +43,7 @@
 
 class IconLabelWindow : public Panel {
 public:
-	IconLabelWindow (Sprite *iconSprite, const StdString &iconText = StdString (""), int iconFontType = UiConfiguration::BodyFont, const Color &iconTextColor = Color (0.0f, 0.0f, 0.0f));
+	IconLabelWindow (Sprite *iconSprite, const StdString &iconText = StdString (""), UiConfiguration::FontType iconFontType = UiConfiguration::BodyFont, const Color &iconTextColor = Color (0.0f, 0.0f, 0.0f));
 	~IconLabelWindow ();
 
 	// Read-write data members
@@ -59,7 +59,7 @@ public:
 	void setTextUnderlined (bool enable);
 
 	// Set the window's text font
-	void setTextFont (int fontType);
+	void setTextFont (UiConfiguration::FontType fontType);
 
 	// Set the window's text change highlight option. If enabled, the window highlights text changes with a rotation from the specified color.
 	void setTextChangeHighlight (bool enable, const Color &highlightColor = Color (0.0f, 0.0f, 0.0f));

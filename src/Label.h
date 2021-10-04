@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -42,18 +42,17 @@
 
 class Label : public Widget {
 public:
-	Label (const StdString &text, int fontType = UiConfiguration::BodyFont, const Color &color = Color (0.0f, 0.0f, 0.0f));
+	Label (const StdString &text, UiConfiguration::FontType fontType = UiConfiguration::BodyFont, const Color &color = Color (0.0f, 0.0f, 0.0f));
 	~Label ();
 
 	static const char ObscureCharacter;
-	static const StdString DotTruncateSuffix;
 
 	// Read-write data members
 	Color textColor;
 
 	// Read-only data members
 	StdString text;
-	int textFontType;
+	UiConfiguration::FontType textFontType;
 	Font *textFont;
 	StdString textFontName;
 	int textFontSize;
@@ -65,17 +64,11 @@ public:
 	bool isUnderlined;
 	bool isObscured;
 
-	// Remove characters from the end of a string value as needed for a Label to fit in the specified maximum width, including space for an optional truncate suffix
-	static void truncateText (StdString *text, int fontType, float maxWidth, const StdString &truncateSuffix = StdString (""));
-
-	// Truncate the provided text using the truncateText method and return the resulting string
-	static StdString getTruncatedText (const StdString &text, int fontType, float maxWidth, const StdString &truncateSuffix = StdString (""));
-
 	// Set the label's text, changing its active font if a type is provided
-	void setText (const StdString &labelText, int fontType = -1, bool forceFontReload = false);
+	void setText (const StdString &textContent, UiConfiguration::FontType fontType = UiConfiguration::NoFont, bool forceFontReload = false);
 
 	// Set the label's font
-	void setFont (int fontType);
+	void setFont (UiConfiguration::FontType fontType);
 
 	// Set the label's underline state
 	void setUnderlined (bool enable);

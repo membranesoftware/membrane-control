@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -34,17 +34,19 @@
 
 #include <vector>
 #include "StdString.h"
+#include "OsUtil.h"
 #include "UiTextString.h"
 
 class UiText {
 public:
 	UiText ();
 	~UiText ();
+	static UiText *instance;
 
 	static const StdString DefaultLanguage;
 
 	// Load text strings for the specified language and return a Result value
-	int load (const StdString &language = UiText::DefaultLanguage);
+	OsUtil::Result load (const StdString &language = UiText::DefaultLanguage);
 
 	// Return the specified text string
 	StdString getText (int stringIndex);

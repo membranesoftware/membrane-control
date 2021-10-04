@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -27,48 +27,56 @@
 * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 * POSSIBILITY OF SUCH DAMAGE.
 */
-// Widget that holds a set of text and maintains line flow
+// Widget that holds a text flow and provides vertical scrolling
 
 #ifndef TEXT_AREA_H
 #define TEXT_AREA_H
 
-#include <list>
+#include "UiConfiguration.h"
 #include "Label.h"
 #include "Font.h"
 #include "Color.h"
 #include "Panel.h"
+#include "TextFlow.h"
+#include "ScrollBar.h"
+#include "ScrollView.h"
 
-class TextArea : public Panel {
+class TextArea : public ScrollView {
 public:
-	// maxTextLineLength specifies the maximum number of characters per text line, with a value of zero or less indicating that a default line length should be chosen from UiConfiguration. maxTextLineWidth specifies the maximum width in pixels per text line, with a value of zero or less indicating that no such maximum should apply.
-	TextArea (int fontType, const Color &textColor = Color (0.0f, 0.0f, 0.0f), int maxTextLineLength = 0, float maxTextLineWidth = 0.0f);
+	TextArea (float viewWidth, int viewLineCount = 8, UiConfiguration::FontType fontType = UiConfiguration::BodyFont, bool isScrollEnabled = false);
 	~TextArea ();
 
-	// Clear the text area's content
-	void clear ();
+	// Set the text area's content, changing its active font if a type is provided
+	void setText (const StdString &textContent, UiConfiguration::FontType fontType = UiConfiguration::NoFont, bool forceFontReload = false);
 
-	// Set the maximum draw width that should be used for each line of text
-	void setMaxLineWidth (float maxTextLineWidth);
+	// Append new lines to the text area's content, optionally moving the view origin to the lowest extent if scrolling is enabled
+	void appendText (const StdString &textContent, bool scrollToBottom = false);
 
-	// Set the color that should be used to draw text
+	// Set the text area's font
+	void setFont (UiConfiguration::FontType fontType);
+
+	// Set the text area's text color
 	void setTextColor (const Color &color);
 
-	// Set the text area's content
-	void setText (const StdString &text);
+	// Set the text area's inverse color state. If enabled, the text area renders using an inverse color scheme.
+	void setInverseColor (bool isInverseColor);
 
-	// Set the amount of size padding that should be applied to the text area
-	void setPadding (float widthPaddingSize, float heightPaddingSize);
+	// Set the maximum number of lines that should be held in the text area. Appending text lines beyond this limit causes old lines to be discarded.
+	void setMaxLineCount (int max);
 
 protected:
+	// Execute operations appropriate when the widget receives new mouse state and return a boolean value indicating if mouse wheel events were consumed and should no longer be processed
+	virtual bool doProcessMouseState (const Widget::MouseState &mouseState);
+
 	// Reset the panel's widget layout as appropriate for its content and configuration
 	virtual void refreshLayout ();
 
 private:
-	int textFontType;
-	Color textColor;
-	int maxLineLength;
-	float maxLineWidth;
-	std::list<Label *> lineList;
+	// Callback functions
+	static void scrollBarPositionChanged (void *textAreaPtr, Widget *widgetPtr);
+
+	TextFlow *textFlow;
+	ScrollBar *scrollBar;
 };
 
 #endif

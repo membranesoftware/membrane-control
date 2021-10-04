@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -32,14 +32,16 @@
 #include <map>
 #include <list>
 #include <vector>
-#include "Result.h"
 #include "StdString.h"
 #include "StringList.h"
 #include "Log.h"
 #include "App.h"
 #include "OsUtil.h"
+#include "Network.h"
+#include "SystemInterface.h"
 #include "SequenceList.h"
 #include "Ui.h"
+#include "UiText.h"
 #include "UiLaunchWindow.h"
 #include "RecordStore.h"
 #include "CardView.h"
@@ -86,25 +88,17 @@ StdString MainUi::getSpritePath () {
 }
 
 void MainUi::setHelpWindowContent (HelpWindow *helpWindow) {
-	UiText *uitext;
-
-	uitext = &(App::instance->uiText);
-
-	helpWindow->setHelpText (uitext->getText (UiTextString::MainUiHelpTitle), uitext->getText (UiTextString::MainUiHelpText));
+	helpWindow->setHelpText (UiText::instance->getText (UiTextString::MainUiHelpTitle), UiText::instance->getText (UiTextString::MainUiHelpText));
 	if (agentCount <= 0) {
-		helpWindow->addAction (uitext->getText (UiTextString::MainUiServersHelpActionText), uitext->getText (UiTextString::LearnMore).capitalized (), App::getHelpUrl ("servers"));
+		helpWindow->addAction (UiText::instance->getText (UiTextString::MainUiServersHelpActionText), UiText::instance->getText (UiTextString::LearnMore).capitalized (), App::getHelpUrl ("servers"));
 	}
 
-	helpWindow->addTopicLink (uitext->getText (UiTextString::MembraneSoftwareOverviewHelpTitle), App::getHelpUrl ("membrane-software-overview"));
-	helpWindow->addTopicLink (uitext->getText (UiTextString::SearchForHelp).capitalized (), App::getHelpUrl (""));
+	helpWindow->addTopicLink (UiText::instance->getText (UiTextString::MembraneSoftwareOverviewHelpTitle), App::getHelpUrl ("membrane-software-overview"));
+	helpWindow->addTopicLink (UiText::instance->getText (UiTextString::SearchForHelp).capitalized (), App::getHelpUrl (""));
 }
 
 int MainUi::doLoad () {
-	UiText *uitext;
-
-	uitext = &(App::instance->uiText);
-
-	cardView->setRowHeader (MainUi::UnexpandedUiRow, createRowHeaderPanel (uitext->getText (UiTextString::MainMenu).capitalized ()));
+	cardView->addItem (createRowHeaderPanel (UiText::instance->getText (UiTextString::MainMenu).capitalized ()), StdString (""), MainUi::TitleRow);
 	cardView->setRowReverseSorted (MainUi::ExpandedUiRow, true);
 
 	bannerList.randomizeOrder (&(App::instance->prng));
@@ -119,7 +113,7 @@ int MainUi::doLoad () {
 
 	App::instance->shouldSyncRecordStore = true;
 
-	return (Result::Success);
+	return (OsUtil::Result::Success);
 }
 
 void MainUi::doUnload () {
@@ -132,16 +126,13 @@ void MainUi::doAddMainToolbarItems (Toolbar *toolbar) {
 }
 
 void MainUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
-	UiText *uitext;
 	Button *button;
 	BannerWindow *banner;
-
-	uitext = &(App::instance->uiText);
 
 	button = new Button (sprites.getSprite (MainUi::NextItemButtonSprite));
 	button->mouseClickCallback = Widget::EventCallbackContext (MainUi::nextBannerButtonClicked, this);
 	button->setInverseColor (true);
-	button->setMouseHoverTooltip (uitext->getText (UiTextString::MainUiNextBannerTooltip));
+	button->setMouseHoverTooltip (UiText::instance->getText (UiTextString::MainUiNextBannerTooltip));
 	button->zLevel = 1;
 	toolbar->addRightItem (button);
 
@@ -202,7 +193,7 @@ void MainUi::doResume () {
 		cardView->refresh ();
 
 		if (shouldgetnews) {
-			App::instance->network.sendHttpGet (App::getApplicationNewsUrl (), MainUi::getApplicationNewsComplete, this);
+			Network::instance->sendHttpGet (App::getApplicationNewsUrl (), Network::HttpRequestCallbackContext (MainUi::getApplicationNewsComplete, this));
 		}
 	}
 }
@@ -245,16 +236,7 @@ void MainUi::doResize () {
 }
 
 void MainUi::doSyncRecordStore () {
-	RecordStore *store;
-	HashMap *prefs;
-	int timeout;
-
-	store = &(App::instance->agentControl.recordStore);
-	prefs = App::instance->lockPrefs ();
-	timeout = prefs->find (App::ServerTimeoutKey, App::DefaultServerTimeout) * 1000;
-	App::instance->unlockPrefs ();
-
-	agentCount = store->countCommandRecords (SystemInterface::CommandId_AgentStatus, timeout);
+	agentCount = RecordStore::instance->countCommandRecords (SystemInterface::CommandId_AgentStatus);
 	cardView->syncRecordStore ();
 	cardView->refresh ();
 }
@@ -313,7 +295,6 @@ void MainUi::uiOpenClicked (void *uiPtr, Widget *widgetPtr) {
 }
 
 void MainUi::showNextBanner () {
-	UiConfiguration *uiconfig;
 	BannerWindow *banner;
 	Button *button;
 	std::map<StdString, Widget::EventCallback>::iterator pos;
@@ -328,7 +309,6 @@ void MainUi::showNextBanner () {
 		return;
 	}
 
-	uiconfig = &(App::instance->uiConfig);
 	spriteindex = bannerIconTypeMap.find (activeBanner.iconType, (int) -1);
 	bannerActionButton.destroyAndClear ();
 	if (! activeBanner.actionText.empty ()) {
@@ -338,8 +318,8 @@ void MainUi::showNextBanner () {
 			if (callback) {
 				button = new Button (NULL, activeBanner.actionText.uppercased ());
 				button->mouseClickCallback = Widget::EventCallbackContext (callback, this);
-				button->setRaised (true, uiconfig->raisedButtonBackgroundColor);
-				button->setTextColor (uiconfig->raisedButtonTextColor);
+				button->setRaised (true, UiConfiguration::instance->raisedButtonBackgroundColor);
+				button->setTextColor (UiConfiguration::instance->raisedButtonTextColor);
 				button->zLevel = 1;
 				bannerActionButton.assign (button);
 				App::instance->uiStack.secondaryToolbar->addRightItem (button);
@@ -347,7 +327,7 @@ void MainUi::showNextBanner () {
 		}
 	}
 
-	banner->setWindowWidth (App::instance->uiStack.secondaryToolbar->getLeftWidth () - (uiconfig->marginSize * 2.0f));
+	banner->setWindowWidth (App::instance->uiStack.secondaryToolbar->getLeftWidth () - (UiConfiguration::instance->marginSize * 2.0f));
 	banner->setBanner (activeBanner.messageText, sprites.getSprite (spriteindex));
 	if (activeBanner.actionType.equals (MainUi::HelpActionType)) {
 		bannerClock = 300000;
@@ -359,7 +339,6 @@ void MainUi::showNextBanner () {
 
 void MainUi::getApplicationNewsComplete (void *uiPtr, const StdString &targetUrl, int statusCode, SharedBuffer *responseData) {
 	MainUi *ui;
-	SystemInterface *interface;
 	HashMap *prefs;
 	Json *cmd, *item;
 	StringList items;
@@ -368,16 +347,15 @@ void MainUi::getApplicationNewsComplete (void *uiPtr, const StdString &targetUrl
 	if ((statusCode != Network::HttpOkCode) || (responseData->length <= 0)) {
 		return;
 	}
-	if (! App::instance->systemInterface.parseCommand (StdString ((char *) responseData->data, responseData->length), &cmd)) {
+	if (! SystemInterface::instance->parseCommand (StdString ((char *) responseData->data, responseData->length), &cmd)) {
 		return;
 	}
 
 	ui = (MainUi *) uiPtr;
-	interface = &(App::instance->systemInterface);
-	count = interface->getCommandArrayLength (cmd, "items");
+	count = SystemInterface::instance->getCommandArrayLength (cmd, "items");
 	for (i = 0; i < count; ++i) {
 		item = new Json ();
-		if (interface->getCommandObjectArrayItem (cmd, "items", i, item)) {
+		if (SystemInterface::instance->getCommandObjectArrayItem (cmd, "items", i, item)) {
 			items.push_back (item->toString ());
 		}
 		delete (item);
@@ -391,29 +369,26 @@ void MainUi::getApplicationNewsComplete (void *uiPtr, const StdString &targetUrl
 }
 
 void MainUi::resetBanners () {
-	UiText *uitext;
 	HashMap *prefs;
 	MainUi::Banner item;
 	StringList items;
 	StringList::iterator i, end;
 	Json *json;
 
-	uitext = &(App::instance->uiText);
 	bannerList.clear ();
-
 	prefs = App::instance->lockPrefs ();
 	if (! prefs->find (App::IsFirstLaunchCompleteKey, false)) {
 		item = MainUi::Banner ();
-		item.messageText.assign (uitext->getText (UiTextString::FirstLaunchBannerMessage));
+		item.messageText.assign (UiText::instance->getText (UiTextString::FirstLaunchBannerMessage));
 		item.iconType.assign (MainUi::AnnouncementIconType);
 		item.actionType.assign (MainUi::HelpActionType);
-		item.actionText.assign (uitext->getText (UiTextString::OpenHelp));
+		item.actionText.assign (UiText::instance->getText (UiTextString::OpenHelp));
 		bannerList.push_back (item);
 		bannerList.nextItemIndex = 0;
 	}
 	else {
 		item = MainUi::Banner ();
-		item.messageText.assign (uitext->getText (UiTextString::HelpKeyBannerMessage));
+		item.messageText.assign (UiText::instance->getText (UiTextString::HelpKeyBannerMessage));
 		item.iconType.assign (MainUi::TextMessageIconType);
 		bannerList.push_back (item);
 	}
@@ -440,29 +415,29 @@ void MainUi::resetBanners () {
 	}
 
 	item = MainUi::Banner ();
-	item.messageText.assign (uitext->getText (UiTextString::FreeApplicationBannerMessage));
+	item.messageText.assign (UiText::instance->getText (UiTextString::FreeApplicationBannerMessage));
 	item.iconType.assign (MainUi::TextMessageIconType);
 	bannerList.push_back (item);
 	item = MainUi::Banner ();
-	item.messageText.assign (uitext->getText (UiTextString::MembraneSoftwareBannerMessage));
+	item.messageText.assign (UiText::instance->getText (UiTextString::MembraneSoftwareBannerMessage));
 	item.iconType.assign (MainUi::TextMessageIconType);
 	item.actionType.assign (MainUi::OpenUrlActionType);
-	item.actionText.assign (uitext->getText (UiTextString::LearnMore));
+	item.actionText.assign (UiText::instance->getText (UiTextString::LearnMore));
 	item.actionTarget.assign (App::getHelpUrl ("about-membrane-software"));
 	bannerList.push_back (item);
 	item = MainUi::Banner ();
-	item.messageText.assign (uitext->getText (UiTextString::DonateBannerMessage));
+	item.messageText.assign (UiText::instance->getText (UiTextString::DonateBannerMessage));
 	item.iconType.assign (MainUi::AnnouncementIconType);
 	item.actionType.assign (MainUi::OpenUrlActionType);
-	item.actionText.assign (uitext->getText (UiTextString::LearnMore));
+	item.actionText.assign (UiText::instance->getText (UiTextString::LearnMore));
 	item.actionTarget.assign (App::getDonateUrl ());
 	bannerList.push_back (item);
 	item = MainUi::Banner ();
-	item.messageText.assign (uitext->getText (UiTextString::MouseHoverBannerMessage));
+	item.messageText.assign (UiText::instance->getText (UiTextString::MouseHoverBannerMessage));
 	item.iconType.assign (MainUi::TextMessageIconType);
 	bannerList.push_back (item);
 	item = MainUi::Banner ();
-	item.messageText.assign (uitext->getText (UiTextString::ImageLongPressBannerMessage));
+	item.messageText.assign (UiText::instance->getText (UiTextString::ImageLongPressBannerMessage));
 	item.iconType.assign (MainUi::TextMessageIconType);
 	bannerList.push_back (item);
 
@@ -484,15 +459,15 @@ void MainUi::openUrlActionClicked (void *uiPtr, Widget *widgetPtr) {
 	ui = (MainUi *) uiPtr;
 	url.assign (ui->activeBanner.actionTarget);
 	if (url.empty ()) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::LaunchWebBrowserError));
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::LaunchWebBrowserError));
 		return;
 	}
 
 	result = OsUtil::openUrl (url);
-	if (result != Result::Success) {
-		App::instance->uiStack.showSnackbar (App::instance->uiText.getText (UiTextString::LaunchWebBrowserError));
+	if (result != OsUtil::Result::Success) {
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::LaunchWebBrowserError));
 	}
 	else {
-		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::LaunchedWebBrowser).capitalized ().c_str (), url.c_str ()));
+		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s - %s", UiText::instance->getText (UiTextString::LaunchedWebBrowser).capitalized ().c_str (), url.c_str ()));
 	}
 }

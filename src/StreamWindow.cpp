@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,14 +30,15 @@
 #include "Config.h"
 #include <stdlib.h>
 #include <math.h>
-#include "Result.h"
+#include "App.h"
 #include "ClassId.h"
 #include "Log.h"
 #include "StdString.h"
-#include "App.h"
 #include "UiConfiguration.h"
 #include "UiText.h"
 #include "SystemInterface.h"
+#include "RecordStore.h"
+#include "AgentControl.h"
 #include "OsUtil.h"
 #include "MediaUtil.h"
 #include "Widget.h"
@@ -46,7 +47,7 @@
 #include "Json.h"
 #include "Panel.h"
 #include "Label.h"
-#include "TextArea.h"
+#include "TextFlow.h"
 #include "Image.h"
 #include "ImageWindow.h"
 #include "CardView.h"
@@ -73,76 +74,71 @@ StreamWindow::StreamWindow (Json *streamItem)
 , viewButton (NULL)
 , removeButton (NULL)
 {
-	SystemInterface *interface;
-	UiConfiguration *uiconfig;
-	UiText *uitext;
-
 	classId = ClassId::StreamWindow;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-	setFillBg (true, uiconfig->mediumBackgroundColor);
 
-	interface = &(App::instance->systemInterface);
-	streamId = interface->getCommandStringParam (streamItem, "id", "");
-	agentId = interface->getCommandAgentId (streamItem);
-	streamName = interface->getCommandStringParam (streamItem, "name", "");
-	frameWidth = interface->getCommandNumberParam (streamItem, "width", (int) 0);
-	frameHeight = interface->getCommandNumberParam (streamItem, "height", (int) 0);
-	frameRate = interface->getCommandNumberParam (streamItem, "frameRate", (float) 0.0f);
-	bitrate = interface->getCommandNumberParam (streamItem, "bitrate", (int64_t) 0);
-	streamSize = interface->getCommandNumberParam (streamItem, "size", (int64_t) 0);
+	setFillBg (true, UiConfiguration::instance->mediumBackgroundColor);
 
-	streamImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
+	streamId = SystemInterface::instance->getCommandStringParam (streamItem, "id", "");
+	agentId = SystemInterface::instance->getCommandAgentId (streamItem);
+	streamName = SystemInterface::instance->getCommandStringParam (streamItem, "name", "");
+	frameWidth = SystemInterface::instance->getCommandNumberParam (streamItem, "width", (int) 0);
+	frameHeight = SystemInterface::instance->getCommandNumberParam (streamItem, "height", (int) 0);
+	frameRate = SystemInterface::instance->getCommandNumberParam (streamItem, "frameRate", (float) 0.0f);
+	bitrate = SystemInterface::instance->getCommandNumberParam (streamItem, "bitrate", (int64_t) 0);
+	streamSize = SystemInterface::instance->getCommandNumberParam (streamItem, "size", (int64_t) 0);
+
+	streamImage = (ImageWindow *) addWidget (new ImageWindow (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
 	streamImage->loadCallback = Widget::EventCallbackContext (StreamWindow::streamImageLoaded, this);
 	streamImage->mouseClickCallback = Widget::EventCallbackContext (StreamWindow::streamImageClicked, this);
 	streamImage->mouseLongPressCallback = Widget::EventCallbackContext (StreamWindow::streamImageLongPressed, this);
-	streamImage->setLoadSprite (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
+	streamImage->setLoadSprite (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
 
-	nameLabel = (Label *) addWidget (new Label (streamName, UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
+	nameLabel = (Label *) addWidget (new Label (streamName, UiConfiguration::CaptionFont, UiConfiguration::instance->primaryTextColor));
 	nameLabel->isInputSuspended = true;
 
-	detailText = (TextArea *) addWidget (new TextArea (UiConfiguration::CaptionFont, uiconfig->inverseTextColor));
+	detailText = (TextFlow *) addWidget (new TextFlow (UiConfiguration::instance->textFieldMediumLineLength * UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, UiConfiguration::CaptionFont));
+	detailText->setTextColor (UiConfiguration::instance->inverseTextColor);
 	detailText->zLevel = 1;
-	detailText->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	detailText->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
+	detailText->setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
+	detailText->setFillBg (true, Color (0.0f, 0.0f, 0.0f, UiConfiguration::instance->scrimBackgroundAlpha));
 	detailText->isInputSuspended = true;
 	detailText->isVisible = false;
 
-	mouseoverLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->inverseTextColor)));
+	mouseoverLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->inverseTextColor)));
 	mouseoverLabel->zLevel = 3;
-	mouseoverLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
+	mouseoverLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, UiConfiguration::instance->scrimBackgroundAlpha));
 	mouseoverLabel->isInputSuspended = true;
 	mouseoverLabel->isVisible = false;
 
-	detailNameLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (streamName, UiConfiguration::HeadlineFont, uiconfig->inverseTextColor)));
+	detailNameLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (streamName, UiConfiguration::HeadlineFont, UiConfiguration::instance->inverseTextColor)));
 	detailNameLabel->zLevel = 1;
-	detailNameLabel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	detailNameLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
+	detailNameLabel->setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
+	detailNameLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, UiConfiguration::instance->scrimBackgroundAlpha));
 	detailNameLabel->isInputSuspended = true;
 	detailNameLabel->isVisible = false;
 
-	timestampLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->primaryTextColor)));
+	timestampLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->primaryTextColor)));
 	timestampLabel->zLevel = 2;
-	timestampLabel->setFillBg (true, uiconfig->darkBackgroundColor);
-	timestampLabel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize / 2.0f);
+	timestampLabel->setFillBg (true, UiConfiguration::instance->darkBackgroundColor);
+	timestampLabel->setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize / 2.0f);
 	timestampLabel->isInputSuspended = true;
 	timestampLabel->isVisible = false;
 
-	viewButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::ImageButtonSprite)));
+	viewButton = (Button *) addWidget (new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ImageButtonSprite)));
 	viewButton->mouseClickCallback = Widget::EventCallbackContext (StreamWindow::viewButtonClicked, this);
 	viewButton->zLevel = 4;
 	viewButton->isTextureTargetDrawEnabled = false;
-	viewButton->setImageColor (uiconfig->flatButtonTextColor);
-	viewButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
-	viewButton->setMouseHoverTooltip (uitext->getText (UiTextString::ViewTimelineImagesTooltip));
+	viewButton->setImageColor (UiConfiguration::instance->flatButtonTextColor);
+	viewButton->setRaised (true, UiConfiguration::instance->raisedButtonBackgroundColor);
+	viewButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::ViewTimelineImagesTooltip));
 
-	removeButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
+	removeButton = (Button *) addWidget (new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
 	removeButton->mouseClickCallback = Widget::EventCallbackContext (StreamWindow::removeButtonClicked, this);
 	removeButton->zLevel = 4;
 	removeButton->isTextureTargetDrawEnabled = false;
-	removeButton->setImageColor (uiconfig->flatButtonTextColor);
-	removeButton->setRaised (true, uiconfig->raisedButtonBackgroundColor);
-	removeButton->setMouseHoverTooltip (uitext->getText (UiTextString::RemoveStream).capitalized ());
+	removeButton->setImageColor (UiConfiguration::instance->flatButtonTextColor);
+	removeButton->setRaised (true, UiConfiguration::instance->raisedButtonBackgroundColor);
+	removeButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::RemoveStream).capitalized ());
 }
 
 StreamWindow::~StreamWindow () {
@@ -217,20 +213,17 @@ void StreamWindow::setThumbnailIndex (int index) {
 		params = new Json ();
 		params->set ("id", streamId);
 		params->set ("thumbnailIndex", thumbnailIndex);
-		streamImage->setImageUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetThumbnailImage, SystemInterface::Constant_Stream, params), thumbnailPath));
+		streamImage->setImageUrl (AgentControl::instance->getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetThumbnailImage, params), thumbnailPath));
 	}
 }
 
 void StreamWindow::setSelected (bool selected) {
-	UiConfiguration *uiconfig;
-
 	if (selected == isSelected) {
 		return;
 	}
-	uiconfig = &(App::instance->uiConfig);
 	isSelected = selected;
 	if (isSelected) {
-		setBorder (true, uiconfig->mediumSecondaryColor.copy (uiconfig->selectionBorderAlpha), uiconfig->selectionBorderWidth);
+		setBorder (true, UiConfiguration::instance->mediumSecondaryColor.copy (UiConfiguration::instance->selectionBorderAlpha), UiConfiguration::instance->selectionBorderWidth);
 	}
 	else {
 		setBorder (false);
@@ -270,33 +263,29 @@ bool StreamWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 }
 
 void StreamWindow::syncRecordStore () {
-	RecordStore *store;
-	SystemInterface *interface;
 	Json *record, *agentstatus, serverstatus;
 
-	store = &(App::instance->agentControl.recordStore);
-	interface = &(App::instance->systemInterface);
-	record = store->findRecord (streamId, SystemInterface::CommandId_StreamItem);
+	record = RecordStore::instance->findRecord (streamId, SystemInterface::CommandId_StreamItem);
 	if (! record) {
 		return;
 	}
 
-	agentstatus = store->findRecord (RecordStore::matchAgentStatusSource, &agentId);
+	agentstatus = RecordStore::instance->findRecord (RecordStore::matchAgentStatusSource, &agentId);
 	if (! agentstatus) {
 		return;
 	}
-	if (interface->getCommandObjectParam (agentstatus, "streamServerStatus", &serverstatus)) {
+	if (SystemInterface::instance->getCommandObjectParam (agentstatus, "streamServerStatus", &serverstatus)) {
 		thumbnailPath = serverstatus.getString ("thumbnailPath", "");
 		hlsStreamPath = serverstatus.getString ("hlsStreamPath", "");
 	}
-	else if (interface->getCommandObjectParam (agentstatus, "monitorServerStatus", &serverstatus)) {
+	else if (SystemInterface::instance->getCommandObjectParam (agentstatus, "monitorServerStatus", &serverstatus)) {
 		thumbnailPath = serverstatus.getString ("thumbnailPath", "");
 		hlsStreamPath.assign ("");
 	}
 
-	segmentCount = interface->getCommandNumberParam (record, "segmentCount", (int) 0);
-	interface->getCommandNumberArrayParam (record, "segmentPositions", &segmentPositions, true);
-	duration = interface->getCommandNumberParam (record, "duration", (int64_t) 0);
+	segmentCount = SystemInterface::instance->getCommandNumberParam (record, "segmentCount", (int) 0);
+	SystemInterface::instance->getCommandNumberArrayParam (record, "segmentPositions", &segmentPositions, true);
+	duration = SystemInterface::instance->getCommandNumberParam (record, "duration", (int64_t) 0);
 
 	detailText->setText (StdString::createSprintf ("%ix%i  %s  %s", frameWidth, frameHeight, MediaUtil::getBitrateDisplayString (bitrate).c_str (), OsUtil::getDurationDisplayString (duration).c_str ()));
 
@@ -308,10 +297,8 @@ void StreamWindow::syncRecordStore () {
 }
 
 void StreamWindow::refreshLayout () {
-	UiConfiguration *uiconfig;
 	float x, y;
 
-	uiconfig = &(App::instance->uiConfig);
 	x = 0.0f;
 	y = 0.0f;
 	streamImage->position.assign (x, y);
@@ -320,27 +307,27 @@ void StreamWindow::refreshLayout () {
 		case CardView::LowDetail: {
 			mouseoverLabel->position.assign (0.0f, streamImage->height - mouseoverLabel->height);
 			setFixedSize (true, streamImage->width, streamImage->height);
-			viewButton->position.assign (streamImage->position.x + streamImage->width - viewButton->width - uiconfig->dropShadowWidth, streamImage->position.y + streamImage->height - viewButton->height);
+			viewButton->position.assign (streamImage->position.x + streamImage->width - viewButton->width - UiConfiguration::instance->dropShadowWidth, streamImage->position.y + streamImage->height - viewButton->height);
 			removeButton->position.assign (streamImage->position.x, streamImage->position.y + streamImage->height - removeButton->height);
 			break;
 		}
 		case CardView::MediumDetail: {
-			x += uiconfig->paddingSize;
-			y += streamImage->height + uiconfig->marginSize;
+			x += UiConfiguration::instance->paddingSize;
+			y += streamImage->height + UiConfiguration::instance->marginSize;
 			nameLabel->position.assign (x, y);
 
-			viewButton->position.assign (streamImage->position.x + streamImage->width - viewButton->width - uiconfig->dropShadowWidth, streamImage->position.y + streamImage->height - viewButton->height);
+			viewButton->position.assign (streamImage->position.x + streamImage->width - viewButton->width - UiConfiguration::instance->dropShadowWidth, streamImage->position.y + streamImage->height - viewButton->height);
 			removeButton->position.assign (streamImage->position.x, streamImage->position.y + streamImage->height - removeButton->height);
 
 			resetSize ();
-			setFixedSize (true, streamImage->width, maxWidgetY + uiconfig->paddingSize);
+			setFixedSize (true, streamImage->width, maxWidgetY + UiConfiguration::instance->paddingSize);
 			break;
 		}
 		case CardView::HighDetail: {
 			detailNameLabel->position.assign (x, y);
 			detailText->position.assign (streamImage->position.x, streamImage->position.y + streamImage->height - detailText->height);
 
-			viewButton->position.assign (streamImage->position.x + streamImage->width - viewButton->width - uiconfig->dropShadowWidth, streamImage->position.y + streamImage->height - viewButton->height);
+			viewButton->position.assign (streamImage->position.x + streamImage->width - viewButton->width - UiConfiguration::instance->dropShadowWidth, streamImage->position.y + streamImage->height - viewButton->height);
 			removeButton->position.assign (streamImage->position.x, streamImage->position.y + streamImage->height - removeButton->height);
 
 			resetSize ();
@@ -355,12 +342,7 @@ void StreamWindow::refreshLayout () {
 }
 
 void StreamWindow::streamImageClicked (void *windowPtr, Widget *widgetPtr) {
-	StreamWindow *window;
-
-	window = (StreamWindow *) windowPtr;
-	if (window->streamImageClickCallback.callback) {
-		window->streamImageClickCallback.callback (window->streamImageClickCallback.callbackData, window);
-	}
+	((StreamWindow *) windowPtr)->eventCallback (((StreamWindow *) windowPtr)->streamImageClickCallback);
 }
 
 void StreamWindow::streamImageLongPressed (void *windowPtr, Widget *widgetPtr) {
@@ -372,25 +354,20 @@ void StreamWindow::streamImageLongPressed (void *windowPtr, Widget *widgetPtr) {
 
 void StreamWindow::streamImageLoaded (void *windowPtr, Widget *widgetPtr) {
 	StreamWindow *window;
+	ImageWindow *image;
 
 	window = (StreamWindow *) windowPtr;
+	image = (ImageWindow *) widgetPtr;
+	if (! image->isLoaded ()) {
+		return;
+	}
 	window->shouldRefreshTexture = true;
 }
 
 void StreamWindow::viewButtonClicked (void *windowPtr, Widget *widgetPtr) {
-	StreamWindow *window;
-
-	window = (StreamWindow *) windowPtr;
-	if (window->viewButtonClickCallback.callback) {
-		window->viewButtonClickCallback.callback (window->viewButtonClickCallback.callbackData, window);
-	}
+	((StreamWindow *) windowPtr)->eventCallback (((StreamWindow *) windowPtr)->viewButtonClickCallback);
 }
 
 void StreamWindow::removeButtonClicked (void *windowPtr, Widget *widgetPtr) {
-	StreamWindow *window;
-
-	window = (StreamWindow *) windowPtr;
-	if (window->removeButtonClickCallback.callback) {
-		window->removeButtonClickCallback.callback (window->removeButtonClickCallback.callbackData, window);
-	}
+	((StreamWindow *) windowPtr)->eventCallback (((StreamWindow *) windowPtr)->removeButtonClickCallback);
 }

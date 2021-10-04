@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -31,7 +31,6 @@
 #include <stdlib.h>
 #include <map>
 #include <list>
-#include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
@@ -44,17 +43,15 @@
 TooltipWindow::TooltipWindow (const StdString &tipText)
 : Panel ()
 {
-	UiConfiguration *uiconfig;
 	float x, y;
 
-	uiconfig = &(App::instance->uiConfig);
-	setFillBg (true, uiconfig->mediumInverseBackgroundColor);
-	setBorder (true, uiconfig->lightInverseBackgroundColor);
-	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
+	setFillBg (true, UiConfiguration::instance->mediumInverseBackgroundColor);
+	setBorder (true, UiConfiguration::instance->lightInverseBackgroundColor);
+	setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
 
-	x = uiconfig->paddingSize;
-	y = uiconfig->paddingSize;
-	addWidget (new Label (tipText, UiConfiguration::CaptionFont, uiconfig->inverseTextColor), x, y);
+	x = UiConfiguration::instance->paddingSize;
+	y = UiConfiguration::instance->paddingSize;
+	addWidget (new Label (tipText, UiConfiguration::CaptionFont, UiConfiguration::instance->inverseTextColor), x, y);
 
 	resetSize ();
 }
@@ -67,6 +64,5 @@ bool TooltipWindow::doProcessMouseState (const Widget::MouseState &mouseState) {
 	if (mouseState.isLeftClicked) {
 		isDestroyed = true;
 	}
-
 	return (false);
 }

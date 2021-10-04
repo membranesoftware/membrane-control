@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,11 +30,11 @@
 #include "Config.h"
 #include <stdlib.h>
 #include "SDL2/SDL.h"
-#include "Result.h"
 #include "ClassId.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
+#include "Input.h"
 #include "Widget.h"
 #include "Color.h"
 #include "Panel.h"
@@ -63,24 +63,21 @@ Button::Button (Sprite *sprite, const StdString &labelText)
 , image (NULL)
 , pressClock (0)
 {
-	UiConfiguration *uiconfig;
-
 	classId = ClassId::Button;
 
-	uiconfig = &(App::instance->uiConfig);
 	if (! labelText.empty ()) {
-		normalTextColor.assign (uiconfig->flatButtonTextColor);
+		normalTextColor.assign (UiConfiguration::instance->flatButtonTextColor);
 		label = (Label *) addWidget (new Label (labelText, UiConfiguration::ButtonFont, normalTextColor));
 	}
 	if (sprite) {
 		image = (Image *) addWidget (new Image (sprite, UiConfiguration::WhiteButtonFrame));
-		image->drawAlpha = uiconfig->activeFocusedIconAlpha;
+		image->drawAlpha = UiConfiguration::instance->activeFocusedIconAlpha;
 		maxImageWidth = image->maxSpriteWidth;
 		maxImageHeight = image->maxSpriteHeight;
 	}
 
-	widthPadding = uiconfig->paddingSize;
-	heightPadding = uiconfig->paddingSize;
+	widthPadding = UiConfiguration::instance->paddingSize;
+	heightPadding = UiConfiguration::instance->paddingSize;
 
 	mouseEnterCallback = Widget::EventCallbackContext (Button::mouseEntered, this);
 	mouseExitCallback = Widget::EventCallbackContext (Button::mouseExited, this);
@@ -200,7 +197,7 @@ bool Button::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isCo
 
 	if ((shortcutKey != SDLK_UNKNOWN) && (keycode == shortcutKey)) {
 		setPressed (true);
-		pressClock = App::instance->uiConfig.blinkDuration;
+		pressClock = UiConfiguration::instance->blinkDuration;
 		refreshLayout ();
 		mouseClick ();
 		return (true);
@@ -216,7 +213,6 @@ void Button::mouseEntered (void *buttonPtr, Widget *widgetPtr) {
 	if (button->isDisabled) {
 		return;
 	}
-
 	button->setFocused (true);
 }
 
@@ -227,7 +223,6 @@ void Button::mouseExited (void *buttonPtr, Widget *widgetPtr) {
 	if (button->isDisabled) {
 		return;
 	}
-
 	button->setFocused (false);
 }
 
@@ -238,7 +233,6 @@ void Button::mousePressed (void *buttonPtr, Widget *widgetPtr) {
 	if (button->isDisabled) {
 		return;
 	}
-
 	button->setPressed (true);
 }
 
@@ -249,7 +243,6 @@ void Button::mouseReleased (void *buttonPtr, Widget *widgetPtr) {
 	if (button->isDisabled) {
 		return;
 	}
-
 	button->setPressed (false);
 	button->setFocused (button->isMouseEntered);
 }
@@ -265,7 +258,7 @@ void Button::doUpdate (int msElapsed) {
 
 	if (! isInputSuspended) {
 		if (isPressed && (pressClock <= 0)) {
-			if ((! isMouseEntered) || (! App::instance->input.isMouseLeftButtonDown)) {
+			if ((! isMouseEntered) || (! Input::instance->isMouseLeftButtonDown)) {
 				setPressed (false);
 				if (isMouseEntered) {
 					setFocused (true);
@@ -282,11 +275,8 @@ void Button::doUpdate (int msElapsed) {
 }
 
 void Button::doRefresh () {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::instance->uiConfig);
-	widthPadding = uiconfig->paddingSize;
-	heightPadding = uiconfig->paddingSize;
+	widthPadding = UiConfiguration::instance->paddingSize;
+	heightPadding = UiConfiguration::instance->paddingSize;
 	Panel::doRefresh ();
 	if (image) {
 		maxImageWidth = image->maxSpriteWidth;
@@ -296,12 +286,10 @@ void Button::doRefresh () {
 }
 
 void Button::refreshLayout () {
-	UiConfiguration *uiconfig;
 	float x, y, h, spacew, paddingh, bgalpha;
 	bool shouldfillbg, iswhiteframe, isdropshadowed;
 	Color bgcolor, bordercolor, shadecolor;
 
-	uiconfig = &(App::instance->uiConfig);
 	shouldfillbg = false;
 	isdropshadowed = false;
 	bgalpha = 1.0f;
@@ -321,48 +309,48 @@ void Button::refreshLayout () {
 	if (isDisabled) {
 		if (image) {
 			image->setFrame (iswhiteframe ? UiConfiguration::WhiteButtonFrame : UiConfiguration::BlackButtonFrame);
-			image->drawAlpha = uiconfig->inactiveIconAlpha;
+			image->drawAlpha = UiConfiguration::instance->inactiveIconAlpha;
 		}
 
 		if (isRaised) {
-			bgalpha = uiconfig->buttonDisabledShadeAlpha;
+			bgalpha = UiConfiguration::instance->buttonDisabledShadeAlpha;
 		}
 	}
 	else if (isPressed) {
 		if (image) {
 			image->setFrame (iswhiteframe ? UiConfiguration::WhiteLargeButtonFrame : UiConfiguration::BlackLargeButtonFrame);
-			image->drawAlpha = uiconfig->activeFocusedIconAlpha;
+			image->drawAlpha = UiConfiguration::instance->activeFocusedIconAlpha;
 		}
 
 		shouldfillbg = true;
 		if (isRaised) {
-			bgcolor.blend (shadecolor, uiconfig->buttonPressedShadeAlpha);
+			bgcolor.blend (shadecolor, UiConfiguration::instance->buttonPressedShadeAlpha);
 		}
 		else {
-			bgalpha = uiconfig->buttonPressedShadeAlpha;
+			bgalpha = UiConfiguration::instance->buttonPressedShadeAlpha;
 			bgcolor.assign (shadecolor);
 		}
 	}
 	else if (isFocused) {
 		if (image) {
 			image->setFrame (iswhiteframe ? UiConfiguration::WhiteLargeButtonFrame : UiConfiguration::BlackLargeButtonFrame);
-			image->drawAlpha = uiconfig->activeFocusedIconAlpha;
+			image->drawAlpha = UiConfiguration::instance->activeFocusedIconAlpha;
 		}
 
 		isdropshadowed = true;
 		shouldfillbg = true;
 		if (isRaised) {
-			bgcolor.blend (shadecolor, uiconfig->buttonFocusedShadeAlpha);
+			bgcolor.blend (shadecolor, UiConfiguration::instance->buttonFocusedShadeAlpha);
 		}
 		else {
-			bgalpha = uiconfig->buttonFocusedShadeAlpha;
+			bgalpha = UiConfiguration::instance->buttonFocusedShadeAlpha;
 			bgcolor.assign (shadecolor);
 		}
 	}
 	else {
 		if (image) {
 			image->setFrame (iswhiteframe ? UiConfiguration::WhiteButtonFrame : UiConfiguration::BlackButtonFrame);
-			image->drawAlpha = uiconfig->activeUnfocusedIconAlpha;
+			image->drawAlpha = UiConfiguration::instance->activeUnfocusedIconAlpha;
 		}
 	}
 
@@ -375,7 +363,7 @@ void Button::refreshLayout () {
 	}
 
 	if (isdropshadowed && (! isFocusDropShadowDisabled)) {
-		setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
+		setDropShadow (true, UiConfiguration::instance->dropShadowColor, UiConfiguration::instance->dropShadowWidth);
 	}
 	else {
 		setDropShadow (false);
@@ -384,10 +372,10 @@ void Button::refreshLayout () {
 	if (label) {
 		if (isDisabled) {
 			if (isInverseColor) {
-				label->textColor.assign (normalTextColor.copy (uiconfig->buttonDisabledShadeAlpha));
+				label->textColor.assign (normalTextColor.copy (UiConfiguration::instance->buttonDisabledShadeAlpha));
 			}
 			else {
-				label->textColor.assign (uiconfig->lightPrimaryTextColor);
+				label->textColor.assign (UiConfiguration::instance->lightPrimaryTextColor);
 			}
 		}
 		else {
@@ -407,7 +395,7 @@ void Button::refreshLayout () {
 		x += spacew;
 		image->position.assign (x, y);
 		x += maxImageWidth;
-		spacew = uiconfig->marginSize;
+		spacew = UiConfiguration::instance->marginSize;
 		if (image->height > h) {
 			h = image->height;
 		}
@@ -416,7 +404,7 @@ void Button::refreshLayout () {
 		x += spacew;
 		label->position.assign (x, y);
 		x += label->width;
-		spacew = uiconfig->marginSize;
+		spacew = UiConfiguration::instance->marginSize;
 		if (label->height > h) {
 			h = label->height;
 		}

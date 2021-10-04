@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,7 +29,6 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
@@ -51,11 +50,8 @@ LabelWindow::LabelWindow (Label *label)
 , crawlStage (0)
 , crawlClock (0)
 {
-	UiConfiguration *uiconfig;
-
 	addWidget (label);
-	uiconfig = &(App::instance->uiConfig);
-	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
+	setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
 }
 
 LabelWindow::~LabelWindow () {
@@ -105,7 +101,7 @@ void LabelWindow::setText (const StdString &text) {
 	refreshLayout ();
 }
 
-void LabelWindow::setFont (int fontType) {
+void LabelWindow::setFont (UiConfiguration::FontType fontType) {
 	label->setFont (fontType);
 	refreshLayout ();
 }

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -31,7 +31,6 @@
 #include <stdlib.h>
 #include <math.h>
 #include <list>
-#include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
@@ -58,23 +57,20 @@ ScrollBar::ScrollBar (float maxScrollTrackLength)
 , downArrowImage (NULL)
 , isFollowingMouse (false)
 {
-	UiConfiguration *uiconfig;
 	float w, h;
 
-	uiconfig = &(App::instance->uiConfig);
-
-	setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->overlayWindowAlpha));
-	setBorder (true, Color (uiconfig->darkBackgroundColor.r, uiconfig->darkBackgroundColor.g, uiconfig->darkBackgroundColor.b, uiconfig->overlayWindowAlpha));
+	setFillBg (true, Color (0.0f, 0.0f, 0.0f, UiConfiguration::instance->overlayWindowAlpha));
+	setBorder (true, Color (UiConfiguration::instance->darkBackgroundColor.r, UiConfiguration::instance->darkBackgroundColor.g, UiConfiguration::instance->darkBackgroundColor.b, UiConfiguration::instance->overlayWindowAlpha));
 
 	// Only vertical orientation is supported in this implementation
 
-	upArrowImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::ScrollUpArrowSprite)));
+	upArrowImage = (Image *) addWidget (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ScrollUpArrowSprite)));
 	upArrowImage->zLevel = 1;
 	upArrowImage->isInputSuspended = true;
 	w = upArrowImage->width;
 	h = upArrowImage->height;
 
-	downArrowImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::ScrollDownArrowSprite)));
+	downArrowImage = (Image *) addWidget (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ScrollDownArrowSprite)));
 	downArrowImage->zLevel = 1;
 	downArrowImage->isInputSuspended = true;
 	if (downArrowImage->width > w) {
@@ -86,7 +82,7 @@ ScrollBar::ScrollBar (float maxScrollTrackLength)
 
 	trackWidth = w;
 	arrowPanel = (Panel *) addWidget (new Panel ());
-	arrowPanel->setFillBg (true, uiconfig->mediumPrimaryColor);
+	arrowPanel->setFillBg (true, UiConfiguration::instance->mediumPrimaryColor);
 	arrowPanel->setFixedSize (true, trackWidth, upArrowImage->height + downArrowImage->height + (h * 0.25f));
 	if (maxTrackLength < arrowPanel->height) {
 		maxTrackLength = arrowPanel->height;
@@ -97,6 +93,10 @@ ScrollBar::ScrollBar (float maxScrollTrackLength)
 
 ScrollBar::~ScrollBar () {
 
+}
+
+StdString ScrollBar::toStringDetail () {
+	return (StdString::createSprintf (" ScrollBar maxTrackLength=%.2f trackLength=%.2f trackWidth=%.2f scrollPosition=%.2f maxScrollPosition=%.2f", maxTrackLength, trackLength, trackWidth, scrollPosition, maxScrollPosition));
 }
 
 void ScrollBar::setPosition (float positionValue, bool shouldSkipCallback) {
@@ -115,8 +115,8 @@ void ScrollBar::setPosition (float positionValue, bool shouldSkipCallback) {
 
 	scrollPosition = pos;
 	refreshLayout ();
-	if (positionChangeCallback.callback && (! shouldSkipCallback)) {
-		positionChangeCallback.callback (positionChangeCallback.callbackData, this);
+	if (! shouldSkipCallback) {
+		eventCallback (positionChangeCallback);
 	}
 }
 
@@ -126,7 +126,6 @@ void ScrollBar::setScrollBounds (float scrollViewHeight, float scrollAreaHeight)
 	if ((scrollViewHeight <= 0.0f) || (scrollAreaHeight <= 0.0f)) {
 		return;
 	}
-
 	ratio = (scrollAreaHeight / scrollViewHeight);
 	trackLength = (1.0f + ratio) * arrowPanel->height;
 	if (trackLength > maxTrackLength) {
@@ -154,7 +153,6 @@ void ScrollBar::setMaxTrackLength (float maxScrollTrackLength) {
 	if (FLOAT_EQUALS (len, maxTrackLength)) {
 		return;
 	}
-
 	maxTrackLength = len;
 	refreshLayout ();
 }
@@ -178,70 +176,62 @@ void ScrollBar::refreshLayout () {
 		}
 	}
 	arrowPanel->position.assign (0.0f, y);
-
 	upArrowImage->position.assign (0.0f, arrowPanel->position.y);
 	downArrowImage->position.assign (0.0f, arrowPanel->position.y + arrowPanel->height - downArrowImage->height);
 }
 
 void ScrollBar::doUpdate (int msElapsed) {
-	Input *input;
-	float dy, val;
+	float dy, pos;
 
 	Panel::doUpdate (msElapsed);
 	if (isFollowingMouse) {
-		input = &(App::instance->input);
-		if (! input->isMouseLeftButtonDown) {
+		if (! Input::instance->isMouseLeftButtonDown) {
 			isFollowingMouse = false;
 		}
 		else {
-			dy = ((float) input->mouseY) - screenY;
+			dy = ((float) Input::instance->mouseY) - screenY;
 			if (dy < 0.0f) {
 				dy = 0.0f;
 			}
 			if (dy > trackLength) {
 				dy = trackLength;
 			}
-			val = (dy / trackLength);
-			val *= maxScrollPosition;
-			setPosition (val);
+			pos = (dy / trackLength);
+			pos *= maxScrollPosition;
+			setPosition (pos);
 		}
 	}
 }
 
 bool ScrollBar::doProcessMouseState (const Widget::MouseState &mouseState) {
-	Input *input;
-	UiConfiguration *uiconfig;
-	float val, dy;
-
-	input = &(App::instance->input);
-	uiconfig = &(App::instance->uiConfig);
+	float pos, dy;
 
 	if (! isFollowingMouse) {
 		if (mouseState.isEntered && mouseState.isLeftClicked) {
 			isFollowingMouse = true;
-			dy = ((float) input->mouseY) - screenY;
+			dy = ((float) Input::instance->mouseY) - screenY;
 			if (dy < 0.0f) {
 				dy = 0.0f;
 			}
 			if (dy > trackLength) {
 				dy = trackLength;
 			}
-			val = (dy / trackLength);
-			val *= maxScrollPosition;
-			setPosition (val);
+			pos = (dy / trackLength);
+			pos *= maxScrollPosition;
+			setPosition (pos);
 		}
 	}
 	else {
-		if (! input->isMouseLeftButtonDown) {
+		if (! Input::instance->isMouseLeftButtonDown) {
 			isFollowingMouse = false;
 		}
 	}
 
 	if (mouseState.isEntered || isFollowingMouse) {
-		arrowPanel->bgColor.translate (uiconfig->mediumPrimaryColor, uiconfig->shortColorTranslateDuration);
+		arrowPanel->bgColor.translate (UiConfiguration::instance->mediumPrimaryColor, UiConfiguration::instance->shortColorTranslateDuration);
 	}
 	else {
-		arrowPanel->bgColor.translate (uiconfig->lightPrimaryColor, uiconfig->shortColorTranslateDuration);
+		arrowPanel->bgColor.translate (UiConfiguration::instance->lightPrimaryColor, UiConfiguration::instance->shortColorTranslateDuration);
 	}
 
 	return (false);

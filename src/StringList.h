@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -74,7 +74,7 @@ public:
 	void sort (StringList::SortFunction sortFunction = StringList::compareAscending);
 
 	// Return a string composed by joining all list items with the specified delimiter
-	StdString join (const StdString &delimiter = StdString (" "));
+	StdString join (const StdString &delimiter = StdString (""));
 	StdString join (const char *delimiter);
 
 	static bool compareAscending (const StdString &a, const StdString &b);

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -38,7 +38,6 @@
 #include <list>
 #include "json-parser.h"
 #include "json-builder.h"
-#include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "Json.h"
@@ -1476,4 +1475,24 @@ JsonList *JsonList::copy () {
 	j->copyValues (this);
 
 	return (j);
+}
+
+Json *JsonList::at (int index) {
+	JsonList::iterator i, iend;
+	int listindex;
+
+	if ((index < 0) || (index >= (int) size ())) {
+		return (NULL);
+	}
+	listindex = 0;
+	i = begin ();
+	iend = end ();
+	while (i != iend) {
+		if (index == listindex) {
+			return (*i);
+		}
+		++listindex;
+		++i;
+	}
+	return (NULL);
 }

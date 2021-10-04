@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,12 +30,12 @@
 #include "Config.h"
 #include <stdlib.h>
 #include <math.h>
-#include "Result.h"
+#include "App.h"
 #include "ClassId.h"
 #include "Log.h"
 #include "StdString.h"
-#include "App.h"
 #include "UiConfiguration.h"
+#include "AgentControl.h"
 #include "OsUtil.h"
 #include "Json.h"
 #include "Widget.h"
@@ -44,7 +44,6 @@
 #include "Panel.h"
 #include "Label.h"
 #include "Image.h"
-#include "TextArea.h"
 #include "CardView.h"
 #include "CameraThumbnailWindow.h"
 
@@ -58,21 +57,19 @@ CameraThumbnailWindow::CameraThumbnailWindow (const StdString &agentId, const St
 , thumbnailImage (NULL)
 , timestampLabel (NULL)
 {
-	UiConfiguration *uiconfig;
-
 	classId = ClassId::CameraThumbnailWindow;
-	uiconfig = &(App::instance->uiConfig);
-	setFillBg (true, uiconfig->mediumBackgroundColor);
 
-	thumbnailImage = (ImageWindow *) addWidget (new ImageWindow (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
+	setFillBg (true, UiConfiguration::instance->mediumBackgroundColor);
+
+	thumbnailImage = (ImageWindow *) addWidget (new ImageWindow (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
 	thumbnailImage->loadCallback = Widget::EventCallbackContext (CameraThumbnailWindow::thumbnailImageLoaded, this);
 	thumbnailImage->mouseLongPressCallback = Widget::EventCallbackContext (CameraThumbnailWindow::thumbnailImageLongPressed, this);
-	thumbnailImage->setLoadSprite (uiconfig->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
+	thumbnailImage->setLoadSprite (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
 
-	timestampLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->inverseTextColor)));
+	timestampLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->inverseTextColor)));
 	timestampLabel->zLevel = 1;
-	timestampLabel->setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	timestampLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, uiconfig->scrimBackgroundAlpha));
+	timestampLabel->setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
+	timestampLabel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, UiConfiguration::instance->scrimBackgroundAlpha));
 	timestampLabel->isVisible = false;
 	if (thumbnailTimestamp > 0) {
 		timestampLabel->setText (OsUtil::getTimestampDisplayString (thumbnailTimestamp));
@@ -107,7 +104,7 @@ void CameraThumbnailWindow::setLayout (int layoutType, float maxPanelWidth) {
 	thumbnailImage->setLoadResize (true, maxPanelWidth);
 	params = new Json ();
 	params->set ("imageTime", thumbnailTimestamp);
-	thumbnailImage->setImageUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetCaptureImage, SystemInterface::Constant_Camera, params), captureImagePath));
+	thumbnailImage->setImageUrl (AgentControl::instance->getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetCaptureImage, params), captureImagePath));
 	thumbnailImage->reload ();
 
 	refreshLayout ();
@@ -119,14 +116,13 @@ void CameraThumbnailWindow::setThumbnailTimestamp (int64_t timestamp) {
 	if ((timestamp <= 0) || (timestamp == thumbnailTimestamp)) {
 		return;
 	}
-
 	thumbnailTimestamp = timestamp;
 	timestampLabel->setText (OsUtil::getTimestampDisplayString (thumbnailTimestamp));
 
 	thumbnailImage->setLoadSprite (NULL);
 	params = new Json ();
 	params->set ("imageTime", thumbnailTimestamp);
-	thumbnailImage->setImageUrl (App::instance->agentControl.getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetCaptureImage, SystemInterface::Constant_Camera, params), captureImagePath));
+	thumbnailImage->setImageUrl (AgentControl::instance->getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetCaptureImage, params), captureImagePath));
 }
 
 void CameraThumbnailWindow::refreshLayout () {
@@ -162,19 +158,15 @@ void CameraThumbnailWindow::refreshLayout () {
 }
 
 void CameraThumbnailWindow::setHighlighted (bool highlighted) {
-	UiConfiguration *uiconfig;
-
 	if (isHighlighted == highlighted) {
 		return;
 	}
-
-	uiconfig = &(App::instance->uiConfig);
 	isHighlighted = highlighted;
 	if (isHighlighted) {
-		timestampLabel->translateTextColor (uiconfig->mediumSecondaryColor, uiconfig->shortColorTranslateDuration);
+		timestampLabel->translateTextColor (UiConfiguration::instance->mediumSecondaryColor, UiConfiguration::instance->shortColorTranslateDuration);
 	}
 	else {
-		timestampLabel->translateTextColor (uiconfig->inverseTextColor, uiconfig->shortColorTranslateDuration);
+		timestampLabel->translateTextColor (UiConfiguration::instance->inverseTextColor, UiConfiguration::instance->shortColorTranslateDuration);
 	}
 	refreshLayout ();
 }
@@ -195,13 +187,16 @@ bool CameraThumbnailWindow::doProcessMouseState (const Widget::MouseState &mouse
 
 void CameraThumbnailWindow::thumbnailImageLoaded (void *windowPtr, Widget *widgetPtr) {
 	CameraThumbnailWindow *window;
+	ImageWindow *image;
 
 	window = (CameraThumbnailWindow *) windowPtr;
+	image = (ImageWindow *) widgetPtr;
+	if (! image->isLoaded ()) {
+		return;
+	}
 	window->refreshLayout ();
 	window->shouldRefreshTexture = true;
-	if (window->loadCallback.callback) {
-		window->loadCallback.callback (window->loadCallback.callbackData, window);
-	}
+	window->eventCallback (window->loadCallback);
 }
 
 void CameraThumbnailWindow::thumbnailImageLongPressed (void *windowPtr, Widget *widgetPtr) {

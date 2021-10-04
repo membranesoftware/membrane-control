@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -37,7 +37,7 @@
 #include "Json.h"
 #include "Label.h"
 #include "Button.h"
-#include "TextArea.h"
+#include "TextFlow.h"
 #include "ProgressBar.h"
 #include "Panel.h"
 
@@ -89,7 +89,7 @@ private:
 	Image *iconImage;
 	Label *nameLabel;
 	Label *statusLabel;
-	TextArea *detailText;
+	TextFlow *detailText;
 	ProgressBar *progressBar;
 	Button *deleteButton;
 };

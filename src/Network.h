@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -37,6 +37,7 @@
 #include <list>
 #include "SDL2/SDL.h"
 #include "StdString.h"
+#include "OsUtil.h"
 #include "Buffer.h"
 #include "SharedBuffer.h"
 
@@ -44,8 +45,10 @@ class Network {
 public:
 	Network ();
 	~Network ();
+	static Network *instance;
 
-	static const int DefaultRequestThreadCount;
+	static const StdString LocalhostAddress;
+	static const int DefaultMaxRequestThreads;
 	static const int MaxDatagramSize;
 
 	// HTTP status codes
@@ -57,17 +60,32 @@ public:
 	typedef void (*DatagramCallback) (void *callbackData, const char *messageData, int messageLength, const char *sourceAddress, int sourcePort);
 	typedef void (*HttpRequestCallback) (void *callbackData, const StdString &targetUrl, int statusCode, SharedBuffer *responseData);
 
+	struct DatagramCallbackContext {
+		Network::DatagramCallback callback;
+		void *callbackData;
+		DatagramCallbackContext (): callback (NULL), callbackData (NULL) { }
+		DatagramCallbackContext (Network::DatagramCallback callback, void *callbackData): callback (callback), callbackData (callbackData) { }
+	};
+	struct HttpRequestCallbackContext {
+		Network::HttpRequestCallback callback;
+		void *callbackData;
+		HttpRequestCallbackContext (): callback (NULL), callbackData (NULL) { }
+		HttpRequestCallbackContext (Network::HttpRequestCallback callback, void *callbackData): callback (callback), callbackData (callbackData) { }
+	};
+
 	// Read-write data members
+	int maxRequestThreads;
 	StdString httpUserAgent;
+	bool enableDatagramSocket;
+	Network::DatagramCallbackContext datagramCallback;
 
 	// Read-only data members
 	bool isStarted;
 	bool isStopped;
 	int datagramPort;
-	int httpRequestThreadCount;
 
 	// Initialize networking functionality and acquire resources as needed. Returns a Result value.
-	int start (int requestThreadCount = Network::DefaultRequestThreadCount);
+	OsUtil::Result start ();
 
 	// Stop the networking engine and release acquired resources
 	void stop ();
@@ -81,9 +99,6 @@ public:
 	// Return a string containing the address of the primary network interface, or an empty string if no such address was found
 	StdString getPrimaryInterfaceAddress ();
 
-	// Add a callback function that should be invoked for each received datagram
-	void addDatagramCallback (Network::DatagramCallback callback, void *callbackData);
-
 	// Send a datagram packet to a remote host using data from the provided buffer. This class becomes responsible for freeing messageData when it's no longer needed.
 	void sendDatagram (const StdString &targetHostname, int targetPort, Buffer *messageData);
 
@@ -91,10 +106,10 @@ public:
 	void sendBroadcastDatagram (int targetPort, Buffer *messageData);
 
 	// Send an HTTP GET request and invoke the provided callback when complete
-	void sendHttpGet (const StdString &targetUrl, Network::HttpRequestCallback callback, void *callbackData);
+	void sendHttpGet (const StdString &targetUrl, Network::HttpRequestCallbackContext callback, const StdString &targetServerName = StdString (""));
 
 	// Send an HTTP POST request and invoke the provided callback when complete
-	void sendHttpPost (const StdString &targetUrl, const StdString &postData, Network::HttpRequestCallback callback, void *callbackData);
+	void sendHttpPost (const StdString &targetUrl, const StdString &postData, Network::HttpRequestCallbackContext callback, const StdString &targetServerName = StdString (""));
 
 private:
 	// Run a thread that sends datagrams submitted by outside callers
@@ -115,7 +130,6 @@ private:
 		StdString broadcastAddress;
 		Interface (): id (0), isUp (false), isBroadcast (false), isLoopback (false), address (""), broadcastAddress ("") { }
 	};
-
 	struct Datagram {
 		StdString targetHostname;
 		int targetPort;
@@ -123,24 +137,17 @@ private:
 		bool isBroadcast;
 		Datagram (): targetHostname (""), targetPort (0), messageData (NULL), isBroadcast (false) { }
 	};
-
-	struct DatagramCallbackContext {
-		Network::DatagramCallback callback;
-		void *callbackData;
-		DatagramCallbackContext (Network::DatagramCallback callback, void *callbackData): callback (callback), callbackData (callbackData) { }
-	};
-
 	struct HttpRequestContext {
 		StdString method;
 		StdString url;
 		StdString postData;
-		Network::HttpRequestCallback callback;
-		void *callbackData;
-		HttpRequestContext (): method ("GET"), url (""), postData (""), callback (NULL), callbackData (NULL) { }
+		StdString serverName;
+		Network::HttpRequestCallbackContext callback;
+		HttpRequestContext (): method ("GET"), url (""), postData (""), serverName ("") { }
 	};
 
 	// Populate the interface map with data regarding available network interfaces. Returns a Result value.
-	int resetInterfaces ();
+	OsUtil::Result resetInterfaces ();
 
 	// Remove all items from the datagram queue
 	void clearDatagramQueue ();
@@ -158,7 +165,7 @@ private:
 	int broadcastSendTo (int targetPort, Buffer *messageData);
 
 	// Execute operations to send an HTTP request and gather the response data. Returns a Result value. If successful, this method stores values in the provided pointers, and the caller is responsible for releasing any created SharedBuffer object.
-	int sendHttpRequest (Network::HttpRequestContext *item, int *statusCode, SharedBuffer **responseBuffer);
+	OsUtil::Result sendHttpRequest (Network::HttpRequestContext *item, int *statusCode, SharedBuffer **responseBuffer);
 
 	// Callback functions for use with libcurl
 	static size_t curlWrite (char *ptr, size_t size, size_t nmemb, void *userdata);
@@ -168,7 +175,6 @@ private:
 	SDL_Thread *datagramSendThread;
 	SDL_Thread *datagramReceiveThread;
 	std::queue<Network::Datagram> datagramQueue;
-	std::list<Network::DatagramCallbackContext> datagramCallbackList;
 	SDL_mutex *datagramSendMutex;
 	SDL_cond *datagramSendCond;
 	int datagramSocket;

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -32,7 +32,6 @@
 #include <math.h>
 #include "SDL2/SDL.h"
 #include "App.h"
-#include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "Ui.h"
@@ -40,7 +39,6 @@
 #include "Sprite.h"
 #include "Widget.h"
 #include "UiConfiguration.h"
-#include "TextField.h"
 #include "ProgressBar.h"
 
 const float ProgressBar::AnimationFactor = 2.0f; // milliseconds per pixel
@@ -56,13 +54,10 @@ ProgressBar::ProgressBar (float barWidth, float barHeight)
 , fillEnd (0.0f)
 , fillEndTarget (0.0f)
 {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::instance->uiConfig);
 	width = barWidth;
 	height = barHeight;
-	bgColor.assign (uiconfig->lightPrimaryColor);
-	fillColor.assign (uiconfig->darkPrimaryColor);
+	bgColor.assign (UiConfiguration::instance->lightPrimaryColor);
+	fillColor.animate (UiConfiguration::instance->darkPrimaryColor, UiConfiguration::instance->mediumSecondaryColor, UiConfiguration::instance->longColorAnimateDuration, UiConfiguration::instance->longColorAnimateDuration * 2);
 }
 
 ProgressBar::~ProgressBar () {
@@ -82,7 +77,6 @@ void ProgressBar::setProgress (float value) {
 	if (FLOAT_EQUALS (progressValue, value)) {
 		return;
 	}
-
 	if (value < 0.0f) {
 		value = 0.0f;
 	}
@@ -94,7 +88,6 @@ void ProgressBar::setProgress (float value, float targetValue) {
 	if (FLOAT_EQUALS (progressValue, value) && FLOAT_EQUALS (targetProgressValue, targetValue)) {
 		return;
 	}
-
 	if (value < 0.0f) {
 		value = 0.0f;
 	}
@@ -135,7 +128,6 @@ void ProgressBar::doUpdate (int msElapsed) {
 						fillEnd = fillEndTarget;
 					}
 				}
-
 				if (fillEnd >= fillEndTarget) {
 					fillStartTarget = (width / 2.0f);
 					fillEndTarget = width;
@@ -156,7 +148,6 @@ void ProgressBar::doUpdate (int msElapsed) {
 						fillStart = fillStartTarget;
 					}
 				}
-
 				if ((fillEnd >= fillEndTarget) && (fillStart >= fillStartTarget)) {
 					fillEnd = width;
 					fillStartTarget = width;
@@ -171,7 +162,6 @@ void ProgressBar::doUpdate (int msElapsed) {
 						fillStart = fillStartTarget;
 					}
 				}
-
 				if (fillStart >= fillStartTarget) {
 					fillStage = 4;
 				}
@@ -183,6 +173,8 @@ void ProgressBar::doUpdate (int msElapsed) {
 			}
 		}
 	}
+
+	fillColor.update (msElapsed);
 }
 
 void ProgressBar::doDraw (SDL_Texture *targetTexture, float originX, float originY) {
@@ -207,6 +199,30 @@ void ProgressBar::doDraw (SDL_Texture *targetTexture, float originX, float origi
 		SDL_SetRenderDrawColor (render, fillColor.rByte, fillColor.gByte, fillColor.bByte, 255);
 		SDL_RenderFillRect (render, &rect);
 	}
+
+	SDL_SetRenderDrawBlendMode (render, SDL_BLENDMODE_BLEND);
+	SDL_SetRenderDrawColor (render, 0, 0, 0, 128);
+	rect.x = (int) (originX + position.x);
+	rect.y = (int) (originY + position.y);
+	rect.w = (int) width;
+	rect.h = 1;
+	SDL_RenderFillRect (render, &rect);
+	++(rect.y);
+	rect.w = 1;
+	rect.h = ((int) height) - 1;
+	SDL_RenderFillRect (render, &rect);
+	++(rect.x);
+	rect.y = (int) (originY + position.y) + ((int) height) - 1;
+	rect.w = ((int) width) - 1;
+	rect.h = 1;
+	SDL_RenderFillRect (render, &rect);
+	rect.x = (int) (originX + position.x) + ((int) width) - 1;
+	rect.y = (int) (originY + position.y + 1);
+	rect.w = 1;
+	rect.h = ((int) height) - 2;
+	SDL_RenderFillRect (render, &rect);
+	SDL_SetRenderDrawBlendMode (render, SDL_BLENDMODE_NONE);
+
 	SDL_SetRenderDrawColor (render, 0, 0, 0, 0);
 }
 

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,11 +30,11 @@
 #include "Config.h"
 #include <stdlib.h>
 #include <math.h>
-#include "Result.h"
+#include "App.h"
 #include "ClassId.h"
 #include "Log.h"
 #include "StdString.h"
-#include "App.h"
+#include "UiConfiguration.h"
 #include "UiText.h"
 #include "OsUtil.h"
 #include "Widget.h"
@@ -45,13 +45,11 @@
 #include "Json.h"
 #include "Panel.h"
 #include "Label.h"
-#include "TextArea.h"
 #include "Toggle.h"
 #include "ToggleWindow.h"
 #include "Slider.h"
 #include "SliderWindow.h"
 #include "SystemInterface.h"
-#include "UiConfiguration.h"
 #include "CameraUi.h"
 #include "CapturePlaylistWindow.h"
 
@@ -88,34 +86,30 @@ CapturePlaylistWindow::CapturePlaylistWindow (SpriteGroup *cameraUiSpriteGroup)
 , removeButton (NULL)
 , addItemButton (NULL)
 {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
-
 	classId = ClassId::CapturePlaylistWindow;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-	setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
-	setCornerRadius (uiconfig->cornerRadius);
-	setFillBg (true, uiconfig->mediumBackgroundColor);
+
+	setPadding (UiConfiguration::instance->paddingSize / 2.0f, UiConfiguration::instance->paddingSize / 2.0f);
+	setCornerRadius (UiConfiguration::instance->cornerRadius);
+	setFillBg (true, UiConfiguration::instance->mediumBackgroundColor);
 	windowWidth = App::instance->windowWidth * CapturePlaylistWindow::WindowWidthMultiplier;
 
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::PlaylistIconSprite)));
-	nameLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::BodyFont, uiconfig->primaryTextColor)));
+	iconImage = (Image *) addWidget (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::PlaylistIconSprite)));
+	nameLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::BodyFont, UiConfiguration::instance->primaryTextColor)));
 	nameLabel->mouseClickCallback = Widget::EventCallbackContext (CapturePlaylistWindow::nameLabelClicked, this);
 	nameLabel->setPadding (0.0f, 0.0f);
-	nameLabel->setMouseHoverTooltip (uitext->getText (UiTextString::ClickRenameTooltip));
+	nameLabel->setMouseHoverTooltip (UiText::instance->getText (UiTextString::ClickRenameTooltip));
 
 	dividerPanel = (Panel *) addWidget (new Panel ());
-	dividerPanel->setFillBg (true, uiconfig->dividerColor);
-	dividerPanel->setFixedSize (true, 1.0f, uiconfig->headlineDividerLineWidth);
+	dividerPanel->setFillBg (true, UiConfiguration::instance->dividerColor);
+	dividerPanel->setFixedSize (true, 1.0f, UiConfiguration::instance->headlineDividerLineWidth);
 	dividerPanel->isPanelSizeClipEnabled = true;
 	dividerPanel->isVisible = false;
 
 	shuffleToggle = (ToggleWindow *) addWidget (new ToggleWindow (new Toggle ()));
 	shuffleToggle->setIcon (sprites->getSprite (CameraUi::ShuffleIconSprite));
 	shuffleToggle->setRightAligned (true);
-	shuffleToggle->setImageColor (uiconfig->flatButtonTextColor);
-	shuffleToggle->setMouseHoverTooltip (uitext->getText (UiTextString::ShuffleTooltip));
+	shuffleToggle->setImageColor (UiConfiguration::instance->flatButtonTextColor);
+	shuffleToggle->setMouseHoverTooltip (UiText::instance->getText (UiTextString::ShuffleTooltip));
 	shuffleToggle->zLevel = 1;
 	shuffleToggle->isVisible = false;
 
@@ -125,45 +119,45 @@ CapturePlaylistWindow::CapturePlaylistWindow (SpriteGroup *cameraUiSpriteGroup)
 	itemDisplayDurationSlider->addSnapValue (0.5f);
 	itemDisplayDurationSlider->addSnapValue (0.75f);
 	itemDisplayDurationSlider->addSnapValue (1.0f);
-	itemDisplayDurationSlider->setPadding (uiconfig->paddingSize, 0.0f);
+	itemDisplayDurationSlider->setPadding (UiConfiguration::instance->paddingSize, 0.0f);
 	itemDisplayDurationSlider->setTrackWidthScale (0.75f);
 	itemDisplayDurationSlider->setValueNameFunction (CapturePlaylistWindow::itemDisplayDurationSliderValueName);
 	itemDisplayDurationSlider->setIcon (sprites->getSprite (CameraUi::SpeedIconSprite));
-	itemDisplayDurationSlider->setMouseHoverTooltip (uitext->getText (UiTextString::PlaylistSpeedTooltip));
+	itemDisplayDurationSlider->setMouseHoverTooltip (UiText::instance->getText (UiTextString::PlaylistSpeedTooltip));
 	itemDisplayDurationSlider->zLevel = 1;
 	itemDisplayDurationSlider->isVisible = false;
 
-	selectToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::StarOutlineButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::StarButtonSprite)));
+	selectToggle = (Toggle *) addWidget (new Toggle (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::StarOutlineButtonSprite), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::StarButtonSprite)));
 	selectToggle->stateChangeCallback = Widget::EventCallbackContext (CapturePlaylistWindow::selectToggleStateChanged, this);
-	selectToggle->setImageColor (uiconfig->flatButtonTextColor);
-	selectToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::UnselectedToggleTooltip), uitext->getText (UiTextString::SelectedToggleTooltip));
+	selectToggle->setImageColor (UiConfiguration::instance->flatButtonTextColor);
+	selectToggle->setStateMouseHoverTooltips (UiText::instance->getText (UiTextString::UnselectedToggleTooltip), UiText::instance->getText (UiTextString::SelectedToggleTooltip));
 
-	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
+	expandToggle = (Toggle *) addWidget (new Toggle (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
 	expandToggle->stateChangeCallback = Widget::EventCallbackContext (CapturePlaylistWindow::expandToggleStateChanged, this);
-	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
-	expandToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::Expand).capitalized (), uitext->getText (UiTextString::Minimize).capitalized ());
+	expandToggle->setImageColor (UiConfiguration::instance->flatButtonTextColor);
+	expandToggle->setStateMouseHoverTooltips (UiText::instance->getText (UiTextString::Expand).capitalized (), UiText::instance->getText (UiTextString::Minimize).capitalized ());
 
-	itemCountLabel = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (CameraUi::TimelapseIconSprite), StdString ("0"), UiConfiguration::TitleFont, uiconfig->lightPrimaryTextColor));
+	itemCountLabel = (IconLabelWindow *) addWidget (new IconLabelWindow (sprites->getSprite (CameraUi::TimelapseIconSprite), StdString ("0"), UiConfiguration::TitleFont, UiConfiguration::instance->lightPrimaryTextColor));
 	itemCountLabel->setPadding (0.0f, 0.0f);
-	itemCountLabel->setMouseHoverTooltip (uitext->getCountText (0, UiTextString::CapturePlaylistItem, UiTextString::CapturePlaylistItems));
-	itemCountLabel->setTextChangeHighlight (true, uiconfig->primaryTextColor);
+	itemCountLabel->setMouseHoverTooltip (UiText::instance->getCountText (0, UiTextString::CapturePlaylistItem, UiTextString::CapturePlaylistItems));
+	itemCountLabel->setTextChangeHighlight (true, UiConfiguration::instance->primaryTextColor);
 
-	itemListView = (ListView *) addWidget (new ListView (windowWidth - (widthPadding * 2.0f), 4, 7, UiConfiguration::CaptionFont, uitext->getText (UiTextString::EmptyCaptureListPrompt)));
+	itemListView = (ListView *) addWidget (new ListView (windowWidth - (widthPadding * 2.0f), 4, 7, UiConfiguration::CaptionFont, UiText::instance->getText (UiTextString::EmptyCaptureListPrompt)));
 	itemListView->listChangeCallback = Widget::EventCallbackContext (CapturePlaylistWindow::itemListChanged, this);
-	itemListView->setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
+	itemListView->setDropShadow (true, UiConfiguration::instance->dropShadowColor, UiConfiguration::instance->dropShadowWidth);
 	itemListView->isVisible = false;
 
-	removeButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
+	removeButton = (Button *) addWidget (new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
 	removeButton->mouseClickCallback = Widget::EventCallbackContext (CapturePlaylistWindow::removeButtonClicked, this);
-	removeButton->setImageColor (uiconfig->flatButtonTextColor);
-	removeButton->setMouseHoverTooltip (uitext->getText (UiTextString::DeletePlaylist).capitalized ());
+	removeButton->setImageColor (UiConfiguration::instance->flatButtonTextColor);
+	removeButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::DeletePlaylist).capitalized ());
 	removeButton->isVisible = false;
 
 	addItemButton = (Button *) addWidget (new Button (sprites->getSprite (CameraUi::AddPlaylistItemButtonSprite)));
 	addItemButton->mouseClickCallback = Widget::EventCallbackContext (CapturePlaylistWindow::addItemButtonClicked, this);
 	addItemButton->mouseEnterCallback = Widget::EventCallbackContext (CapturePlaylistWindow::addItemButtonMouseEntered, this);
 	addItemButton->mouseExitCallback = Widget::EventCallbackContext (CapturePlaylistWindow::addItemButtonMouseExited, this);
-	addItemButton->setImageColor (uiconfig->flatButtonTextColor);
+	addItemButton->setImageColor (UiConfiguration::instance->flatButtonTextColor);
 	addItemButton->isVisible = false;
 
 	refreshLayout ();
@@ -186,20 +180,16 @@ CapturePlaylistWindow *CapturePlaylistWindow::castWidget (Widget *widget) {
 }
 
 void CapturePlaylistWindow::setSelected (bool selected, bool shouldSkipStateChangeCallback) {
-	UiConfiguration *uiconfig;
-
 	if (selected == isSelected) {
 		return;
 	}
-
-	uiconfig = &(App::instance->uiConfig);
 	isSelected = selected;
 	selectToggle->setChecked (isSelected, shouldSkipStateChangeCallback);
 	if (isSelected) {
-		setCornerRadius (0, uiconfig->cornerRadius, 0, uiconfig->cornerRadius);
+		setCornerRadius (0, UiConfiguration::instance->cornerRadius, 0, UiConfiguration::instance->cornerRadius);
 	}
 	else {
-		setCornerRadius (uiconfig->cornerRadius);
+		setCornerRadius (UiConfiguration::instance->cornerRadius);
 	}
 	refreshLayout ();
 }
@@ -212,15 +202,12 @@ void CapturePlaylistWindow::setPlaylistName (const StdString &name) {
 }
 
 void CapturePlaylistWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallback) {
-	UiConfiguration *uiconfig;
-
 	if (expanded == isExpanded) {
 		return;
 	}
-	uiconfig = &(App::instance->uiConfig);
 	isExpanded = expanded;
 	if (isExpanded) {
-		setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
+		setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
 		nameLabel->setFont (UiConfiguration::HeadlineFont);
 		itemCountLabel->setTextFont (UiConfiguration::HeadlineFont);
 		dividerPanel->isVisible = true;
@@ -231,7 +218,7 @@ void CapturePlaylistWindow::setExpanded (bool expanded, bool shouldSkipStateChan
 		addItemButton->isVisible = true;
 	}
 	else {
-		setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
+		setPadding (UiConfiguration::instance->paddingSize / 2.0f, UiConfiguration::instance->paddingSize / 2.0f);
 		nameLabel->setFont (UiConfiguration::BodyFont);
 		itemCountLabel->setTextFont (UiConfiguration::BodyFont);
 		dividerPanel->isVisible = false;
@@ -247,10 +234,8 @@ void CapturePlaylistWindow::setExpanded (bool expanded, bool shouldSkipStateChan
 }
 
 void CapturePlaylistWindow::refreshLayout () {
-	UiConfiguration *uiconfig;
 	float x, y, x0, y0, x2, y2;
 
-	uiconfig = &(App::instance->uiConfig);
 	x0 = widthPadding;
 	y0 = heightPadding;
 	x = x0;
@@ -264,7 +249,7 @@ void CapturePlaylistWindow::refreshLayout () {
 		itemCountLabel->flowRight (&x, y, &x2, &y2);
 	}
 
-	x = x2 + uiconfig->marginSize;
+	x = x2 + UiConfiguration::instance->marginSize;
 	y = y0;
 	if (isExpanded) {
 		removeButton->flowRight (&x, y, &x2, &y2);
@@ -277,13 +262,13 @@ void CapturePlaylistWindow::refreshLayout () {
 
 	x = x0;
 	x2 = 0.0f;
-	y = y2 + uiconfig->marginSize;
+	y = y2 + UiConfiguration::instance->marginSize;
 	y0 = y;
 	if (isExpanded) {
 		dividerPanel->flowDown (0.0f, &y, &x2, &y2);
 		itemListView->flowDown (x, &y, &x2, &y2);
 
-		y = y2 + uiconfig->marginSize;
+		y = y2 + UiConfiguration::instance->marginSize;
 		y0 = y;
 		shuffleToggle->flowRight (&x, y, &x2, &y2);
 		itemDisplayDurationSlider->flowRight (&x, y, &x2, &y2);
@@ -297,7 +282,7 @@ void CapturePlaylistWindow::refreshLayout () {
 
 		setFixedSize (true, windowWidth, y2 + heightPadding);
 
-		dividerPanel->setFixedSize (true, windowWidth, uiconfig->headlineDividerLineWidth);
+		dividerPanel->setFixedSize (true, windowWidth, UiConfiguration::instance->headlineDividerLineWidth);
 
 		x = width - widthPadding;
 		addItemButton->flowLeft (&x);
@@ -317,20 +302,18 @@ void CapturePlaylistWindow::refreshLayout () {
 }
 
 void CapturePlaylistWindow::resetNameLabel () {
-	UiConfiguration *uiconfig;
 	float w;
 
-	uiconfig = &(App::instance->uiConfig);
 	if (isExpanded) {
 		w = removeButton->position.x;
 		w -= nameLabel->position.x;
-		w -= uiconfig->marginSize;
-		nameLabel->setText (Label::getTruncatedText (playlistName, UiConfiguration::HeadlineFont, w, Label::DotTruncateSuffix));
+		w -= UiConfiguration::instance->marginSize;
+		nameLabel->setText (UiConfiguration::instance->fonts[UiConfiguration::HeadlineFont]->truncatedText (playlistName, w, Font::DotTruncateSuffix));
 	}
 	else {
 		w = windowWidth * 0.63f;
 		w -= (iconImage->width + expandToggle->width + selectToggle->width);
-		nameLabel->setText (Label::getTruncatedText (playlistName, UiConfiguration::BodyFont, w, Label::DotTruncateSuffix));
+		nameLabel->setText (UiConfiguration::instance->fonts[UiConfiguration::BodyFont]->truncatedText (playlistName, w, Font::DotTruncateSuffix));
 	}
 	refreshLayout ();
 }
@@ -342,33 +325,24 @@ void CapturePlaylistWindow::doRefresh () {
 }
 
 void CapturePlaylistWindow::nameLabelClicked (void *windowPtr, Widget *widgetPtr) {
-	CapturePlaylistWindow *window;
-
-	window = (CapturePlaylistWindow *) windowPtr;
-	if (window->nameClickCallback.callback) {
-		window->nameClickCallback.callback (window->nameClickCallback.callbackData, window);
-	}
+	((CapturePlaylistWindow *) windowPtr)->eventCallback (((CapturePlaylistWindow *) windowPtr)->nameClickCallback);
 }
 
 void CapturePlaylistWindow::selectToggleStateChanged (void *windowPtr, Widget *widgetPtr) {
 	CapturePlaylistWindow *window;
 	Toggle *toggle;
-	UiConfiguration *uiconfig;
 
 	window = (CapturePlaylistWindow *) windowPtr;
 	toggle = (Toggle *) widgetPtr;
-	uiconfig = &(App::instance->uiConfig);
 
 	window->isSelected = toggle->isChecked;
 	if (window->isSelected) {
-		window->setCornerRadius (0, uiconfig->cornerRadius, 0, uiconfig->cornerRadius);
+		window->setCornerRadius (0, UiConfiguration::instance->cornerRadius, 0, UiConfiguration::instance->cornerRadius);
 	}
 	else {
-		window->setCornerRadius (uiconfig->cornerRadius);
+		window->setCornerRadius (UiConfiguration::instance->cornerRadius);
 	}
-	if (window->selectStateChangeCallback.callback) {
-		window->selectStateChangeCallback.callback (window->selectStateChangeCallback.callbackData, window);
-	}
+	window->eventCallback (window->selectStateChangeCallback);
 }
 
 void CapturePlaylistWindow::expandToggleStateChanged (void *windowPtr, Widget *widgetPtr) {
@@ -378,44 +352,27 @@ void CapturePlaylistWindow::expandToggleStateChanged (void *windowPtr, Widget *w
 	window = (CapturePlaylistWindow *) windowPtr;
 	toggle = (Toggle *) widgetPtr;
 	window->setExpanded (toggle->isChecked, true);
-	if (window->expandStateChangeCallback.callback) {
-		window->expandStateChangeCallback.callback (window->expandStateChangeCallback.callbackData, window);
-	}
+	window->eventCallback (window->expandStateChangeCallback);
 }
 
 void CapturePlaylistWindow::itemListChanged (void *windowPtr, Widget *widgetPtr) {
 	CapturePlaylistWindow *window;
-	UiText *uitext;
 	int count;
 
 	window = (CapturePlaylistWindow *) windowPtr;
-	uitext = &(App::instance->uiText);
 	count = window->itemListView->getItemCount ();
 	window->itemCountLabel->setText (StdString::createSprintf ("%i", count));
-	window->itemCountLabel->tooltipText.assign (uitext->getCountText (count, UiTextString::CapturePlaylistItem, UiTextString::CapturePlaylistItems));
+	window->itemCountLabel->tooltipText.assign (UiText::instance->getCountText (count, UiTextString::CapturePlaylistItem, UiTextString::CapturePlaylistItems));
 	window->refreshLayout ();
-
-	if (window->itemListChangeCallback.callback) {
-		window->itemListChangeCallback.callback (window->itemListChangeCallback.callbackData, window);
-	}
+	window->eventCallback (window->itemListChangeCallback);
 }
 
 void CapturePlaylistWindow::removeButtonClicked (void *windowPtr, Widget *widgetPtr) {
-	CapturePlaylistWindow *window;
-
-	window = (CapturePlaylistWindow *) windowPtr;
-	if (window->removeClickCallback.callback) {
-		window->removeClickCallback.callback (window->removeClickCallback.callbackData, window);
-	}
+	((CapturePlaylistWindow *) windowPtr)->eventCallback (((CapturePlaylistWindow *) windowPtr)->removeClickCallback);
 }
 
 void CapturePlaylistWindow::addItemButtonClicked (void *windowPtr, Widget *widgetPtr) {
-	CapturePlaylistWindow *window;
-
-	window = (CapturePlaylistWindow *) windowPtr;
-	if (window->addItemClickCallback.callback) {
-		window->addItemClickCallback.callback (window->addItemClickCallback.callbackData, window);
-	}
+	((CapturePlaylistWindow *) windowPtr)->eventCallback (((CapturePlaylistWindow *) windowPtr)->addItemClickCallback);
 }
 
 void CapturePlaylistWindow::addItemButtonMouseEntered (void *windowPtr, Widget *widgetPtr) {
@@ -425,9 +382,7 @@ void CapturePlaylistWindow::addItemButtonMouseEntered (void *windowPtr, Widget *
 	window = (CapturePlaylistWindow *) windowPtr;
 	button = (Button *) widgetPtr;
 	Button::mouseEntered (button, button);
-	if (window->addItemMouseEnterCallback.callback) {
-		window->addItemMouseEnterCallback.callback (window->addItemMouseEnterCallback.callbackData, window);
-	}
+	window->eventCallback (window->addItemMouseEnterCallback);
 }
 
 void CapturePlaylistWindow::addItemButtonMouseExited (void *windowPtr, Widget *widgetPtr) {
@@ -437,9 +392,7 @@ void CapturePlaylistWindow::addItemButtonMouseExited (void *windowPtr, Widget *w
 	window = (CapturePlaylistWindow *) windowPtr;
 	button = (Button *) widgetPtr;
 	Button::mouseExited (button, button);
-	if (window->addItemMouseExitCallback.callback) {
-		window->addItemMouseExitCallback.callback (window->addItemMouseExitCallback.callbackData, window);
-	}
+	window->eventCallback (window->addItemMouseExitCallback);
 }
 
 int CapturePlaylistWindow::getItemCount () {
@@ -479,19 +432,19 @@ Widget::Rectangle CapturePlaylistWindow::getRemoveButtonScreenRect () {
 
 StdString CapturePlaylistWindow::itemDisplayDurationSliderValueName (float sliderValue) {
 	if (FLOAT_EQUALS (sliderValue, 0.0f)) {
-		return (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::Slowest).capitalized ().c_str (), OsUtil::getDurationDisplayString (CapturePlaylistWindow::ItemDisplayDurations[0] * 1000).c_str ()));
+		return (StdString::createSprintf ("%s - %s", UiText::instance->getText (UiTextString::Slowest).capitalized ().c_str (), OsUtil::getDurationDisplayString (CapturePlaylistWindow::ItemDisplayDurations[0] * 1000).c_str ()));
 	}
 	if (FLOAT_EQUALS (sliderValue, 0.25f)) {
-		return (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::Slow).capitalized ().c_str (), OsUtil::getDurationDisplayString (CapturePlaylistWindow::ItemDisplayDurations[1] * 1000).c_str ()));
+		return (StdString::createSprintf ("%s - %s", UiText::instance->getText (UiTextString::Slow).capitalized ().c_str (), OsUtil::getDurationDisplayString (CapturePlaylistWindow::ItemDisplayDurations[1] * 1000).c_str ()));
 	}
 	if (FLOAT_EQUALS (sliderValue, 0.5f)) {
-		return (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::Medium).capitalized ().c_str (), OsUtil::getDurationDisplayString (CapturePlaylistWindow::ItemDisplayDurations[2] * 1000).c_str ()));
+		return (StdString::createSprintf ("%s - %s", UiText::instance->getText (UiTextString::Medium).capitalized ().c_str (), OsUtil::getDurationDisplayString (CapturePlaylistWindow::ItemDisplayDurations[2] * 1000).c_str ()));
 	}
 	if (FLOAT_EQUALS (sliderValue, 0.75f)) {
-		return (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::Fast).capitalized ().c_str (), OsUtil::getDurationDisplayString (CapturePlaylistWindow::ItemDisplayDurations[3] * 1000).c_str ()));
+		return (StdString::createSprintf ("%s - %s", UiText::instance->getText (UiTextString::Fast).capitalized ().c_str (), OsUtil::getDurationDisplayString (CapturePlaylistWindow::ItemDisplayDurations[3] * 1000).c_str ()));
 	}
 	if (FLOAT_EQUALS (sliderValue, 1.0f)) {
-		return (StdString::createSprintf ("%s - %s", App::instance->uiText.getText (UiTextString::Fastest).capitalized ().c_str (), OsUtil::getDurationDisplayString (CapturePlaylistWindow::ItemDisplayDurations[4] * 1000).c_str ()));
+		return (StdString::createSprintf ("%s - %s", UiText::instance->getText (UiTextString::Fastest).capitalized ().c_str (), OsUtil::getDurationDisplayString (CapturePlaylistWindow::ItemDisplayDurations[4] * 1000).c_str ()));
 	}
 
 	return (StdString (""));
@@ -635,5 +588,5 @@ Json *CapturePlaylistWindow::createCommand () {
 	params->set ("minItemDisplayDuration", getItemDisplayDuration ());
 	params->set ("maxItemDisplayDuration", getItemDisplayDuration ());
 
-	return (App::instance->createCommand (SystemInterface::Command_CreateCameraDisplayIntent, SystemInterface::Constant_Monitor, params));
+	return (App::instance->createCommand (SystemInterface::Command_CreateCameraDisplayIntent, params));
 }

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -32,7 +32,6 @@
 #include <math.h>
 #include <list>
 #include "SDL2/SDL.h"
-#include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
@@ -66,19 +65,16 @@ Slider::Slider (float minValue, float maxValue)
 , trackHeight (0.0f)
 , hoverSize (0.0f)
 {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::instance->uiConfig);
 	if (maxValue < minValue) {
 		maxValue = minValue;
 	}
-	thumbSize = uiconfig->sliderThumbSize;
-	thumbColor.assign (uiconfig->lightPrimaryColor);
-	trackWidth = uiconfig->sliderTrackWidth;
-	trackHeight = uiconfig->sliderTrackHeight;
-	trackColor.assign (uiconfig->darkPrimaryColor);
-	hoverSize = uiconfig->sliderThumbSize;
-	hoverColor.assign (uiconfig->lightPrimaryColor);
+	thumbSize = UiConfiguration::instance->sliderThumbSize;
+	thumbColor.assign (UiConfiguration::instance->lightPrimaryColor);
+	trackWidth = UiConfiguration::instance->sliderTrackWidth;
+	trackHeight = UiConfiguration::instance->sliderTrackHeight;
+	trackColor.assign (UiConfiguration::instance->darkPrimaryColor);
+	hoverSize = UiConfiguration::instance->sliderThumbSize;
+	hoverColor.assign (UiConfiguration::instance->lightPrimaryColor);
 	refreshLayout ();
 }
 
@@ -122,25 +118,23 @@ void Slider::setTrackWidthScale (float scale) {
 }
 
 void Slider::refreshLayout () {
-	UiConfiguration *uiconfig;
 	Color color;
 
-	uiconfig = &(App::instance->uiConfig);
 	width = trackWidth;
 	height = thumbSize;
 
-	color.assign (isInverseColor ? uiconfig->darkBackgroundColor : uiconfig->lightPrimaryColor);
+	color.assign (isInverseColor ? UiConfiguration::instance->darkBackgroundColor : UiConfiguration::instance->lightPrimaryColor);
 	if (isDisabled) {
-		color.blend (0.0f, 0.0f, 0.0f, (1.0f - uiconfig->buttonDisabledShadeAlpha));
+		color.blend (0.0f, 0.0f, 0.0f, (1.0f - UiConfiguration::instance->buttonDisabledShadeAlpha));
 	}
-	thumbColor.translate (color, uiconfig->shortColorTranslateDuration);
-	hoverColor.translate (color, uiconfig->shortColorTranslateDuration);
+	thumbColor.translate (color, UiConfiguration::instance->shortColorTranslateDuration);
+	hoverColor.translate (color, UiConfiguration::instance->shortColorTranslateDuration);
 
-	color.assign (isInverseColor ? uiconfig->darkInverseBackgroundColor : uiconfig->darkPrimaryColor);
+	color.assign (isInverseColor ? UiConfiguration::instance->darkInverseBackgroundColor : UiConfiguration::instance->darkPrimaryColor);
 	if (isDisabled) {
-		color.blend (0.5f, 0.5f, 0.5f, (1.0f - uiconfig->buttonDisabledShadeAlpha));
+		color.blend (0.5f, 0.5f, 0.5f, (1.0f - UiConfiguration::instance->buttonDisabledShadeAlpha));
 	}
-	trackColor.translate (color, uiconfig->shortColorTranslateDuration);
+	trackColor.translate (color, UiConfiguration::instance->shortColorTranslateDuration);
 }
 
 float Slider::getSnappedValue (float targetValue) {
@@ -179,8 +173,8 @@ void Slider::setValue (float sliderValue, bool shouldSkipChangeCallback) {
 		return;
 	}
 	value = sliderValue;
-	if (valueChangeCallback.callback && (! shouldSkipChangeCallback)) {
-		valueChangeCallback.callback (valueChangeCallback.callbackData, this);
+	if (! shouldSkipChangeCallback) {
+		eventCallback (valueChangeCallback);
 	}
 }
 
@@ -279,19 +273,16 @@ void Slider::doDraw (SDL_Texture *targetTexture, float originX, float originY) {
 }
 
 bool Slider::doProcessMouseState (const Widget::MouseState &mouseState) {
-	Input *input;
 	float val, dx;
 	bool firsthover;
 
 	if (isDisabled) {
 		return (false);
 	}
-
-	input = &(App::instance->input);
 	firsthover = false;
 	if (mouseState.isEntered) {
 		if (isDragging) {
-			if (! input->isMouseLeftButtonDown) {
+			if (! Input::instance->isMouseLeftButtonDown) {
 				isDragging = false;
 			}
 		}
@@ -310,21 +301,18 @@ bool Slider::doProcessMouseState (const Widget::MouseState &mouseState) {
 	}
 	else {
 		if (isDragging) {
-			if (! input->isMouseLeftButtonDown) {
+			if (! Input::instance->isMouseLeftButtonDown) {
 				isDragging = false;
 			}
 		}
-
 		if (isHovering) {
 			isHovering = false;
-			if (valueHoverCallback.callback) {
-				valueHoverCallback.callback (valueHoverCallback.callbackData, this);
-			}
+			eventCallback (valueHoverCallback);
 		}
 	}
 
 	if (isDragging || isHovering) {
-		dx = ((float) input->mouseX) - screenX;
+		dx = ((float) Input::instance->mouseX) - screenX;
 		if (dx < 0.0f) {
 			dx = 0.0f;
 		}
@@ -341,9 +329,7 @@ bool Slider::doProcessMouseState (const Widget::MouseState &mouseState) {
 		else {
 			if (firsthover || (! FLOAT_EQUALS (val, hoverValue))) {
 				hoverValue = getSnappedValue (val);
-				if (valueHoverCallback.callback) {
-					valueHoverCallback.callback (valueHoverCallback.callbackData, this);
-				}
+				eventCallback (valueHoverCallback);
 			}
 		}
 	}
@@ -352,13 +338,10 @@ bool Slider::doProcessMouseState (const Widget::MouseState &mouseState) {
 }
 
 void Slider::doRefresh () {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::instance->uiConfig);
-	thumbSize = uiconfig->sliderThumbSize;
-	trackWidth = uiconfig->sliderTrackWidth * trackWidthScale;
-	trackHeight = uiconfig->sliderTrackHeight;
-	hoverSize = uiconfig->sliderThumbSize;
+	thumbSize = UiConfiguration::instance->sliderThumbSize;
+	trackWidth = UiConfiguration::instance->sliderTrackWidth * trackWidthScale;
+	trackHeight = UiConfiguration::instance->sliderTrackHeight;
+	hoverSize = UiConfiguration::instance->sliderThumbSize;
 	refreshLayout ();
 }
 

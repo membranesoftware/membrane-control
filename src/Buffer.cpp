@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,7 +30,7 @@
 #include "Config.h"
 #include <stdlib.h>
 #include <string.h>
-#include "Result.h"
+#include "OsUtil.h"
 #include "Log.h"
 #include "Buffer.h"
 
@@ -68,7 +68,6 @@ void Buffer::reset () {
 		free (data);
 		data = NULL;
 	}
-
 	length = 0;
 	size = 0;
 }
@@ -77,11 +76,10 @@ bool Buffer::empty () const {
 	if (data && (length > 0)) {
 		return (false);
 	}
-
 	return (true);
 }
 
-int Buffer::add (uint8_t *dataPtr, int dataLength) {
+OsUtil::Result Buffer::add (uint8_t *dataPtr, int dataLength) {
 	int sz, diff, blocks, incr, sz2;
 
 	sz = length + dataLength;
@@ -96,18 +94,17 @@ int Buffer::add (uint8_t *dataPtr, int dataLength) {
 		sz2 = size + (blocks * incr);
 		data = (uint8_t *) realloc (data, sz2);
 		if (! data) {
-			return (Result::OutOfMemoryError);
+			return (OsUtil::Result::OutOfMemoryError);
 		}
 		size = sz2;
 	}
 
 	memcpy (data + length, dataPtr, dataLength);
 	length += dataLength;
-
-	return (Result::Success);
+	return (OsUtil::Result::Success);
 }
 
-int Buffer::add (const char *str) {
+OsUtil::Result Buffer::add (const char *str) {
 	return (add ((uint8_t *) str, (int) strlen (str)));
 }
 
@@ -115,7 +112,6 @@ void Buffer::setDataLength (int dataLength) {
 	if ((dataLength < 0) || (dataLength >= length)) {
 		return;
 	}
-
 	length = dataLength;
 }
 
@@ -125,12 +121,10 @@ void Buffer::advanceRead (int advanceSize) {
 	if (advanceSize <= 0) {
 		return;
 	}
-
 	if (advanceSize >= length) {
 		length = 0;
 		return;
 	}
-
 	len = length - advanceSize;
 	memmove (data, data + advanceSize, len);
 	length = len;

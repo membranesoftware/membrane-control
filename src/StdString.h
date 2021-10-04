@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -35,7 +35,8 @@
 #include <stdarg.h>
 #include <string>
 #include <list>
-#include "Buffer.h"
+
+class Buffer;
 
 class StdString : public std::string {
 public:
@@ -122,8 +123,8 @@ public:
 	StdString replaced (size_t pos, size_t len, const StdString &str) const;
 	StdString replaced (size_t pos, size_t len, size_t n, char c) const;
 
-	// URL decode the string's content and assign it to the resulting value. Returns a Result value.
-	int urlDecode ();
+	// URL decode the string's content and assign it to the resulting value. Returns a boolean value indicating if the decode succeeded.
+	bool urlDecode ();
 
 	// URL decode the string's content and return the resulting value, or an empty string if the URL decode failed
 	StdString urlDecoded () const;
@@ -174,6 +175,9 @@ public:
 
 	// Parse the string's content as a network address and store its component values in the provided pointers. Returns a boolean value indicating if the parse was successful. If no port value is found in the address, assign the specified default port value to portValue.
 	bool parseAddress (StdString *hostnameValue = NULL, int *portValue = NULL, int defaultPortValue = 0) const;
+
+	// Return a boolean value indicating if the string contains a UUID value
+	bool isUuid () const;
 
 	// Return a newly created string with content generated from a format string
 	static StdString createSprintf (const char *str, ...) __attribute__((format(printf, 1, 2)));

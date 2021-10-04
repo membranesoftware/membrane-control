@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,15 +29,15 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include "Result.h"
+#include "App.h"
 #include "Log.h"
 #include "StdString.h"
-#include "App.h"
 #include "UiText.h"
+#include "SystemInterface.h"
+#include "RecordStore.h"
 #include "Widget.h"
 #include "Panel.h"
 #include "Label.h"
-#include "TextArea.h"
 #include "Image.h"
 #include "Button.h"
 #include "ProgressBar.h"
@@ -55,20 +55,17 @@ TaskWindow::TaskWindow (const StdString &taskId)
 , progressBar (NULL)
 , deleteButton (NULL)
 {
-	UiConfiguration *uiconfig;
+	setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
+	setFillBg (true, UiConfiguration::instance->darkBackgroundColor);
 
-	uiconfig = &(App::instance->uiConfig);
-	setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
-	setFillBg (true, uiconfig->darkBackgroundColor);
+	iconImage = (Image *) addWidget (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::TaskInProgressIconSprite)));
+	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::BodyFont, UiConfiguration::instance->primaryTextColor));
+	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->lightPrimaryTextColor));
+	progressBar = (ProgressBar *) addWidget (new ProgressBar (((float) App::instance->windowWidth) * 0.16f, UiConfiguration::instance->progressBarHeight));
 
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::TaskInProgressIconSprite)));
-	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::BodyFont, uiconfig->primaryTextColor));
-	descriptionLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->lightPrimaryTextColor));
-	progressBar = (ProgressBar *) addWidget (new ProgressBar (((float) App::instance->windowWidth) * 0.16f, uiconfig->progressBarHeight));
-
-	deleteButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
+	deleteButton = (Button *) addWidget (new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
 	deleteButton->mouseClickCallback = Widget::EventCallbackContext (TaskWindow::deleteButtonClicked, this);
-	deleteButton->setImageColor (uiconfig->flatButtonTextColor);
+	deleteButton->setImageColor (UiConfiguration::instance->flatButtonTextColor);
 	deleteButton->isVisible = false;
 
 	refreshLayout ();
@@ -83,42 +80,33 @@ StdString TaskWindow::toStringDetail () {
 }
 
 void TaskWindow::syncRecordStore () {
-	RecordStore *store;
-	SystemInterface *interface;
-	UiConfiguration *uiconfig;
 	Json *record;
 	float pct;
 
-	store = &(App::instance->agentControl.recordStore);
-	uiconfig = &(App::instance->uiConfig);
-	interface = &(App::instance->systemInterface);
-	record = store->findRecord (taskId, SystemInterface::CommandId_TaskItem);
+	record = RecordStore::instance->findRecord (taskId, SystemInterface::CommandId_TaskItem);
 	if (! record) {
 		return;
 	}
-
-	nameLabel->setText (interface->getCommandStringParam (record, "name", ""));
-	descriptionLabel->setText (interface->getCommandStringParam (record, "subtitle", ""));
+	nameLabel->setText (SystemInterface::instance->getCommandStringParam (record, "name", ""));
+	descriptionLabel->setText (SystemInterface::instance->getCommandStringParam (record, "subtitle", ""));
 
 	// TODO: Show the delete button if the task can be cancelled
 
 	if (! isTaskComplete) {
-		pct = interface->getCommandNumberParam (record, "percentComplete", (float) 0.0f);
+		pct = SystemInterface::instance->getCommandNumberParam (record, "percentComplete", (float) 0.0f);
 		progressBar->setProgress (pct, 100.0f);
 		if (pct >= 100.0f) {
 			isTaskComplete = true;
 			iconImage->isDestroyed = true;
-			iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::TaskCompleteIconSprite)));
+			iconImage = (Image *) addWidget (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::TaskCompleteIconSprite)));
 		}
 	}
 	refreshLayout ();
 }
 
 void TaskWindow::refreshLayout () {
-	UiConfiguration *uiconfig;
 	float x, y, x0, y0, x2, y2;
 
-	uiconfig = &(App::instance->uiConfig);
 	x = widthPadding;
 	y = heightPadding;
 	x0 = x;
@@ -129,16 +117,16 @@ void TaskWindow::refreshLayout () {
 	nameLabel->flowDown (x, &y, &x2, &y2);
 	descriptionLabel->flowDown (x, &y, &x2, &y2);
 
-	x = x2 + uiconfig->marginSize;
+	x = x2 + UiConfiguration::instance->marginSize;
 	y = y0;
 	iconImage->flowDown (x, &y, &x2, &y2);
 
 	x = x0;
-	y = y2 + uiconfig->marginSize;
+	y = y2 + UiConfiguration::instance->marginSize;
 	y2 = 0.0f;
 	progressBar->flowDown (x, &y, NULL, &y2);
 
-	y = y2 + uiconfig->marginSize;
+	y = y2 + UiConfiguration::instance->marginSize;
 	y2 = 0.0f;
 	if (deleteButton->isVisible) {
 		deleteButton->flowDown (x, &y, NULL, &y2);
@@ -152,7 +140,5 @@ void TaskWindow::deleteButtonClicked (void *windowPtr, Widget *widgetPtr) {
 
 	window = (TaskWindow *) windowPtr;
 	window->isDeleted = true;
-	if (window->deleteCallback.callback) {
-		window->deleteCallback.callback (window->deleteCallback.callbackData, window);
-	}
+	window->eventCallback (window->deleteCallback);
 }

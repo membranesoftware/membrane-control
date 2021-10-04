@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -34,33 +34,34 @@
 
 #include <map>
 #include <vector>
+#include <list>
 #include "SDL2/SDL.h"
 #include "StdString.h"
 #include "StringList.h"
 #include "HashMap.h"
 #include "SharedBuffer.h"
 #include "Json.h"
-#include "RecordStore.h"
 #include "Agent.h"
 #include "LinkClient.h"
 #include "CommandList.h"
-#include "Ui.h"
 
 class AgentControl {
 public:
 	AgentControl ();
 	~AgentControl ();
+	static AgentControl *instance;
 
 	static const int CommandListIdleTimeout;
 
 	// Prefs keys
 	static const char *AgentStatusKey;
+	static const char *AgentServerNameKey;
 	static const char *ServerAdminSecretsKey;
 
 	// Read-write data members
 	int agentDatagramPort;
 	StdString urlHostname;
-	RecordStore recordStore;
+	StdString agentServerName;
 
 	// Start the agent control's operation. Returns a Result value.
 	int start ();
@@ -74,8 +75,14 @@ public:
 	// Broadcast a message requesting that remote agents report contact information to the control
 	void broadcastContactMessage ();
 
+	// Clear the provided list and populate it with Agent objects from all stored agents
+	void getAgents (std::list<Agent> *destList);
+
 	// Clear the provided list and populate it with all stored agent ID values
 	void getAgentIds (StringList *destList);
+
+	// Find the single agent matching searchKey, copy its display values to destAgent if found, and return a Result value. searchKey values that are UUIDs match by agent ID, while non-UUID values match by agent display name.
+	int findTargetAgent (const StdString &searchKey, Agent *destAgent);
 
 	// Set an agent's attached state, indicating whether the agent should be automatically contacted
 	void setAgentAttached (const StdString &agentId, bool attached);
@@ -176,10 +183,10 @@ public:
 	void addAdminSecret (const StdString &entryName, const StdString &entrySecret);
 
 	// Remove an entry from the list of secrets
-	void removeAdminSecret (const StdString &entryName);
+	void removeAdminSecret (int secretIndex);
 
-	// Return the secret value associated with the specified entry name, or an empty string if the entry wasn't found
-	StdString getAdminSecret (const StdString &entryName);
+	// Return the secret value associated with the specified entry index, or an empty string if the entry wasn't found
+	StdString getAdminSecretValue (int secretIndex);
 
 	// Clear the provided list and populate it with entry names from the list of secrets
 	void getAdminSecretNames (StringList *destList);
@@ -187,8 +194,8 @@ public:
 	// Find the admin secret in use for the specified agent and assign its auth values to the provided strings. If the admin secret is not found, assign default auth values to the provided strings. Returns a boolean value indicating if the authorization values were found.
 	bool getAgentAuthorization (const StdString &agentId, StdString *authorizePath = NULL, StdString *authorizeSecret = NULL, StdString *authorizeToken = NULL);
 
-	// Set an agent's authorize fields to store credentials used for the last successful authorization. An empty entryName value indicates that no authorization credentials are required for connection to the agent.
-	void setAgentAuthorization (const StdString &agentId, const StdString &entryName, const StdString &authorizeToken = StdString (""));
+	// Set an agent's authorize fields to store credentials used for the last successful authorization. A negative secretIndex value indicates that no authorization credentials are required for connection to the agent.
+	void setAgentAuthorization (const StdString &agentId, int secretIndex, const StdString &authorizeToken = StdString (""));
 
 	// Set an agent's authorize fields to store credentials used for the last successful authorization. A negative index value indicates that no authorization credentials are required for connection to the agent.
 	void setHostAuthorization (const StdString &hostname, int tcpPort, int secretIndex, const StdString &authorizeToken = StdString (""));
@@ -213,11 +220,15 @@ public:
 	static void getApplicationNewsComplete (void *agentControlPtr, const StdString &targetUrl, int statusCode, SharedBuffer *responseData);
 	static void hashUpdate (void *contextPtr, unsigned char *data, int dataLength);
 	static StdString hashDigest (void *contextPtr);
+	static void receiveAgentStatus (void *agentControlPtr, const StdString &agentId, Json *command);
+	static void receiveTaskItem (void *agentControlPtr, const StdString &agentId, Json *command);
 
 private:
 	// Object field names
 	static const char *NameKey;
 	static const char *SecretKey;
+	static const char *AuthorizePathKey;
+	static const char *AuthorizeSecretKey;
 
 	// Remove all items from the command map
 	void clearCommandMap ();
@@ -235,8 +246,17 @@ private:
 	std::map<StdString, Agent>::iterator findAgent (const StdString &agentId, bool createNew = false);
 	std::map<StdString, Agent>::iterator findAgent (const StdString &invokeHostname, int invokePort);
 
+	struct AdminSecret {
+		StdString name;
+		StdString authorizePath;
+		StdString authorizeSecret;
+		AdminSecret (): name (""), authorizePath (""), authorizeSecret ("") { }
+	};
+	// Update fields in entry by reading an item from the admin secrets prefs list and return a boolean value indicating if the read was successful
+	bool readAdminSecret (AgentControl::AdminSecret *entry, Json *prefsItem);
+
 	// Parse an admin secret value and store the resulting authorization values into the provided strings
-	void getAuthorizationValues (const StdString &adminSecret, StdString *authorizePath, StdString *authorizeSecret);
+	void getAdminSecretAuthorizationValues (const StdString &adminSecret, StdString *authorizePath, StdString *authorizeSecret);
 
 	bool isStarted;
 	LinkClient linkClient;
@@ -248,7 +268,7 @@ private:
 	std::map<StdString, CommandList *> commandMap;
 	SDL_mutex *commandMapMutex;
 
-	std::vector<StdString> adminSecretList;
+	std::vector<AgentControl::AdminSecret> adminSecretList;
 	SDL_mutex *adminSecretMutex;
 };
 

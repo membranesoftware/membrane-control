@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,22 +29,43 @@
 */
 #include "Config.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <math.h>
+#if PLATFORM_LINUX || PLATFORM_MACOS
+#include <unistd.h>
+#endif
+#if PLATFORM_MACOS
+#include <mach-o/dyld.h>
+#include <libgen.h>
+#endif
+#if PLATFORM_WINDOWS
+#include <io.h>
+#endif
 #include <vector>
 #include <stack>
+#include <iostream>
 #include "SDL2/SDL.h"
 #include "SDL2/SDL_image.h"
-#include "Result.h"
 #include "StdString.h"
 #include "Log.h"
+#include "TaskGroup.h"
+#include "LuaScript.h"
 #include "OsUtil.h"
 #include "MathUtil.h"
+#include "UiConfiguration.h"
+#include "UiText.h"
+#include "SystemInterface.h"
+#include "AgentControl.h"
+#include "RecordStore.h"
+#include "CommandListener.h"
 #include "Input.h"
 #include "Network.h"
 #include "Panel.h"
+#include "ConsoleWindow.h"
 #include "Toolbar.h"
 #include "SnackbarWindow.h"
 #include "LogoWindow.h"
+#include "HyperlinkWindow.h"
 #include "MainUi.h"
 #include "App.h"
 
@@ -56,7 +77,6 @@ const float App::FontScales[] = { 0.66f, 0.8f, 1.0f, 1.25f, 1.5f };
 const int App::FontScaleCount = 5;
 const int App::MaxCornerRadius = 16;
 const StdString App::ServerUrl = StdString ("https://membranesoftware.com/");
-const int64_t App::DefaultServerTimeout = 180;
 
 const char *App::NetworkThreadsKey = "NetworkThreads";
 const char *App::WindowWidthKey = "WindowWidth";
@@ -66,28 +86,50 @@ const char *App::HttpsKey = "Https";
 const char *App::ShowInterfaceAnimationsKey = "ShowInterfaceAnimations";
 const char *App::ShowClockKey = "ShowClock";
 const char *App::IsFirstLaunchCompleteKey = "IsFirstLaunchComplete";
-const char *App::ServerTimeoutKey = "ServerTimeout";
 
 App *App::instance = NULL;
 
-void App::createInstance () {
+void App::createInstance (bool shouldSkipInit) {
 	if (App::instance) {
 		delete (App::instance);
 	}
 	App::instance = new App ();
+	Input::instance = &(App::instance->input);
+	Network::instance = &(App::instance->network);
+	UiConfiguration::instance = &(App::instance->uiConfig);
+	UiText::instance = &(App::instance->uiText);
+	TaskGroup::instance = &(App::instance->taskGroup);
+	SystemInterface::instance = &(App::instance->systemInterface);
+	AgentControl::instance = &(App::instance->agentControl);
+	RecordStore::instance = &(App::instance->recordStore);
+	CommandListener::instance = &(App::instance->commandListener);
+
+	if (! shouldSkipInit) {
+		App::instance->init ();
+	}
 }
 
 void App::freeInstance () {
 	if (App::instance) {
 		delete (App::instance);
 		App::instance = NULL;
+		Input::instance = NULL;
+		Network::instance = NULL;
+		UiConfiguration::instance = NULL;
+		UiText::instance = NULL;
+		TaskGroup::instance = NULL;
+		SystemInterface::instance = NULL;
+		AgentControl::instance = NULL;
+		RecordStore::instance = NULL;
+		CommandListener::instance = NULL;
 		IMG_Quit ();
 		SDL_Quit ();
 	}
 }
 
 App::App ()
-: shouldRefreshUi (false)
+: isConsole (false)
+, shouldRefreshUi (false)
 , shouldSyncRecordStore (false)
 , isInterfaceAnimationEnabled (false)
 , isMainToolbarClockEnabled (false)
@@ -123,6 +165,8 @@ App::App ()
 , isSuspendingUpdate (false)
 , updateMutex (NULL)
 , updateCond (NULL)
+, consoleWindow (NULL)
+, consoleWindowMutex (NULL)
 , backgroundMutex (NULL)
 , backgroundTexture (NULL)
 , backgroundTextureWidth (0)
@@ -137,6 +181,7 @@ App::App ()
 	renderTaskMutex = SDL_CreateMutex ();
 	updateMutex = SDL_CreateMutex ();
 	updateCond = SDL_CreateCond ();
+	consoleWindowMutex = SDL_CreateMutex ();
 	backgroundMutex = SDL_CreateMutex ();
 }
 
@@ -145,41 +190,113 @@ App::~App () {
 		rootPanel->release ();
 		rootPanel = NULL;
 	}
-
 	if (roundedCornerSprite) {
 		delete (roundedCornerSprite);
 		roundedCornerSprite = NULL;
 	}
-
 	if (uniqueIdMutex) {
 		SDL_DestroyMutex (uniqueIdMutex);
 		uniqueIdMutex = NULL;
 	}
-
 	if (prefsMapMutex) {
 		SDL_DestroyMutex (prefsMapMutex);
 		prefsMapMutex = NULL;
 	}
-
 	if (renderTaskMutex) {
 		SDL_DestroyMutex (renderTaskMutex);
 		renderTaskMutex = NULL;
 	}
-
 	if (updateMutex) {
 		SDL_DestroyMutex (updateMutex);
 		updateMutex = NULL;
 	}
-
 	if (updateCond) {
 		SDL_DestroyCond (updateCond);
 		updateCond = NULL;
 	}
-
+	if (consoleWindow) {
+		consoleWindow->release ();
+		consoleWindow = NULL;
+	}
+	if (consoleWindowMutex) {
+		SDL_DestroyMutex (consoleWindowMutex);
+		consoleWindowMutex = NULL;
+	}
 	if (backgroundMutex) {
 		SDL_DestroyMutex (backgroundMutex);
 		backgroundMutex = NULL;
 	}
+}
+
+void App::init () {
+	StdString path;
+	OsUtil::Result result;
+#if PLATFORM_MACOS
+	char exepath[4096], dirpath[4096];
+	uint32_t sz;
+#endif
+
+	log.setLevelByName (OsUtil::getEnvValue ("LOG_LEVEL", "ERR"));
+	if (OsUtil::getEnvValue ("LOG_CONSOLE", false)) {
+		log.isStdoutWriteEnabled = true;
+	}
+	path = OsUtil::getEnvValue ("LOG_FILENAME", "");
+	if (! path.empty ()) {
+		log.openLogFile (path);
+	}
+
+#if PLATFORM_MACOS
+	memset (exepath, 0, sizeof (exepath));
+	sz = sizeof (exepath);
+	if (_NSGetExecutablePath (exepath, &sz) != 0) {
+		memset (exepath, 0, sizeof (exepath));
+		Log::warning ("Failed to determine executable path");
+	}
+	else {
+		memset (dirpath, 0, sizeof (dirpath));
+		if (chdir (dirname_r (exepath, dirpath)) != 0) {
+			Log::warning ("Failed to change working directory");
+		}
+	}
+#endif
+
+	path = OsUtil::getEnvValue ("RESOURCE_PATH", "");
+	if (path.empty ()) {
+		path.sprintf ("%s.dat", APPLICATION_PACKAGE_NAME);
+#if PLATFORM_MACOS
+		if (exepath[0] != '\0') {
+			memset (dirpath, 0, sizeof (dirpath));
+			path.sprintf ("%s/%s.dat", dirname_r (exepath, dirpath), APPLICATION_PACKAGE_NAME);
+		}
+#endif
+	}
+	resource.setSource (path);
+
+	path = OsUtil::getEnvValue ("APPDATA_PATH", "");
+	if (path.empty ()) {
+		path = OsUtil::getUserDataPath ();
+		if (! path.empty ()) {
+			result = OsUtil::createDirectory (path);
+			if (result != OsUtil::Result::Success) {
+				Log::warning ("Application data cannot be saved (failed to create directory); path=\"%s\" err=%i", path.c_str (), result);
+			}
+		}
+	}
+	if (path.empty ()) {
+		Log::warning ("Application data cannot be saved (set APPDATA_PATH to specify destination directory)");
+	}
+	else {
+		prefsPath.assign (OsUtil::getAppendPath (path, StdString::createSprintf ("%s.conf", APPLICATION_PACKAGE_NAME)));
+		if (! log.isFileWriteEnabled) {
+			log.openLogFile (OsUtil::getAppendPath (path, StdString::createSprintf ("%s.log", APPLICATION_PACKAGE_NAME)));
+		}
+	}
+
+	isConsole = OsUtil::getEnvValue ("CONSOLE", false);
+	minDrawFrameDelay = OsUtil::getEnvValue ("MIN_DRAW_FRAME_DELAY", 0);
+	minUpdateFrameDelay = OsUtil::getEnvValue ("MIN_UPDATE_FRAME_DELAY", 0);
+	windowWidth = OsUtil::getEnvValue ("WINDOW_WIDTH", 0);
+	windowHeight = OsUtil::getEnvValue ("WINDOW_HEIGHT", 0);
 }
 
 int App::getImageScale (int w, int h) {
@@ -188,26 +305,19 @@ int App::getImageScale (int w, int h) {
 	if ((w <= 0) || (h <= 0)) {
 		return (-1);
 	}
-
 	result = 0;
 	for (i = 0; i < App::WindowSizeCount; ++i) {
 		if (w >= App::WindowWidths[i]) {
 			result = i;
 		}
 	}
-
 	return (result);
 }
 
 int App::run () {
-	SDL_version version1, version2;
-	SDL_RendererInfo renderinfo;
-	SDL_Rect rect;
-	int result, delay, i;
-	int64_t endtime, elapsed, t1, t2;
-	double fps;
-	Ui *ui;
+	int result;
 
+	startTime = OsUtil::getTime ();
 	if (minDrawFrameDelay <= 0) {
 		minDrawFrameDelay = App::DefaultMinFrameDelay;
 	}
@@ -221,57 +331,77 @@ int App::run () {
 	}
 	else {
 		result = prefsMap.read (prefsPath, true);
-		if (result != Result::Success) {
+		if (result != OsUtil::Result::Success) {
 			Log::debug ("Failed to read preferences file; prefsPath=\"%s\" err=%i", prefsPath.c_str (), result);
 			prefsMap.clear ();
 		}
 	}
-
 	isHttpsEnabled = prefsMap.find (App::HttpsKey, true);
 
-	if (SDL_Init (SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
-		Log::err ("Failed to start SDL: %s", SDL_GetError ());
-		return (Result::SdlOperationFailedError);
-	}
-
-	if (IMG_Init (IMG_INIT_JPG | IMG_INIT_PNG) != (IMG_INIT_JPG | IMG_INIT_PNG)) {
-		Log::err ("Failed to start SDL_image: %s", IMG_GetError ());
-		return (Result::SdlOperationFailedError);
-	}
-
 	result = resource.open ();
-	if (result != Result::Success) {
+	if (result != OsUtil::Result::Success) {
 		Log::err ("Failed to open application resources; err=%i", result);
 		return (result);
 	}
-
 	result = uiText.load (OsUtil::getEnvLanguage (UiText::DefaultLanguage));
-	if (result != Result::Success) {
+	if (result != OsUtil::Result::Success) {
 		Log::err ("Failed to load text resources; err=%i", result);
 		return (result);
 	}
-
-	result = input.start ();
-	if (result != Result::Success) {
-		Log::err ("Failed to acquire application input devices; err=%i", result);
-		return (result);
-	}
-
+	network.maxRequestThreads = prefsMap.find (App::NetworkThreadsKey, Network::DefaultMaxRequestThreads);
 	network.httpUserAgent.sprintf ("Membrane Control/%s_%s", BUILD_ID, PLATFORM_ID);
-	result = network.start (prefsMap.find (App::NetworkThreadsKey, Network::DefaultRequestThreadCount));
-	if (result != Result::Success) {
+	network.datagramCallback = Network::DatagramCallbackContext (App::datagramReceived, NULL);
+	network.enableDatagramSocket = true;
+	result = network.start ();
+	if (result != OsUtil::Result::Success) {
 		Log::err ("Failed to acquire application network resources; err=%i", result);
 		return (result);
 	}
-	network.addDatagramCallback (App::datagramReceived, NULL);
 
 	agentControl.urlHostname = network.getPrimaryInterfaceAddress ();
 	if (agentControl.urlHostname.empty ()) {
 		Log::warning ("Failed to determine local hostname, network services may not be available");
 	}
 	result = agentControl.start ();
-	if (result != Result::Success) {
+	if (result != OsUtil::Result::Success) {
 		Log::err ("Failed to start agent control processes; err=%i", result);
+		return (result);
+	}
+
+	if (isConsole) {
+		result = runConsole ();
+	}
+	else {
+		result = runWindow ();
+	}
+
+	writePrefs ();
+	return (result);
+}
+
+int App::runWindow () {
+	SDL_version version1, version2;
+	SDL_RendererInfo renderinfo;
+	StdString text;
+	int result, delay, i;
+	int64_t endtime, elapsed, t1, t2;
+	Uint32 windowflags;
+	double fps;
+	Ui *ui;
+	SDL_Rect rect;
+
+	if (SDL_Init (SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
+		Log::err ("Failed to start SDL: %s", SDL_GetError ());
+		return (OsUtil::Result::SdlOperationFailedError);
+	}
+	if (IMG_Init (IMG_INIT_JPG | IMG_INIT_PNG) != (IMG_INIT_JPG | IMG_INIT_PNG)) {
+		Log::err ("Failed to start SDL_image: %s", IMG_GetError ());
+		return (OsUtil::Result::SdlOperationFailedError);
+	}
+
+	result = input.start ();
+	if (result != OsUtil::Result::Success) {
+		Log::err ("Failed to acquire application input devices; err=%i", result);
 		return (result);
 	}
 
@@ -310,13 +440,12 @@ int App::run () {
 	result = SDL_CreateWindowAndRenderer (windowWidth, windowHeight, 0, &window, &render);
 	if (result != 0) {
 		Log::err ("Failed to create application window: %s", SDL_GetError ());
-		return (Result::SdlOperationFailedError);
+		return (OsUtil::Result::SdlOperationFailedError);
 	}
-
 	result = SDL_GetRendererInfo (render, &renderinfo);
 	if (result != 0) {
 		Log::err ("Failed to create application renderer: %s", SDL_GetError ());
-		return (Result::SdlOperationFailedError);
+		return (OsUtil::Result::SdlOperationFailedError);
 	}
 	if ((renderinfo.flags & (SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE)) == (SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE)) {
 		isTextureRenderEnabled = true;
@@ -339,16 +468,13 @@ int App::run () {
 		nextFontScale = fontScale;
 	}
 
-	SDL_SetWindowTitle (window, uiText.getText (UiTextString::WindowTitle).c_str ());
-
-	startTime = OsUtil::getTime ();
+	SDL_SetWindowTitle (window, APPLICATION_NAME);
 	uiConfig.resetScale ();
 	result = uiConfig.load (fontScale);
-	if (result != Result::Success) {
+	if (result != OsUtil::Result::Success) {
 		Log::err ("Failed to load application resources; err=%i", result);
 		return (result);
 	}
-
 	populateRoundedCornerSprite ();
 	populateWidgets ();
 
@@ -357,9 +483,96 @@ int App::run () {
 
 	updateThread = SDL_CreateThread (App::runUpdateThread, "runUpdateThread", (void *) this);
 
+	Log::info ("Application started; buildId=%s windowSize=%ix%i renderName=%s lang=%s pid=%i", BUILD_ID, windowWidth, windowHeight, renderinfo.name, OsUtil::getEnvLanguage ("").c_str (), OsUtil::getProcessId ());
+	windowflags = SDL_GetWindowFlags (window);
 	SDL_VERSION (&version1);
 	SDL_GetVersion (&version2);
-	Log::info ("Application started; buildId=\"%s\" sdlBuildVersion=%i.%i.%i sdlLinkVersion=%i.%i.%i windowSize=%ix%i windowFlags=0x%x renderFlags=0x%x isTextureRenderEnabled=%s diagonalDpi=%.2f horizontalDpi=%.2f verticalDpi=%.2f imageScale=%i minDrawFrameDelay=%i minUpdateFrameDelay=%i lang=%s pid=%i", BUILD_ID, version1.major, version1.minor, version1.patch, version2.major, version2.minor, version2.patch, windowWidth, windowHeight, (unsigned int) SDL_GetWindowFlags (window), (unsigned int) renderinfo.flags, BOOL_STRING (isTextureRenderEnabled), displayDdpi, displayHdpi, displayVdpi, imageScale, minDrawFrameDelay, minUpdateFrameDelay, OsUtil::getEnvLanguage ("").c_str (), OsUtil::getProcessId ());
+	Log::debug ("* sdlBuildVersion=%i.%i.%i sdlLinkVersion=%i.%i.%i windowFlags=0x%x renderName=%s renderFlags=0x%x isTextureRenderEnabled=%s diagonalDpi=%.2f horizontalDpi=%.2f verticalDpi=%.2f imageScale=%i minDrawFrameDelay=%i minUpdateFrameDelay=%i", version1.major, version1.minor, version1.patch, version2.major, version2.minor, version2.patch, (unsigned int) windowflags, renderinfo.name, (unsigned int) renderinfo.flags, BOOL_STRING (isTextureRenderEnabled), displayDdpi, displayHdpi, displayVdpi, imageScale, minDrawFrameDelay, minUpdateFrameDelay);
+
+	text.assign ("");
+	if (windowflags & SDL_WINDOW_FULLSCREEN) {
+		text.append (" FULLSCREEN");
+	}
+	if (windowflags & SDL_WINDOW_OPENGL) {
+		text.append (" OPENGL");
+	}
+	if (windowflags & SDL_WINDOW_SHOWN) {
+		text.append (" SHOWN");
+	}
+	if (windowflags & SDL_WINDOW_HIDDEN) {
+		text.append (" HIDDEN");
+	}
+	if (windowflags & SDL_WINDOW_BORDERLESS) {
+		text.append (" BORDERLESS");
+	}
+	if (windowflags & SDL_WINDOW_RESIZABLE) {
+		text.append (" RESIZABLE");
+	}
+	if (windowflags & SDL_WINDOW_MINIMIZED) {
+		text.append (" MINIMIZED");
+	}
+	if (windowflags & SDL_WINDOW_MAXIMIZED) {
+		text.append (" MAXIMIZED");
+	}
+	if (windowflags & SDL_WINDOW_INPUT_GRABBED) {
+		text.append (" INPUT_GRABBED");
+	}
+	if (windowflags & SDL_WINDOW_INPUT_FOCUS) {
+		text.append (" INPUT_FOCUS");
+	}
+	if (windowflags & SDL_WINDOW_MOUSE_FOCUS) {
+		text.append (" MOUSE_FOCUS");
+	}
+	if (windowflags & SDL_WINDOW_FULLSCREEN_DESKTOP) {
+		text.append (" FULLSCREEN_DESKTOP");
+	}
+	if (windowflags & SDL_WINDOW_FOREIGN) {
+		text.append (" FOREIGN");
+	}
+	if (windowflags & SDL_WINDOW_ALLOW_HIGHDPI) {
+		text.append (" ALLOW_HIGHDPI");
+	}
+	if (windowflags & SDL_WINDOW_MOUSE_CAPTURE) {
+		text.append (" MOUSE_CAPTURE");
+	}
+	if (windowflags & SDL_WINDOW_ALWAYS_ON_TOP) {
+		text.append (" ALWAYS_ON_TOP");
+	}
+	if (windowflags & SDL_WINDOW_SKIP_TASKBAR) {
+		text.append (" SKIP_TASKBAR");
+	}
+	if (windowflags & SDL_WINDOW_UTILITY) {
+		text.append (" UTILITY");
+	}
+	if (windowflags & SDL_WINDOW_TOOLTIP) {
+		text.append (" TOOLTIP");
+	}
+	if (windowflags & SDL_WINDOW_POPUP_MENU) {
+		text.append (" POPUP_MENU");
+	}
+	if (windowflags & SDL_WINDOW_VULKAN) {
+		text.append (" VULKAN");
+	}
+	if (windowflags & SDL_WINDOW_METAL) {
+		text.append (" METAL");
+	}
+	Log::debug3 ("* Window flags:%s", text.c_str ());
+
+	text.assign ("");
+	if (renderinfo.flags & SDL_RENDERER_SOFTWARE) {
+		text.append (" SOFTWARE");
+	}
+	if (renderinfo.flags & SDL_RENDERER_ACCELERATED) {
+		text.append (" ACCELERATED");
+	}
+	if (renderinfo.flags & SDL_RENDERER_PRESENTVSYNC) {
+		text.append (" PRESENTVSYNC");
+	}
+	if (renderinfo.flags & SDL_RENDERER_TARGETTEXTURE) {
+		text.append (" TARGETTEXTURE");
+	}
+	Log::debug3 ("* Render flags:%s", text.c_str ());
+	text.assign ("");
 
 	while (true) {
 		if (isShutdown) {
@@ -368,9 +581,8 @@ int App::run () {
 
 		t1 = OsUtil::getTime ();
 		input.pollEvents ();
-
 		if (! FLOAT_EQUALS (fontScale, nextFontScale)) {
-			if (uiConfig.reloadFonts (nextFontScale) != Result::Success) {
+			if (uiConfig.reloadFonts (nextFontScale) != OsUtil::Result::Success) {
 				nextFontScale = fontScale;
 			}
 			else {
@@ -428,8 +640,6 @@ int App::run () {
 	resource.compact ();
 	resource.close ();
 
-	writePrefs ();
-
 	SDL_DestroyRenderer (render);
 	render = NULL;
 	SDL_DestroyWindow (window);
@@ -443,7 +653,97 @@ int App::run () {
 	}
 	Log::info ("Application ended; updateCount=%lli drawCount=%lli runtime=%.3fs FPS=%f pid=%i", (long long) updateCount, (long long) drawCount, ((double) elapsed) / 1000.0f, fps, OsUtil::getProcessId ());
 
-	return (Result::Success);
+	return (OsUtil::Result::Success);
+}
+
+int App::runConsole () {
+	int64_t endtime, elapsed;
+	int result;
+	char c;
+	StdString line;
+
+	if (SDL_Init (SDL_INIT_TIMER) != 0) {
+		Log::printf ("Failed to start SDL: %s", SDL_GetError ());
+		return (OsUtil::Result::SdlOperationFailedError);
+	}
+
+	updateThread = SDL_CreateThread (App::runConsoleUpdateThread, "runConsoleUpdateThread", (void *) this);
+	Log::printf ("%s; buildId=%s lang=%s pid=%i", UiText::instance->getText (UiTextString::ConsoleStartText1).c_str (), BUILD_ID, OsUtil::getEnvLanguage ("").c_str (), OsUtil::getProcessId ());
+	Log::printf ("* %s / v%s.%s.%s. %s", UiText::instance->getText (UiTextString::ConsoleStartText2).c_str (), LUA_VERSION_MAJOR, LUA_VERSION_MINOR, LUA_VERSION_RELEASE, UiText::instance->getText (UiTextString::ConsoleStartText3).c_str ());
+	Log::printf ("* %s", UiText::instance->getText (UiTextString::ConsoleStartText4).c_str ());
+
+	line = OsUtil::getEnvValue ("RUN_SCRIPT", "");
+	if (! line.empty ()) {
+		LuaScript::run (new LuaScript (line));
+		line.assign ("");
+	}
+
+	printf ("> ");
+	while (true) {
+		if (isShutdown) {
+			break;
+		}
+
+		c = (char) std::cin.get ();
+		if (c == EOF) {
+			isShutdown = true;
+			break;
+		}
+		if (c == '\n') {
+			LuaScript::run (new LuaScript (line));
+			line.assign ("");
+			printf ("\n> ");
+		}
+		else {
+			line.append (1, c);
+		}
+	}
+
+	resource.compact ();
+	resource.close ();
+	taskGroup.stop ();
+	network.stop ();
+	network.waitThreads ();
+	taskGroup.waitThreads ();
+	SDL_WaitThread (updateThread, &result);
+
+	endtime = OsUtil::getTime ();
+	elapsed = endtime - startTime;
+	Log::info ("Application ended; runtime=%.3fs pid=%i", ((double) elapsed) / 1000.0f, OsUtil::getProcessId ());
+	return (OsUtil::Result::Success);
+}
+
+int App::runConsoleUpdateThread (void *appPtr) {
+	App *app;
+	int64_t t1, t2, last;
+	int delay;
+
+	app = (App *) appPtr;
+	last = OsUtil::getTime ();
+	while (true) {
+		if (app->isShutdown) {
+			break;
+		}
+
+		t1 = OsUtil::getTime ();
+		app->updateConsole ((int) (t1 - last));
+		t2 = OsUtil::getTime ();
+		last = t1;
+
+		delay = (int) (app->minUpdateFrameDelay - (t2 - t1));
+		if (delay < 1) {
+			delay = 1;
+		}
+		SDL_Delay (delay);
+	}
+
+	return (0);
+}
+
+void App::updateConsole (int msElapsed) {
+	agentControl.update (msElapsed);
+	writePrefs ();
+	++updateCount;
 }
 
 void App::populateWidgets () {
@@ -554,17 +854,21 @@ SDL_Texture *App::getRoundedCornerTexture (int radius, int *textureWidth, int *t
 	if ((radius <= 0) || (radius > App::MaxCornerRadius)) {
 		return (NULL);
 	}
-
 	return (roundedCornerSprite->getTexture ((radius - 1), textureWidth, textureHeight));
 }
 
 void App::shutdown () {
 	Ui *ui;
 
-	if (isShuttingDown) {
+	if (isConsole) {
+		isShutdown = true;
+		::close (0);
 		return;
 	}
 
+	if (isShuttingDown) {
+		return;
+	}
 	isShuttingDown = true;
 	ui = uiStack.getActiveUi ();
 	if (ui) {
@@ -572,6 +876,7 @@ void App::shutdown () {
 		ui->release ();
 	}
 	agentControl.stop ();
+	taskGroup.stop ();
 	network.stop ();
 	input.stop ();
 }
@@ -586,7 +891,7 @@ void App::unlockPrefs () {
 }
 
 void App::datagramReceived (void *callbackData, const char *messageData, int messageLength, const char *sourceAddress, int sourcePort) {
-	App::instance->agentControl.receiveMessage (messageData, messageLength, sourceAddress, sourcePort);
+	AgentControl::instance->receiveMessage (messageData, messageLength, sourceAddress, sourcePort);
 }
 
 void App::executeRenderTasks () {
@@ -600,7 +905,7 @@ void App::executeRenderTasks () {
 	i = renderTaskList.begin ();
 	end = renderTaskList.end ();
 	while (i != end) {
-		i->callback (i->callbackData);
+		i->fn (i->fnData);
 		++i;
 	}
 	renderTaskList.clear ();
@@ -675,10 +980,18 @@ void App::draw () {
 
 int App::runUpdateThread (void *appPtr) {
 	App *app;
+	StdString line;
 	int64_t t1, t2, last;
 	int delay;
 
 	app = (App *) appPtr;
+
+	line = OsUtil::getEnvValue ("RUN_SCRIPT", "");
+	if (! line.empty ()) {
+		app->taskGroup.run (TaskGroup::RunContext (LuaScript::run, new LuaScript (line)));
+		line.assign ("");
+	}
+
 	last = OsUtil::getTime ();
 	while (true) {
 		if (app->isShutdown) {
@@ -702,10 +1015,9 @@ int App::runUpdateThread (void *appPtr) {
 
 void App::update (int msElapsed) {
 	Ui *ui;
-	RecordStore *store;
 
 	agentControl.update (msElapsed);
-
+	taskGroup.update (msElapsed);
 	uiStack.update (msElapsed);
 	if (shouldRefreshUi) {
 		uiStack.refresh ();
@@ -715,14 +1027,12 @@ void App::update (int msElapsed) {
 	ui = uiStack.getActiveUi ();
 
 	if (shouldSyncRecordStore) {
-		store = &(agentControl.recordStore);
-		store->lock ();
+		recordStore.lock ();
 		rootPanel->syncRecordStore ();
 		if (ui) {
 			ui->syncRecordStore ();
 		}
-		store->compact ();
-		store->unlock ();
+		recordStore.unlock ();
 		shouldSyncRecordStore = false;
 	}
 
@@ -770,8 +1080,9 @@ void App::update (int msElapsed) {
 	SDL_UnlockMutex (updateMutex);
 
 	if (isShuttingDown) {
-		if (network.isStopComplete ()) {
+		if (network.isStopComplete () && taskGroup.isStopComplete ()) {
 			network.waitThreads ();
+			taskGroup.waitThreads ();
 			isShutdown = true;
 		}
 	}
@@ -781,7 +1092,7 @@ bool App::keyEvent (void *ptr, SDL_Keycode keycode, bool isShiftDown, bool isCon
 	if (isControlDown) {
 		switch (keycode) {
 			case SDLK_q: {
-				App::instance->shutdown ();
+				Input::instance->windowClose ();
 				return (true);
 			}
 			case SDLK_s: {
@@ -792,13 +1103,16 @@ bool App::keyEvent (void *ptr, SDL_Keycode keycode, bool isShiftDown, bool isCon
 				App::instance->uiStack.toggleHelpWindow ();
 				return (true);
 			}
+			case SDLK_o: {
+				App::instance->uiStack.toggleConsoleWindow ();
+				return (true);
+			}
 		}
 	}
 
 	if (App::instance->uiStack.processKeyEvent (keycode, isShiftDown, isControlDown)) {
 		return (true);
 	}
-
 	return (false);
 }
 
@@ -903,12 +1217,40 @@ void App::addRenderTask (RenderTaskFunction fn, void *fnData) {
 	if (! fn) {
 		return;
 	}
-
-	ctx.callback = fn;
-	ctx.callbackData = fnData;
+	ctx.fn = fn;
+	ctx.fnData = fnData;
 	SDL_LockMutex (renderTaskMutex);
 	renderTaskAddList.push_back (ctx);
 	SDL_UnlockMutex (renderTaskMutex);
+}
+
+void App::setConsoleWindow (ConsoleWindow *window) {
+	SDL_LockMutex (consoleWindowMutex);
+	if (consoleWindow) {
+		consoleWindow->release ();
+	}
+	consoleWindow = window;
+	if (consoleWindow) {
+		consoleWindow->retain ();
+	}
+	SDL_UnlockMutex (consoleWindowMutex);
+}
+
+void App::writeConsoleOutput (const StdString &text) {
+	if (! consoleWindow) {
+		return;
+	}
+	SDL_LockMutex (consoleWindowMutex);
+	if (consoleWindow) {
+		if (consoleWindow->isDestroyed) {
+			consoleWindow->release ();
+			consoleWindow = NULL;
+		}
+		else {
+			consoleWindow->appendText (text);
+		}
+	}
+	SDL_UnlockMutex (consoleWindowMutex);
 }
 
 void App::writePrefs () {
@@ -921,7 +1263,7 @@ void App::writePrefs () {
 	SDL_LockMutex (prefsMapMutex);
 	if (prefsMap.isWriteDirty) {
 		result = prefsMap.write (prefsPath);
-		if (result != Result::Success) {
+		if (result != OsUtil::Result::Success) {
 			Log::err ("Failed to write prefs file; prefsPath=\"%s\" err=%i", prefsPath.c_str (), result);
 			isPrefsWriteDisabled = true;
 		}
@@ -955,7 +1297,7 @@ void App::resizeWindow () {
 
 	uiConfig.coreSprites.resize ();
 	result = uiConfig.reloadFonts (fontScale);
-	if (result != Result::Success) {
+	if (result != OsUtil::Result::Success) {
 		Log::err ("Failed to reload fonts; fontScale=%.2f err=%i", fontScale, result);
 	}
 	if (! backgroundTextureBasePath.empty ()) {
@@ -1010,28 +1352,15 @@ void App::setNextBackgroundTexturePath (const char *path) {
 	setNextBackgroundTexturePath (StdString (path));
 }
 
-void App::handleLinkClientCommand (const StdString &agentId, Json *command) {
-	Ui *ui;
-	int commandid;
+void App::hyperlinkOpened (void *ptr, Widget *widgetPtr) {
+	HyperlinkWindow *window;
 
-	commandid = systemInterface.getCommandId (command);
-	switch (commandid) {
-		case SystemInterface::CommandId_TaskItem: {
-			agentControl.recordStore.addRecord (command);
-			shouldSyncRecordStore = true;
-			break;
-		}
-		case SystemInterface::CommandId_AgentStatus: {
-			agentControl.storeAgentStatus (command);
-			shouldSyncRecordStore = true;
-			break;
-		}
+	window = (HyperlinkWindow *) widgetPtr;
+	if (window->linkOpenResult != OsUtil::Result::Success) {
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::OpenHelpUrlError));
 	}
-
-	ui = uiStack.getActiveUi ();
-	if (ui) {
-		ui->handleLinkClientCommand (agentId, commandid, command);
-		ui->release ();
+	else {
+		App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s - %s", UiText::instance->getText (UiTextString::LaunchedWebBrowser).capitalized ().c_str (), window->url.c_str ()));
 	}
 }
 
@@ -1057,14 +1386,14 @@ void App::handleLinkClientDisconnect (const StdString &agentId, const StdString 
 	}
 }
 
-Json *App::createCommand (const char *commandName, int commandType, Json *commandParams) {
+Json *App::createCommand (const char *commandName, Json *commandParams) {
 	Json *cmd;
 	SystemInterface::Prefix prefix;
 
 	prefix = createCommandPrefix ();
-	cmd = systemInterface.createCommand (prefix, commandName, commandType, commandParams);
+	cmd = systemInterface.createCommand (prefix, commandName, commandParams);
 	if (! cmd) {
-		Log::err ("Failed to create SystemInterface command; commandName=\"%s\" commandType=%i err=\"%s\"", commandName, commandType, systemInterface.lastError.c_str ());
+		Log::err ("Failed to create SystemInterface command; commandName=\"%s\" err=\"%s\"", commandName, systemInterface.lastError.c_str ());
 	}
 	return (cmd);
 }
@@ -1083,7 +1412,10 @@ SystemInterface::Prefix App::createCommandPrefix () {
 }
 
 StdString App::getHelpUrl (const StdString &topicId) {
-	return (StdString::createSprintf ("%si/%s", App::ServerUrl.c_str (), topicId.urlEncoded ().c_str ()));
+	StdString topic;
+
+	topic.assign (topicId.empty () ? "index" : topicId);
+	return (StdString::createSprintf ("%si/%s_%s_%s_%s", App::ServerUrl.c_str (), topic.urlEncoded ().c_str (), StdString (BUILD_ID).urlEncoded ().c_str (), StdString (PLATFORM_ID).urlEncoded ().c_str (), OsUtil::getEnvLanguage ("en").urlEncoded ().c_str ()));
 }
 
 StdString App::getHelpUrl (const char *topicId) {
@@ -1102,15 +1434,13 @@ StdString App::getFeedbackUrl (bool shouldIncludeVersion) {
 	if (! shouldIncludeVersion) {
 		return (StdString::createSprintf ("%scontact", App::ServerUrl.c_str ()));
 	}
-
-	return (StdString::createSprintf ("%scontact/%s", App::ServerUrl.c_str (), StdString (BUILD_ID).urlEncoded ().c_str ()));
+	return (StdString::createSprintf ("%scontact/%s_%s", App::ServerUrl.c_str (), StdString (BUILD_ID).urlEncoded ().c_str (), StdString (PLATFORM_ID).urlEncoded ().c_str ()));
 }
 
 StdString App::getUpdateUrl (const StdString &applicationId) {
 	if (! applicationId.empty ()) {
 		return (StdString::createSprintf ("%supdate/%s", App::ServerUrl.c_str (), applicationId.urlEncoded ().c_str ()));
 	}
-
 	return (StdString::createSprintf ("%supdate/%s_%s", App::ServerUrl.c_str (), StdString (BUILD_ID).urlEncoded ().c_str (), StdString (PLATFORM_ID).urlEncoded ().c_str ()));
 }
 
@@ -1122,7 +1452,6 @@ StdString App::getApplicationNewsUrl (const StdString &applicationId) {
 	if (! applicationId.empty ()) {
 		return (StdString::createSprintf ("%sapplication-news/%s", App::ServerUrl.c_str (), applicationId.urlEncoded ().c_str ()));
 	}
-
 	return (StdString::createSprintf ("%sapplication-news/%s_%s_%s", App::ServerUrl.c_str (), StdString (BUILD_ID).urlEncoded ().c_str (), StdString (PLATFORM_ID).urlEncoded ().c_str (), OsUtil::getEnvLanguage ("en").urlEncoded ().c_str ()));
 }
 
@@ -1140,7 +1469,6 @@ bool App::transferJsonListPrefs (HashMap *prefs, const char *prefsKey, JsonList 
 	if (s.empty ()) {
 		return (false);
 	}
-
 	result = false;
 	i = s.begin ();
 	end = s.end ();

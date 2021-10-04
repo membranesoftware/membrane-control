@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -36,6 +36,43 @@
 
 class OsUtil {
 public:
+	enum Result {
+		Success = 0,
+		InvalidParamError = -1,
+		FileOpenFailedError = -2,
+		ThreadCreateFailedError = -3,
+		MalformedResponseError = -4,
+		FileOperationFailedError = -5,
+		MalformedDataError = -6,
+		OutOfMemoryError = -7,
+		FreetypeOperationFailedError = -8,
+		SocketOperationFailedError = -9,
+		SocketNotConnectedError = -10,
+		HttpOperationFailedError = -11,
+		MoreDataRequiredError = -12,
+		JsonParseFailedError = -13,
+		SystemOperationFailedError = -14,
+		KeyNotFoundError = -15,
+		MismatchedTypeError = -16,
+		SdlOperationFailedError = -17,
+		LibmicrohttpdOperationFailedError = -18,
+		ArrayIndexOutOfBoundsError = -19,
+		HttpRequestFailedError = -20,
+		DuplicateIdError = -21,
+		InvalidConfigurationError = -22,
+		UnknownHostnameError = -23,
+		NotImplementedError = -24,
+		AlreadyLoadedError = -25,
+		InternalApplicationFailureError = -26,
+		UnknownProtocolError = -27,
+		LibcurlOperationFailedError = -28,
+		UnknownMethodError = -29,
+		ApplicationNotInstalledError = -30,
+		ProgramNotFoundError = -31,
+		UnauthorizedError = -32,
+		LuaOperationFailedError = -33
+	};
+
 	static const char *MonthNames[];
 
 	// Return the current time in milliseconds since the epoch
@@ -45,20 +82,20 @@ public:
 	static int getProcessId ();
 
 	// Return a string containing a formatted value representing the specified millisecond duration
-	enum {
+	enum TimeUnit {
 		MillisecondsUnit = 0,
 		SecondsUnit = 1,
 		MinutesUnit = 2,
 		HoursUnit = 3,
 		DaysUnit = 4
 	};
-	static StdString getDurationString (int64_t duration, int minUnitType = OsUtil::MillisecondsUnit);
+	static StdString getDurationString (int64_t duration, OsUtil::TimeUnit minUnitType = OsUtil::MillisecondsUnit);
 
 	// Return a string containing a value representing the specified millisecond duration in readable format
 	static StdString getDurationDisplayString (int64_t duration);
 
 	// Return an enum value usable as a minUnitType value with the createDurationLabel method, indicating the most suitable unit type for use with the specified millisecond duration (i.e. shorter durations should be shown with smaller unit types)
-	static int getDurationMinUnitType (int64_t duration);
+	static OsUtil::TimeUnit getDurationMinUnitType (int64_t duration);
 
 	// Return a string containing formatted text representing the time and date of the specified millisecond timestamp. A timestamp of zero or less indicates that the current timestamp should be used.
 	static StdString getTimestampString (int64_t timestamp = 0, bool isTimezoneEnabled = false);
@@ -81,14 +118,17 @@ public:
 	// Return a string containing a base path with the provided name appended as a sub-path
 	static StdString getAppendPath (const StdString &basePath, const StdString &appendName);
 
+	// Return a string containing the system user data path, or an empty string if not known
+	static StdString getUserDataPath ();
+
 	// Create the named directory if it doesn't already exist. Returns a Result value.
-	static int createDirectory (const StdString &path);
+	static OsUtil::Result createDirectory (const StdString &path);
 
 	// Return a boolean value indicating if the provided path names a file that exists
 	static bool fileExists (const StdString &path);
 
 	// Read a file from the specified path and store its data in the provided string. Returns a Result value.
-	static int readFile (const StdString &path, StdString *destString);
+	static OsUtil::Result readFile (const StdString &path, StdString *destString);
 
 	// Return a value read from the environment, or the specified default if no such value exists
 	static StdString getEnvValue (const StdString &key, const StdString &defaultValue);
@@ -107,7 +147,19 @@ public:
 	static StdString getAddressDisplayString (const StdString &address, int defaultPort);
 
 	// Launch the system's default browser to open the specified URL. Returns a Result value.
-	static int openUrl (const StdString &url);
+	static OsUtil::Result openUrl (const StdString &url);
+
+	// Launch a child process and return a pointer to the resulting process data, or NULL if the process could not be launched
+	static void *executeProcess (const StdString &execPath, const StdString &arg1 = StdString (""), const StdString &arg2 = StdString (""));
+
+	// Block until a previously executed child process completes
+	static void waitProcess (void *processPtr);
+
+	// Send a terminate signal to a child process
+	static void terminateProcess (void *processPtr);
+
+	// Free process data, as created by a previous call to executeProcess
+	static void freeProcessData (void *processPtr);
 };
 
 #endif

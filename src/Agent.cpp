@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,7 +30,6 @@
 #include "Config.h"
 #include <stdlib.h>
 #include "App.h"
-#include "Result.h"
 #include "StdString.h"
 #include "Json.h"
 #include "SystemInterface.h"
@@ -115,44 +114,59 @@ StdString Agent::toString () {
 	return (s);
 }
 
+void Agent::copyDisplayData (const Agent &other) {
+	id.assign (other.id);
+	isAttached = other.isAttached;
+	lastStatusTime = other.lastStatusTime;
+	invokeHostname.assign (other.invokeHostname);
+	invokeTcpPort1 = other.invokeTcpPort1;
+	invokeTcpPort2 = other.invokeTcpPort2;
+	serverType = other.serverType;
+	displayName.assign (other.displayName);
+	applicationName.assign (other.applicationName);
+	urlHostname.assign (other.urlHostname);
+	tcpPort1 = other.tcpPort1;
+	tcpPort2 = other.tcpPort2;
+	version.assign (other.version);
+	platform.assign (other.platform);
+}
+
 void Agent::readCommand (Json *command) {
-	SystemInterface *interface;
 	Json serverstatus;
 	StdString val;
 	int commandid, i;
 
-	interface = &(App::instance->systemInterface);
-	commandid = interface->getCommandId (command);
+	commandid = SystemInterface::instance->getCommandId (command);
 	if (commandid != SystemInterface::CommandId_AgentStatus) {
 		return;
 	}
 
-	val = interface->getCommandStringParam (command, "linkPath", "");
+	val = SystemInterface::instance->getCommandStringParam (command, "linkPath", "");
 	if (! val.empty ()) {
 		linkPath.assign (val);
 	}
 
-	val = interface->getCommandStringParam (command, "displayName", "");
+	val = SystemInterface::instance->getCommandStringParam (command, "displayName", "");
 	if (! val.empty ()) {
 		displayName.assign (val);
 	}
 
-	val = interface->getCommandStringParam (command, "applicationName", "");
+	val = SystemInterface::instance->getCommandStringParam (command, "applicationName", "");
 	if (! val.empty ()) {
 		applicationName.assign (val);
 	}
 
-	val = interface->getCommandStringParam (command, "version", "");
+	val = SystemInterface::instance->getCommandStringParam (command, "version", "");
 	if (! val.empty ()) {
 		version.assign (val);
 	}
 
-	val = interface->getCommandStringParam (command, "platform", "");
+	val = SystemInterface::instance->getCommandStringParam (command, "platform", "");
 	if (! val.empty ()) {
 		platform.assign (val);
 	}
 
-	val = interface->getCommandStringParam (command, "urlHostname", "");
+	val = SystemInterface::instance->getCommandStringParam (command, "urlHostname", "");
 	if (! val.empty ()) {
 		urlHostname.assign (val);
 		if (invokeHostname.empty ()) {
@@ -160,7 +174,7 @@ void Agent::readCommand (Json *command) {
 		}
 	}
 
-	i = interface->getCommandNumberParam (command, "tcpPort1", 0);
+	i = SystemInterface::instance->getCommandNumberParam (command, "tcpPort1", 0);
 	if (i > 0) {
 		tcpPort1 = i;
 		if (invokeTcpPort1 <= 0) {
@@ -168,23 +182,27 @@ void Agent::readCommand (Json *command) {
 		}
 	}
 
-	i = interface->getCommandNumberParam (command, "tcpPort2", 0);
+	i = SystemInterface::instance->getCommandNumberParam (command, "tcpPort2", 0);
 	if (i > 0) {
 		tcpPort2 = i;
 	}
 
-	if (interface->getCommandObjectParam (command, "monitorServerStatus", &serverstatus)) {
-		serverType = SystemInterface::Constant_Monitor;
+	if (SystemInterface::instance->getCommandObjectParam (command, "monitorServerStatus", &serverstatus)) {
+		serverType = Agent::Monitor;
 	}
-	else if (interface->getCommandObjectParam (command, "mediaServerStatus", &serverstatus)) {
-		serverType = SystemInterface::Constant_Media;
+	else if (SystemInterface::instance->getCommandObjectParam (command, "mediaServerStatus", &serverstatus)) {
+		serverType = Agent::Media;
 	}
-	else if (interface->getCommandObjectParam (command, "cameraServerStatus", &serverstatus)) {
-		serverType = SystemInterface::Constant_Camera;
+	else if (SystemInterface::instance->getCommandObjectParam (command, "cameraServerStatus", &serverstatus)) {
+		serverType = Agent::Camera;
 	}
 	else {
 		serverType = -1;
 	}
+}
+
+bool Agent::isContacted () {
+	return (isAttached && (lastStatusTime > 0));
 }
 
 StdString Agent::getInvokeUrl () {
@@ -247,8 +265,7 @@ StdString Agent::getLinkUrl () {
 		return (StdString (""));
 	}
 
-	url.appendSprintf ("%s/?transport=websocket", linkPath.c_str ());
-
+	url.appendSprintf ("%s/?transport=websocket&EIO=3", linkPath.c_str ());
 	return (url);
 }
 
@@ -302,7 +319,7 @@ Json *Agent::createState () {
 int Agent::readState (Json *state) {
 	id = state->getString (Agent::AgentIdKey, "");
 	if (id.empty ()) {
-		return (Result::MalformedDataError);
+		return (OsUtil::Result::MalformedDataError);
 	}
 
 	isAttached = state->getBoolean (Agent::IsAttachedKey, false);
@@ -317,5 +334,48 @@ int Agent::readState (Json *state) {
 	tcpPort1 = state->getNumber (Agent::TcpPort1Key, (int) 0);
 	tcpPort2 = state->getNumber (Agent::TcpPort2Key, (int) 0);
 
-	return (Result::Success);
+	return (OsUtil::Result::Success);
+}
+
+StdString Agent::getCommandAgentName (Json *command) {
+	StdString name;
+
+	if (SystemInterface::instance->getCommandId (command) != SystemInterface::CommandId_AgentStatus) {
+		return (StdString (""));
+	}
+	name = SystemInterface::instance->getCommandStringParam (command, "displayName", "");
+	if (! name.empty ()) {
+		return (name);
+	}
+	name = SystemInterface::instance->getCommandStringParam (command, "urlHostname", "");
+	if (! name.empty ()) {
+		return (name);
+	}
+	name = SystemInterface::instance->getCommandAgentId (command);
+	if (! name.empty ()) {
+		return (name);
+	}
+	return (StdString (""));
+}
+
+StdString Agent::getCommandAgentAddress (Json *command) {
+	StdString hostname;
+	int port;
+
+	if (SystemInterface::instance->getCommandId (command) != SystemInterface::CommandId_AgentStatus) {
+		return (StdString (""));
+	}
+	hostname = SystemInterface::instance->getCommandStringParam (command, "urlHostname", "");
+	if (hostname.empty ()) {
+		return (StdString (""));
+	}
+	port = SystemInterface::instance->getCommandNumberParam (command, "tcpPort1", SystemInterface::Constant_DefaultTcpPort1);
+	if ((port < 0) || (port > 65535)) {
+		return (StdString (""));
+	}
+	return (StdString::createSprintf ("%s:%i", hostname.c_str (), port));
+}
+
+bool Agent::compareAscending (const Agent &a, const Agent &b) {
+	return (a.displayName.lowercased ().compare (b.displayName.lowercased ()) < 0);
 }

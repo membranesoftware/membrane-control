@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -34,6 +34,7 @@
 
 #include <vector>
 #include "StdString.h"
+#include "OsUtil.h"
 #include "Sprite.h"
 
 class SpriteGroup {
@@ -46,7 +47,7 @@ public:
 	StdString loadPath;
 
 	// Load sprite data from the specified path, which is expected to contain numbered directories named 000, 001, etc. Returns a Result value. If no image scale value is provided, the application image scale is used.
-	int load (const StdString &path, int imageScale = -1);
+	OsUtil::Result load (const StdString &path, int imageScale = -1);
 
 	// Unload previously loaded sprite data
 	void unload ();

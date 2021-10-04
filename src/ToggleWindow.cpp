@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,7 +29,6 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include "Result.h"
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
@@ -72,15 +71,12 @@ StdString ToggleWindow::toStringDetail () {
 }
 
 void ToggleWindow::setText (const StdString &text) {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::instance->uiConfig);
 	if (! label) {
-		label = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, uiconfig->primaryTextColor));
+		label = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->primaryTextColor));
 		label->isInputSuspended = true;
 	}
 	label->setText (text);
-	label->textColor.assign (isInverseColor ? uiconfig->inverseTextColor : uiconfig->primaryTextColor);
+	label->textColor.assign (isInverseColor ? UiConfiguration::instance->inverseTextColor : UiConfiguration::instance->primaryTextColor);
 
 	if (iconImage) {
 		iconImage->isDestroyed = true;
@@ -112,29 +108,25 @@ void ToggleWindow::setRightAligned (bool enable) {
 }
 
 void ToggleWindow::setInverseColor (bool inverse) {
-	UiConfiguration *uiconfig;
-
-	uiconfig = &(App::instance->uiConfig);
 	if (isInverseColor == inverse) {
 		return;
 	}
-
 	isInverseColor = inverse;
 	toggle->setInverseColor (isInverseColor);
 	if (isInverseColor) {
 		if (isFilledBg) {
-			setFillBg (true, uiconfig->lightPrimaryColor);
+			setFillBg (true, UiConfiguration::instance->lightPrimaryColor);
 		}
 		if (label) {
-			label->textColor.assign (uiconfig->inverseTextColor);
+			label->textColor.assign (UiConfiguration::instance->inverseTextColor);
 		}
 	}
 	else {
 		if (isFilledBg) {
-			setFillBg (true, uiconfig->lightBackgroundColor);
+			setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 		}
 		if (label) {
-			label->textColor.assign (uiconfig->primaryTextColor);
+			label->textColor.assign (UiConfiguration::instance->primaryTextColor);
 		}
 	}
 }
@@ -144,23 +136,21 @@ void ToggleWindow::setImageColor (const Color &imageColor) {
 }
 
 void ToggleWindow::refreshLayout () {
-	UiConfiguration *uiconfig;
 	float x, y;
 
-	uiconfig = &(App::instance->uiConfig);
 	x = 0.0f;
 	y = 0.0f;
 
 	if (isRightAligned) {
 		if (label || iconImage) {
-			x += uiconfig->paddingSize;
+			x += UiConfiguration::instance->paddingSize;
 		}
 	}
 	else {
 		toggle->flowRight (&x, y);
 	}
 	if (label) {
-		x -= (uiconfig->marginSize / 2.0f);
+		x -= (UiConfiguration::instance->marginSize / 2.0f);
 		label->flowRight (&x, y);
 	}
 	if (iconImage) {
@@ -179,7 +169,7 @@ void ToggleWindow::refreshLayout () {
 	}
 	toggle->centerVertical (0.0f, height);
 	if ((! isRightAligned) && (label || iconImage)) {
-		width += uiconfig->paddingSize;
+		width += UiConfiguration::instance->paddingSize;
 	}
 }
 
@@ -230,7 +220,5 @@ void ToggleWindow::toggleStateChanged (void *windowPtr, Widget *widgetPtr) {
 	window = (ToggleWindow *) windowPtr;
 	toggle = (Toggle *) widgetPtr;
 	window->isChecked = toggle->isChecked;
-	if (window->stateChangeCallback.callback) {
-		window->stateChangeCallback.callback (window->stateChangeCallback.callbackData, window);
-	}
+	window->eventCallback (window->stateChangeCallback);
 }

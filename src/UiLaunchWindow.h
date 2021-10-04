@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -40,7 +40,7 @@
 #include "Label.h"
 #include "Button.h"
 #include "Toggle.h"
-#include "TextArea.h"
+#include "TextFlow.h"
 #include "IconLabelWindow.h"
 #include "Panel.h"
 
@@ -93,16 +93,16 @@ private:
 	static void addStreamCount (void *sumPtr, Json *record, const StdString &recordId);
 
 	// Return the total of all mediaCount fields on MediaServer agents
-	int countMediaItems (RecordStore *store);
+	int countMediaItems ();
 
 	// Return the total of all streamCount fields on StreamServer agents
-	int countStreamItems (RecordStore *store);
+	int countStreamItems ();
 
 	SpriteGroup *sprites;
 	Image *iconImage;
 	Label *nameLabel;
 	Panel *dividerPanel;
-	TextArea *descriptionText;
+	TextFlow *descriptionText;
 	std::vector<IconLabelWindow *> countIcons;
 	std::vector<IconLabelWindow *> noteIcons;
 	Toggle *expandToggle;

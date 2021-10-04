@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -65,6 +65,9 @@ public:
 
 	// Set the text field's disabled state, appropriate for use when the field becomes unavailable for interaction
 	void setDisabled (bool disabled);
+
+	// Set the text field's option to retain key focus after a return keypress
+	void setRetainFocusOnReturnKey (bool enable);
 
 	// Set the window's text field obscure option
 	void setObscured (bool enable);

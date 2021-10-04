@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,10 +30,10 @@
 #include "Config.h"
 #include <stdlib.h>
 #include <list>
-#include "Result.h"
+#include "App.h"
 #include "ClassId.h"
 #include "StdString.h"
-#include "App.h"
+#include "UiConfiguration.h"
 #include "UiText.h"
 #include "OsUtil.h"
 #include "Widget.h"
@@ -51,7 +51,6 @@
 #include "SliderWindow.h"
 #include "IconLabelWindow.h"
 #include "SystemInterface.h"
-#include "UiConfiguration.h"
 #include "MediaUi.h"
 #include "StreamPlaylistWindow.h"
 
@@ -88,56 +87,52 @@ StreamPlaylistWindow::StreamPlaylistWindow (SpriteGroup *mediaUiSpriteGroup)
 , removeButton (NULL)
 , addItemButton (NULL)
 {
-	UiConfiguration *uiconfig;
-	UiText *uitext;
 	Slider *slider;
 	int i;
 
 	classId = ClassId::StreamPlaylistWindow;
-	uiconfig = &(App::instance->uiConfig);
-	uitext = &(App::instance->uiText);
-	setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
-	setCornerRadius (uiconfig->cornerRadius);
-	setFillBg (true, uiconfig->mediumBackgroundColor);
+	setPadding (UiConfiguration::instance->paddingSize / 2.0f, UiConfiguration::instance->paddingSize / 2.0f);
+	setCornerRadius (UiConfiguration::instance->cornerRadius);
+	setFillBg (true, UiConfiguration::instance->mediumBackgroundColor);
 	windowWidth = App::instance->windowWidth * StreamPlaylistWindow::WindowWidthMultiplier;
 
-	iconImage = (Image *) addWidget (new Image (uiconfig->coreSprites.getSprite (UiConfiguration::PlaylistIconSprite)));
-	nameLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::BodyFont, uiconfig->primaryTextColor)));
+	iconImage = (Image *) addWidget (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::PlaylistIconSprite)));
+	nameLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::BodyFont, UiConfiguration::instance->primaryTextColor)));
 	nameLabel->mouseClickCallback = Widget::EventCallbackContext (StreamPlaylistWindow::nameLabelClicked, this);
 	nameLabel->setPadding (0.0f, 0.0f);
-	nameLabel->setMouseHoverTooltip (uitext->getText (UiTextString::ClickRenameTooltip));
+	nameLabel->setMouseHoverTooltip (UiText::instance->getText (UiTextString::ClickRenameTooltip));
 
-	itemCountLabel = (IconLabelWindow *) addWidget (new IconLabelWindow (uiconfig->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite), StdString ("0"), UiConfiguration::TitleFont, uiconfig->lightPrimaryTextColor));
+	itemCountLabel = (IconLabelWindow *) addWidget (new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallStreamIconSprite), StdString ("0"), UiConfiguration::TitleFont, UiConfiguration::instance->lightPrimaryTextColor));
 	itemCountLabel->setPadding (0.0f, 0.0f);
-	itemCountLabel->setMouseHoverTooltip (uitext->getCountText (0, UiTextString::StreamPlaylistItem, UiTextString::StreamPlaylistItems));
-	itemCountLabel->setTextChangeHighlight (true, uiconfig->primaryTextColor);
+	itemCountLabel->setMouseHoverTooltip (UiText::instance->getCountText (0, UiTextString::StreamPlaylistItem, UiTextString::StreamPlaylistItems));
+	itemCountLabel->setTextChangeHighlight (true, UiConfiguration::instance->primaryTextColor);
 
-	selectToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::StarOutlineButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::StarButtonSprite)));
+	selectToggle = (Toggle *) addWidget (new Toggle (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::StarOutlineButtonSprite), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::StarButtonSprite)));
 	selectToggle->stateChangeCallback = Widget::EventCallbackContext (StreamPlaylistWindow::selectToggleStateChanged, this);
-	selectToggle->setImageColor (uiconfig->flatButtonTextColor);
-	selectToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::UnselectedToggleTooltip), uitext->getText (UiTextString::SelectedToggleTooltip));
+	selectToggle->setImageColor (UiConfiguration::instance->flatButtonTextColor);
+	selectToggle->setStateMouseHoverTooltips (UiText::instance->getText (UiTextString::UnselectedToggleTooltip), UiText::instance->getText (UiTextString::SelectedToggleTooltip));
 
-	expandToggle = (Toggle *) addWidget (new Toggle (uiconfig->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), uiconfig->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
+	expandToggle = (Toggle *) addWidget (new Toggle (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
 	expandToggle->stateChangeCallback = Widget::EventCallbackContext (StreamPlaylistWindow::expandToggleStateChanged, this);
-	expandToggle->setImageColor (uiconfig->flatButtonTextColor);
-	expandToggle->setStateMouseHoverTooltips (uitext->getText (UiTextString::Expand).capitalized (), uitext->getText (UiTextString::Minimize).capitalized ());
+	expandToggle->setImageColor (UiConfiguration::instance->flatButtonTextColor);
+	expandToggle->setStateMouseHoverTooltips (UiText::instance->getText (UiTextString::Expand).capitalized (), UiText::instance->getText (UiTextString::Minimize).capitalized ());
 
 	dividerPanel = (Panel *) addWidget (new Panel ());
-	dividerPanel->setFillBg (true, uiconfig->dividerColor);
-	dividerPanel->setFixedSize (true, 1.0f, uiconfig->headlineDividerLineWidth);
+	dividerPanel->setFillBg (true, UiConfiguration::instance->dividerColor);
+	dividerPanel->setFixedSize (true, 1.0f, UiConfiguration::instance->headlineDividerLineWidth);
 	dividerPanel->isPanelSizeClipEnabled = true;
 	dividerPanel->isVisible = false;
 
-	itemListView = (ListView *) addWidget (new ListView ((windowWidth - (widthPadding * 2.0f)), 6, 6, UiConfiguration::CaptionFont, uitext->getText (UiTextString::EmptyStreamPlaylistText)));
+	itemListView = (ListView *) addWidget (new ListView ((windowWidth - (widthPadding * 2.0f)), 6, 6, UiConfiguration::CaptionFont, UiText::instance->getText (UiTextString::EmptyStreamPlaylistText)));
 	itemListView->listChangeCallback = Widget::EventCallbackContext (StreamPlaylistWindow::itemListChanged, this);
-	itemListView->setDropShadow (true, uiconfig->dropShadowColor, uiconfig->dropShadowWidth);
+	itemListView->setDropShadow (true, UiConfiguration::instance->dropShadowColor, UiConfiguration::instance->dropShadowWidth);
 	itemListView->isVisible = false;
 
 	shuffleToggle = (ToggleWindow *) addWidget (new ToggleWindow (new Toggle ()));
 	shuffleToggle->setIcon (sprites->getSprite (MediaUi::ShuffleIconSprite));
 	shuffleToggle->setRightAligned (true);
-	shuffleToggle->setImageColor (uiconfig->flatButtonTextColor);
-	shuffleToggle->setMouseHoverTooltip (uitext->getText (UiTextString::ShuffleTooltip));
+	shuffleToggle->setImageColor (UiConfiguration::instance->flatButtonTextColor);
+	shuffleToggle->setMouseHoverTooltip (UiText::instance->getText (UiTextString::ShuffleTooltip));
 	shuffleToggle->isVisible = false;
 
 	slider = new Slider (0.0f, (float) (StreamPlaylistWindow::StartPositionCount - 1));
@@ -147,7 +142,7 @@ StreamPlaylistWindow::StreamPlaylistWindow (SpriteGroup *mediaUiSpriteGroup)
 	startPositionSlider = (SliderWindow *) addWidget (new SliderWindow (slider));
 	startPositionSlider->setIcon (sprites->getSprite (MediaUi::StartPositionIconSprite));
 	startPositionSlider->setTrackWidthScale (0.75f);
-	startPositionSlider->setMouseHoverTooltip (uitext->getText (UiTextString::StartPosition).capitalized ());
+	startPositionSlider->setMouseHoverTooltip (UiText::instance->getText (UiTextString::StartPosition).capitalized ());
 	startPositionSlider->setValueNameFunction (StreamPlaylistWindow::startPositionSliderValueName);
 	startPositionSlider->setValue (StreamPlaylistWindow::ZeroStartPosition);
 	startPositionSlider->isVisible = false;
@@ -159,22 +154,22 @@ StreamPlaylistWindow::StreamPlaylistWindow (SpriteGroup *mediaUiSpriteGroup)
 	playDurationSlider = (SliderWindow *) addWidget (new SliderWindow (slider));
 	playDurationSlider->setIcon (sprites->getSprite (MediaUi::DurationIconSprite));
 	playDurationSlider->setTrackWidthScale (0.75f);
-	playDurationSlider->setMouseHoverTooltip (uitext->getText (UiTextString::PlayDuration).capitalized ());
+	playDurationSlider->setMouseHoverTooltip (UiText::instance->getText (UiTextString::PlayDuration).capitalized ());
 	playDurationSlider->setValueNameFunction (StreamPlaylistWindow::playDurationSliderValueName);
 	playDurationSlider->setValue (StreamPlaylistWindow::MediumPlayDuration);
 	playDurationSlider->isVisible = false;
 
-	removeButton = (Button *) addWidget (new Button (uiconfig->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
+	removeButton = (Button *) addWidget (new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::DeleteButtonSprite)));
 	removeButton->mouseClickCallback = Widget::EventCallbackContext (StreamPlaylistWindow::removeButtonClicked, this);
-	removeButton->setImageColor (uiconfig->flatButtonTextColor);
-	removeButton->setMouseHoverTooltip (uitext->getText (UiTextString::DeletePlaylist).capitalized ());
+	removeButton->setImageColor (UiConfiguration::instance->flatButtonTextColor);
+	removeButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::DeletePlaylist).capitalized ());
 	removeButton->isVisible = false;
 
 	addItemButton = (Button *) addWidget (new Button (sprites->getSprite (MediaUi::AddPlaylistItemButtonSprite)));
 	addItemButton->mouseClickCallback = Widget::EventCallbackContext (StreamPlaylistWindow::addItemButtonClicked, this);
 	addItemButton->mouseEnterCallback = Widget::EventCallbackContext (StreamPlaylistWindow::addItemButtonMouseEntered, this);
 	addItemButton->mouseExitCallback = Widget::EventCallbackContext (StreamPlaylistWindow::addItemButtonMouseExited, this);
-	addItemButton->setImageColor (uiconfig->flatButtonTextColor);
+	addItemButton->setImageColor (UiConfiguration::instance->flatButtonTextColor);
 	addItemButton->isVisible = false;
 
 	refreshLayout ();
@@ -207,34 +202,27 @@ void StreamPlaylistWindow::setPlaylistName (const StdString &name) {
 }
 
 void StreamPlaylistWindow::setSelected (bool selected, bool shouldSkipStateChangeCallback) {
-	UiConfiguration *uiconfig;
-
 	if (selected == isSelected) {
 		return;
 	}
-
-	uiconfig = &(App::instance->uiConfig);
 	isSelected = selected;
 	selectToggle->setChecked (isSelected, shouldSkipStateChangeCallback);
 	if (isSelected) {
-		setCornerRadius (0, uiconfig->cornerRadius, 0, uiconfig->cornerRadius);
+		setCornerRadius (0, UiConfiguration::instance->cornerRadius, 0, UiConfiguration::instance->cornerRadius);
 	}
 	else {
-		setCornerRadius (uiconfig->cornerRadius);
+		setCornerRadius (UiConfiguration::instance->cornerRadius);
 	}
 	refreshLayout ();
 }
 
 void StreamPlaylistWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallback) {
-	UiConfiguration *uiconfig;
-
 	if (expanded == isExpanded) {
 		return;
 	}
-	uiconfig = &(App::instance->uiConfig);
 	isExpanded = expanded;
 	if (isExpanded) {
-		setPadding (uiconfig->paddingSize, uiconfig->paddingSize);
+		setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
 		nameLabel->setFont (UiConfiguration::HeadlineFont);
 		itemCountLabel->setTextFont (UiConfiguration::HeadlineFont);
 		dividerPanel->isVisible = true;
@@ -246,7 +234,7 @@ void StreamPlaylistWindow::setExpanded (bool expanded, bool shouldSkipStateChang
 		addItemButton->isVisible = true;
 	}
 	else {
-		setPadding (uiconfig->paddingSize / 2.0f, uiconfig->paddingSize / 2.0f);
+		setPadding (UiConfiguration::instance->paddingSize / 2.0f, UiConfiguration::instance->paddingSize / 2.0f);
 		nameLabel->setFont (UiConfiguration::BodyFont);
 		itemCountLabel->setTextFont (UiConfiguration::BodyFont);
 		dividerPanel->isVisible = false;
@@ -269,10 +257,8 @@ void StreamPlaylistWindow::doRefresh () {
 }
 
 void StreamPlaylistWindow::refreshLayout () {
-	UiConfiguration *uiconfig;
 	float x, y, x0, y0, x2, y2;
 
-	uiconfig = &(App::instance->uiConfig);
 	x0 = widthPadding;
 	y0 = heightPadding;
 	x = x0;
@@ -286,7 +272,7 @@ void StreamPlaylistWindow::refreshLayout () {
 		itemCountLabel->flowRight (&x, y, &x2, &y2);
 	}
 
-	x = x2 + uiconfig->marginSize;
+	x = x2 + UiConfiguration::instance->marginSize;
 	y = y0;
 	if (isExpanded) {
 		removeButton->flowRight (&x, y, &x2, &y2);
@@ -299,13 +285,13 @@ void StreamPlaylistWindow::refreshLayout () {
 
 	x = x0;
 	x2 = 0.0f;
-	y = y2 + uiconfig->marginSize;
+	y = y2 + UiConfiguration::instance->marginSize;
 	y0 = y;
 	if (isExpanded) {
 		dividerPanel->flowDown (0.0f, &y, &x2, &y2);
 		itemListView->flowDown (x, &y, &x2, &y2);
 
-		y = y2 + uiconfig->marginSize;
+		y = y2 + UiConfiguration::instance->marginSize;
 		y0 = y;
 		shuffleToggle->flowRight (&x, y, &x2, &y2);
 		startPositionSlider->flowRight (&x, y, &x2, &y2);
@@ -316,7 +302,7 @@ void StreamPlaylistWindow::refreshLayout () {
 
 		x = x0;
 		x2 = 0.0f;
-		y = y2 + uiconfig->marginSize;
+		y = y2 + UiConfiguration::instance->marginSize;
 		y0 = y;
 		itemCountLabel->flowRight (&x, y, &x2, &y2);
 		addItemButton->flowRight (&x, y, &x2, &y2);
@@ -325,7 +311,7 @@ void StreamPlaylistWindow::refreshLayout () {
 
 		setFixedSize (true, windowWidth, y2 + heightPadding);
 
-		dividerPanel->setFixedSize (true, windowWidth, uiconfig->headlineDividerLineWidth);
+		dividerPanel->setFixedSize (true, windowWidth, UiConfiguration::instance->headlineDividerLineWidth);
 
 		x = width - widthPadding;
 		addItemButton->flowLeft (&x);
@@ -345,70 +331,59 @@ void StreamPlaylistWindow::refreshLayout () {
 }
 
 void StreamPlaylistWindow::resetNameLabel () {
-	UiConfiguration *uiconfig;
 	float w;
 
-	uiconfig = &(App::instance->uiConfig);
 	if (isExpanded) {
 		w = removeButton->position.x;
 		w -= nameLabel->position.x;
-		w -= uiconfig->marginSize;
-		nameLabel->setText (Label::getTruncatedText (playlistName, UiConfiguration::HeadlineFont, w, Label::DotTruncateSuffix));
+		w -= UiConfiguration::instance->marginSize;
+		nameLabel->setText (UiConfiguration::instance->fonts[UiConfiguration::HeadlineFont]->truncatedText (playlistName, w, Font::DotTruncateSuffix));
 	}
 	else {
 		w = windowWidth * 0.63f;
 		w -= (iconImage->width + expandToggle->width + selectToggle->width);
-		nameLabel->setText (Label::getTruncatedText (playlistName, UiConfiguration::BodyFont, w, Label::DotTruncateSuffix));
+		nameLabel->setText (UiConfiguration::instance->fonts[UiConfiguration::BodyFont]->truncatedText (playlistName, w, Font::DotTruncateSuffix));
 	}
 	refreshLayout ();
 }
 
 void StreamPlaylistWindow::nameLabelClicked (void *windowPtr, Widget *widgetPtr) {
-	StreamPlaylistWindow *window;
-
-	window = (StreamPlaylistWindow *) windowPtr;
-	if (window->renameClickCallback.callback) {
-		window->renameClickCallback.callback (window->renameClickCallback.callbackData, window);
-	}
+	((StreamPlaylistWindow *) windowPtr)->eventCallback (((StreamPlaylistWindow *) windowPtr)->renameClickCallback);
 }
 
 void StreamPlaylistWindow::selectToggleStateChanged (void *windowPtr, Widget *widgetPtr) {
 	StreamPlaylistWindow *window;
 	Toggle *toggle;
-	UiConfiguration *uiconfig;
 
 	window = (StreamPlaylistWindow *) windowPtr;
 	toggle = (Toggle *) widgetPtr;
-	uiconfig = &(App::instance->uiConfig);
 
 	window->isSelected = toggle->isChecked;
 	if (window->isSelected) {
-		window->setCornerRadius (0, uiconfig->cornerRadius, 0, uiconfig->cornerRadius);
+		window->setCornerRadius (0, UiConfiguration::instance->cornerRadius, 0, UiConfiguration::instance->cornerRadius);
 	}
 	else {
-		window->setCornerRadius (uiconfig->cornerRadius);
+		window->setCornerRadius (UiConfiguration::instance->cornerRadius);
 	}
-	if (window->selectStateChangeCallback.callback) {
-		window->selectStateChangeCallback.callback (window->selectStateChangeCallback.callbackData, window);
-	}
+	window->eventCallback (window->selectStateChangeCallback);
 }
 
 StdString StreamPlaylistWindow::startPositionSliderValueName (float sliderValue) {
 	switch ((int) sliderValue) {
 		case StreamPlaylistWindow::ZeroStartPosition: {
-			return (App::instance->uiText.getText (UiTextString::StreamPlaylistZeroStartPositionDescription));
+			return (UiText::instance->getText (UiTextString::StreamPlaylistZeroStartPositionDescription));
 		}
 		case StreamPlaylistWindow::NearBeginningStartPosition: {
-			return (App::instance->uiText.getText (UiTextString::StreamPlaylistNearBeginningStartPositionDescription));
+			return (UiText::instance->getText (UiTextString::StreamPlaylistNearBeginningStartPositionDescription));
 		}
 		case StreamPlaylistWindow::MiddleStartPosition: {
-			return (App::instance->uiText.getText (UiTextString::StreamPlaylistMiddleStartPositionDescription));
+			return (UiText::instance->getText (UiTextString::StreamPlaylistMiddleStartPositionDescription));
 		}
 		case StreamPlaylistWindow::NearEndStartPosition: {
-			return (App::instance->uiText.getText (UiTextString::StreamPlaylistNearEndPositionDescription));
+			return (UiText::instance->getText (UiTextString::StreamPlaylistNearEndPositionDescription));
 		}
 		case StreamPlaylistWindow::FullRangeStartPosition: {
-			return (App::instance->uiText.getText (UiTextString::StreamPlaylistFullRangePositionDescription));
+			return (UiText::instance->getText (UiTextString::StreamPlaylistFullRangePositionDescription));
 		}
 	}
 
@@ -418,22 +393,22 @@ StdString StreamPlaylistWindow::startPositionSliderValueName (float sliderValue)
 StdString StreamPlaylistWindow::playDurationSliderValueName (float sliderValue) {
 	switch ((int) sliderValue) {
 		case StreamPlaylistWindow::VeryShortPlayDuration: {
-			return (App::instance->uiText.getText (UiTextString::StreamPlaylistVeryShortPlayDurationDescription));
+			return (UiText::instance->getText (UiTextString::StreamPlaylistVeryShortPlayDurationDescription));
 		}
 		case StreamPlaylistWindow::ShortPlayDuration: {
-			return (App::instance->uiText.getText (UiTextString::StreamPlaylistShortPlayDurationDescription));
+			return (UiText::instance->getText (UiTextString::StreamPlaylistShortPlayDurationDescription));
 		}
 		case StreamPlaylistWindow::MediumPlayDuration: {
-			return (App::instance->uiText.getText (UiTextString::StreamPlaylistMediumPlayDurationDescription));
+			return (UiText::instance->getText (UiTextString::StreamPlaylistMediumPlayDurationDescription));
 		}
 		case StreamPlaylistWindow::LongPlayDuration: {
-			return (App::instance->uiText.getText (UiTextString::StreamPlaylistLongPlayDurationDescription));
+			return (UiText::instance->getText (UiTextString::StreamPlaylistLongPlayDurationDescription));
 		}
 		case StreamPlaylistWindow::VeryLongPlayDuration: {
-			return (App::instance->uiText.getText (UiTextString::StreamPlaylistVeryLongPlayDurationDescription));
+			return (UiText::instance->getText (UiTextString::StreamPlaylistVeryLongPlayDurationDescription));
 		}
 		case StreamPlaylistWindow::FullPlayDuration: {
-			return (App::instance->uiText.getText (UiTextString::StreamPlaylistFullPlayDurationDescription));
+			return (UiText::instance->getText (UiTextString::StreamPlaylistFullPlayDurationDescription));
 		}
 	}
 
@@ -447,25 +422,19 @@ void StreamPlaylistWindow::expandToggleStateChanged (void *windowPtr, Widget *wi
 	window = (StreamPlaylistWindow *) windowPtr;
 	toggle = (Toggle *) widgetPtr;
 	window->setExpanded (toggle->isChecked, true);
-	if (window->expandStateChangeCallback.callback) {
-		window->expandStateChangeCallback.callback (window->expandStateChangeCallback.callbackData, window);
-	}
+	window->eventCallback (window->expandStateChangeCallback);
 }
 
 void StreamPlaylistWindow::itemListChanged (void *windowPtr, Widget *widgetPtr) {
 	StreamPlaylistWindow *window;
-	UiText *uitext;
 	int count;
 
 	window = (StreamPlaylistWindow *) windowPtr;
-	uitext = &(App::instance->uiText);
 	count = window->itemListView->getItemCount ();
 	window->itemCountLabel->setText (StdString::createSprintf ("%i", count));
-	window->itemCountLabel->tooltipText.assign (uitext->getCountText (count, UiTextString::StreamPlaylistItem, UiTextString::StreamPlaylistItems));
+	window->itemCountLabel->tooltipText.assign (UiText::instance->getCountText (count, UiTextString::StreamPlaylistItem, UiTextString::StreamPlaylistItems));
 	window->refreshLayout ();
-	if (window->listChangeCallback.callback) {
-		window->listChangeCallback.callback (window->listChangeCallback.callbackData, window);
-	}
+	window->eventCallback (window->listChangeCallback);
 }
 
 int StreamPlaylistWindow::getItemCount () {
@@ -499,21 +468,11 @@ Widget::Rectangle StreamPlaylistWindow::getRemoveButtonScreenRect () {
 }
 
 void StreamPlaylistWindow::removeButtonClicked (void *windowPtr, Widget *widgetPtr) {
-	StreamPlaylistWindow *window;
-
-	window = (StreamPlaylistWindow *) windowPtr;
-	if (window->removeClickCallback.callback) {
-		window->removeClickCallback.callback (window->removeClickCallback.callbackData, window);
-	}
+	((StreamPlaylistWindow *) windowPtr)->eventCallback (((StreamPlaylistWindow *) windowPtr)->removeClickCallback);
 }
 
 void StreamPlaylistWindow::addItemButtonClicked (void *windowPtr, Widget *widgetPtr) {
-	StreamPlaylistWindow *window;
-
-	window = (StreamPlaylistWindow *) windowPtr;
-	if (window->addItemClickCallback.callback) {
-		window->addItemClickCallback.callback (window->addItemClickCallback.callbackData, window);
-	}
+	((StreamPlaylistWindow *) windowPtr)->eventCallback (((StreamPlaylistWindow *) windowPtr)->addItemClickCallback);
 }
 
 void StreamPlaylistWindow::addItemButtonMouseEntered (void *windowPtr, Widget *widgetPtr) {
@@ -523,9 +482,7 @@ void StreamPlaylistWindow::addItemButtonMouseEntered (void *windowPtr, Widget *w
 	window = (StreamPlaylistWindow *) windowPtr;
 	button = (Button *) widgetPtr;
 	Button::mouseEntered (button, button);
-	if (window->addItemMouseEnterCallback.callback) {
-		window->addItemMouseEnterCallback.callback (window->addItemMouseEnterCallback.callbackData, window);
-	}
+	window->eventCallback (window->addItemMouseEnterCallback);
 }
 
 void StreamPlaylistWindow::addItemButtonMouseExited (void *windowPtr, Widget *widgetPtr) {
@@ -535,9 +492,7 @@ void StreamPlaylistWindow::addItemButtonMouseExited (void *windowPtr, Widget *wi
 	window = (StreamPlaylistWindow *) windowPtr;
 	button = (Button *) widgetPtr;
 	Button::mouseExited (button, button);
-	if (window->addItemMouseExitCallback.callback) {
-		window->addItemMouseExitCallback.callback (window->addItemMouseExitCallback.callbackData, window);
-	}
+	window->eventCallback (window->addItemMouseExitCallback);
 }
 
 Json *StreamPlaylistWindow::createState () {
@@ -645,7 +600,7 @@ Json *StreamPlaylistWindow::createCommand () {
 	StreamPlaylistWindow::setStartPositionDelta ((int) startPositionSlider->value, obj);
 	StreamPlaylistWindow::setItemDisplayDuration ((int) playDurationSlider->value, obj);
 
-	return (App::instance->createCommand (SystemInterface::Command_CreateMediaDisplayIntent, SystemInterface::Constant_Monitor, obj));
+	return (App::instance->createCommand (SystemInterface::Command_CreateMediaDisplayIntent, obj));
 }
 
 void StreamPlaylistWindow::setStartPositionDelta (int startPosition, int *minStartPositionDelta, int *maxStartPositionDelta) {

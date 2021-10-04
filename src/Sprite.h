@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2020 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -35,6 +35,7 @@
 #include <vector>
 #include "SDL2/SDL.h"
 #include "StdString.h"
+#include "OsUtil.h"
 
 class Sprite {
 public:
@@ -49,10 +50,10 @@ public:
 	Sprite *copy ();
 
 	// Load sprite data from png files at the specified path, which is expected to contain numbered png files named 000.png, 001.png, etc. If an image scale value is provided, the operation checks for files named with that suffix (i.e. 000_0.png, 001_0.png) and loads those if they exist. Returns a Result value.
-	int load (const StdString &path, int imageScale = -1);
+	OsUtil::Result load (const StdString &path, int imageScale = -1);
 
 	// Add the provided texture to the sprite's frame set. When the sprite is unloaded, release it from resources using the specified loadPath. Returns a Result value.
-	int addTexture (SDL_Texture *texture, const StdString &loadPath);
+	OsUtil::Result addTexture (SDL_Texture *texture, const StdString &loadPath);
 
 	// Unload previously loaded sprite data
 	void unload ();
