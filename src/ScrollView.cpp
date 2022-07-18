@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -31,13 +31,9 @@
 #include <stdlib.h>
 #include <math.h>
 #include "App.h"
-#include "Log.h"
 #include "StdString.h"
 #include "Ui.h"
-#include "Input.h"
-#include "Sprite.h"
 #include "Widget.h"
-#include "Label.h"
 #include "Panel.h"
 #include "UiConfiguration.h"
 #include "ScrollView.h"
@@ -76,7 +72,6 @@ bool ScrollView::doProcessMouseState (const Widget::MouseState &mouseState) {
 	float dy, delta;
 
 	consumed = Panel::doProcessMouseState (mouseState);
-
 	if (! consumed) {
 		if ((isMouseWheelScrollEnabled && mouseState.isEntered) || isExitedMouseWheelScrollEnabled) {
 			consumed = true;
@@ -100,7 +95,6 @@ bool ScrollView::doProcessMouseState (const Widget::MouseState &mouseState) {
 			}
 		}
 	}
-
 	return (consumed);
 }
 
@@ -108,12 +102,11 @@ void ScrollView::setVerticalScrollBounds (float minY, float maxY) {
 	setViewOriginBounds (0.0f, 0.0f, minY, maxY);
 }
 
-bool ScrollView::isScrolledToBottom () {
+bool ScrollView::isScrolledToBottom (float marginHeight) {
 	if (! isViewOriginBoundEnabled) {
 		return (false);
 	}
-
-	return (viewOriginY >= maxViewOriginY);
+	return (viewOriginY >= (maxViewOriginY - marginHeight));
 }
 
 bool ScrollView::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown) {
@@ -123,7 +116,6 @@ bool ScrollView::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool 
 	if (isShiftDown || isControlDown) {
 		return (false);
 	}
-
 	if (isKeyboardScrollEnabled) {
 		switch (keycode) {
 			case SDLK_UP: {
@@ -155,6 +147,5 @@ bool ScrollView::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool 
 			}
 		}
 	}
-
 	return (false);
 }

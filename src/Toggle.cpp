@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,7 +30,6 @@
 #include "Config.h"
 #include <stdlib.h>
 #include "SDL2/SDL.h"
-#include "Log.h"
 #include "ClassId.h"
 #include "StdString.h"
 #include "App.h"
@@ -102,7 +101,6 @@ void Toggle::setChecked (bool checked, bool shouldSkipChangeCallback) {
 	if (checked == isChecked) {
 		return;
 	}
-
 	isChecked = checked;
 	if (isChecked) {
 		uncheckedButton->isVisible = false;
@@ -126,7 +124,6 @@ void Toggle::setDisabled (bool disabled) {
 	if (disabled == isDisabled) {
 		return;
 	}
-
 	isDisabled = disabled;
 	uncheckedButton->setDisabled (isDisabled);
 	checkedButton->setDisabled (isDisabled);
@@ -164,12 +161,10 @@ bool Toggle::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isCo
 	if (isDisabled || isShiftDown || isControlDown) {
 		return (false);
 	}
-
 	if ((shortcutKey != SDLK_UNKNOWN) && (keycode == shortcutKey)) {
 		setChecked (! isChecked);
 		return (true);
 	}
-
 	return (false);
 }
 
@@ -180,7 +175,6 @@ void Toggle::mouseEntered (void *togglePtr, Widget *widgetPtr) {
 	if (toggle->isDisabled) {
 		return;
 	}
-
 	toggle->isFocused = true;
 	toggle->checkedButton->mouseEnter ();
 	toggle->uncheckedButton->mouseEnter ();
@@ -196,7 +190,6 @@ void Toggle::mouseExited (void *togglePtr, Widget *widgetPtr) {
 	if (toggle->isDisabled) {
 		return;
 	}
-
 	toggle->isFocused = false;
 	toggle->checkedButton->mouseExit ();
 	toggle->uncheckedButton->mouseExit ();
@@ -212,7 +205,6 @@ void Toggle::mousePressed (void *togglePtr, Widget *widgetPtr) {
 	if (toggle->isDisabled) {
 		return;
 	}
-
 	toggle->checkedButton->mousePress ();
 	toggle->uncheckedButton->mousePress ();
 }
@@ -224,7 +216,6 @@ void Toggle::mouseReleased (void *togglePtr, Widget *widgetPtr) {
 	if (toggle->isDisabled) {
 		return;
 	}
-
 	toggle->checkedButton->mouseRelease ();
 	toggle->uncheckedButton->mouseRelease ();
 }
@@ -236,6 +227,5 @@ void Toggle::mouseClicked (void *togglePtr, Widget *widgetPtr) {
 	if (toggle->isDisabled) {
 		return;
 	}
-
 	toggle->setChecked (! toggle->isChecked);
 }

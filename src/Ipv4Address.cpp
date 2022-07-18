@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -31,7 +31,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include "Log.h"
 #include "StdString.h"
 #include "Ipv4Address.h"
 
@@ -51,7 +50,6 @@ StdString Ipv4Address::toString () const {
 	if (! isValid) {
 		return (StdString (""));
 	}
-
 	return (StdString::createSprintf ("%i.%i.%i.%i", octets[0] & 0xFF, octets[1] & 0xFF, octets[2] & 0xFF, octets[3] & 0xFF));
 }
 
@@ -162,7 +160,6 @@ StdString Ipv4Address::getNetmask () const {
 	if ((! isValid) || (netmaskLength < 0)) {
 		return (StdString (""));
 	}
-
 	return (StdString::createSprintf ("%i.%i.%i.%i", netmaskOctets[0] & 0xFF, netmaskOctets[1] & 0xFF, netmaskOctets[2] & 0xFF, netmaskOctets[3] & 0xFF));
 }
 
@@ -172,13 +169,11 @@ StdString Ipv4Address::getBroadcastAddress () const {
 	if ((! isValid) || (netmaskLength < 0)) {
 		return (StdString (""));
 	}
-
 	for (i = 0; i < 4; ++i) {
 		result[i] = octets[i];
 		result[i] &= netmaskOctets[i];
 		result[i] |= ~(netmaskOctets[i]);
 	}
-
 	return (StdString::createSprintf ("%i.%i.%i.%i", result[0] & 0xFF, result[1] & 0xFF, result[2] & 0xFF, result[3] & 0xFF));
 }
 
@@ -190,7 +185,6 @@ bool Ipv4Address::parseNetmask (const StdString &text) {
 	if (! mask.isValid) {
 		return (false);
 	}
-
 	netmask = 0;
 	netmask |= (mask.octets[0] & 0xFF); netmask <<= 8;
 	netmask |= (mask.octets[1] & 0xFF); netmask <<= 8;
@@ -208,6 +202,5 @@ bool Ipv4Address::isLocalhost () const {
 	if (! isValid) {
 		return (false);
 	}
-
 	return ((octets[0] == 127) && (octets[1] == 0) && (octets[2] == 0) && (octets[3] == 1));
 }

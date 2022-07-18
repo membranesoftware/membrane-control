@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -34,7 +34,6 @@
 #include <math.h>
 #include "SDL2/SDL.h"
 #include "App.h"
-#include "Log.h"
 #include "StdString.h"
 #include "Sprite.h"
 #include "SpriteHandle.h"
@@ -79,7 +78,6 @@ void Image::setScale (float scale) {
 	if (scale <= 0.0f) {
 		return;
 	}
-
 	drawScale = scale;
 	resetSize ();
 }
@@ -88,7 +86,6 @@ void Image::setFrame (int frame) {
 	if ((spriteHandle.frame == frame) || (frame < 0) || (frame >= spriteHandle.sprite->frameCount)) {
 		return;
 	}
-
 	spriteHandle.frame = frame;
 	resetSize ();
 }
@@ -105,10 +102,6 @@ void Image::setSpriteDestroy (bool enable) {
 }
 
 void Image::setDrawColor (bool enable, const Color &color) {
-	if (isDrawColorEnabled == enable) {
-		return;
-	}
-
 	isDrawColorEnabled = enable;
 	if (isDrawColorEnabled) {
 		drawColor.assign (color);
@@ -143,7 +136,6 @@ void Image::resetSize () {
 		height = 0.0f;
 		return;
 	}
-
 	width = ((float) tw) * drawScale;
 	height = ((float) th) * drawScale;
 }
@@ -165,6 +157,10 @@ void Image::doUpdate (int msElapsed) {
 	if (translateAlphaValue.isTranslating) {
 		translateAlphaValue.update (msElapsed);
 		drawAlpha = translateAlphaValue.x;
+	}
+
+	if (isDrawColorEnabled) {
+		drawColor.update (msElapsed);
 	}
 }
 

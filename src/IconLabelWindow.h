@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -43,11 +43,15 @@
 
 class IconLabelWindow : public Panel {
 public:
-	IconLabelWindow (Sprite *iconSprite, const StdString &iconText = StdString (""), UiConfiguration::FontType iconFontType = UiConfiguration::BodyFont, const Color &iconTextColor = Color (0.0f, 0.0f, 0.0f));
+	IconLabelWindow (Sprite *iconSprite, const StdString &iconText = StdString (""), UiConfiguration::FontType textFontType = UiConfiguration::BodyFont, const Color &textColor = Color (0.0f, 0.0f, 0.0f));
 	~IconLabelWindow ();
 
 	// Read-write data members
 	Widget::EventCallbackContext textClickCallback;
+
+	// Read-only data members
+	float textLabelX;
+	UiConfiguration::FontType textFontType;
 
 	// Set the window's text
 	void setText (const StdString &labelText);

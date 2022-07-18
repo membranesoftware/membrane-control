@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -33,7 +33,9 @@
 #define ICON_CARD_WINDOW_H
 
 #include "StdString.h"
+#include "UiConfiguration.h"
 #include "Panel.h"
+#include "Color.h"
 #include "Sprite.h"
 #include "TextFlow.h"
 #include "Label.h"
@@ -42,14 +44,23 @@
 
 class IconCardWindow : public Panel {
 public:
-	IconCardWindow (Sprite *iconSprite, const StdString &cardName = StdString (""), const StdString &cardSubtitle = StdString (""), const StdString &cardDetailText = StdString (""));
+	IconCardWindow (Sprite *iconSprite);
 	virtual ~IconCardWindow ();
 
 	// Read-write data members
 	StdString itemId;
 
+	// Set the content of the card's name label
+	void setName (const StdString &text, UiConfiguration::FontType fontType = UiConfiguration::NoFont);
+
+	// Set the content of the card's subtitle label
+	void setSubtitle (const StdString &text, UiConfiguration::FontType fontType = UiConfiguration::NoFont);
+
+	// Set the text color of the card's subtitle label
+	void setSubtitleColor (const Color &color);
+
 	// Set the content of the card's detail text area
-	void setDetailText (const StdString &text);
+	void setDetailText (const StdString &text, UiConfiguration::FontType fontType = UiConfiguration::NoFont);
 
 	// Set the content of the card's link element
 	void setLink (const StdString &text, const StdString &url);

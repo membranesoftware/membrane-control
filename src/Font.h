@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -81,7 +81,12 @@ public:
 		char lastCharacter;
 		float textWidth;
 		bool isComplete;
-		Metrics (): textLength (0), textPosition (0), lastCharacter (0), textWidth (0.0f), isComplete (false) { }
+		Metrics ():
+			textLength (0),
+			textPosition (0),
+			lastCharacter (0),
+			textWidth (0.0f),
+			isComplete (false) { }
 	};
 	// Compute font metrics for the provided text and store the resulting values in metrics. textPosition indicates the last character position that should be considered, with a negative value indicating the entire string.
 	void resetMetrics (Font::Metrics *metrics, const StdString &text = StdString (""), int textPosition = -1);

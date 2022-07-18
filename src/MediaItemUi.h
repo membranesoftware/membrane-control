@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -48,14 +48,19 @@ public:
 		ConfigureStreamButtonSprite = 0,
 		TimeIconSprite = 1,
 		AttributesIconSprite = 2,
-		DurationIconSprite = 3
+		DurationIconSprite = 3,
+		CreateTagButtonSprite = 4
 	};
 
 	// Card view row numbers
 	enum {
 		InfoRow = 0,
-		ImageRow = 1
+		TagButtonRow = 1,
+		TagRow = 2,
+		ImageRow = 3
 	};
+
+	static const float TextWidthMultiplier;
 
 	// Prefs keys
 	static const char *VideoQualityKey;
@@ -75,6 +80,7 @@ public:
 	int64_t bitrate;
 	int frameWidth;
 	int frameHeight;
+	float frameRate;
 	StdString thumbnailPath;
 	int thumbnailCount;
 	int64_t mediaSize;
@@ -90,7 +96,7 @@ protected:
 	Widget *createBreadcrumbWidget ();
 
 	// Load subclass-specific resources and return a result value
-	int doLoad ();
+	OsUtil::Result doLoad ();
 
 	// Unload subclass-specific resources
 	void doUnload ();
@@ -124,15 +130,22 @@ private:
 	static void configureStreamButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void configureStreamOptionChanged (void *uiPtr, Widget *widgetPtr);
 	static void configureStreamActionClosed (void *uiPtr, Widget *widgetPtr);
-	static void configureMediaStreamComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
 	static void removeMediaActionClosed (void *uiPtr, Widget *widgetPtr);
-	static void removeMediaComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
+	static void removeMediaCommandComplete (Ui *invokeUi, const StdString &agentId, Json *invokeCommand, Json *responseCommand, bool isResponseCommandSuccess);
+	static void createTagButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void createTagActionClosed (void *uiPtr, Widget *widgetPtr);
+	static void removeTagButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void removeTagActionClosed (void *uiPtr, Widget *widgetPtr);
+	static void invokeMediaCommandComplete (Ui *invokeUi, const StdString &agentId, Json *invokeCommand, Json *responseCommand, bool isResponseCommandSuccess);
 
 	// Find the source MediaItem record and populate the interface based on its fields
 	void syncMediaItem ();
 
-	bool isRecordSynced;
 	int cardDetail;
+	WidgetHandle nameWindow;
+	WidgetHandle attributesWindow;
+	WidgetHandle mediaSizeWindow;
+	WidgetHandle durationWindow;
 	WidgetHandle timelineWindow;
 	WidgetHandle configureStreamSizeIcon;
 	HashMap streamServerAgentMap;

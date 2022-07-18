@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -98,7 +98,10 @@ private:
 	struct Translation {
 		float deltaX, deltaY;
 		int duration;
-		Translation (): deltaX (0.0f), deltaY (0.0f), duration (0) { }
+		Translation ():
+			deltaX (0.0f),
+			deltaY (0.0f),
+			duration (0) { }
 	};
 	std::queue<Position::Translation> translationQueue;
 };

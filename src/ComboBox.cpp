@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -31,7 +31,6 @@
 #include <stdlib.h>
 #include <math.h>
 #include "App.h"
-#include "Log.h"
 #include "StdString.h"
 #include "Ui.h"
 #include "Input.h"
@@ -79,7 +78,6 @@ void ComboBox::setDisabled (bool disabled) {
 	if (disabled == isDisabled) {
 		return;
 	}
-
 	isDisabled = disabled;
 	if (isDisabled) {
 		setFocused (false);
@@ -382,11 +380,9 @@ void ComboBox::expand () {
 	if (isExpanded || isDisabled) {
 		return;
 	}
-
 	if (itemList.size () < 2) {
 		return;
 	}
-
 	scrollview = new ScrollView ();
 	scrollview->setFillBg (true, normalBgColor);
 	scrollview->setBorder (true, normalBorderColor);
@@ -412,7 +408,6 @@ void ComboBox::expand () {
 			}
 			++count;
 		}
-
 		++i;
 	}
 
@@ -468,7 +463,6 @@ void ComboBox::scrollBarUpdated (void *comboBoxPtr, int msElapsed, Widget *widge
 	if (! scrollview) {
 		return;
 	}
-
 	scrollbar->setPosition (scrollview->viewOriginY, true);
 	scrollbar->position.assignY (scrollview->viewOriginY);
 }

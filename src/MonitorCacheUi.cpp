@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,7 +29,6 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include "Log.h"
 #include "StdString.h"
 #include "App.h"
 #include "Resource.h"
@@ -64,6 +63,8 @@ const char *MonitorCacheUi::ImageSizeKey = "MonitorCache_ImageSize";
 const char *MonitorCacheUi::ExpandedAgentKey = "MonitorCache_ExpandedAgent";
 const char *MonitorCacheUi::StartPositionKey = "MonitorCache_StartPosition";
 const char *MonitorCacheUi::PlayDurationKey = "MonitorCache_PlayDuration";
+
+const float MonitorCacheUi::BottomPaddingHeightScale = 0.12f;
 
 MonitorCacheUi::MonitorCacheUi (const StdString &agentId, const StdString &agentName)
 : Ui ()
@@ -104,7 +105,7 @@ void MonitorCacheUi::setHelpWindowContent (HelpWindow *helpWindow) {
 	helpWindow->addTopicLink (UiText::instance->getText (UiTextString::SearchForHelp).capitalized (), App::getHelpUrl (""));
 }
 
-int MonitorCacheUi::doLoad () {
+OsUtil::Result MonitorCacheUi::doLoad () {
 	HashMap *prefs;
 
 	streamSetSize = -1;
@@ -117,8 +118,9 @@ int MonitorCacheUi::doLoad () {
 	cardView->setRowItemMarginSize (MonitorCacheUi::StreamRow, 0.0f);
 	cardView->setRowSelectionAnimated (MonitorCacheUi::StreamRow, true);
 	cardView->setRowDetail (MonitorCacheUi::StreamRow, cardDetail);
+	cardView->setBottomPadding (((float) App::instance->windowHeight) * MonitorCacheUi::BottomPaddingHeightScale);
 
-	return (OsUtil::Result::Success);
+	return (OsUtil::Success);
 }
 
 void MonitorCacheUi::doUnload () {
@@ -225,9 +227,10 @@ void MonitorCacheUi::doUpdate (int msElapsed) {
 
 	if (recordReceiveCount > 0) {
 		now = OsUtil::getTime ();
-		if ((recordReceiveCount > 16) || (now >= nextRecordSyncTime)) {
+		if ((recordReceiveCount > 16) || ((nextRecordSyncTime > 0) && (now >= nextRecordSyncTime))) {
 			App::instance->shouldSyncRecordStore = true;
 			recordReceiveCount = 0;
+			nextRecordSyncTime = 0;
 		}
 	}
 }
@@ -262,7 +265,9 @@ void MonitorCacheUi::doSyncRecordStore () {
 	icon = (IconCardWindow *) emptyStreamWindow.widget;
 	if ((streamCount <= 0) && (streamSetSize == 0)) {
 		if (! icon) {
-			icon = new IconCardWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeStreamIconSprite), UiText::instance->getText (UiTextString::MonitorCacheUiEmptyStreamStatusTitle), StdString (""), UiText::instance->getText (UiTextString::MonitorCacheUiEmptyStreamStatusText));
+			icon = new IconCardWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeStreamIconSprite));
+			icon->setName (UiText::instance->getText (UiTextString::MonitorCacheUiEmptyStreamStatusTitle));
+			icon->setDetailText (UiText::instance->getText (UiTextString::MonitorCacheUiEmptyStreamStatusText));
 			icon->setLink (UiText::instance->getText (UiTextString::LearnMore).capitalized (), App::getHelpUrl ("media-streaming"));
 			emptyStreamWindow.assign (icon);
 
@@ -289,7 +294,6 @@ void MonitorCacheUi::doSyncRecordStore_processStreamItem (void *uiPtr, Json *rec
 	if (! ui->agentId.equals (SystemInterface::instance->getCommandAgentId (record))) {
 		return;
 	}
-
 	++(ui->streamCount);
 	if (! ui->cardView->contains (recordId)) {
 		stream = new StreamWindow (record);
@@ -343,7 +347,10 @@ void MonitorCacheUi::receiveStreamItem (void *uiPtr, const StdString &agentId, J
 	ui = (MonitorCacheUi *) uiPtr;
 	RecordStore::instance->addRecord (command);
 	++(ui->recordReceiveCount);
-	ui->nextRecordSyncTime = OsUtil::getTime () + UiConfiguration::instance->recordSyncDelayDuration;
+	if (ui->recordReceiveCount == 1) {
+		App::instance->shouldSyncRecordStore = true;
+	}
+	ui->resetNextRecordSyncTime ();
 }
 
 void MonitorCacheUi::imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr) {
@@ -355,12 +362,11 @@ void MonitorCacheUi::imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	if (ui->clearActionPopup (widgetPtr, MonitorCacheUi::imageSizeButtonClicked)) {
 		return;
 	}
-
 	menu = new Menu ();
 	menu->isClickDestroyEnabled = true;
-	menu->addItem (UiText::instance->getText (UiTextString::Small).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallSizeButtonSprite), MonitorCacheUi::smallImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::LowDetail);
-	menu->addItem (UiText::instance->getText (UiTextString::Medium).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::MediumSizeButtonSprite), MonitorCacheUi::mediumImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::MediumDetail);
-	menu->addItem (UiText::instance->getText (UiTextString::Large).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeSizeButtonSprite), MonitorCacheUi::largeImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::HighDetail);
+	menu->addItem (UiText::instance->getText (UiTextString::Small).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallSizeButtonSprite), Widget::EventCallbackContext (MonitorCacheUi::smallImageSizeActionClicked, ui), 0, ui->cardDetail == CardView::LowDetail);
+	menu->addItem (UiText::instance->getText (UiTextString::Medium).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::MediumSizeButtonSprite), Widget::EventCallbackContext (MonitorCacheUi::mediumImageSizeActionClicked, ui), 0, ui->cardDetail == CardView::MediumDetail);
+	menu->addItem (UiText::instance->getText (UiTextString::Large).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeSizeButtonSprite), Widget::EventCallbackContext (MonitorCacheUi::largeImageSizeActionClicked, ui), 0, ui->cardDetail == CardView::HighDetail);
 
 	ui->showActionPopup (menu, widgetPtr, MonitorCacheUi::imageSizeButtonClicked, widgetPtr->getScreenRect (), Ui::RightEdgeAlignment, Ui::BottomOfAlignment);
 }
@@ -437,7 +443,6 @@ void MonitorCacheUi::streamWindowImageClicked (void *uiPtr, Widget *widgetPtr) {
 	if (! target) {
 		return;
 	}
-
 	if (! target->isSelected) {
 		ui->setSelectedStream (target);
 	}
@@ -452,7 +457,6 @@ void MonitorCacheUi::streamWindowViewButtonClicked (void *uiPtr, Widget *widgetP
 	if (! target) {
 		return;
 	}
-
 	ui = (MonitorCacheUi *) uiPtr;
 	ui->targetStreamWindow.assign (target);
 	itemui = new StreamItemUi (target->streamId, target->streamName);
@@ -467,7 +471,6 @@ void MonitorCacheUi::streamWindowRemoveButtonClicked (void *uiPtr, Widget *widge
 	IconLabelWindow *icon;
 
 	ui = (MonitorCacheUi *) uiPtr;
-
 	App::instance->uiStack.suspendMouseHover ();
 	if (ui->clearActionPopup (widgetPtr, MonitorCacheUi::streamWindowRemoveButtonClicked)) {
 		return;
@@ -494,7 +497,6 @@ void MonitorCacheUi::streamWindowRemoveActionClosed (void *uiPtr, Widget *widget
 	ActionWindow *action;
 	StreamWindow *stream;
 	Json *params;
-	int result;
 
 	ui = (MonitorCacheUi *) uiPtr;
 	action = (ActionWindow *) widgetPtr;
@@ -505,44 +507,26 @@ void MonitorCacheUi::streamWindowRemoveActionClosed (void *uiPtr, Widget *widget
 	if (! stream) {
 		return;
 	}
-
 	params = new Json ();
 	params->set ("id", stream->streamId);
-
-	ui->retain ();
-	result = AgentControl::instance->invokeCommand (stream->agentId, App::instance->createCommand (SystemInterface::Command_RemoveStream, params), MonitorCacheUi::removeStreamComplete, ui);
-	if (result != OsUtil::Result::Success) {
-		ui->release ();
-		Log::debug ("Failed to invoke RemoveStream command; err=%i agentId=\"%s\"", result, stream->agentId.c_str ());
-		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
-		return;
-	}
+	ui->invokeCommand (CommandHistory::instance->removeStream (StringList (stream->agentId), 1, stream->streamName), stream->agentId, App::instance->createCommand (SystemInterface::Command_RemoveStream, params), MonitorCacheUi::removeStreamComplete);
 }
 
-void MonitorCacheUi::removeStreamComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand) {
+void MonitorCacheUi::removeStreamComplete (Ui *invokeUi, const StdString &agentId, Json *invokeCommand, Json *responseCommand, bool isResponseCommandSuccess) {
 	MonitorCacheUi *ui;
-	StdString agentname, text, id;
+	StdString streamid;
 
-	ui = (MonitorCacheUi *) uiPtr;
-
-	if (responseCommand && (SystemInterface::instance->getCommandId (responseCommand) == SystemInterface::CommandId_CommandResult) && SystemInterface::instance->getCommandBooleanParam (responseCommand, "success", false)) {
-		id = SystemInterface::instance->getCommandStringParam (invokeCommand, "id", "");
-		if (! id.empty ()) {
-			RecordStore::instance->removeRecord (id);
-			ui->cardView->removeItem (id);
+	ui = (MonitorCacheUi *) invokeUi;
+	if (isResponseCommandSuccess) {
+		streamid = SystemInterface::instance->getCommandStringParam (invokeCommand, "id", "");
+		if (! streamid.empty ()) {
+			RecordStore::instance->removeRecord (streamid);
+			AgentControl::instance->refreshAgentStatus (agentId);
+			ui->cardView->removeItem (streamid);
+			--(ui->streamSetSize);
+			App::instance->shouldSyncRecordStore = true;
 		}
-		agentname = AgentControl::instance->getAgentDisplayName (agentId);
-		if (! agentname.empty ()) {
-			text.appendSprintf ("%s: ", agentname.c_str ());
-		}
-		text.append (UiText::instance->getText (UiTextString::RemovedStream).capitalized ());
-		App::instance->uiStack.showSnackbar (text);
-		AgentControl::instance->refreshAgentStatus (agentId);
 	}
-	else {
-		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
-	}
-	ui->release ();
 }
 
 void MonitorCacheUi::streamItemUiThumbnailClicked (void *uiPtr, Widget *widgetPtr) {
@@ -556,7 +540,6 @@ void MonitorCacheUi::streamItemUiThumbnailClicked (void *uiPtr, Widget *widgetPt
 	if ((! thumbnail) || (! target)) {
 		return;
 	}
-
 	target->setThumbnailIndex (thumbnail->thumbnailIndex);
 	target->setDisplayTimestamp (thumbnail->thumbnailTimestamp);
 	ui->setSelectedStream (target);
@@ -569,6 +552,12 @@ void MonitorCacheUi::setSelectedStream (StreamWindow *streamWindow) {
 	streamWindow->setSelected (true);
 }
 
+void MonitorCacheUi::resetNextRecordSyncTime () {
+	if (nextRecordSyncTime <= 0) {
+		nextRecordSyncTime = OsUtil::getTime () + UiConfiguration::instance->recordSyncDelayDuration;
+	}
+}
+
 void MonitorCacheUi::unselectStreamWindow (void *uiPtr, Widget *widgetPtr) {
 	MonitorCacheUi *ui;
 	StreamWindow *stream;
@@ -578,7 +567,6 @@ void MonitorCacheUi::unselectStreamWindow (void *uiPtr, Widget *widgetPtr) {
 	if (! stream) {
 		return;
 	}
-
 	if (stream != ui->selectedStreamWindow.widget) {
 		stream->setSelected (false);
 	}
@@ -669,69 +657,42 @@ void MonitorCacheUi::commandButtonMouseExited (void *uiPtr, Widget *widgetPtr) {
 	}
 }
 
+void MonitorCacheUi::invokeMonitorCommandComplete (Ui *invokeUi, const StdString &agentId, Json *invokeCommand, Json *responseCommand, bool isResponseCommandSuccess) {
+	if (isResponseCommandSuccess) {
+		AgentControl::instance->refreshAgentStatus (agentId);
+	}
+}
+
 void MonitorCacheUi::stopButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	MonitorCacheUi *ui;
-	Json *command;
-	int result;
 
 	ui = (MonitorCacheUi *) uiPtr;
-	command = App::instance->createCommand (SystemInterface::Command_ClearDisplay);
-	result = AgentControl::instance->invokeCommand (ui->agentId, command);
-	if (result != OsUtil::Result::Success) {
-		Log::debug ("Failed to invoke ClearDisplay command; err=%i agentId=\"%s\"", result, ui->agentId.c_str ());
-		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
-	}
-	else {
-		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InvokeClearDisplayMessage));
-	}
-
-	AgentControl::instance->refreshAgentStatus (ui->agentId);
+	ui->invokeCommand (CommandHistory::instance->clearDisplay (StringList (ui->agentId)), ui->agentId, App::instance->createCommand (SystemInterface::Command_ClearDisplay), MonitorCacheUi::invokeMonitorCommandComplete);
 }
 
 void MonitorCacheUi::pauseButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	MonitorCacheUi *ui;
-	Json *command;
-	int result;
 
 	ui = (MonitorCacheUi *) uiPtr;
-	command = App::instance->createCommand (SystemInterface::Command_PauseMedia);
-	result = AgentControl::instance->invokeCommand (ui->agentId, command);
-	if (result != OsUtil::Result::Success) {
-		Log::debug ("Failed to invoke PauseMedia command; err=%i agentId=\"%s\"", result, ui->agentId.c_str ());
-		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
-	}
-	else {
-		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InvokePauseMediaMessage));
-	}
-
-	AgentControl::instance->refreshAgentStatus (ui->agentId);
+	ui->invokeCommand (CommandHistory::instance->pauseMedia (StringList (ui->agentId)), ui->agentId, App::instance->createCommand (SystemInterface::Command_PauseMedia), MonitorCacheUi::invokeMonitorCommandComplete);
 }
 
 void MonitorCacheUi::playButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	MonitorCacheUi *ui;
 	StreamWindow *stream;
 	Json *params;
-	int result;
+	float startpos;
 
 	ui = (MonitorCacheUi *) uiPtr;
 	stream = StreamWindow::castWidget (ui->selectedStreamWindow.widget);
 	if (! stream) {
 		return;
 	}
-
+	startpos = (stream->displayTimestamp > 0.0f) ? (stream->displayTimestamp / 1000.0f) : 0.0f;
 	params = new Json ();
 	params->set ("streamId", stream->streamId);
-	params->set ("startPosition", (stream->displayTimestamp > 0.0f) ? (stream->displayTimestamp / 1000.0f) : 0.0f);
-	result = AgentControl::instance->invokeCommand (ui->agentId, App::instance->createCommand (SystemInterface::Command_PlayCacheStream, params));
-	if (result != OsUtil::Result::Success) {
-		Log::debug ("Failed to invoke PlayCacheStream command; err=%i agentId=\"%s\"", result, ui->agentId.c_str ());
-		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
-	}
-	else {
-		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InvokePlayMediaMessage));
-	}
-
-	AgentControl::instance->refreshAgentStatus (ui->agentId);
+	params->set ("startPosition", startpos);
+	ui->invokeCommand (CommandHistory::instance->playCacheStream (StringList (ui->agentId), stream->streamName, stream->streamId, startpos), ui->agentId, App::instance->createCommand (SystemInterface::Command_PlayCacheStream, params), MonitorCacheUi::invokeMonitorCommandComplete);
 }
 
 void MonitorCacheUi::playAllButtonClicked (void *uiPtr, Widget *widgetPtr) {
@@ -788,39 +749,32 @@ void MonitorCacheUi::playAllActionClosed (void *uiPtr, Widget *widgetPtr) {
 	MonitorCacheUi *ui;
 	ActionWindow *action;
 	HashMap *prefs;
-	Json *params, *command;
-	int result, startposition, playduration;
+	Json *params;
+	int startposition, playduration, minstartpos, maxstartpos, minduration, maxduration;
 
 	ui = (MonitorCacheUi *) uiPtr;
 	action = (ActionWindow *) widgetPtr;
 	if ((! action->isConfirmed) || (ui->streamCount <= 0)) {
 		return;
 	}
-
 	params = new Json ();
 	params->set ("displayName", UiText::instance->getText (UiTextString::Cache).capitalized ());
 	params->set ("isShuffle", true);
 
 	startposition = action->getNumberValue (UiText::instance->getText (UiTextString::StartPosition).capitalized (), (int) StreamPlaylistWindow::ZeroStartPosition);
-	StreamPlaylistWindow::setStartPositionDelta (startposition, params);
+	StreamPlaylistWindow::setStartPositionDelta (startposition, &minstartpos, &maxstartpos);
 
 	playduration = action->getNumberValue (UiText::instance->getText (UiTextString::PlayDuration).capitalized (), (int) StreamPlaylistWindow::MediumPlayDuration);
-	StreamPlaylistWindow::setItemDisplayDuration (playduration, params);
+	StreamPlaylistWindow::setItemDisplayDuration (playduration, &minduration, &maxduration);
 
-	command = App::instance->createCommand (SystemInterface::Command_CreateStreamCacheDisplayIntent, params);
-	result = AgentControl::instance->invokeCommand (ui->agentId, command);
-	if (result != OsUtil::Result::Success) {
-		Log::debug ("Failed to invoke CreateMediaDisplayIntent command; err=%i agentId=\"%s\"", result, ui->agentId.c_str ());
-		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
-	}
-	else {
-		prefs = App::instance->lockPrefs ();
-		prefs->insert (MonitorCacheUi::StartPositionKey, startposition);
-		prefs->insert (MonitorCacheUi::PlayDurationKey, playduration);
-		App::instance->unlockPrefs ();
+	params->set ("minStartPositionDelta", minstartpos);
+	params->set ("maxStartPositionDelta", maxstartpos);
+	params->set ("minItemDisplayDuration", minduration);
+	params->set ("maxItemDisplayDuration", maxduration);
+	ui->invokeCommand (CommandHistory::instance->createStreamCacheDisplayIntent (StringList (ui->agentId), minstartpos, maxstartpos, minduration, maxduration), ui->agentId, App::instance->createCommand (SystemInterface::Command_CreateStreamCacheDisplayIntent, params), MonitorCacheUi::invokeMonitorCommandComplete);
 
-		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::MonitorCacheUiWritePlaylistMessage));
-	}
-
-	AgentControl::instance->refreshAgentStatus (ui->agentId);
+	prefs = App::instance->lockPrefs ();
+	prefs->insert (MonitorCacheUi::StartPositionKey, startposition);
+	prefs->insert (MonitorCacheUi::PlayDurationKey, playduration);
+	App::instance->unlockPrefs ();
 }

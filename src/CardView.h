@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -60,9 +60,14 @@ public:
 
 	// Read-only data members
 	float cardAreaWidth;
+	float cardAreaBottomPadding;
+	float itemMarginSize;
 
 	// Set the size of the viewable area
 	virtual void setViewSize (float viewWidth, float viewHeight);
+
+	// Set the size of padding space that should be added to the bottom of the view
+	void setBottomPadding (float paddingSize);
 
 	// Set the size of margin space that should be inserted between items in the view
 	void setItemMarginSize (float marginSize);
@@ -134,6 +139,9 @@ public:
 	// Process all items in the specified row of the view by executing the provided function, optionally resetting widget positions afterward
 	void processRowItems (int row, Widget::EventCallback fn, void *fnData, bool shouldRefreshLayout = false);
 
+	// Change the view's vertical scroll position to display the specified row, adding an optional position delta
+	void scrollToRow (int row, float positionDeltaY = 0.0f);
+
 	// Change the view's vertical scroll position to display the specified item
 	void scrollToItem (const StdString &itemId);
 
@@ -160,7 +168,11 @@ private:
 		int row;
 		bool isHighlighted;
 		bool isAnimationStarted;
-		Item (): panel (NULL), row (-1), isHighlighted (false), isAnimationStarted (false) { }
+		Item ():
+			panel (NULL),
+			row (-1),
+			isHighlighted (false),
+			isAnimationStarted (false) { }
 	};
 
 	struct Row {
@@ -170,8 +182,17 @@ private:
 		bool isSelectionAnimated;
 		int itemCount;
 		int layout;
+		float positionY;
 		float maxItemWidth;
-		Row (): headerPanel (NULL), itemMarginSize (-1.0f), isReverseSorted (false), isSelectionAnimated (false), itemCount (0), layout (-1), maxItemWidth (0.0f) { }
+		Row ():
+			headerPanel (NULL),
+			itemMarginSize (-1.0f),
+			isReverseSorted (false),
+			isSelectionAnimated (false),
+			itemCount (0),
+			layout (Panel::NoLayout),
+			positionY (0.0f),
+			maxItemWidth (0.0f) { }
 	};
 
 	// Sort the item list and populate secondary data structures. This method must be invoked only while holding a lock on itemMutex.
@@ -189,7 +210,6 @@ private:
 	static bool compareItemsAscending (const CardView::Item &a, const CardView::Item &b);
 	static bool compareItemsDescending (const CardView::Item &a, const CardView::Item &b);
 
-	float itemMarginSize;
 	SDL_mutex *itemMutex;
 	std::list<CardView::Item> itemList;
 

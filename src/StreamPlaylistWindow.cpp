@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -129,7 +129,7 @@ StreamPlaylistWindow::StreamPlaylistWindow (SpriteGroup *mediaUiSpriteGroup)
 	itemListView->isVisible = false;
 
 	shuffleToggle = (ToggleWindow *) addWidget (new ToggleWindow (new Toggle ()));
-	shuffleToggle->setIcon (sprites->getSprite (MediaUi::ShuffleIconSprite));
+	shuffleToggle->setIcon (sprites ? sprites->getSprite (MediaUi::ShuffleIconSprite) : UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallErrorIconSprite));
 	shuffleToggle->setRightAligned (true);
 	shuffleToggle->setImageColor (UiConfiguration::instance->flatButtonTextColor);
 	shuffleToggle->setMouseHoverTooltip (UiText::instance->getText (UiTextString::ShuffleTooltip));
@@ -140,7 +140,7 @@ StreamPlaylistWindow::StreamPlaylistWindow (SpriteGroup *mediaUiSpriteGroup)
 		slider->addSnapValue ((float) i);
 	}
 	startPositionSlider = (SliderWindow *) addWidget (new SliderWindow (slider));
-	startPositionSlider->setIcon (sprites->getSprite (MediaUi::StartPositionIconSprite));
+	startPositionSlider->setIcon (sprites ? sprites->getSprite (MediaUi::StartPositionIconSprite) : UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallErrorIconSprite));
 	startPositionSlider->setTrackWidthScale (0.75f);
 	startPositionSlider->setMouseHoverTooltip (UiText::instance->getText (UiTextString::StartPosition).capitalized ());
 	startPositionSlider->setValueNameFunction (StreamPlaylistWindow::startPositionSliderValueName);
@@ -152,7 +152,7 @@ StreamPlaylistWindow::StreamPlaylistWindow (SpriteGroup *mediaUiSpriteGroup)
 		slider->addSnapValue ((float) i);
 	}
 	playDurationSlider = (SliderWindow *) addWidget (new SliderWindow (slider));
-	playDurationSlider->setIcon (sprites->getSprite (MediaUi::DurationIconSprite));
+	playDurationSlider->setIcon (sprites ? sprites->getSprite (MediaUi::DurationIconSprite) : UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallErrorIconSprite));
 	playDurationSlider->setTrackWidthScale (0.75f);
 	playDurationSlider->setMouseHoverTooltip (UiText::instance->getText (UiTextString::PlayDuration).capitalized ());
 	playDurationSlider->setValueNameFunction (StreamPlaylistWindow::playDurationSliderValueName);
@@ -165,7 +165,7 @@ StreamPlaylistWindow::StreamPlaylistWindow (SpriteGroup *mediaUiSpriteGroup)
 	removeButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::DeletePlaylist).capitalized ());
 	removeButton->isVisible = false;
 
-	addItemButton = (Button *) addWidget (new Button (sprites->getSprite (MediaUi::AddPlaylistItemButtonSprite)));
+	addItemButton = (Button *) addWidget (new Button (sprites ? sprites->getSprite (MediaUi::AddPlaylistItemButtonSprite) : UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::OkButtonSprite)));
 	addItemButton->mouseClickCallback = Widget::EventCallbackContext (StreamPlaylistWindow::addItemButtonClicked, this);
 	addItemButton->mouseEnterCallback = Widget::EventCallbackContext (StreamPlaylistWindow::addItemButtonMouseEntered, this);
 	addItemButton->mouseExitCallback = Widget::EventCallbackContext (StreamPlaylistWindow::addItemButtonMouseExited, this);

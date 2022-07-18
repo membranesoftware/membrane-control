@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -32,7 +32,6 @@
 #include <vector>
 #include "SDL2/SDL.h"
 #include "App.h"
-#include "Log.h"
 #include "OsUtil.h"
 #include "Input.h"
 
@@ -145,7 +144,7 @@ OsUtil::Result Input::start () {
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_LGUI, false));
 	keyDownMap.insert (std::pair<SDL_Keycode, bool> (SDLK_RGUI, false));
 #endif
-	return (OsUtil::Result::Success);
+	return (OsUtil::Success);
 }
 
 void Input::stop () {

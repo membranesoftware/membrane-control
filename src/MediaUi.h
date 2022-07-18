@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -62,7 +62,9 @@ public:
 		StartPositionIconSprite = 12,
 		DurationIconSprite = 13,
 		ShuffleIconSprite = 14,
-		PauseButtonSprite = 15
+		PauseButtonSprite = 15,
+		AddTagButtonSprite = 16,
+		SearchStatusIconSprite = 17
 	};
 
 	// Card view row numbers
@@ -82,7 +84,8 @@ public:
 	enum {
 		MonitorMode = 0,
 		StreamMode = 1,
-		ModeCount = 2
+		TagMode = 2,
+		ModeCount = 3
 	};
 
 	// State values for findMediaStreamsMap
@@ -117,6 +120,15 @@ public:
 	// Execute operations appropriate when an agent control link client becomes connected
 	void handleLinkClientConnect (const StdString &agentId);
 
+	// Execute an interface action to open the named widget and return a boolean value indicating if the widget was found
+	bool openWidget (const StdString &targetName);
+
+	// Execute an interface action to select the named widget and return a boolean value indicating if the widget was found
+	bool selectWidget (const StdString &targetName);
+
+	// Execute an interface action to unselect the named widget and return a boolean value indicating if the widget was found
+	bool unselectWidget (const StdString &targetName);
+
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
 	StdString getSpritePath ();
@@ -125,7 +137,7 @@ protected:
 	Widget *createBreadcrumbWidget ();
 
 	// Load subclass-specific resources and return a result value
-	int doLoad ();
+	OsUtil::Result doLoad ();
 
 	// Unload subclass-specific resources
 	void doUnload ();
@@ -191,6 +203,7 @@ private:
 	static void modeButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void monitorModeActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void streamModeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void tagModeActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr);
 	static void commandButtonMouseExited (void *uiPtr, Widget *widgetPtr);
 	static void playButtonClicked (void *uiPtr, Widget *widgetPtr);
@@ -200,11 +213,12 @@ private:
 	static void configureStreamButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void configureStreamActionClosed (void *uiPtr, Widget *widgetPtr);
 	static void configureStreamOptionChanged (void *uiPtr, Widget *widgetPtr);
-	static void configureMediaStreamComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
+	static void configureMediaStreamComplete (Ui *invokeUi, const StdString &agentId, Json *invokeCommand, Json *responseCommand, bool isResponseCommandSuccess);
 	static void cacheStreamButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void cacheStreamActionClosed (void *uiPtr, Widget *widgetPtr);
-	static void deleteStreamButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void deleteStreamActionClosed (void *uiPtr, Widget *widgetPtr);
+	static void removeStreamButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void removeStreamActionClosed (void *uiPtr, Widget *widgetPtr);
+	static void removeStreamComplete (Ui *invokeUi, const StdString &agentId, Json *invokeCommand, Json *responseCommand, bool isResponseCommandSuccess);
 	static void selectAllButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void selectMediaWindow (void *uiPtr, Widget *widgetPtr);
 	static void createPlaylistButtonClicked (void *uiPtr, Widget *widgetPtr);
@@ -218,16 +232,25 @@ private:
 	static void playlistAddItemActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void playlistAddItemMouseEntered (void *uiPtr, Widget *widgetPtr);
 	static void playlistAddItemMouseExited (void *uiPtr, Widget *widgetPtr);
+	static void addTagButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void addTagActionClosed (void *uiPtr, Widget *widgetPtr);
+	static void removeTagButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void removeTagActionClosed (void *uiPtr, Widget *widgetPtr);
 	static void receiveFindMediaItemsResult (void *uiPtr, const StdString &agentId, Json *command);
 	static void receiveMediaItem (void *uiPtr, const StdString &agentId, Json *command);
 	static void receiveFindMediaStreamsResult (void *uiPtr, const StdString &agentId, Json *command);
 	static void receiveStreamItem (void *uiPtr, const StdString &agentId, Json *command);
+	static void invokeMonitorCommandComplete (Ui *invokeUi, const StdString &agentId, Json *invokeCommand, Json *responseCommand, bool isResponseCommandSuccess);
+	static void invokeMediaCommandComplete (Ui *invokeUi, const StdString &agentId, Json *invokeCommand, Json *responseCommand, bool isResponseCommandSuccess);
 
 	struct MediaServerInfo {
 		int resultOffset;
 		int setSize;
 		int recordCount;
-		MediaServerInfo (): resultOffset (0), setSize (0), recordCount (0) { }
+		MediaServerInfo ():
+			resultOffset (0),
+			setSize (0),
+			recordCount (0) { }
 	};
 
 	// Return a mediaServerMap iterator positioned at the specified entry, creating it if it doesn't already exist. This method must be invoked only while holding a lock on mediaServerMapMutex.
@@ -260,8 +283,17 @@ private:
 	// Reset checked states for row expand toggles, as appropriate for item expand state
 	void resetExpandToggles ();
 
+	// Reset state of search status widgets
+	void resetSearchStatus ();
+
+	// Set the time of the next record sync if it isn't already assigned
+	void resetNextRecordSyncTime ();
+
 	// Return the total stream data size for all selected media items
 	int64_t getSelectedStreamSize ();
+
+	// Return the number of selected media items
+	int getSelectedMediaCount ();
 
 	// Return the number of selected media items that have an available playback stream
 	int getSelectedStreamCount ();
@@ -273,7 +305,9 @@ private:
 	int64_t getSelectedCreateStreamSize (int profile);
 
 	static const int PageSize;
-	static const float TruncateWidthMultiplier;
+	static const float TextTruncateWidthScale;
+	static const float SearchFieldWidthScale;
+	static const float BottomPaddingHeightScale;
 
 	int toolbarMode;
 	Button *playButton;
@@ -282,9 +316,12 @@ private:
 	Button *stopButton;
 	Button *configureStreamButton;
 	Button *cacheStreamButton;
-	Button *deleteStreamButton;
+	Button *removeStreamButton;
 	Button *selectAllButton;
+	Button *addTagButton;
+	Button *removeTagButton;
 	WidgetHandle searchField;
+	WidgetHandle searchStatusIcon;
 	WidgetHandle emptyStateWindow;
 	WidgetHandle commandPopup;
 	WidgetHandle commandPopupSource;

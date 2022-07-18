@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -110,11 +110,10 @@ WebPlaylistWindow *WebKioskUi::createWebPlaylistWindow () {
 	playlist->addItemClickCallback = Widget::EventCallbackContext (WebKioskUi::playlistAddItemActionClicked, this);
 	playlist->addItemMouseEnterCallback = Widget::EventCallbackContext (WebKioskUi::playlistAddItemMouseEntered, this);
 	playlist->addItemMouseExitCallback = Widget::EventCallbackContext (WebKioskUi::playlistAddItemMouseExited, this);
-
 	return (playlist);
 }
 
-int WebKioskUi::doLoad () {
+OsUtil::Result WebKioskUi::doLoad () {
 	Panel *panel;
 	Toggle *toggle;
 	Button *button;
@@ -147,7 +146,7 @@ int WebKioskUi::doLoad () {
 	panel->setLayout (Panel::HorizontalLayout);
 	cardView->addItem (createRowHeaderPanel (UiText::instance->getText (UiTextString::Playlists).capitalized (), panel), StdString (""), WebKioskUi::PlaylistToggleRow);
 
-	return (OsUtil::Result::Success);
+	return (OsUtil::Success);
 }
 
 void WebKioskUi::doUnload () {
@@ -320,13 +319,13 @@ void WebKioskUi::doPause () {
 	ids.clear ();
 	cardView->processItems (doPause_appendSelectedAgentId, &ids);
 	prefs = App::instance->lockPrefs ();
-	prefs->insert (WebKioskUi::SelectedAgentsKey, &ids);
+	prefs->insert (WebKioskUi::SelectedAgentsKey, ids);
 	App::instance->unlockPrefs ();
 
 	ids.clear ();
 	cardView->processItems (doPause_appendExpandedAgentId, &ids);
 	prefs = App::instance->lockPrefs ();
-	prefs->insert (WebKioskUi::ExpandedAgentsKey, &ids);
+	prefs->insert (WebKioskUi::ExpandedAgentsKey, ids);
 	App::instance->unlockPrefs ();
 }
 
@@ -492,7 +491,6 @@ void WebKioskUi::expandAgentsToggleStateChanged (void *uiPtr, Widget *widgetPtr)
 	if (! toggle) {
 		return;
 	}
-
 	now = OsUtil::getTime ();
 	ui->cardView->processItems (expandAgentsToggleStateChanged_appendAgentId, &idlist);
 	i = idlist.begin ();
@@ -537,7 +535,6 @@ void WebKioskUi::expandPlaylistsToggleStateChanged (void *uiPtr, Widget *widgetP
 	if (! toggle) {
 		return;
 	}
-
 	now = OsUtil::getTime ();
 	ui->cardView->processItems (expandPlaylistsToggleStateChanged_appendPlaylistId, &idlist);
 	i = idlist.begin ();
@@ -570,10 +567,9 @@ void WebKioskUi::browseUrlButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	if (url.empty ()) {
 		return;
 	}
-
 	ui->clearPopupWidgets ();
 	result = OsUtil::openUrl (OsUtil::getProtocolString (url));
-	if (result != OsUtil::Result::Success) {
+	if (result != OsUtil::Success) {
 		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::LaunchWebBrowserError));
 	}
 	else {
@@ -586,7 +582,6 @@ void WebKioskUi::showUrlButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	StdString url;
 	StringList idlist;
 	Json *params;
-	int count;
 
 	ui = (WebKioskUi *) uiPtr;
 	url = ui->addressField->getValue ();
@@ -594,17 +589,17 @@ void WebKioskUi::showUrlButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	if (url.empty () || idlist.empty ()) {
 		return;
 	}
+	url.assign (OsUtil::getProtocolString (url));
 
 	ui->clearPopupWidgets ();
 	params = new Json ();
-	params->set ("url", OsUtil::getProtocolString (url));
-	count = AgentControl::instance->invokeCommand (&idlist, App::instance->createCommand (SystemInterface::Command_ShowWebUrl, params));
-	if (count <= 0) {
-		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
-	}
-	else {
-		AgentControl::instance->refreshAgentStatus (&idlist);
-		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InvokeShowWebUrlMessage));
+	params->set ("url", url);
+	ui->invokeCommand (CommandHistory::instance->showWebUrl (idlist, url), idlist, App::instance->createCommand (SystemInterface::Command_ShowWebUrl, params), WebKioskUi::invokeCommandComplete);
+}
+
+void WebKioskUi::invokeCommandComplete (Ui *invokeUi, const StdString &agentId, Json *invokeCommand, Json *responseCommand, bool isResponseCommandSuccess) {
+	if (isResponseCommandSuccess) {
+		AgentControl::instance->refreshAgentStatus (agentId);
 	}
 }
 
@@ -634,7 +629,6 @@ void WebKioskUi::writePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	WebKioskUi *ui;
 	WebPlaylistWindow *playlist;
 	StringList idlist;
-	int count;
 
 	ui = (WebKioskUi *) uiPtr;
 	ui->selectedAgentMap.getKeys (&idlist);
@@ -645,16 +639,8 @@ void WebKioskUi::writePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	if ((! playlist) || (playlist->getItemCount () <= 0)) {
 		return;
 	}
-
 	ui->clearPopupWidgets ();
-	count = AgentControl::instance->invokeCommand (&idlist, playlist->createCommand ());
-	if (count <= 0) {
-		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
-	}
-	else {
-		AgentControl::instance->refreshAgentStatus (&idlist);
-		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InvokeCreateWebPlaylistMessage));
-	}
+	ui->invokeCommand (CommandHistory::instance->createWebDisplayIntent (idlist, playlist->playlistName), idlist, playlist->createCommand (), WebKioskUi::invokeCommandComplete);
 }
 
 void WebKioskUi::playlistNameClicked (void *uiPtr, Widget *widgetPtr) {
@@ -689,7 +675,6 @@ void WebKioskUi::playlistNameEdited (void *uiPtr, Widget *widgetPtr) {
 	if ((! textfield) || (! playlist)) {
 		return;
 	}
-
 	playlist->setPlaylistName (ui->getAvailablePlaylistName (textfield->getValue ()));
 	playlist->sortKey.assign (playlist->playlistName.lowercased ());
 	ui->clearPopupWidgets ();
@@ -737,7 +722,6 @@ StdString WebKioskUi::getAvailablePlaylistName (const StdString &baseName) {
 			++i;
 		}
 	}
-
 	return (name);
 }
 
@@ -779,7 +763,6 @@ void WebKioskUi::playlistRemoveActionClosed (void *uiPtr, Widget *widgetPtr) {
 	if (! action->isConfirmed) {
 		return;
 	}
-
 	playlist = WebPlaylistWindow::castWidget (ui->actionTarget.widget);
 	if (playlist) {
 		ui->cardView->removeItem (playlist->itemId);
@@ -797,7 +780,6 @@ void WebKioskUi::playlistAddItemActionClicked (void *uiPtr, Widget *widgetPtr) {
 	if (url.empty ()) {
 		return;
 	}
-
 	playlist = WebPlaylistWindow::castWidget (widgetPtr);
 	if (playlist) {
 		playlist->addUrl (OsUtil::getProtocolString (url));
@@ -865,23 +847,14 @@ void WebKioskUi::playlistAddItemMouseExited (void *uiPtr, Widget *widgetPtr) {
 void WebKioskUi::clearDisplayButtonClicked (void *uiPtr, Widget *widgetPtr) {
 	WebKioskUi *ui;
 	StringList idlist;
-	int count;
 
 	ui = (WebKioskUi *) uiPtr;
 	ui->selectedAgentMap.getKeys (&idlist);
 	if (idlist.empty ()) {
 		return;
 	}
-
 	ui->clearPopupWidgets ();
-	count = AgentControl::instance->invokeCommand (&idlist, App::instance->createCommand (SystemInterface::Command_ClearDisplay));
-	if (count <= 0) {
-		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
-	}
-	else {
-		AgentControl::instance->refreshAgentStatus (&idlist);
-		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InvokeClearDisplayMessage));
-	}
+	ui->invokeCommand (CommandHistory::instance->clearDisplay (idlist), idlist, App::instance->createCommand (SystemInterface::Command_ClearDisplay), WebKioskUi::invokeCommandComplete);
 }
 
 void WebKioskUi::commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr) {
@@ -1026,7 +999,6 @@ StdString WebKioskUi::getSelectedAgentNames (float maxWidth) {
 	if (count <= 0) {
 		return (StdString (""));
 	}
-
 	i = selectedAgentMap.begin ();
 	while (selectedAgentMap.hasNext (&i)) {
 		id = selectedAgentMap.next (&i);

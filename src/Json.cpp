@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -268,7 +268,6 @@ bool Json::isArray (const StdString &key) const {
 	if (! json) {
 		return (false);
 	}
-
 	len = json->u.object.length;
 	for (i = 0; i < len; ++i) {
 		entry = &(json->u.object.values[i]);
@@ -276,11 +275,9 @@ bool Json::isArray (const StdString &key) const {
 			if (entry->value->type == json_array) {
 				return (true);
 			}
-
 			break;
 		}
 	}
-
 	return (false);
 }
 
@@ -333,7 +330,6 @@ void Json::copyValue (Json *sourceJson) {
 	if (! sourceJson->json) {
 		return;
 	}
-
 	setJsonValue (copyJsonValue (sourceJson->json), true);
 	shouldFreeJson = true;
 }
@@ -343,7 +339,6 @@ Json *Json::copy () {
 
 	j = new Json ();
 	j->copyValue (this);
-
 	return (j);
 }
 
@@ -405,7 +400,6 @@ bool Json::deepEquals (Json *other) {
 	if ((! json) || (! other->json)) {
 		return (false);
 	}
-
 	return (deepEqualsValue (json, other->json));
 }
 
@@ -418,7 +412,6 @@ bool Json::deepEqualsValue (json_value *thisValue, json_value *otherValue) {
 	if (thisValue->type != otherValue->type) {
 		return (false);
 	}
-
 	result = false;
 	switch (thisValue->type) {
 		case json_integer: {
@@ -488,7 +481,6 @@ bool Json::deepEqualsValue (json_value *thisValue, json_value *otherValue) {
 			break;
 		}
 	}
-
 	return (result);
 }
 
@@ -499,7 +491,6 @@ int Json::getNumber (const StdString &key, int defaultValue) const {
 	if (! json) {
 		return (defaultValue);
 	}
-
 	len = json->u.object.length;
 	for (i = 0; i < len; ++i) {
 		entry = &(json->u.object.values[i]);
@@ -518,7 +509,6 @@ int Json::getNumber (const StdString &key, int defaultValue) const {
 			break;
 		}
 	}
-
 	return (defaultValue);
 }
 
@@ -533,7 +523,6 @@ int64_t Json::getNumber (const StdString &key, int64_t defaultValue) const {
 	if (! json) {
 		return (defaultValue);
 	}
-
 	len = json->u.object.length;
 	for (i = 0; i < len; ++i) {
 		entry = &(json->u.object.values[i]);
@@ -552,7 +541,6 @@ int64_t Json::getNumber (const StdString &key, int64_t defaultValue) const {
 			break;
 		}
 	}
-
 	return (defaultValue);
 }
 
@@ -567,7 +555,6 @@ double Json::getNumber (const StdString &key, double defaultValue) const {
 	if (! json) {
 		return (defaultValue);
 	}
-
 	len = json->u.object.length;
 	for (i = 0; i < len; ++i) {
 		entry = &(json->u.object.values[i]);
@@ -586,7 +573,6 @@ double Json::getNumber (const StdString &key, double defaultValue) const {
 			break;
 		}
 	}
-
 	return (defaultValue);
 }
 
@@ -601,7 +587,6 @@ float Json::getNumber (const StdString &key, float defaultValue) const {
 	if (! json) {
 		return (defaultValue);
 	}
-
 	len = json->u.object.length;
 	for (i = 0; i < len; ++i) {
 		entry = &(json->u.object.values[i]);
@@ -620,7 +605,6 @@ float Json::getNumber (const StdString &key, float defaultValue) const {
 			break;
 		}
 	}
-
 	return (defaultValue);
 }
 
@@ -635,7 +619,6 @@ bool Json::getBoolean (const StdString &key, bool defaultValue) const {
 	if (! json) {
 		return (defaultValue);
 	}
-
 	len = json->u.object.length;
 	for (i = 0; i < len; ++i) {
 		entry = &(json->u.object.values[i]);
@@ -651,7 +634,6 @@ bool Json::getBoolean (const StdString &key, bool defaultValue) const {
 			break;
 		}
 	}
-
 	return (defaultValue);
 }
 
@@ -666,7 +648,6 @@ StdString Json::getString (const StdString &key, const StdString &defaultValue) 
 	if (! json) {
 		return (defaultValue);
 	}
-
 	len = json->u.object.length;
 	for (i = 0; i < len; ++i) {
 		entry = &(json->u.object.values[i]);
@@ -682,7 +663,6 @@ StdString Json::getString (const StdString &key, const StdString &defaultValue) 
 			break;
 		}
 	}
-
 	return (defaultValue);
 }
 
@@ -714,7 +694,6 @@ bool Json::getStringList (const StdString &key, StringList *destList) const {
 	for (i = 0; i < len; ++i) {
 		destList->push_back (getArrayString (key, i, StdString ("")));
 	}
-
 	return (true);
 }
 
@@ -729,7 +708,6 @@ bool Json::getObject (const StdString &key, Json *destJson) {
 	if (! json) {
 		return (false);
 	}
-
 	len = json->u.object.length;
 	for (i = 0; i < len; ++i) {
 		entry = &(json->u.object.values[i]);
@@ -748,7 +726,6 @@ bool Json::getObject (const StdString &key, Json *destJson) {
 			break;
 		}
 	}
-
 	return (false);
 }
 
@@ -763,7 +740,6 @@ int Json::getArrayLength (const StdString &key) const {
 	if (! json) {
 		return (0);
 	}
-
 	len = json->u.object.length;
 	for (i = 0; i < len; ++i) {
 		entry = &(json->u.object.values[i]);
@@ -779,7 +755,6 @@ int Json::getArrayLength (const StdString &key) const {
 			break;
 		}
 	}
-
 	return (0);
 }
 
@@ -795,7 +770,6 @@ int Json::getArrayNumber (const StdString &key, int index, int defaultValue) con
 	if ((! json) || (index < 0)) {
 		return (defaultValue);
 	}
-
 	len = json->u.object.length;
 	for (i = 0; i < len; ++i) {
 		entry = &(json->u.object.values[i]);
@@ -822,7 +796,6 @@ int Json::getArrayNumber (const StdString &key, int index, int defaultValue) con
 			break;
 		}
 	}
-
 	return (defaultValue);
 }
 
@@ -838,7 +811,6 @@ int64_t Json::getArrayNumber (const StdString &key, int index, int64_t defaultVa
 	if ((! json) || (index < 0)) {
 		return (defaultValue);
 	}
-
 	len = json->u.object.length;
 	for (i = 0; i < len; ++i) {
 		entry = &(json->u.object.values[i]);
@@ -865,7 +837,6 @@ int64_t Json::getArrayNumber (const StdString &key, int index, int64_t defaultVa
 			break;
 		}
 	}
-
 	return (defaultValue);
 }
 
@@ -881,7 +852,6 @@ double Json::getArrayNumber (const StdString &key, int index, double defaultValu
 	if ((! json) || (index < 0)) {
 		return (defaultValue);
 	}
-
 	len = json->u.object.length;
 	for (i = 0; i < len; ++i) {
 		entry = &(json->u.object.values[i]);
@@ -908,7 +878,6 @@ double Json::getArrayNumber (const StdString &key, int index, double defaultValu
 			break;
 		}
 	}
-
 	return (defaultValue);
 }
 
@@ -924,7 +893,6 @@ float Json::getArrayNumber (const StdString &key, int index, float defaultValue)
 	if ((! json) || (index < 0)) {
 		return (defaultValue);
 	}
-
 	len = json->u.object.length;
 	for (i = 0; i < len; ++i) {
 		entry = &(json->u.object.values[i]);
@@ -951,7 +919,6 @@ float Json::getArrayNumber (const StdString &key, int index, float defaultValue)
 			break;
 		}
 	}
-
 	return (defaultValue);
 }
 
@@ -967,7 +934,6 @@ StdString Json::getArrayString (const StdString &key, int index, const StdString
 	if ((! json) || (index < 0)) {
 		return (defaultValue);
 	}
-
 	len = json->u.object.length;
 	for (i = 0; i < len; ++i) {
 		entry = &(json->u.object.values[i]);
@@ -991,7 +957,6 @@ StdString Json::getArrayString (const StdString &key, int index, const StdString
 			break;
 		}
 	}
-
 	return (defaultValue);
 }
 
@@ -1007,7 +972,6 @@ bool Json::getArrayBoolean (const StdString &key, int index, bool defaultValue) 
 	if ((! json) || (index < 0)) {
 		return (defaultValue);
 	}
-
 	len = json->u.object.length;
 	for (i = 0; i < len; ++i) {
 		entry = &(json->u.object.values[i]);
@@ -1031,7 +995,6 @@ bool Json::getArrayBoolean (const StdString &key, int index, bool defaultValue) 
 			break;
 		}
 	}
-
 	return (defaultValue);
 }
 
@@ -1047,7 +1010,6 @@ bool Json::getArrayObject (const StdString &key, int index, Json *destJson) {
 	if ((! json) || (index < 0)) {
 		return (false);
 	}
-
 	len = json->u.object.length;
 	for (i = 0; i < len; ++i) {
 		entry = &(json->u.object.values[i]);
@@ -1074,7 +1036,6 @@ bool Json::getArrayObject (const StdString &key, int index, Json *destJson) {
 			break;
 		}
 	}
-
 	return (false);
 }
 
@@ -1082,63 +1043,70 @@ bool Json::getArrayObject (const char *key, int index, Json *destJson) {
 	return (getArrayObject (StdString (key), index, destJson));
 }
 
-void Json::set (const StdString &key, const char *value) {
+Json *Json::set (const StdString &key, const char *value) {
 	jsonObjectPush (key.c_str (), json_string_new (value));
+	return (this);
 }
 
-void Json::set (const char *key, const char *value) {
-	set (StdString (key), value);
+Json *Json::set (const char *key, const char *value) {
+	return (set (StdString (key), value));
 }
 
-void Json::set (const StdString &key, const StdString &value) {
+Json *Json::set (const StdString &key, const StdString &value) {
 	jsonObjectPush (key.c_str (), json_string_new (value.c_str ()));
+	return (this);
 }
 
-void Json::set (const char *key, const StdString &value) {
-	set (StdString (key), value);
+Json *Json::set (const char *key, const StdString &value) {
+	return (set (StdString (key), value));
 }
 
-void Json::set (const StdString &key, const int value) {
+Json *Json::set (const StdString &key, const int value) {
 	jsonObjectPush (key.c_str (), json_integer_new (value));
+	return (this);
 }
 
-void Json::set (const char *key, const int value) {
-	set (StdString (key), value);
+Json *Json::set (const char *key, const int value) {
+	return (set (StdString (key), value));
 }
 
-void Json::set (const StdString &key, const int64_t value) {
+Json *Json::set (const StdString &key, const int64_t value) {
 	jsonObjectPush (key.c_str (), json_double_new ((double) value));
+	return (this);
 }
 
-void Json::set (const char *key, const int64_t value) {
-	set (StdString (key), value);
+Json *Json::set (const char *key, const int64_t value) {
+	return (set (StdString (key), value));
 }
 
-void Json::set (const StdString &key, const float value) {
+Json *Json::set (const StdString &key, const float value) {
 	jsonObjectPush (key.c_str (), json_double_new ((double) value));
+	return (this);
 }
 
-void Json::set (const char *key, const float value) {
-	set (StdString (key), value);
+Json *Json::set (const char *key, const float value) {
+	return (set (StdString (key), value));
 }
 
-void Json::set (const StdString &key, const double value) {
+Json *Json::set (const StdString &key, const double value) {
 	jsonObjectPush (key.c_str (), json_double_new (value));
+	return (this);
 }
 
-void Json::set (const char *key, const double value) {
-	set (StdString (key), value);
+Json *Json::set (const char *key, const double value) {
+	return (set (StdString (key), value));
 }
 
-void Json::set (const StdString &key, const bool value) {
+Json *Json::set (const StdString &key, const bool value) {
 	jsonObjectPush (key.c_str (), json_boolean_new (value));
+	return (this);
 }
 
-void Json::set (const char *key, const bool value) {
-	set (StdString (key), value);
+Json *Json::set (const char *key, const bool value) {
+	return (set (StdString (key), value));
 }
 
-void Json::set (const StdString &key, Json *value) {
+Json *Json::set (const StdString &key, Json *value) {
 	if (value->json) {
 		jsonObjectPush (key.c_str (), value->json);
 		value->json = NULL;
@@ -1147,32 +1115,33 @@ void Json::set (const StdString &key, Json *value) {
 		jsonObjectPush (key.c_str (), json_object_new (0));
 	}
 	delete (value);
+	return (this);
 }
 
-void Json::set (const char *key, Json *value) {
-	set (StdString (key), value);
+Json *Json::set (const char *key, Json *value) {
+	return (set (StdString (key), value));
 }
 
-void Json::set (const StdString &key, StringList *value) {
+Json *Json::set (const StdString &key, const StringList &value) {
 	json_value *a;
-	StringList::iterator i, end;
+	StringList::const_iterator i, end;
 
 	a = json_array_new (0);
-	i = value->begin ();
-	end = value->end ();
+	i = value.cbegin ();
+	end = value.cend ();
 	while (i != end) {
 		json_array_push (a, json_string_new (i->c_str ()));
 		++i;
 	}
-
 	jsonObjectPush (key.c_str (), a);
+	return (this);
 }
 
-void Json::set (const char *key, StringList *value) {
-	set (StdString (key), value);
+Json *Json::set (const char *key, const StringList &value) {
+	return (set (StdString (key), value));
 }
 
-void Json::set (const StdString &key, std::list<int> *value) {
+Json *Json::set (const StdString &key, std::list<int> *value) {
 	json_value *a;
 	std::list<int>::iterator i, end;
 
@@ -1183,15 +1152,15 @@ void Json::set (const StdString &key, std::list<int> *value) {
 		json_array_push (a, json_integer_new (*i));
 		++i;
 	}
-
 	jsonObjectPush (key.c_str (), a);
+	return (this);
 }
 
-void Json::set (const char *key, std::list<int> *value) {
-	set (StdString (key), value);
+Json *Json::set (const char *key, std::list<int> *value) {
+	return (set (StdString (key), value));
 }
 
-void Json::set (const StdString &key, std::list<int64_t> *value) {
+Json *Json::set (const StdString &key, std::list<int64_t> *value) {
 	json_value *a;
 	std::list<int64_t>::iterator i, end;
 
@@ -1202,15 +1171,15 @@ void Json::set (const StdString &key, std::list<int64_t> *value) {
 		json_array_push (a, json_double_new ((double) *i));
 		++i;
 	}
-
 	jsonObjectPush (key.c_str (), a);
+	return (this);
 }
 
-void Json::set (const char *key, std::list<int64_t> *value) {
-	set (StdString (key), value);
+Json *Json::set (const char *key, std::list<int64_t> *value) {
+	return (set (StdString (key), value));
 }
 
-void Json::set (const StdString &key, std::list<float> *value) {
+Json *Json::set (const StdString &key, std::list<float> *value) {
 	json_value *a;
 	std::list<float>::iterator i, end;
 
@@ -1221,15 +1190,15 @@ void Json::set (const StdString &key, std::list<float> *value) {
 		json_array_push (a, json_double_new (*i));
 		++i;
 	}
-
 	jsonObjectPush (key.c_str (), a);
+	return (this);
 }
 
-void Json::set (const char *key, std::list<float> *value) {
-	set (StdString (key), value);
+Json *Json::set (const char *key, std::list<float> *value) {
+	return (set (StdString (key), value));
 }
 
-void Json::set (const StdString &key, std::list<double> *value) {
+Json *Json::set (const StdString &key, std::list<double> *value) {
 	json_value *a;
 	std::list<double>::iterator i, end;
 
@@ -1240,15 +1209,15 @@ void Json::set (const StdString &key, std::list<double> *value) {
 		json_array_push (a, json_double_new (*i));
 		++i;
 	}
-
 	jsonObjectPush (key.c_str (), a);
+	return (this);
 }
 
-void Json::set (const char *key, std::list<double> *value) {
-	set (StdString (key), value);
+Json *Json::set (const char *key, std::list<double> *value) {
+	return (set (StdString (key), value));
 }
 
-void Json::set (const StdString &key, std::list<bool> *value) {
+Json *Json::set (const StdString &key, std::list<bool> *value) {
 	json_value *a;
 	std::list<bool>::iterator i, end;
 
@@ -1259,15 +1228,15 @@ void Json::set (const StdString &key, std::list<bool> *value) {
 		json_array_push (a, json_boolean_new (*i));
 		++i;
 	}
-
 	jsonObjectPush (key.c_str (), a);
+	return (this);
 }
 
-void Json::set (const char *key, std::list<bool> *value) {
-	set (StdString (key), value);
+Json *Json::set (const char *key, std::list<bool> *value) {
+	return (set (StdString (key), value));
 }
 
-void Json::set (const StdString &key, std::vector<Json *> *value) {
+Json *Json::set (const StdString &key, std::vector<Json *> *value) {
 	json_value *a;
 	std::vector<Json *>::iterator i, end;
 	Json *item;
@@ -1285,16 +1254,16 @@ void Json::set (const StdString &key, std::vector<Json *> *value) {
 		delete (item);
 		++i;
 	}
-
 	jsonObjectPush (key.c_str (), a);
 	value->clear ();
+	return (this);
 }
 
-void Json::set (const char *key, std::vector<Json *> *value) {
-	set (StdString (key), value);
+Json *Json::set (const char *key, std::vector<Json *> *value) {
+	return (set (StdString (key), value));
 }
 
-void Json::set (const StdString &key, std::list<Json *> *value) {
+Json *Json::set (const StdString &key, std::list<Json *> *value) {
 	json_value *a;
 	std::list<Json *>::iterator i, end;
 	Json *item;
@@ -1312,16 +1281,16 @@ void Json::set (const StdString &key, std::list<Json *> *value) {
 		delete (item);
 		++i;
 	}
-
 	jsonObjectPush (key.c_str (), a);
 	value->clear ();
+	return (this);
 }
 
-void Json::set (const char *key, std::list<Json *> *value) {
-	set (StdString (key), value);
+Json *Json::set (const char *key, std::list<Json *> *value) {
+	return (set (StdString (key), value));
 }
 
-void Json::set (const StdString &key, JsonList *value) {
+Json *Json::set (const StdString &key, JsonList *value) {
 	json_value *a;
 	JsonList::iterator i, end;
 	Json *item;
@@ -1338,16 +1307,16 @@ void Json::set (const StdString &key, JsonList *value) {
 		item->json = NULL;
 		++i;
 	}
-
 	jsonObjectPush (key.c_str (), a);
 	value->clear ();
+	return (this);
 }
 
-void Json::set (const char *key, JsonList *value) {
-	set (StdString (key), value);
+Json *Json::set (const char *key, JsonList *value) {
+	return (set (StdString (key), value));
 }
 
-void Json::setSprintf (const StdString &key, const char *str, ...) {
+Json *Json::setSprintf (const StdString &key, const char *str, ...) {
 	va_list ap;
 	StdString s;
 
@@ -1356,9 +1325,10 @@ void Json::setSprintf (const StdString &key, const char *str, ...) {
 	va_end (ap);
 
 	jsonObjectPush (key.c_str (), json_string_new (s.c_str ()));
+	return (this);
 }
 
-void Json::setSprintf (const char *key, const char *str, ...) {
+Json *Json::setSprintf (const char *key, const char *str, ...) {
 	va_list ap;
 	StdString s;
 
@@ -1367,14 +1337,16 @@ void Json::setSprintf (const char *key, const char *str, ...) {
 	va_end (ap);
 
 	jsonObjectPush (key, json_string_new (s.c_str ()));
+	return (this);
 }
 
-void Json::setNull (const StdString &key) {
+Json *Json::setNull (const StdString &key) {
 	jsonObjectPush (key.c_str (), json_null_new ());
+	return (this);
 }
 
-void Json::setNull (const char *key) {
-	setNull (StdString (key));
+Json *Json::setNull (const char *key) {
+	return (setNull (StdString (key)));
 }
 
 StdString Json::toString () {

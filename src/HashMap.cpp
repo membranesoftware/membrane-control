@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,10 +29,8 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include <stdio.h>
 #include <map>
 #include "OsUtil.h"
-#include "Log.h"
 #include "StdString.h"
 #include "Buffer.h"
 #include "Json.h"
@@ -55,21 +53,38 @@ void HashMap::clear () {
 	keyList.clear ();
 }
 
-int HashMap::size () {
+int HashMap::size () const {
 	return (valueMap.size ());
 }
 
-bool HashMap::empty () {
+bool HashMap::empty () const {
 	return (valueMap.empty ());
 }
 
-StdString HashMap::toString () {
+bool HashMap::equals (const HashMap &other) const {
+	std::map<StdString, StdString>::const_iterator i, end;
+
+	if (size () != other.size ()) {
+		return (false);
+	}
+	i = valueMap.cbegin ();
+	end = valueMap.cend ();
+	while (i != end) {
+		if (! other.find (i->first, "").equals (i->second)) {
+			return (false);
+		}
+		++i;
+	}
+	return (true);
+}
+
+StdString HashMap::toString () const {
 	StdString s;
 	std::map<StdString, StdString>::const_iterator i, end;
 
 	s.assign ("{");
-	i = valueMap.begin ();
-	end = valueMap.end ();
+	i = valueMap.cbegin ();
+	end = valueMap.cend ();
 	while (i != end) {
 		s.append (" ");
 		s.append (i->first);
@@ -79,8 +94,40 @@ StdString HashMap::toString () {
 		++i;
 	}
 	s.append (" }");
-
 	return (s);
+}
+
+Json *HashMap::toJson () const {
+	Json *json;
+	std::map<StdString, StdString>::const_iterator i, end;
+
+	json = new Json ();
+	json->setEmpty ();
+	i = valueMap.cbegin ();
+	end = valueMap.cend ();
+	while (i != end) {
+		json->set (i->first, i->second);
+		++i;
+	}
+	return (json);
+}
+
+void HashMap::readJson (Json *json) {
+	StringList keys;
+	StringList::iterator i, end;
+	StdString s;
+
+	clear ();
+	json->getKeys (&keys);
+	i = keys.begin ();
+	end = keys.end ();
+	while (i != end) {
+		s = json->getString (*i, "");
+		if (! s.empty ()) {
+			insert (*i, s);
+		}
+		++i;
+	}
 }
 
 void HashMap::sort (HashMap::SortFunction fn) {
@@ -89,12 +136,12 @@ void HashMap::sort (HashMap::SortFunction fn) {
 }
 
 void HashMap::doSort () {
-	std::map<StdString, StdString>::iterator i, end;
+	std::map<StdString, StdString>::const_iterator i, end;
 
 	keyList.clear ();
 	if (sortFunction) {
-		i = valueMap.begin ();
-		end = valueMap.end ();
+		i = valueMap.cbegin ();
+		end = valueMap.cend ();
 		while (i != end) {
 			keyList.push_back (i->first);
 			++i;
@@ -120,7 +167,6 @@ bool HashMap::sortAscending (const StdString &a, const StdString &b) {
 	if (a.lowercased ().compare (b.lowercased ()) < 0) {
 		return (true);
 	}
-
 	return (false);
 }
 
@@ -128,7 +174,6 @@ bool HashMap::sortDescending (const StdString &a, const StdString &b) {
 	if (a.lowercased ().compare (b.lowercased ()) > 0) {
 		return (true);
 	}
-
 	return (false);
 }
 
@@ -140,7 +185,7 @@ OsUtil::Result HashMap::read (const StdString &filename, bool shouldClear) {
 
 	fp = fopen (filename.c_str (), "rb");
 	if (! fp) {
-		return (OsUtil::Result::FileOpenFailedError);
+		return (OsUtil::FileOpenFailedError);
 	}
 	buffer = new Buffer ();
 	while (1) {
@@ -227,8 +272,7 @@ OsUtil::Result HashMap::read (Buffer *buffer, bool shouldClear) {
 			val2 = NULL;
 		}
 	}
-
-	return (OsUtil::Result::Success);
+	return (OsUtil::Success);
 }
 
 OsUtil::Result HashMap::write (const StdString &filename) {
@@ -250,22 +294,21 @@ OsUtil::Result HashMap::write (const StdString &filename) {
 
 	fp = fopen (filename.c_str (), "wb");
 	if (! fp) {
-		return (OsUtil::Result::FileOpenFailedError);
+		return (OsUtil::FileOpenFailedError);
 	}
 	fprintf (fp, "%s", out.c_str ());
 	fclose (fp);
-
-	return (OsUtil::Result::Success);
+	return (OsUtil::Success);
 }
 
-bool HashMap::exists (const StdString &key) {
-	std::map<StdString, StdString>::iterator i;
+bool HashMap::exists (const StdString &key) const {
+	std::map<StdString, StdString>::const_iterator i;
 
 	i = valueMap.find (key);
-	return (i != valueMap.end ());
+	return (i != valueMap.cend ());
 }
 
-bool HashMap::exists (const char *key) {
+bool HashMap::exists (const char *key) const {
 	return (exists (StdString (key)));
 }
 
@@ -322,16 +365,32 @@ void HashMap::insert (const char *key, int64_t value) {
 	insert (StdString (key), StdString::createSprintf ("%lli", (long long int) value));
 }
 
-void HashMap::insert (const StdString &key, StringList *value) {
-	if (value->empty ()) {
+void HashMap::insert (const StdString &key, float value) {
+	insert (key, StdString::createSprintf ("%f", value));
+}
+
+void HashMap::insert (const char *key, float value) {
+	insert (StdString (key), StdString::createSprintf ("%f", value));
+}
+
+void HashMap::insert (const StdString &key, double value) {
+	insert (key, StdString::createSprintf ("%f", value));
+}
+
+void HashMap::insert (const char *key, double value) {
+	insert (StdString (key), StdString::createSprintf ("%f", value));
+}
+
+void HashMap::insert (const StdString &key, const StringList &value) {
+	if (value.empty ()) {
 		remove (key);
 	}
 	else {
-		insert (key, value->toJsonString ());
+		insert (key, value.toJsonString ());
 	}
 }
 
-void HashMap::insert (const char *key, StringList *value) {
+void HashMap::insert (const char *key, const StringList &value) {
 	insert (StdString (key), value);
 }
 
@@ -371,7 +430,7 @@ void HashMap::insert (const StdString &key, JsonList *value) {
 		}
 		++mi;
 	}
-	remove (&keys);
+	remove (keys);
 
 	index = 1;
 	ji = value->begin ();
@@ -407,18 +466,18 @@ void HashMap::remove (const char *key) {
 	remove (StdString (key));
 }
 
-void HashMap::remove (StringList *keys) {
-	StringList::iterator i, end;
+void HashMap::remove (const StringList &keys) {
+	StringList::const_iterator i, end;
 
-	i = keys->begin ();
-	end = keys->end ();
+	i = keys.cbegin ();
+	end = keys.cend ();
 	while (i != end) {
 		remove (*i);
 		++i;
 	}
 }
 
-StdString HashMap::find (const StdString &key, const StdString &defaultValue) {
+StdString HashMap::find (const StdString &key, const StdString &defaultValue) const {
 	std::map<StdString, StdString>::const_iterator i;
 
 	i = valueMap.find (key);
@@ -428,15 +487,15 @@ StdString HashMap::find (const StdString &key, const StdString &defaultValue) {
 	return (i->second);
 }
 
-StdString HashMap::find (const StdString &key, const char *defaultValue) {
+StdString HashMap::find (const StdString &key, const char *defaultValue) const {
 	return (find (key, StdString (defaultValue)));
 }
 
-StdString HashMap::find (const char *key, const char *defaultValue) {
+StdString HashMap::find (const char *key, const char *defaultValue) const {
 	return (find (StdString (key), StdString (defaultValue)));
 }
 
-int HashMap::find (const StdString &key, int defaultValue) {
+int HashMap::find (const StdString &key, int defaultValue) const {
 	std::map<StdString, StdString>::const_iterator i;
 
 	i = valueMap.find (key);
@@ -446,11 +505,11 @@ int HashMap::find (const StdString &key, int defaultValue) {
 	return (atoi (i->second.c_str ()));
 }
 
-int HashMap::find (const char *key, int defaultValue) {
+int HashMap::find (const char *key, int defaultValue) const {
 	return (find (StdString (key), defaultValue));
 }
 
-int64_t HashMap::find (const StdString &key, int64_t defaultValue) {
+int64_t HashMap::find (const StdString &key, int64_t defaultValue) const {
 	std::map<StdString, StdString>::const_iterator i;
 
 	i = valueMap.find (key);
@@ -460,11 +519,11 @@ int64_t HashMap::find (const StdString &key, int64_t defaultValue) {
 	return (atoll (i->second.c_str ()));
 }
 
-int64_t HashMap::find (const char *key, int64_t defaultValue) {
+int64_t HashMap::find (const char *key, int64_t defaultValue) const {
 	return (find (StdString (key), defaultValue));
 }
 
-bool HashMap::find (const StdString &key, bool defaultValue) {
+bool HashMap::find (const StdString &key, bool defaultValue) const {
 	std::map<StdString, StdString>::const_iterator i;
 
 	i = valueMap.find (key);
@@ -474,11 +533,39 @@ bool HashMap::find (const StdString &key, bool defaultValue) {
 	return (i->second.lowercased ().equals ("true") || i->second.lowercased ().equals ("yes"));
 }
 
-bool HashMap::find (const char *key, bool defaultValue) {
+bool HashMap::find (const char *key, bool defaultValue) const {
 	return (find (StdString (key), defaultValue));
 }
 
-void HashMap::find (const StdString &key, StringList *destList) {
+float HashMap::find (const StdString &key, float defaultValue) const {
+	std::map<StdString, StdString>::const_iterator i;
+
+	i = valueMap.find (key);
+	if (i == valueMap.end ()) {
+		return (defaultValue);
+	}
+	return ((float) atof (i->second.c_str ()));
+}
+
+float HashMap::find (const char *key, float defaultValue) const {
+	return (find (StdString (key), defaultValue));
+}
+
+double HashMap::find (const StdString &key, double defaultValue) const {
+	std::map<StdString, StdString>::const_iterator i;
+
+	i = valueMap.find (key);
+	if (i == valueMap.end ()) {
+		return (defaultValue);
+	}
+	return (atof (i->second.c_str ()));
+}
+
+double HashMap::find (const char *key, double defaultValue) const {
+	return (find (StdString (key), defaultValue));
+}
+
+void HashMap::find (const StdString &key, StringList *destList) const {
 	std::map<StdString, StdString>::const_iterator i;
 
 	i = valueMap.find (key);
@@ -491,11 +578,11 @@ void HashMap::find (const StdString &key, StringList *destList) {
 	}
 }
 
-void HashMap::find (const char *key, StringList *destList) {
+void HashMap::find (const char *key, StringList *destList) const {
 	find (StdString (key), destList);
 }
 
-void HashMap::find (const StdString &key, JsonList *destList) {
+void HashMap::find (const StdString &key, JsonList *destList) const {
 	Json *json;
 	StdString s;
 	int index;
@@ -517,7 +604,7 @@ void HashMap::find (const StdString &key, JsonList *destList) {
 	}
 }
 
-void HashMap::find (const char *key, JsonList *destList) {
+void HashMap::find (const char *key, JsonList *destList) const {
 	find (StdString (key), destList);
 }
 

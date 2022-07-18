@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -31,7 +31,6 @@
 #include <stdlib.h>
 #include <list>
 #include "ClassId.h"
-#include "Log.h"
 #include "StdString.h"
 #include "App.h"
 #include "Widget.h"
@@ -76,7 +75,7 @@ Menu *Menu::castWidget (Widget *widget) {
 	return (Menu::isWidgetType (widget) ? (Menu *) widget : NULL);
 }
 
-void Menu::addItem (const StdString &name, Sprite *sprite, Widget::EventCallback callback, void *callbackData, int selectionGroup, bool isSelected) {
+void Menu::addItem (const StdString &name, Sprite *sprite, const Widget::EventCallbackContext &callback, int selectionGroup, bool isSelected) {
 	std::list<Menu::Item>::iterator i, end;
 	Menu::Item item;
 	Panel *panel;
@@ -94,7 +93,6 @@ void Menu::addItem (const StdString &name, Sprite *sprite, Widget::EventCallback
 		item.image = (Image *) panel->addWidget (new Image (sprite, UiConfiguration::BlackButtonFrame));
 	}
 	item.callback = callback;
-	item.callbackData = callbackData;
 
 	item.selectionGroup = selectionGroup;
 	if (item.selectionGroup >= 0) {
@@ -167,9 +165,7 @@ bool Menu::doProcessMouseState (const Widget::MouseState &mouseState) {
 							i->isSelected = true;
 							shouldrefresh = true;
 						}
-						if (i->callback) {
-							i->callback (i->callbackData, this);
-						}
+						eventCallback (i->callback);
 					}
 					break;
 				}

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -50,6 +50,7 @@
 #include <math.h>
 #include "StdString.h"
 #include "StringList.h"
+#include "Buffer.h"
 #include "OsUtil.h"
 #include "Log.h"
 
@@ -417,18 +418,18 @@ OsUtil::Result OsUtil::createDirectory (const StdString &path) {
 	cresult = stat (path.c_str (), &st);
 	if (cresult != 0) {
 		if (errno != ENOENT) {
-			return (OsUtil::Result::SystemOperationFailedError);
+			return (OsUtil::SystemOperationFailedError);
 		}
 	}
 	if ((cresult == 0) && (st.st_mode & S_IFDIR)) {
-		return (OsUtil::Result::Success);
+		return (OsUtil::Success);
 	}
 	cresult = mkdir (path.c_str (), S_IRWXU);
 	if (cresult != 0) {
-		return (OsUtil::Result::SystemOperationFailedError);
+		return (OsUtil::SystemOperationFailedError);
 	}
 
-	result = OsUtil::Result::Success;
+	result = OsUtil::Success;
 #endif
 #if PLATFORM_WINDOWS
 	DWORD a;
@@ -436,17 +437,17 @@ OsUtil::Result OsUtil::createDirectory (const StdString &path) {
 	a = GetFileAttributes (path.c_str ());
 	if (a != INVALID_FILE_ATTRIBUTES) {
 		if (a & FILE_ATTRIBUTE_DIRECTORY) {
-			return (OsUtil::Result::Success);
+			return (OsUtil::Success);
 		}
 		else {
-			return (OsUtil::Result::SystemOperationFailedError);
+			return (OsUtil::SystemOperationFailedError);
 		}
 	}
 	if (! CreateDirectory (path.c_str (), NULL)) {
-		return (OsUtil::Result::SystemOperationFailedError);
+		return (OsUtil::SystemOperationFailedError);
 	}
 
-	result = OsUtil::Result::Success;
+	result = OsUtil::Success;
 #endif
 	return (result);
 }
@@ -462,24 +463,28 @@ bool OsUtil::fileExists (const StdString &path) {
 	return (true);
 }
 
-OsUtil::Result OsUtil::readFile (const StdString &path, StdString *destString) {
+Buffer *OsUtil::readFile (const StdString &path) {
+	Buffer *buf;
 	FILE *fp;
-	char data[8192];
+	uint8_t data[8192];
+	int len;
 
 	fp = fopen (path.c_str (), "rb");
 	if (! fp) {
-		return (OsUtil::Result::FileOpenFailedError);
+		return (NULL);
 	}
-	destString->assign ("");
+	buf = new Buffer ();
 	while (1) {
-		if (! fgets (data, sizeof (data), fp)) {
+		len = (int) fread (data, 1, sizeof (data), fp);
+		if (len > 0) {
+			buf->add (data, len);
+		}
+		if (len < (int) sizeof (data)) {
 			break;
 		}
-		destString->append (data);
 	}
-
 	fclose (fp);
-	return (OsUtil::Result::Success);
+	return (buf);
 }
 
 StdString OsUtil::getEnvValue (const StdString &key, const StdString &defaultValue) {
@@ -742,7 +747,7 @@ OsUtil::Result OsUtil::openUrl (const StdString &url) {
 	StringList::iterator i, iend, j, jend;
 #endif
 
-	result = OsUtil::Result::NotImplementedError;
+	result = OsUtil::NotImplementedError;
 #if PLATFORM_LINUX
 	execfile = OsUtil::getEnvValue ("BROWSER", "");
 	if (! execfile.empty ()) {
@@ -780,29 +785,29 @@ OsUtil::Result OsUtil::openUrl (const StdString &url) {
 		}
 	}
 	if (execfile.empty ()) {
-		return (OsUtil::Result::ProgramNotFoundError);
+		return (OsUtil::ProgramNotFoundError);
 	}
 
 	if (!(fork ())) {
 		execlp (execfile.c_str (), execarg.c_str (), url.c_str (), NULL);
 		_Exit (1);
 	}
-	result = OsUtil::Result::Success;
+	result = OsUtil::Success;
 #endif
 #if PLATFORM_MACOS
 	if (!(fork ())) {
 		execlp ("open", "open", url.c_str (), NULL);
 		_Exit (1);
 	}
-	result = OsUtil::Result::Success;
+	result = OsUtil::Success;
 #endif
 #if PLATFORM_WINDOWS
 	HINSTANCE h;
 
-	result = OsUtil::Result::Success;
+	result = OsUtil::Success;
 	h = ShellExecute (NULL, "open", url.c_str (), NULL, NULL, SW_SHOWNORMAL);
 	if (((int) h) <= 32) {
-		result = OsUtil::Result::SystemOperationFailedError;
+		result = OsUtil::SystemOperationFailedError;
 	}
 #endif
 	return (result);

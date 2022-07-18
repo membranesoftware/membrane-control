@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -37,7 +37,6 @@
 #include "ft2build.h"
 #include FT_FREETYPE_H
 #include "OsUtil.h"
-#include "App.h"
 #include "Log.h"
 #include "StdString.h"
 #include "Resource.h"
@@ -73,7 +72,7 @@ void Font::clearGlyphMap () {
 	end = glyphMap.end ();
 	while (i != end) {
 		if (i->second.texture) {
-			App::instance->resource.unloadTexture (i->second.texturePath);
+			Resource::instance->unloadTexture (i->second.texturePath);
 			i->second.texture = NULL;
 		}
 		++i;
@@ -94,12 +93,12 @@ OsUtil::Result Font::load (Buffer *fontData, int pointSize) {
 	result = FT_New_Memory_Face (freetype, (FT_Byte *) fontData->data, fontData->length, 0, &face);
 	if (result != 0) {
 		Log::err ("Failed to load font; name=\"%s\" err=\"FT_New_Memory_Face: %i\"", name.c_str (), result);
-		return (OsUtil::Result::FreetypeOperationFailedError);
+		return (OsUtil::FreetypeOperationFailedError);
 	}
 	result = FT_Set_Char_Size (face, pointSize << 6, 0, 100, 0);
 	if (result != 0) {
 		Log::err ("Failed to load font; name=\"%s\" err=\"FT_Set_Char_Size: %i\"", name.c_str (), result);
-		return (OsUtil::Result::FreetypeOperationFailedError);
+		return (OsUtil::FreetypeOperationFailedError);
 	}
 
 	maxw = 0;
@@ -118,7 +117,6 @@ OsUtil::Result Font::load (Buffer *fontData, int pointSize) {
 			Log::warning ("Failed to load font character; name=\"%s\" index=\"%c\" err=\"FT_Load_Glyph: %i\"", name.c_str (), c, result);
 			continue;
 		}
-
 		slot = face->glyph;
 		w = slot->bitmap.width;
 		h = slot->bitmap.rows;
@@ -126,13 +124,11 @@ OsUtil::Result Font::load (Buffer *fontData, int pointSize) {
 			Log::warning ("Failed to load font character; name=\"%s\" index=\"%c\" err=\"Invalid bitmap dimensions %ix%i\"", name.c_str (), c, w, h);
 			continue;
 		}
-
 		pixels = (Uint32 *) malloc (w * h * sizeof (Uint32));
 		if (! pixels) {
 			Log::warning ("Failed to load font character; name=\"%s\" index=\"%c\" err=\"Out of memory, bitmap dimensions %ix%i\"", name.c_str (), c, w, h);
 			continue;
 		}
-
 		dest = pixels;
 		row = (uint8_t *) slot->bitmap.buffer;
 		pitch = slot->bitmap.pitch;
@@ -172,16 +168,14 @@ OsUtil::Result Font::load (Buffer *fontData, int pointSize) {
 			free (pixels);
 			continue;
 		}
-
 		glyph.texturePath.sprintf ("*_Font_%s_%i_%i", name.c_str (), pointSize, (int) c);
-		glyph.texture = App::instance->resource.createTexture (glyph.texturePath, surface);
+		glyph.texture = Resource::instance->createTexture (glyph.texturePath, surface);
 		SDL_FreeSurface (surface);
 		free (pixels);
 		if (! glyph.texture) {
 			Log::warning ("Failed to load font character; name=\"%s\" index=\"%c\" err=\"SDL_CreateTextureFromSurface, %s\"", name.c_str (), c, SDL_GetError ());
 			continue;
 		}
-
 		glyph.width = w;
 		glyph.height = h;
 		glyph.leftBearing = (int) slot->bitmap_left;
@@ -220,7 +214,7 @@ OsUtil::Result Font::load (Buffer *fontData, int pointSize) {
 	}
 
 	isLoaded = true;
-	return (OsUtil::Result::Success);
+	return (OsUtil::Success);
 }
 
 Font::Glyph *Font::getGlyph (char glyphCharacter) {
@@ -273,7 +267,6 @@ void Font::advanceMetrics (Font::Metrics *metrics, int advanceLength) {
 	if (metrics->isComplete || (metrics->textPosition < 0) || (metrics->textPosition >= metrics->textLength)) {
 		return;
 	}
-
 	buf = (char *) metrics->text.c_str ();
 	for (i = 0; i < advanceLength; ++i) {
 		if (metrics->textPosition >= metrics->textLength) {
@@ -381,7 +374,6 @@ void Font::truncateText (StdString *text, float maxWidth, const StdString &trunc
 		if (suffixc > 0) {
 			suffixkerning = getKerning (c, suffixc);
 		}
-
 		if ((x + suffixkerning + suffixw) <= maxWidth) {
 			truncatepos = i;
 		}

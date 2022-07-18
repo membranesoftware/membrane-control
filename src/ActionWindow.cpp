@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,7 +30,6 @@
 #include "Config.h"
 #include <stdlib.h>
 #include "ClassId.h"
-#include "Log.h"
 #include "StdString.h"
 #include "App.h"
 #include "Widget.h"
@@ -298,7 +297,6 @@ void ActionWindow::setOptionValue (const StdString &optionName, const StdString 
 	if (item == itemList.end ()) {
 		return;
 	}
-
 	switch (item->type) {
 		case ActionWindow::ComboBoxItem: {
 			((ComboBox *) item->optionWidget)->setValue (optionValue, shouldSkipChangeCallback);
@@ -331,7 +329,6 @@ void ActionWindow::setOptionValue (const StdString &optionName, int optionValue,
 	if (item == itemList.end ()) {
 		return;
 	}
-
 	switch (item->type) {
 		case ActionWindow::ComboBoxItem: {
 			((ComboBox *) item->optionWidget)->setValue (StdString::createSprintf ("%i", optionValue), shouldSkipChangeCallback);
@@ -364,7 +361,6 @@ void ActionWindow::setOptionValue (const StdString &optionName, float optionValu
 	if (item == itemList.end ()) {
 		return;
 	}
-
 	switch (item->type) {
 		case ActionWindow::ComboBoxItem: {
 			((ComboBox *) item->optionWidget)->setValue (StdString::createSprintf ("%f", optionValue), shouldSkipChangeCallback);
@@ -397,7 +393,6 @@ void ActionWindow::setOptionValue (const StdString &optionName, bool optionValue
 	if (item == itemList.end ()) {
 		return;
 	}
-
 	switch (item->type) {
 		case ActionWindow::ToggleItem: {
 			((Toggle *) item->optionWidget)->setChecked (optionValue, shouldSkipChangeCallback);
@@ -418,7 +413,6 @@ StdString ActionWindow::getStringValue (const StdString &optionName, const StdSt
 	if (item == itemList.end ()) {
 		return (defaultValue);
 	}
-
 	switch (item->type) {
 		case ActionWindow::ComboBoxItem: {
 			return (((ComboBox *) item->optionWidget)->getValue ());
@@ -433,7 +427,6 @@ StdString ActionWindow::getStringValue (const StdString &optionName, const StdSt
 			return (((Toggle *) item->optionWidget)->isChecked ? "true" : "false");
 		}
 	}
-
 	return (defaultValue);
 }
 
@@ -450,7 +443,6 @@ int ActionWindow::getNumberValue (const StdString &optionName, int defaultValue)
 	if (item == itemList.end ()) {
 		return (defaultValue);
 	}
-
 	switch (item->type) {
 		case ActionWindow::ComboBoxItem: {
 			s = ((ComboBox *) item->optionWidget)->getValue ();
@@ -477,7 +469,6 @@ int ActionWindow::getNumberValue (const StdString &optionName, int defaultValue)
 			return ((int) ((SliderWindow *) item->optionWidget)->value);
 		}
 	}
-
 	return (defaultValue);
 }
 
@@ -490,7 +481,6 @@ float ActionWindow::getNumberValue (const StdString &optionName, float defaultVa
 	if (item == itemList.end ()) {
 		return (defaultValue);
 	}
-
 	switch (item->type) {
 		case ActionWindow::ComboBoxItem: {
 			s = ((ComboBox *) item->optionWidget)->getValue ();
@@ -517,7 +507,6 @@ float ActionWindow::getNumberValue (const StdString &optionName, float defaultVa
 			return (((SliderWindow *) item->optionWidget)->value);
 		}
 	}
-
 	return (defaultValue);
 }
 
@@ -528,13 +517,11 @@ bool ActionWindow::getBooleanValue (const StdString &optionName, bool defaultVal
 	if (item == itemList.end ()) {
 		return (defaultValue);
 	}
-
 	switch (item->type) {
 		case ActionWindow::ToggleItem: {
 			return (((Toggle *) item->optionWidget)->isChecked);
 		}
 	}
-
 	return (defaultValue);
 }
 
@@ -670,6 +657,19 @@ void ActionWindow::optionValueChanged (void *windowPtr, Widget *widgetPtr) {
 	window = (ActionWindow *) windowPtr;
 	window->verifyOptions ();
 	window->eventCallback (window->optionChangeCallback);
+}
+
+void ActionWindow::setOptionNameText (const StdString &optionName, const StdString &nameText) {
+	std::list<ActionWindow::Item>::iterator item;
+
+	item = findItem (optionName);
+	if (item == itemList.end ()) {
+		return;
+	}
+	if (item->nameLabel) {
+		item->nameLabel->setText (nameText);
+	}
+	refreshLayout ();
 }
 
 void ActionWindow::setOptionDescriptionText (const StdString &optionName, const StdString &descriptionText) {

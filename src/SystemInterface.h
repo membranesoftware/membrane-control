@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -40,6 +40,7 @@
 class SystemInterface {
 public:
   static const char *version;
+  static const char *Command_AddMediaTag;
   static const char *Command_AgentConfiguration;
   static const char *Command_AgentContact;
   static const char *Command_AgentStatus;
@@ -47,8 +48,9 @@ public:
   static const char *Command_AuthorizationRequired;
   static const char *Command_Authorize;
   static const char *Command_AuthorizeResult;
-  static const char *Command_CameraDisplayIntentState;
+  static const char *Command_CameraImageDisplayIntentState;
   static const char *Command_CameraServerStatus;
+  static const char *Command_CameraStreamDisplayIntentState;
   static const char *Command_CancelTask;
   static const char *Command_ClearCache;
   static const char *Command_ClearDisplay;
@@ -57,7 +59,8 @@ public:
   static const char *Command_ConfigureCamera;
   static const char *Command_ConfigureMediaStream;
   static const char *Command_CreateCacheStream;
-  static const char *Command_CreateCameraDisplayIntent;
+  static const char *Command_CreateCameraImageDisplayIntent;
+  static const char *Command_CreateCameraStreamDisplayIntent;
   static const char *Command_CreateMediaDisplayIntent;
   static const char *Command_CreateMediaStream;
   static const char *Command_CreateMonitorProgram;
@@ -77,6 +80,7 @@ public:
   static const char *Command_GetCameraStream;
   static const char *Command_GetCameraStreamResult;
   static const char *Command_GetCaptureImage;
+  static const char *Command_GetCaptureVideo;
   static const char *Command_GetDashMpd;
   static const char *Command_GetDashSegment;
   static const char *Command_GetHlsManifest;
@@ -98,6 +102,7 @@ public:
   static const char *Command_ReadTasks;
   static const char *Command_RemoveIntent;
   static const char *Command_RemoveMedia;
+  static const char *Command_RemoveMediaTag;
   static const char *Command_RemoveStream;
   static const char *Command_ReportContact;
   static const char *Command_ReportStatus;
@@ -123,6 +128,7 @@ public:
   static const char *Command_WatchStatus;
   static const char *Command_WatchTasks;
   static const char *Command_WebDisplayIntentState;
+  static const int CommandId_AddMediaTag = 233;
   static const int CommandId_AgentConfiguration = 45;
   static const int CommandId_AgentContact = 33;
   static const int CommandId_AgentStatus = 1;
@@ -130,8 +136,9 @@ public:
   static const int CommandId_AuthorizationRequired = 62;
   static const int CommandId_Authorize = 19;
   static const int CommandId_AuthorizeResult = 13;
-  static const int CommandId_CameraDisplayIntentState = 108;
+  static const int CommandId_CameraImageDisplayIntentState = 108;
   static const int CommandId_CameraServerStatus = 69;
+  static const int CommandId_CameraStreamDisplayIntentState = 239;
   static const int CommandId_CancelTask = 28;
   static const int CommandId_ClearCache = 59;
   static const int CommandId_ClearDisplay = 31;
@@ -140,7 +147,8 @@ public:
   static const int CommandId_ConfigureCamera = 109;
   static const int CommandId_ConfigureMediaStream = 65;
   static const int CommandId_CreateCacheStream = 60;
-  static const int CommandId_CreateCameraDisplayIntent = 107;
+  static const int CommandId_CreateCameraImageDisplayIntent = 107;
+  static const int CommandId_CreateCameraStreamDisplayIntent = 238;
   static const int CommandId_CreateMediaDisplayIntent = 50;
   static const int CommandId_CreateMediaStream = 14;
   static const int CommandId_CreateMonitorProgram = 102;
@@ -160,6 +168,7 @@ public:
   static const int CommandId_GetCameraStream = 100;
   static const int CommandId_GetCameraStreamResult = 101;
   static const int CommandId_GetCaptureImage = 73;
+  static const int CommandId_GetCaptureVideo = 235;
   static const int CommandId_GetDashMpd = 67;
   static const int CommandId_GetDashSegment = 68;
   static const int CommandId_GetHlsManifest = 23;
@@ -181,6 +190,7 @@ public:
   static const int CommandId_ReadTasks = 6;
   static const int CommandId_RemoveIntent = 37;
   static const int CommandId_RemoveMedia = 77;
+  static const int CommandId_RemoveMediaTag = 234;
   static const int CommandId_RemoveStream = 29;
   static const int CommandId_ReportContact = 32;
   static const int CommandId_ReportStatus = 2;
@@ -223,6 +233,7 @@ public:
   static const int Constant_CompressedStreamProfile = 1;
   static const char *Constant_CreateTimePrefixField;
   static const char *Constant_DefaultAuthorizePath;
+  static const int Constant_DefaultCameraStreamProfile = 0;
   static const int Constant_DefaultDisplayState = 0;
   static const int Constant_DefaultImageProfile = 0;
   static const char *Constant_DefaultInvokePath;
@@ -240,9 +251,11 @@ public:
   static const int Constant_HorizontalAndVerticalFlip = 3;
   static const int Constant_HorizontalFlip = 1;
   static const int Constant_LowBitrateStreamProfile = 6;
+  static const int Constant_LowQualityCameraStreamProfile = 1;
   static const int Constant_LowQualityImageProfile = 2;
   static const int Constant_LowQualityStreamProfile = 2;
   static const int Constant_LowestBitrateStreamProfile = 7;
+  static const int Constant_LowestQualityCameraStreamProfile = 2;
   static const int Constant_LowestQualityImageProfile = 3;
   static const int Constant_LowestQualityStreamProfile = 3;
   static const int Constant_MaxCommandPriority = 100;
@@ -304,12 +317,14 @@ public:
 
 	StdString lastError;
 	std::map<StdString, SystemInterface::Command> commandMap;
+	std::map<int, StdString> commandIdMap;
 	std::map<StdString, SystemInterface::GetParamsFunction> getParamsMap;
 	std::map<StdString, SystemInterface::PopulateDefaultFieldsFunction> populateDefaultFieldsMap;
 	std::map<StdString, SystemInterface::HashFieldsFunction> hashFieldsMap;
 
 	// Return a newly created Json object containing a command item, or NULL if the command could not be created. commandParams can be NULL if not needed, causing the resulting command to contain empty parameter fields. If commandParams is not NULL, this method becomes responsible for freeing the object when it's no longer needed.
 	Json *createCommand (const SystemInterface::Prefix &prefix, const char *commandName, Json *commandParams = NULL);
+	Json *createCommand (const SystemInterface::Prefix &prefix, int commandId, Json *commandParams = NULL);
 
 	// Populate a command's authorization prefix field using the provided values and hash functions. Returns a boolean value indicating if the field was successfully generated.
 	bool setCommandAuthorization (Json *command, const StdString &authSecret, const StdString &authToken, SystemInterface::HashUpdateFunction hashUpdateFn, SystemInterface::HashDigestFunction hashDigestFn, void *hashContextPtr);
@@ -406,6 +421,7 @@ public:
 	bool getCommandObjectArrayItem (Json *command, const StdString &paramName, int index, Json *destJson);
 	bool getCommandObjectArrayItem (Json *command, const char *paramName, int index, Json *destJson);
 
+  static void getParams_AddMediaTag (std::list<SystemInterface::Param> *destList);
   static void getParams_AgentConfiguration (std::list<SystemInterface::Param> *destList);
   static void getParams_AgentContact (std::list<SystemInterface::Param> *destList);
   static void getParams_AgentHost (std::list<SystemInterface::Param> *destList);
@@ -414,15 +430,18 @@ public:
   static void getParams_ApplicationNewsItem (std::list<SystemInterface::Param> *destList);
   static void getParams_Authorize (std::list<SystemInterface::Param> *destList);
   static void getParams_AuthorizeResult (std::list<SystemInterface::Param> *destList);
-  static void getParams_CameraDisplayIntentState (std::list<SystemInterface::Param> *destList);
+  static void getParams_CameraImageDisplayIntentState (std::list<SystemInterface::Param> *destList);
+  static void getParams_CameraSensor (std::list<SystemInterface::Param> *destList);
   static void getParams_CameraServerConfiguration (std::list<SystemInterface::Param> *destList);
   static void getParams_CameraServerStatus (std::list<SystemInterface::Param> *destList);
+  static void getParams_CameraStreamDisplayIntentState (std::list<SystemInterface::Param> *destList);
   static void getParams_CancelTask (std::list<SystemInterface::Param> *destList);
   static void getParams_CommandResult (std::list<SystemInterface::Param> *destList);
   static void getParams_ConfigureCamera (std::list<SystemInterface::Param> *destList);
   static void getParams_ConfigureMediaStream (std::list<SystemInterface::Param> *destList);
   static void getParams_CreateCacheStream (std::list<SystemInterface::Param> *destList);
-  static void getParams_CreateCameraDisplayIntent (std::list<SystemInterface::Param> *destList);
+  static void getParams_CreateCameraImageDisplayIntent (std::list<SystemInterface::Param> *destList);
+  static void getParams_CreateCameraStreamDisplayIntent (std::list<SystemInterface::Param> *destList);
   static void getParams_CreateMediaDisplayIntent (std::list<SystemInterface::Param> *destList);
   static void getParams_CreateMediaStream (std::list<SystemInterface::Param> *destList);
   static void getParams_CreateMonitorProgram (std::list<SystemInterface::Param> *destList);
@@ -441,6 +460,7 @@ public:
   static void getParams_GetCameraStream (std::list<SystemInterface::Param> *destList);
   static void getParams_GetCameraStreamResult (std::list<SystemInterface::Param> *destList);
   static void getParams_GetCaptureImage (std::list<SystemInterface::Param> *destList);
+  static void getParams_GetCaptureVideo (std::list<SystemInterface::Param> *destList);
   static void getParams_GetDashMpd (std::list<SystemInterface::Param> *destList);
   static void getParams_GetDashSegment (std::list<SystemInterface::Param> *destList);
   static void getParams_GetHlsManifest (std::list<SystemInterface::Param> *destList);
@@ -464,6 +484,7 @@ public:
   static void getParams_PlayMedia (std::list<SystemInterface::Param> *destList);
   static void getParams_RemoveIntent (std::list<SystemInterface::Param> *destList);
   static void getParams_RemoveMedia (std::list<SystemInterface::Param> *destList);
+  static void getParams_RemoveMediaTag (std::list<SystemInterface::Param> *destList);
   static void getParams_RemoveStream (std::list<SystemInterface::Param> *destList);
   static void getParams_ReportContact (std::list<SystemInterface::Param> *destList);
   static void getParams_ReportStatus (std::list<SystemInterface::Param> *destList);
@@ -485,6 +506,7 @@ public:
   static void getParams_UpdateIntentState (std::list<SystemInterface::Param> *destList);
   static void getParams_WatchTasks (std::list<SystemInterface::Param> *destList);
   static void getParams_WebDisplayIntentState (std::list<SystemInterface::Param> *destList);
+  static void populateDefaultFields_AddMediaTag (Json *destObject);
   static void populateDefaultFields_AgentConfiguration (Json *destObject);
   static void populateDefaultFields_AgentContact (Json *destObject);
   static void populateDefaultFields_AgentHost (Json *destObject);
@@ -493,15 +515,18 @@ public:
   static void populateDefaultFields_ApplicationNewsItem (Json *destObject);
   static void populateDefaultFields_Authorize (Json *destObject);
   static void populateDefaultFields_AuthorizeResult (Json *destObject);
-  static void populateDefaultFields_CameraDisplayIntentState (Json *destObject);
+  static void populateDefaultFields_CameraImageDisplayIntentState (Json *destObject);
+  static void populateDefaultFields_CameraSensor (Json *destObject);
   static void populateDefaultFields_CameraServerConfiguration (Json *destObject);
   static void populateDefaultFields_CameraServerStatus (Json *destObject);
+  static void populateDefaultFields_CameraStreamDisplayIntentState (Json *destObject);
   static void populateDefaultFields_CancelTask (Json *destObject);
   static void populateDefaultFields_CommandResult (Json *destObject);
   static void populateDefaultFields_ConfigureCamera (Json *destObject);
   static void populateDefaultFields_ConfigureMediaStream (Json *destObject);
   static void populateDefaultFields_CreateCacheStream (Json *destObject);
-  static void populateDefaultFields_CreateCameraDisplayIntent (Json *destObject);
+  static void populateDefaultFields_CreateCameraImageDisplayIntent (Json *destObject);
+  static void populateDefaultFields_CreateCameraStreamDisplayIntent (Json *destObject);
   static void populateDefaultFields_CreateMediaDisplayIntent (Json *destObject);
   static void populateDefaultFields_CreateMediaStream (Json *destObject);
   static void populateDefaultFields_CreateMonitorProgram (Json *destObject);
@@ -520,6 +545,7 @@ public:
   static void populateDefaultFields_GetCameraStream (Json *destObject);
   static void populateDefaultFields_GetCameraStreamResult (Json *destObject);
   static void populateDefaultFields_GetCaptureImage (Json *destObject);
+  static void populateDefaultFields_GetCaptureVideo (Json *destObject);
   static void populateDefaultFields_GetDashMpd (Json *destObject);
   static void populateDefaultFields_GetDashSegment (Json *destObject);
   static void populateDefaultFields_GetHlsManifest (Json *destObject);
@@ -543,6 +569,7 @@ public:
   static void populateDefaultFields_PlayMedia (Json *destObject);
   static void populateDefaultFields_RemoveIntent (Json *destObject);
   static void populateDefaultFields_RemoveMedia (Json *destObject);
+  static void populateDefaultFields_RemoveMediaTag (Json *destObject);
   static void populateDefaultFields_RemoveStream (Json *destObject);
   static void populateDefaultFields_ReportContact (Json *destObject);
   static void populateDefaultFields_ReportStatus (Json *destObject);
@@ -564,6 +591,7 @@ public:
   static void populateDefaultFields_UpdateIntentState (Json *destObject);
   static void populateDefaultFields_WatchTasks (Json *destObject);
   static void populateDefaultFields_WebDisplayIntentState (Json *destObject);
+  static void hashFields_AddMediaTag (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_AgentConfiguration (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_AgentContact (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_AgentHost (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
@@ -572,15 +600,18 @@ public:
   static void hashFields_ApplicationNewsItem (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_Authorize (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_AuthorizeResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
-  static void hashFields_CameraDisplayIntentState (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_CameraImageDisplayIntentState (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_CameraSensor (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_CameraServerConfiguration (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_CameraServerStatus (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_CameraStreamDisplayIntentState (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_CancelTask (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_CommandResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_ConfigureCamera (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_ConfigureMediaStream (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_CreateCacheStream (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
-  static void hashFields_CreateCameraDisplayIntent (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_CreateCameraImageDisplayIntent (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_CreateCameraStreamDisplayIntent (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_CreateMediaDisplayIntent (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_CreateMediaStream (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_CreateMonitorProgram (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
@@ -599,6 +630,7 @@ public:
   static void hashFields_GetCameraStream (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_GetCameraStreamResult (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_GetCaptureImage (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_GetCaptureVideo (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_GetDashMpd (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_GetDashSegment (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_GetHlsManifest (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
@@ -622,6 +654,7 @@ public:
   static void hashFields_PlayMedia (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_RemoveIntent (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_RemoveMedia (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
+  static void hashFields_RemoveMediaTag (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_RemoveStream (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_ReportContact (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);
   static void hashFields_ReportStatus (Json *commandParams, SystemInterface::HashUpdateFunction hashUpdateFn, void *hashContextPtr);

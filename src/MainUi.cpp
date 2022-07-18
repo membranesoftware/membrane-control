@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -55,7 +55,6 @@
 #include "MainUi.h"
 
 const char *MainUi::ExpandedUiTypesKey = "Main_ExpandedUiTypes";
-const char *MainUi::ShortcutUiTypeKey = "Main_ShortcutUiType";
 const char *MainUi::ApplicationNewsItemsKey = "Main_ApplicationNewsItems";
 
 const int MainUi::UiLaunchWindowTypes[] = {
@@ -97,7 +96,33 @@ void MainUi::setHelpWindowContent (HelpWindow *helpWindow) {
 	helpWindow->addTopicLink (UiText::instance->getText (UiTextString::SearchForHelp).capitalized (), App::getHelpUrl (""));
 }
 
-int MainUi::doLoad () {
+static bool openWidget_matchWindowName (void *data, Widget *widget) {
+	char *name;
+	UiLaunchWindow *uiwindow;
+
+	name = (char *) data;
+	uiwindow = UiLaunchWindow::castWidget (widget);
+	if (uiwindow) {
+		if (uiwindow->windowName.lowercased ().equals (name)) {
+			return (true);
+		}
+	}
+	return (false);
+}
+bool MainUi::openWidget (const StdString &targetName) {
+	UiLaunchWindow *uiwindow;
+	StdString name;
+
+	name.assign (targetName.lowercased ());
+	uiwindow = (UiLaunchWindow *) cardView->findItem (openWidget_matchWindowName, (char *) name.c_str ());
+	if (uiwindow) {
+		uiwindow->eventCallback (uiwindow->openCallback);
+		return (true);
+	}
+	return (false);
+}
+
+OsUtil::Result MainUi::doLoad () {
 	cardView->addItem (createRowHeaderPanel (UiText::instance->getText (UiTextString::MainMenu).capitalized ()), StdString (""), MainUi::TitleRow);
 	cardView->setRowReverseSorted (MainUi::ExpandedUiRow, true);
 
@@ -113,7 +138,7 @@ int MainUi::doLoad () {
 
 	App::instance->shouldSyncRecordStore = true;
 
-	return (OsUtil::Result::Success);
+	return (OsUtil::Success);
 }
 
 void MainUi::doUnload () {
@@ -204,7 +229,7 @@ void MainUi::doPause () {
 
 	cardView->processItems (MainUi::appendExpandedUiType, &items);
 	prefs = App::instance->lockPrefs ();
-	prefs->insert (MainUi::ExpandedUiTypesKey, &items);
+	prefs->insert (MainUi::ExpandedUiTypesKey, items);
 	App::instance->unlockPrefs ();
 }
 
@@ -363,7 +388,7 @@ void MainUi::getApplicationNewsComplete (void *uiPtr, const StdString &targetUrl
 	delete (cmd);
 
 	prefs = App::instance->lockPrefs ();
-	prefs->insert (MainUi::ApplicationNewsItemsKey, &items);
+	prefs->insert (MainUi::ApplicationNewsItemsKey, items);
 	App::instance->unlockPrefs ();
 	ui->resetBanners ();
 }
@@ -464,7 +489,7 @@ void MainUi::openUrlActionClicked (void *uiPtr, Widget *widgetPtr) {
 	}
 
 	result = OsUtil::openUrl (url);
-	if (result != OsUtil::Result::Success) {
+	if (result != OsUtil::Success) {
 		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::LaunchWebBrowserError));
 	}
 	else {

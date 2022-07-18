@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -39,12 +39,15 @@
 #include "UiConfiguration.h"
 #include "UiText.h"
 #include "Menu.h"
+#include "TextField.h"
 #include "LogoWindow.h"
 #include "TooltipWindow.h"
+#include "HistoryWindow.h"
 #include "SettingsWindow.h"
 #include "HelpWindow.h"
 #include "ImageWindow.h"
 #include "ConsoleWindow.h"
+#include "TextFieldWindow.h"
 #include "UiStack.h"
 
 UiStack::UiStack ()
@@ -201,6 +204,9 @@ void UiStack::update (int msElapsed) {
 			snackbarWindow->isVisible = false;
 			activeUi->resume ();
 			App::instance->shouldSyncRecordStore = true;
+			App::instance->isNetworkActive = false;
+			mainToolbar->isInputSuspended = false;
+			secondaryToolbar->isInputSuspended = false;
 			isUiInputSuspended = false;
 		}
 	}
@@ -211,6 +217,7 @@ void UiStack::update (int msElapsed) {
 	mouseHoverTarget.compact ();
 	mainMenu.compact ();
 	darkenPanel.compact ();
+	historyWindow.compact ();
 	settingsWindow.compact ();
 	helpWindow.compact ();
 	dialogWindow.compact ();
@@ -278,6 +285,7 @@ void UiStack::resetToolbars () {
 
 	if (uiList.size () > 1) {
 		button = new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::BackButtonSprite));
+		button->widgetName.assign ("backbutton");
 		button->mouseClickCallback = Widget::EventCallbackContext (UiStack::backButtonClicked, this);
 		button->setInverseColor (true);
 		button->setMouseHoverTooltip (UiText::instance->getText (UiTextString::UiBackTooltip));
@@ -320,7 +328,7 @@ void UiStack::executeStackCommands () {
 				break;
 			}
 			result = ui->load ();
-			if (result != OsUtil::Result::Success) {
+			if (result != OsUtil::Success) {
 				Log::err ("Failed to load UI resources; err=%i", result);
 				ui->release ();
 				break;
@@ -345,7 +353,7 @@ void UiStack::executeStackCommands () {
 				break;
 			}
 			result = ui->load ();
-			if (result != OsUtil::Result::Success) {
+			if (result != OsUtil::Success) {
 				Log::err ("Failed to load UI resources; err=%i", result);
 				ui->release ();
 				break;
@@ -439,13 +447,6 @@ void UiStack::resize () {
 			((Panel *) darkenPanel.widget)->setFixedSize (true, App::instance->rootPanel->width - settingsWindow.widget->width, App::instance->rootPanel->height);
 		}
 	}
-	if (helpWindow.widget) {
-		((HelpWindow *) helpWindow.widget)->setWindowSize (App::instance->rootPanel->width * 0.33f, App::instance->rootPanel->height);
-		helpWindow.widget->position.assign (App::instance->windowWidth - helpWindow.widget->width, 0.0f);
-		if (darkenPanel.widget) {
-			((Panel *) darkenPanel.widget)->setFixedSize (true, App::instance->rootPanel->width - helpWindow.widget->width, App::instance->rootPanel->height);
-		}
-	}
 
 	mainToolbar->refresh ();
 	secondaryToolbar->refresh ();
@@ -464,7 +465,7 @@ void UiStack::showSnackbar (const StdString &messageText, const StdString &actio
 		snackbarWindow->setActionButtonEnabled (false);
 	}
 
-	if (settingsWindow.widget || helpWindow.widget) {
+	if (historyWindow.widget || settingsWindow.widget || helpWindow.widget) {
 		y = 0.0f;
 	}
 	else {
@@ -486,7 +487,6 @@ bool UiStack::processKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isCon
 			return (true);
 		}
 	}
-
 	return (false);
 }
 
@@ -618,7 +618,6 @@ void UiStack::suspendUiInput () {
 	if (isUiInputSuspended) {
 		return;
 	}
-
 	isUiInputSuspended = true;
 	ui = getActiveUi ();
 	if (ui) {
@@ -634,6 +633,131 @@ void UiStack::suspendMouseHover () {
 	mouseHoverClock = UiConfiguration::instance->mouseHoverThreshold;
 	isMouseHoverActive = false;
 	isMouseHoverSuspended = true;
+}
+
+bool UiStack::executeMainMenuAction (const char *actionName) {
+	StdString name;
+	bool active;
+
+	active = false;
+	SDL_LockMutex (uiMutex);
+	if (activeUi) {
+		active = true;
+	}
+	SDL_UnlockMutex (uiMutex);
+	if (! active) {
+		return (false);
+	}
+
+	name.assign (actionName);
+	name.lowercase ();
+	if (name.equals (UiText::instance->getText (UiTextString::Log).lowercased ())) {
+		UiStack::historyActionClicked (&(App::instance->uiStack), NULL);
+		return (true);
+	}
+	if (name.equals (UiText::instance->getText (UiTextString::Settings).lowercased ())) {
+		UiStack::settingsActionClicked (&(App::instance->uiStack), NULL);
+		return (true);
+	}
+	if (name.equals (UiText::instance->getText (UiTextString::About).lowercased ())) {
+		UiStack::aboutActionClicked (&(App::instance->uiStack), NULL);
+		return (true);
+	}
+	if (name.equals (UiText::instance->getText (UiTextString::CheckForUpdates).lowercased ())) {
+		UiStack::updateActionClicked (&(App::instance->uiStack), NULL);
+		return (true);
+	}
+	if (name.equals (UiText::instance->getText (UiTextString::SendFeedback).lowercased ())) {
+		UiStack::feedbackActionClicked (&(App::instance->uiStack), NULL);
+		return (true);
+	}
+	if (name.equals (UiText::instance->getText (UiTextString::Help).lowercased ())) {
+		UiStack::helpActionClicked (&(App::instance->uiStack), NULL);
+		return (true);
+	}
+	if (name.equals (UiText::instance->getText (UiTextString::Exit).lowercased ())) {
+		UiStack::exitActionClicked (&(App::instance->uiStack), NULL);
+		return (true);
+	}
+
+	return (false);
+}
+
+void UiStack::getWidgetNames (StringList *destList) {
+	destList->clear ();
+	App::instance->rootPanel->getWidgetNames (destList);
+}
+
+bool UiStack::openWidget (const StdString &targetName) {
+	Ui *ui;
+	bool result;
+
+	result = false;
+	ui = App::instance->uiStack.getActiveUi ();
+	if (ui) {
+		result = ui->openWidget (targetName);
+		ui->release ();
+	}
+	return (result);
+}
+
+bool UiStack::selectWidget (const StdString &targetName) {
+	Ui *ui;
+	bool result;
+
+	result = false;
+	ui = App::instance->uiStack.getActiveUi ();
+	if (ui) {
+		result = ui->selectWidget (targetName);
+		ui->release ();
+	}
+	return (result);
+}
+
+bool UiStack::unselectWidget (const StdString &targetName) {
+	Ui *ui;
+	bool result;
+
+	result = false;
+	ui = App::instance->uiStack.getActiveUi ();
+	if (ui) {
+		result = ui->unselectWidget (targetName);
+		ui->release ();
+	}
+	return (result);
+}
+
+bool UiStack::clickWidget (const StdString &targetName) {
+	Widget *target;
+
+	target = App::instance->rootPanel->findWidget (targetName);
+	if (! target) {
+		return (false);
+	}
+	target->mouseClick ();
+	return (true);
+}
+
+bool UiStack::setTextFieldValue (const StdString &targetName, const StdString &textValue) {
+	Widget *target;
+	TextField *textfield;
+	TextFieldWindow *textfieldwindow;
+
+	target = App::instance->rootPanel->findWidget (targetName);
+	if (! target) {
+		return (false);
+	}
+	textfield = TextField::castWidget (target);
+	if (textfield) {
+		textfield->setValue (textValue);
+		return (true);
+	}
+	textfieldwindow = TextFieldWindow::castWidget (target);
+	if (textfieldwindow) {
+		textfieldwindow->setValue (textValue);
+		return (true);
+	}
+	return (false);
 }
 
 void UiStack::mainMenuButtonClicked (void *uiStackPtr, Widget *widgetPtr) {
@@ -656,18 +780,23 @@ void UiStack::mainMenuButtonClicked (void *uiStackPtr, Widget *widgetPtr) {
 	menu = (Menu *) App::instance->rootPanel->addWidget (new Menu ());
 	menu->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
 	menu->isClickDestroyEnabled = true;
-	menu->addItem (UiText::instance->getText (UiTextString::Settings).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SettingsGearButtonSprite), UiStack::settingsActionClicked, uistack);
-	menu->addItem (UiText::instance->getText (UiTextString::About).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::AboutButtonSprite), UiStack::aboutActionClicked, uistack);
-	menu->addItem (UiText::instance->getText (UiTextString::CheckForUpdates).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::UpdateButtonSprite), UiStack::updateActionClicked, uistack);
-	menu->addItem (UiText::instance->getText (UiTextString::SendFeedback).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::FeedbackButtonSprite), UiStack::feedbackActionClicked, uistack);
-	menu->addItem (UiText::instance->getText (UiTextString::Help).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::HelpButtonSprite), UiStack::helpActionClicked, uistack);
-	menu->addItem (UiText::instance->getText (UiTextString::Exit).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ExitButtonSprite), UiStack::exitActionClicked, uistack);
+	menu->addItem (UiText::instance->getText (UiTextString::Log).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::HistoryButtonSprite), Widget::EventCallbackContext (UiStack::historyActionClicked, uistack));
+	menu->addItem (UiText::instance->getText (UiTextString::Settings).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SettingsGearButtonSprite), Widget::EventCallbackContext (UiStack::settingsActionClicked, uistack));
+	menu->addItem (UiText::instance->getText (UiTextString::About).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::AboutButtonSprite), Widget::EventCallbackContext (UiStack::aboutActionClicked, uistack));
+	menu->addItem (UiText::instance->getText (UiTextString::CheckForUpdates).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::UpdateButtonSprite), Widget::EventCallbackContext (UiStack::updateActionClicked, uistack));
+	menu->addItem (UiText::instance->getText (UiTextString::SendFeedback).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::FeedbackButtonSprite), Widget::EventCallbackContext (UiStack::feedbackActionClicked, uistack));
+	menu->addItem (UiText::instance->getText (UiTextString::Help).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::HelpButtonSprite), Widget::EventCallbackContext (UiStack::helpActionClicked, uistack));
+	menu->addItem (UiText::instance->getText (UiTextString::Exit).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ExitButtonSprite), Widget::EventCallbackContext (UiStack::exitActionClicked, uistack));
 	menu->position.assign (widgetPtr->position.x + widgetPtr->width - menu->width, widgetPtr->position.y + widgetPtr->height);
 	uistack->mainMenu.assign (menu);
 }
 
 void UiStack::backButtonClicked (void *uiStackPtr, Widget *widgetPtr) {
 	App::instance->uiStack.popUi ();
+}
+
+void UiStack::historyActionClicked (void *uiStackPtr, Widget *widgetPtr) {
+	App::instance->uiStack.toggleHistoryWindow ();
 }
 
 void UiStack::settingsActionClicked (void *uiStackPtr, Widget *widgetPtr) {
@@ -680,7 +809,7 @@ void UiStack::aboutActionClicked (void *uiStackPtr, Widget *widgetPtr) {
 
 	url.assign (App::getHelpUrl ("about-membrane-control"));
 	result = OsUtil::openUrl (url);
-	if (result != OsUtil::Result::Success) {
+	if (result != OsUtil::Success) {
 		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::OpenAboutUrlError));
 	}
 	else {
@@ -692,7 +821,7 @@ void UiStack::updateActionClicked (void *uiStackPtr, Widget *widgetPtr) {
 	int result;
 
 	result = OsUtil::openUrl (App::getUpdateUrl ());
-	if (result != OsUtil::Result::Success) {
+	if (result != OsUtil::Success) {
 		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::OpenFeedbackUrlError));
 	}
 	else {
@@ -704,7 +833,7 @@ void UiStack::feedbackActionClicked (void *uiStackPtr, Widget *widgetPtr) {
 	int result;
 
 	result = OsUtil::openUrl (App::getFeedbackUrl (true));
-	if (result != OsUtil::Result::Success) {
+	if (result != OsUtil::Success) {
 		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::OpenFeedbackUrlError));
 	}
 	else {
@@ -723,14 +852,78 @@ void UiStack::exitActionClicked (void *uiStackPtr, Widget *widgetPtr) {
 void UiStack::clearOverlay () {
 	mainMenu.destroyAndClear ();
 	darkenPanel.destroyAndClear ();
+	historyWindow.destroyAndClear ();
 	settingsWindow.destroyAndClear ();
 	helpWindow.destroyAndClear ();
 	dialogWindow.destroyAndClear ();
 	consoleWindow.destroyAndClear ();
+	App::instance->setConsoleWindow (NULL);
 }
 
 bool UiStack::isDarkenOverlayActive () {
-	return (settingsWindow.widget || helpWindow.widget || dialogWindow.widget || consoleWindow.widget);
+	return (historyWindow.widget || settingsWindow.widget || helpWindow.widget || dialogWindow.widget || consoleWindow.widget);
+}
+
+void UiStack::toggleHistoryWindow () {
+	HistoryWindow *history;
+	Panel *panel;
+
+	if (dialogWindow.widget) {
+		return;
+	}
+	if (historyWindow.widget) {
+		clearOverlay ();
+		return;
+	}
+
+	clearOverlay ();
+	SDL_LockMutex (uiMutex);
+	if (activeUi) {
+		activeUi->clearPopupWidgets ();
+	}
+	SDL_UnlockMutex (uiMutex);
+
+	history = new HistoryWindow (App::instance->rootPanel->width * 0.33f, App::instance->rootPanel->height);
+	history->executeClickCallback = Widget::EventCallbackContext (UiStack::historyExecuteClicked, this);
+	panel = new Panel ();
+	panel->setFillBg (true, Color (0.0f, 0.0f, 0.0f, 0.0f));
+	panel->bgColor.translate (0.0f, 0.0f, 0.0f, UiConfiguration::instance->overlayWindowAlpha, UiConfiguration::instance->backgroundCrossFadeDuration);
+	panel->setFixedSize (true, App::instance->rootPanel->width - history->width, App::instance->rootPanel->height);
+
+	App::instance->rootPanel->addWidget (panel);
+	App::instance->rootPanel->addWidget (history);
+	panel->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
+	history->zLevel = App::instance->rootPanel->maxWidgetZLevel + 2;
+	history->position.assign (App::instance->rootPanel->width - history->width, 0.0f);
+	darkenPanel.assign (panel);
+	historyWindow.assign (history);
+	suspendUiInput ();
+}
+
+void UiStack::historyExecuteClicked (void *uiStackPtr, Widget *widgetPtr) {
+	UiStack *uistack;
+	HistoryWindow *history;
+	StringList idlist;
+	Json *command;
+	Ui *ui;
+	OsUtil::Result result;
+
+	uistack = (UiStack *) uiStackPtr;
+	history = (HistoryWindow *) widgetPtr;
+	ui = uistack->getActiveUi ();
+	if (ui) {
+		result = CommandHistory::instance->executeRepeatCommand (history->executeCommandId, &idlist, &command);
+		if (result == OsUtil::Success) {
+			ui->invokeCommand (history->executeCommandId, idlist, command);
+		}
+		else if (result == OsUtil::ProgramNotFoundError) {
+			uistack->showSnackbar (UiText::instance->getText (UiTextString::PlaylistNotFoundError));
+		}
+		else {
+			uistack->showSnackbar (UiText::instance->getText (UiTextString::InternalError));
+		}
+		ui->release ();
+	}
 }
 
 void UiStack::toggleSettingsWindow () {
@@ -868,10 +1061,9 @@ void UiStack::showImageDialog (const StdString &imageUrl) {
 	image = new ImageWindow (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite)));
 	image->loadCallback = Widget::EventCallbackContext (UiStack::imageDialogLoaded, this);
 	image->mouseClickCallback = Widget::EventCallbackContext (UiStack::imageDialogClicked, this);
-	image->setPadding (UiConfiguration::instance->paddingSize, UiConfiguration::instance->paddingSize);
 	image->setFillBg (true, UiConfiguration::instance->darkBackgroundColor);
-	image->setLoadSprite (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
-	image->setLoadResize (true, ((float) App::instance->windowWidth) * 0.95f);
+	image->setLoadingSprite (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite), (float) App::instance->windowWidth * 0.15f, (float) App::instance->windowHeight * 0.15f);
+	image->onLoadFit ((float) App::instance->windowWidth * 0.99f, (float) App::instance->windowHeight * 0.99f);
 	image->setImageUrl (imageUrl);
 	showDialog (image);
 }

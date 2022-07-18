@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -78,7 +78,6 @@ void CommandList::freeContext (CommandList::Context *ctx) {
 		delete (ctx->command);
 		ctx->command = NULL;
 	}
-
 	delete (ctx);
 }
 
@@ -101,7 +100,7 @@ bool CommandList::isIdle (int timeout) {
 	return ((lastIdleTime > 0) && ((OsUtil::getTime () - lastIdleTime) >= timeout));
 }
 
-void CommandList::addCommand (const StdString &hostname, int tcpPort, Json *command, CommandList::InvokeCallback callback, void *callbackData) {
+void CommandList::addCommand (const StdString &hostname, int tcpPort, Json *command, CommandList::InvokeCallbackContext callback) {
 	CommandList::Context *ctx;
 	StdString url, postdata;
 	bool shouldinvoke;
@@ -114,7 +113,6 @@ void CommandList::addCommand (const StdString &hostname, int tcpPort, Json *comm
 	ctx->tcpPort = tcpPort;
 	ctx->command = command;
 	ctx->callback = callback;
-	ctx->callbackData = callbackData;
 
 	contextList.push_back (ctx);
 	if ((! isInvoking) && getNextCommand (&url, &postdata)) {
@@ -141,32 +139,32 @@ void CommandList::invokeComplete (void *commandListPtr, const StdString &targetU
 		}
 	}
 
-	result = OsUtil::Result::Success;
+	result = OsUtil::Success;
 	responsecmd = NULL;
 
 	if ((statusCode != Network::HttpOkCode) || (! responseData)) {
 		switch (statusCode) {
 			case Network::HttpUnauthorizedCode: {
-				result = OsUtil::Result::UnauthorizedError;
+				result = OsUtil::UnauthorizedError;
 				break;
 			}
 			default: {
-				result = OsUtil::Result::HttpOperationFailedError;
+				result = OsUtil::HttpOperationFailedError;
 				break;
 			}
 		}
 	}
 
-	if (result == OsUtil::Result::Success) {
+	if (result == OsUtil::Success) {
 		if (responseData->empty ()) {
-			result = OsUtil::Result::MalformedResponseError;
+			result = OsUtil::MalformedResponseError;
 		}
 	}
 
-	if (result == OsUtil::Result::Success) {
+	if (result == OsUtil::Success) {
 		resp.assignBuffer (responseData);
 		if (! SystemInterface::instance->parseCommand (resp, &responsecmd)) {
-			result = OsUtil::Result::MalformedResponseError;
+			result = OsUtil::MalformedResponseError;
 		}
 	}
 
@@ -193,11 +191,14 @@ void CommandList::endInvoke (int invokeResult, Json *responseCommand) {
 
 	if (ctx) {
 		lastInvokeResult = invokeResult;
-		if (ctx->callback) {
+		if (ctx->callback.callback) {
 			if (responseCommand) {
 				agentid = SystemInterface::instance->getCommandAgentId (responseCommand);
 			}
-			ctx->callback (ctx->callbackData, invokeResult, ctx->hostname, ctx->tcpPort, agentid, ctx->command, responseCommand);
+			if (agentid.empty ()) {
+				agentid.assign (ctx->callback.agentId);
+			}
+			ctx->callback.callback (ctx->callback.callbackData, invokeResult, ctx->hostname, ctx->tcpPort, agentid, ctx->command, responseCommand, ctx->callback.invokeId);
 		}
 		freeContext (ctx);
 	}
@@ -314,19 +315,19 @@ void CommandList::authorizeComplete (void *commandListPtr, const StdString &targ
 	int result;
 
 	cmdlist = (CommandList *) commandListPtr;
-	result = OsUtil::Result::Success;
+	result = OsUtil::Success;
 	responsecmd = NULL;
 
 	if ((statusCode == Network::HttpOkCode) && responseData && (! responseData->empty ())) {
 		resp.assignBuffer (responseData);
 		if (! SystemInterface::instance->parseCommand (resp, &responsecmd)) {
-			result = OsUtil::Result::MalformedResponseError;
+			result = OsUtil::MalformedResponseError;
 		}
 	}
 
-	if (result == OsUtil::Result::Success) {
+	if (result == OsUtil::Success) {
 		if (! responsecmd) {
-			result = OsUtil::Result::HttpOperationFailedError;
+			result = OsUtil::HttpOperationFailedError;
 		}
 	}
 
@@ -384,9 +385,9 @@ void CommandList::endAuthorize (int invokeResult, Json *responseCommand) {
 		Network::instance->sendHttpPost (url, postdata, Network::HttpRequestCallbackContext (CommandList::invokeComplete, this), AgentControl::instance->agentServerName);
 	}
 	if (ctx && shouldcallback) {
-		lastInvokeResult = OsUtil::Result::UnauthorizedError;
-		if (ctx->callback) {
-			ctx->callback (ctx->callbackData, OsUtil::Result::UnauthorizedError, ctx->hostname, ctx->tcpPort, StdString (""), ctx->command, NULL);
+		lastInvokeResult = OsUtil::UnauthorizedError;
+		if (ctx->callback.callback) {
+			ctx->callback.callback (ctx->callback.callbackData, OsUtil::UnauthorizedError, ctx->hostname, ctx->tcpPort, ctx->callback.agentId, ctx->command, NULL, ctx->callback.invokeId);
 		}
 		freeContext (ctx);
 	}

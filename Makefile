@@ -44,18 +44,17 @@ O=ActionWindow.o \
 	BannerWindow.o \
 	Buffer.o \
 	Button.o \
-	CameraCaptureWindow.o \
 	CameraDetailWindow.o \
 	CameraThumbnailWindow.o \
 	CameraTimelineUi.o \
 	CameraTimelineWindow.o \
 	CameraUi.o \
 	CameraWindow.o \
-	CapturePlaylistWindow.o \
 	CardView.o \
 	Chip.o \
 	Color.o \
 	ComboBox.o \
+	CommandHistory.o \
 	CommandList.o \
 	CommandListener.o \
 	ConsoleWindow.o \
@@ -63,6 +62,7 @@ O=ActionWindow.o \
 	HashMap.o \
 	HelpActionWindow.o \
 	HelpWindow.o \
+	HistoryWindow.o \
 	HyperlinkWindow.o \
 	IconCardWindow.o \
 	IconLabelWindow.o \
@@ -83,7 +83,6 @@ O=ActionWindow.o \
 	Main.o \
 	MainUi.o \
 	MathUtil.o \
-	MediaDetailWindow.o \
 	MediaItemUi.o \
 	MediaLibraryWindow.o \
 	MediaThumbnailWindow.o \
@@ -95,6 +94,7 @@ O=ActionWindow.o \
 	MonitorCacheUi.o \
 	MonitorWindow.o \
 	Network.o \
+	NumberSpace.o \
 	OsUtil.o \
 	Panel.o \
 	Position.o \
@@ -119,12 +119,12 @@ O=ActionWindow.o \
 	Sprite.o \
 	StatsWindow.o \
 	StdString.o \
-	StreamDetailWindow.o \
 	StreamItemUi.o \
 	StreamPlaylistWindow.o \
 	StreamWindow.o \
 	StringList.o \
 	SystemInterface.o \
+	TagWindow.o \
 	TaskGroup.o \
 	TaskWindow.o \
 	TextArea.o \

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -88,7 +88,7 @@ int main (int argc, char **argv)
 	exitstatus = 0;
 	App::createInstance ();
 	result = App::instance->run ();
-	if (result != OsUtil::Result::Success) {
+	if (result != OsUtil::Success) {
 		if (App::instance->log.isFileWriteEnabled) {
 			printf ("Failed to execute application. Visit membranesoftware.com for help or an updated version. Errors written to log file: %s\n", App::instance->log.writeFilename.c_str ());
 		}

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -48,15 +48,23 @@ public:
 	struct RunContext {
 		TaskGroup::RunFunction fn;
 		void *fnData;
-		RunContext (): fn (NULL), fnData (NULL) { }
-		RunContext (TaskGroup::RunFunction fn, void *fnData): fn (fn), fnData (fnData) { }
+		RunContext ():
+			fn (NULL),
+			fnData (NULL) { }
+		RunContext (TaskGroup::RunFunction fn, void *fnData):
+			fn (fn),
+			fnData (fnData) { }
 	};
 	typedef void (*EndCallback) (void *callbackData, void *runPtr);
 	struct EndCallbackContext {
 		TaskGroup::EndCallback callback;
 		void *callbackData;
-		EndCallbackContext (): callback (NULL), callbackData (NULL) { }
-		EndCallbackContext (TaskGroup::EndCallback callback, void *callbackData): callback (callback), callbackData (callbackData) { }
+		EndCallbackContext ():
+			callback (NULL),
+			callbackData (NULL) { }
+		EndCallbackContext (TaskGroup::EndCallback callback, void *callbackData):
+			callback (callback),
+			callbackData (callbackData) { }
 	};
 
 	// Add fn as a run task and invoke endCallback when complete. Returns a boolean value indicating if the task was successfully queued.
@@ -83,7 +91,11 @@ private:
 		TaskGroup::EndCallbackContext endCallback;
 		SDL_Thread *thread;
 		bool isRunning;
-		TaskContext (): fn (), endCallback (), thread (NULL), isRunning (false) { }
+		TaskContext ():
+			fn (),
+			endCallback (),
+			thread (NULL),
+			isRunning (false) { }
 	};
 
 	std::list<TaskGroup::TaskContext> contextList;

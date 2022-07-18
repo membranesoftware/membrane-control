@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,7 +30,6 @@
 #include "Config.h"
 #include <stdlib.h>
 #include "App.h"
-#include "Log.h"
 #include "StdString.h"
 #include "UiConfiguration.h"
 #include "Sprite.h"
@@ -42,8 +41,10 @@
 #include "ProgressBar.h"
 #include "IconLabelWindow.h"
 
-IconLabelWindow::IconLabelWindow (Sprite *iconSprite, const StdString &iconText, UiConfiguration::FontType iconFontType, const Color &iconTextColor)
+IconLabelWindow::IconLabelWindow (Sprite *iconSprite, const StdString &iconText, UiConfiguration::FontType textFontType, const Color &textColor)
 : Panel ()
+, textLabelX (0.0f)
+, textFontType (textFontType)
 , label (NULL)
 , image (NULL)
 , iconSprite (iconSprite)
@@ -53,8 +54,8 @@ IconLabelWindow::IconLabelWindow (Sprite *iconSprite, const StdString &iconText,
 {
 	setPadding (UiConfiguration::instance->paddingSize, 0.0f);
 
-	normalTextColor.assign (iconTextColor);
-	label = (Label *) addWidget (new Label (iconText, iconFontType, normalTextColor));
+	normalTextColor.assign (textColor);
+	label = (Label *) addWidget (new Label (iconText, textFontType, normalTextColor));
 	label->mouseClickCallback = Widget::EventCallbackContext (IconLabelWindow::labelClicked, this);
 
 	image = (Image *) addWidget (new Image (iconSprite));
@@ -202,4 +203,5 @@ void IconLabelWindow::refreshLayout () {
 		y2 += heightPadding;
 	}
 	setFixedSize (true, x2, y2);
+	textLabelX = label->position.x;
 }

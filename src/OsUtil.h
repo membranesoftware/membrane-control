@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -33,6 +33,8 @@
 #define OS_UTIL_H
 
 #include "StdString.h"
+
+class Buffer;
 
 class OsUtil {
 public:
@@ -127,8 +129,8 @@ public:
 	// Return a boolean value indicating if the provided path names a file that exists
 	static bool fileExists (const StdString &path);
 
-	// Read a file from the specified path and store its data in the provided string. Returns a Result value.
-	static OsUtil::Result readFile (const StdString &path, StdString *destString);
+	// Read a file from the specified path and return a newly created Buffer object holding the resulting data, or NULL if the file read failed. If a Buffer is returned by this method, the caller must delete it when no longer needed.
+	static Buffer *readFile (const StdString &path);
 
 	// Return a value read from the environment, or the specified default if no such value exists
 	static StdString getEnvValue (const StdString &key, const StdString &defaultValue);

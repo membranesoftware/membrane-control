@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -32,10 +32,11 @@
 #ifndef CAMERA_TIMELINE_UI_H
 #define CAMERA_TIMELINE_UI_H
 
-#include <queue>
 #include "StdString.h"
 #include "Button.h"
+#include "NumberSpace.h"
 #include "HelpWindow.h"
+#include "CameraWindow.h"
 #include "Ui.h"
 
 class CameraTimelineUi : public Ui {
@@ -44,8 +45,9 @@ public:
 	enum {
 		TimeIconSprite = 0,
 		SelectedTimespanIconSprite = 1,
-		PlayButtonSprite = 2,
-		StopButtonSprite = 3
+		OpenImageButtonSprite = 2,
+		OpenVideoButtonSprite = 3,
+		NoTimelineImageIconSprite = 4
 	};
 
 	// Card view row numbers
@@ -57,7 +59,7 @@ public:
 	// Prefs keys
 	static const char *ImageSizeKey;
 
-	CameraTimelineUi (const StdString &agentId, const StdString &agentName);
+	CameraTimelineUi (CameraWindow *cameraWindow);
 	~CameraTimelineUi ();
 
 	// Read-write data members
@@ -65,14 +67,13 @@ public:
 
 	// Read-only data members
 	StdString agentId;
+	int sensor;
 	StdString agentName;
 	StdString captureImagePath;
+	StdString captureVideoPath;
 
 	// Set fields in the provided HelpWindow widget as appropriate for the UI's help content
 	void setHelpWindowContent (HelpWindow *helpWindow);
-
-	// Execute operations appropriate when an agent control link client becomes connected
-	void handleLinkClientConnect (const StdString &agentId);
 
 protected:
 	// Return a resource path containing images to be loaded into the sprites object, or an empty string to disable sprite loading
@@ -82,7 +83,7 @@ protected:
 	Widget *createBreadcrumbWidget ();
 
 	// Load subclass-specific resources and return a result value
-	int doLoad ();
+	OsUtil::Result doLoad ();
 
 	// Unload subclass-specific resources
 	void doUnload ();
@@ -92,6 +93,9 @@ protected:
 
 	// Add subclass-specific items to the provided secondary toolbar object
 	void doAddSecondaryToolbarItems (Toolbar *toolbar);
+
+	// Remove and destroy any subclass-specific popup widgets that have been created by the UI
+	void doClearPopupWidgets ();
 
 	// Update subclass-specific interface state as appropriate when the Ui becomes active
 	void doResume ();
@@ -117,31 +121,44 @@ private:
 	static void thumbnailImageMouseExited (void *uiPtr, Widget *widgetPtr);
 	static void timelineWindowPositionHovered (void *uiPtr, Widget *widgetPtr);
 	static void timelineWindowPositionClicked (void *uiPtr, Widget *widgetPtr);
+	static void timelineHoverImageLoaded (void *uiPtr, Widget *widgetPtr);
 	static void sortToggleStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void playToggleStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void capturePlayThumbnailImageLoaded (void *uiPtr, Widget *widgetPtr);
-	static void selectToggleStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void receiveFindCaptureImages (void *uiPtr, const StdString &agentId, Json *command);
+	static void receiveFindCaptureImagesResult (void *uiPtr, const StdString &agentId, Json *command);
+	static void selectModeButtonClicked (void *uiPtr, Widget *widgetPtr);
+
+	// Invoke FindCaptureImages as a link command to the camera agent
+	void findCaptureImages (int64_t captureTime = 0, bool isDescending = true, bool isDisplayFind = true);
+
+	// Set state of bottom toolbar select mode buttons as needed for a click of clickedButton
+	void setSelectMode (Button *clickedButton);
 
 	static const float TimelineWindowScale;
-	static const int PageSize;
+	static const int DisplayPageSize;
+	static const int TimelinePageSize;
 	static const int CapturePlayPeriod;
+	static const float TimelinePopupWidthMultiplier;
 
 	int cardDetail;
 	bool isSortDescending;
 	WidgetHandle sortToggle;
-	WidgetHandle selectToggle;
 	WidgetHandle timelineWindow;
 	WidgetHandle cameraDetailWindow;
-	WidgetHandle capturePlayWindow;
+	WidgetHandle emptyStateWindow;
+	WidgetHandle timelinePopup;
 	WidgetHandle commandCaption;
+	WidgetHandle openImageButton;
+	WidgetHandle openVideoButton;
+	WidgetHandle targetImageButton;
+	WidgetHandle activeSelectButton;
 	bool isFindingCaptureImages;
-	bool isPlayingCapture;
-	std::queue<int64_t> capturePlayTimes;
-	int capturePlayClock;
+	bool isFindingDisplayCaptureImages;
+	int64_t findCaptureImagesTime;
+	NumberSpace captureTimes;
 	int64_t captureStartTime;
 	int64_t captureEndTime;
-	int64_t lastTimelineHoverTime;
+	int64_t timelineHoverPosition;
+	int64_t timelinePopupPositionStartTime;
+	int64_t timelinePopupPosition;
 	int64_t selectedTime;
 	int64_t displayStartTime;
 	int64_t displayEndTime;

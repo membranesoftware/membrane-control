@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -55,7 +55,7 @@
 #endif
 
 #define CONFIG_FLOAT_EPSILON (0.000001f)
-#define FLOAT_EQUALS(F1,F2) (fabs (F1 - F2) <= CONFIG_FLOAT_EPSILON)
+#define FLOAT_EQUALS(F1,F2) (fabs ((F1) - (F2)) <= CONFIG_FLOAT_EPSILON)
 #define BOOL_STRING(VAL) ((VAL) ? "true" : "false")
 #define TOSTRING_STRING(VAL) ((VAL) ? (VAL)->toString ().c_str () : "NULL")
 

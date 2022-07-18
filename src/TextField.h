@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -87,6 +87,12 @@ public:
 	// Set the widget's key focus mode, indicating whether it should handle keypress events with edit focus
 	virtual void setKeyFocus (bool enable);
 
+	// Return a boolean value indicating if the provided Widget is a member of this class
+	static bool isWidgetType (Widget *widget);
+
+	// Return a typecasted pointer to the provided widget, or NULL if the widget does not appear to be of the correct type
+	static TextField *castWidget (Widget *widget);
+
 protected:
 	// Execute operations to update object state as appropriate for an elapsed millisecond time period
 	virtual void doUpdate (int msElapsed);
@@ -101,6 +107,9 @@ protected:
 	virtual void refreshLayout ();
 
 private:
+	// Set the field's text label and update other elements as needed
+	void setText (const StdString &valueText);
+
 	// Set the field's focused state
 	void setFocused (bool enable);
 

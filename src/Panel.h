@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -35,6 +35,8 @@
 #include <stdint.h>
 #include <list>
 #include "SDL2/SDL.h"
+#include "StdString.h"
+#include "StringList.h"
 #include "Color.h"
 #include "Position.h"
 #include "WidgetHandle.h"
@@ -49,6 +51,7 @@ public:
 
 	// Layout types
 	enum {
+		NoLayout = -1,
 		VerticalLayout = 0,
 		VerticalRightJustifiedLayout = 1,
 		HorizontalLayout = 2,
@@ -60,6 +63,7 @@ public:
 	Color borderColor;
 	Color dropShadowColor;
 	bool shouldRefreshTexture;
+	float layoutSpacing;
 
 	// Read-only data members
 	bool isTextureRenderEnabled;
@@ -122,6 +126,15 @@ public:
 
 	// Return the topmost child widget at the specified screen position, or NULL if no such widget was found. If requireMouseHoverEnabled is true, return a widget only if it has enabled the isMouseHoverEnabled option.
 	Widget *findWidget (float screenPositionX, float screenPositionY, bool requireMouseHoverEnabled = false);
+
+	// Return the child widget that holds a matching widgetName value, or NULL if no such widget was found
+	Widget *findWidget (const StdString &widgetName);
+
+	// Process all widgets in the panel by executing the provided function
+	void processWidgets (Widget::EventCallback fn, void *fnData);
+
+	// Find all child widgets with a non-empty widgetName value and append the names to destList
+	void getWidgetNames (StringList *destList);
 
 	// Set the panel's view origin coordinates
 	void setViewOrigin (float originX, float originY);

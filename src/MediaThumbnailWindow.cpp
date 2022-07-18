@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -32,7 +32,6 @@
 #include <math.h>
 #include "App.h"
 #include "ClassId.h"
-#include "Log.h"
 #include "StdString.h"
 #include "UiConfiguration.h"
 #include "OsUtil.h"
@@ -63,7 +62,7 @@ MediaThumbnailWindow::MediaThumbnailWindow (int thumbnailIndex, float thumbnailT
 
 	thumbnailImage = (ImageWindow *) addWidget (new ImageWindow (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
 	thumbnailImage->mouseLongPressCallback = Widget::EventCallbackContext (MediaThumbnailWindow::thumbnailImageLongPressed, this);
-	thumbnailImage->setLoadSprite (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
+	thumbnailImage->setLoadingSprite (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
 	thumbnailImage->setImageUrl (sourceUrl);
 
 	timestampLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->inverseTextColor)));
@@ -106,7 +105,9 @@ void MediaThumbnailWindow::setLayout (int layoutType, float maxPanelWidth) {
 	h /= sourceWidth;
 	w = floorf (w);
 	h = floorf (h);
-	thumbnailImage->setWindowSize (w, h);
+	thumbnailImage->setLoadingSprite (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite), w, h);
+	thumbnailImage->setWindowSize (true, w, h);
+	thumbnailImage->onLoadScale (w, h);
 	thumbnailImage->reload ();
 
 	refreshLayout ();

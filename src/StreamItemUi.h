@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -46,14 +46,20 @@ public:
 	enum {
 		TimeIconSprite = 0,
 		AttributesIconSprite = 1,
-		DurationIconSprite = 2
+		DurationIconSprite = 2,
+		CreateTagButtonSprite = 3
 	};
 
 	// Card view row numbers
 	enum {
 		InfoRow = 0,
-		ImageRow = 1
+		TagButtonRow = 1,
+		TagRow = 2,
+		ImageRow = 3
 	};
+
+	static const float TextWidthMultiplier;
+	static const float TimelinePopupWidthMultiplier;
 
 	// Prefs keys
 	static const char *ImageSizeKey;
@@ -68,9 +74,14 @@ public:
 	StdString streamId;
 	StdString streamName;
 	StdString agentId;
+	StdString mediaId;
 	int64_t duration;
 	int frameWidth;
 	int frameHeight;
+	float frameRate;
+	int64_t bitrate;
+	int profile;
+	int64_t streamSize;
 	StdString thumbnailPath;
 	int segmentCount;
 	std::vector<double> segmentPositions;
@@ -86,7 +97,7 @@ protected:
 	Widget *createBreadcrumbWidget ();
 
 	// Load subclass-specific resources and return a result value
-	int doLoad ();
+	OsUtil::Result doLoad ();
 
 	// Unload subclass-specific resources
 	void doUnload ();
@@ -96,6 +107,9 @@ protected:
 
 	// Add subclass-specific items to the provided secondary toolbar object
 	void doAddSecondaryToolbarItems (Toolbar *toolbar);
+
+	// Remove and destroy any subclass-specific popup widgets that have been created by the UI
+	void doClearPopupWidgets ();
 
 	// Update subclass-specific interface state as appropriate when the Ui becomes active
 	void doResume ();
@@ -122,15 +136,26 @@ private:
 	static void timelineWindowPositionClicked (void *uiPtr, Widget *widgetPtr);
 	static void selectToggleStateChanged (void *uiPtr, Widget *widgetPtr);
 	static bool matchThumbnailIndex (void *intPtr, Widget *widgetPtr);
+	static void createTagButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void createTagActionClosed (void *uiPtr, Widget *widgetPtr);
+	static void removeTagButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void removeTagActionClosed (void *uiPtr, Widget *widgetPtr);
+	static void invokeMediaCommandComplete (Ui *invokeUi, const StdString &agentId, Json *invokeCommand, Json *responseCommand, bool isResponseCommandSuccess);
 
 	// Find the source StreamItem record and populate the interface based on its fields
 	void syncStreamItem ();
 
+	WidgetHandle nameWindow;
+	WidgetHandle attributesWindow;
+	WidgetHandle streamSizeWindow;
+	WidgetHandle durationWindow;
 	WidgetHandle timelineWindow;
+	WidgetHandle timelinePopup;
 	WidgetHandle commandCaption;
-	bool isRecordSynced;
 	int cardDetail;
-	int lastTimelineHoverPosition;
+	int timelineHoverPosition;
+	int64_t timelinePopupPositionStartTime;
+	int timelinePopupPosition;
 	bool isSelectingPlayPosition;
 };
 

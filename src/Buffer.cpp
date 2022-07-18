@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -31,7 +31,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "OsUtil.h"
-#include "Log.h"
 #include "Buffer.h"
 
 const int Buffer::DefaultSizeIncrement = 1024; // bytes
@@ -52,7 +51,6 @@ Buffer *Buffer::copy () {
 	if (! empty ()) {
 		buffer->add (data, length);
 	}
-
 	return (buffer);
 }
 
@@ -94,14 +92,14 @@ OsUtil::Result Buffer::add (uint8_t *dataPtr, int dataLength) {
 		sz2 = size + (blocks * incr);
 		data = (uint8_t *) realloc (data, sz2);
 		if (! data) {
-			return (OsUtil::Result::OutOfMemoryError);
+			return (OsUtil::OutOfMemoryError);
 		}
 		size = sz2;
 	}
 
 	memcpy (data + length, dataPtr, dataLength);
 	length += dataLength;
-	return (OsUtil::Result::Success);
+	return (OsUtil::Success);
 }
 
 OsUtil::Result Buffer::add (const char *str) {

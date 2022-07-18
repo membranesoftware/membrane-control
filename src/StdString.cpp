@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -161,7 +161,6 @@ StdString StdString::lowercased () const {
 		s.append (1, tolower (c));
 		++ptr;
 	}
-
 	return (s);
 }
 
@@ -182,7 +181,6 @@ StdString StdString::uppercased () const {
 		s.append (1, toupper (c));
 		++ptr;
 	}
-
 	return (s);
 }
 
@@ -205,7 +203,6 @@ StdString StdString::capitalized () const {
 
 	s.assign (c_str ());
 	s.capitalize ();
-
 	return (s);
 }
 
@@ -216,14 +213,12 @@ void StdString::truncate (int maxLength, const StdString &suffix) {
 	if (len <= maxLength) {
 		return;
 	}
-
 	len = maxLength;
 	len -= suffix.length ();
 	if (len <= 0) {
 		assign (suffix);
 		return;
 	}
-
 	assign (substr (0, len));
 	append (suffix);
 }
@@ -233,7 +228,6 @@ StdString StdString::truncated (int maxLength, const StdString &suffix) const {
 
 	s.assign (c_str ());
 	s.truncate (maxLength, suffix);
-
 	return (s);
 }
 
@@ -244,7 +238,6 @@ void StdString::replace (const StdString &oldText, const StdString &newText) {
 	if (oldtextlen <= 0) {
 		return;
 	}
-
 	newtextlen = newText.length ();
 	curpos = 0;
 	while (true) {
@@ -252,7 +245,6 @@ void StdString::replace (const StdString &oldText, const StdString &newText) {
 		if (pos == StdString::npos) {
 			break;
 		}
-
 		std::string::replace (pos, oldtextlen, newText);
 		curpos = pos + newtextlen;
 	}
@@ -271,7 +263,6 @@ StdString StdString::replaced (const StdString &oldText, const StdString &newTex
 
 	s.assign (c_str ());
 	s.replace (oldText, newText);
-
 	return (s);
 }
 
@@ -280,7 +271,6 @@ StdString StdString::replaced (size_t pos, size_t len, const StdString &str) con
 
 	s.assign (c_str ());
 	s.replace (pos, len, str);
-
 	return (s);
 }
 
@@ -289,7 +279,6 @@ StdString StdString::replaced (size_t pos, size_t len, size_t n, char c) const {
 
 	s.assign (c_str ());
 	s.replace (pos, len, n, c);
-
 	return (s);
 }
 
@@ -369,7 +358,6 @@ void StdString::urlEncode () {
 	end = d + length ();
 	while (d < end) {
 		c = *d;
-
 		switch (c) {
 			case '!':
 			case '#':
@@ -400,10 +388,8 @@ void StdString::urlEncode () {
 				s.append (1, c);
 				break;
 		}
-
 		++d;
 	}
-
 	assign (s.c_str ());
 }
 
@@ -412,7 +398,6 @@ StdString StdString::urlEncoded () const {
 
 	s.assign (c_str ());
 	s.urlEncode ();
-
 	return (s);
 }
 
@@ -425,15 +410,12 @@ void StdString::jsonEscape () {
 	end = d + length ();
 	while (d < end) {
 		c = *d;
-
 		if (c == '"') {
 			s.append (1, '\\');
 		}
 		s.append (1, c);
-
 		++d;
 	}
-
 	assign (s.c_str ());
 }
 
@@ -442,7 +424,6 @@ StdString StdString::jsonEscaped () const {
 
 	s.assign (c_str ());
 	s.jsonEscape ();
-
 	return (s);
 }
 
@@ -470,7 +451,6 @@ StdString StdString::idTranslated () const {
 		s.append (1, c);
 		++ptr;
 	}
-
 	return (s);
 }
 
@@ -481,7 +461,6 @@ StdString StdString::createSprintf (const char *str, ...) {
 	va_start (ap, str);
 	vsnprintf (buf, sizeof (buf), str, ap);
 	va_end (ap);
-
 	return (StdString (buf));
 }
 
@@ -489,7 +468,6 @@ StdString StdString::createHex (const unsigned char *hexData, int hexDataLength)
 	StdString s;
 
 	s.assignHex (hexData, hexDataLength);
-
 	return (s);
 }
 
@@ -499,14 +477,12 @@ bool StdString::parseInt (int *value) const {
 	if (length () <= 0) {
 		return (false);
 	}
-
 	s = (char *) c_str ();
 	c = *s;
 	while (c) {
 		if (! isdigit (c) && (c != '-')) {
 			return (false);
 		}
-
 		++s;
 		c = *s;
 	}
@@ -514,7 +490,6 @@ bool StdString::parseInt (int *value) const {
 	if (value) {
 		*value = atoi (c_str ());
 	}
-
 	return (true);
 }
 
@@ -525,7 +500,6 @@ bool StdString::parseHex (int *value) const {
 	if (length () <= 0) {
 		return (false);
 	}
-
 	i = 0;
 	s = (char *) c_str ();
 	while (1) {
@@ -554,7 +528,6 @@ bool StdString::parseHex (int *value) const {
 	if (value) {
 		*value = i;
 	}
-
 	return (true);
 }
 
@@ -564,7 +537,6 @@ bool StdString::parseFloat (float *value) const {
 	if (length () <= 0) {
 		return (false);
 	}
-
 	s = (char *) c_str ();
 	c = *s;
 	while (c) {
@@ -579,7 +551,6 @@ bool StdString::parseFloat (float *value) const {
 	if (value) {
 		*value = strtof (c_str (), NULL);
 	}
-
 	return (true);
 }
 
@@ -589,7 +560,6 @@ bool StdString::parseFloat (double *value) const {
 	if (length () <= 0) {
 		return (false);
 	}
-
 	s = (char *) c_str ();
 	c = *s;
 	while (c) {
@@ -604,7 +574,6 @@ bool StdString::parseFloat (double *value) const {
 	if (value) {
 		*value = strtod (c_str (), NULL);
 	}
-
 	return (true);
 }
 
@@ -616,7 +585,6 @@ bool StdString::parseAddress (StdString *hostnameValue, int *portValue, int defa
 	if (length () <= 0) {
 		return (false);
 	}
-
 	port = defaultPortValue;
 	pos = find (":");
 	if (pos == StdString::npos) {
@@ -629,7 +597,6 @@ bool StdString::parseAddress (StdString *hostnameValue, int *portValue, int defa
 		if ((port <= 0) || (port > 65535)) {
 			return (false);
 		}
-
 		hostname.assign (substr (0, pos));
 	}
 
@@ -678,7 +645,6 @@ Buffer *StdString::createBuffer () {
 
 	buffer = new Buffer ();
 	buffer->add ((uint8_t *) c_str (), length ());
-
 	return (buffer);
 }
 
@@ -714,7 +680,6 @@ void StdString::wipe () {
 		*i1 = ' ';
 		++i1;
 	}
-
 	clear ();
 }
 
@@ -728,7 +693,6 @@ void StdString::split (const StdString &delimiter, std::list<StdString> *destLis
 	if (! destList) {
 		return;
 	}
-
 	destList->clear ();
 	curpos = 0;
 	delimlen = delimiter.length ();
@@ -753,4 +717,50 @@ void StdString::split (const StdString &delimiter, std::list<StdString> *destLis
 	if (curpos <= len) {
 		destList->push_back (StdString (substr (curpos)));
 	}
+}
+
+static const char *base64EncodeCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+void StdString::assignBase64 (const unsigned char *data, int dataLength) {
+	StdString result;
+	unsigned char *d, i0, i1, i2;
+	char o[5];
+	int dlen;
+
+	if ((! data) || (dataLength <= 0)) {
+		assign ("");
+		return;
+	}
+	result.reserve (((dataLength * 4) / 3) + 4);
+	o[4] = '\0';
+	d = (unsigned char *) data;
+	dlen = dataLength;
+	while (dlen > 0) {
+		i0 = *d;
+		i1 = (dlen > 1) ? *(d + 1) : 0;
+		i2 = (dlen > 2) ? *(d + 2) : 0;
+
+		o[0] = base64EncodeCharacters[(i0 & 0xFC) >> 2];
+		o[1] = base64EncodeCharacters[((i0 & 0x03) << 4) | ((i1 & 0xF0) >> 4)];
+		o[2] = (dlen > 1) ? base64EncodeCharacters[((i1 & 0x0F) << 2) | ((i2 & 0xC0) >> 6)] : '=';
+		o[3] = (dlen > 2) ? base64EncodeCharacters[i2 & 0x3F] : '=';
+		result.append (o);
+
+		d += 3;
+		dlen -= 3;
+	}
+	assign (result);
+}
+
+void StdString::base64Encode () {
+	StdString s;
+
+	s.assignBase64 ((unsigned char *) c_str (), (int) length ());
+	assign (s);
+}
+
+StdString StdString::base64Encoded () const {
+	StdString s;
+
+	s.assignBase64 ((unsigned char *) c_str (), (int) length ());
+	return (s);
 }

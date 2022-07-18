@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -89,12 +89,12 @@ OsUtil::Result Log::setLevelByName (const char *name) {
 	int i;
 	OsUtil::Result result;
 
-	result = OsUtil::Result::InvalidParamError;
+	result = OsUtil::InvalidParamError;
 	s.assign (StdString (name).uppercased ());
 	for (i = 0; i < Log::LevelCount; ++i) {
 		if (s.equals (Log::LevelNames[i])) {
 			setLevel ((Log::LogLevel) i);
-			result = OsUtil::Result::Success;
+			result = OsUtil::Success;
 			break;
 		}
 	}
@@ -117,7 +117,7 @@ OsUtil::Result Log::openLogFile (const char *filename) {
 	if (fname.empty ()) {
 		isFileWriteEnabled = false;
 		writeFilename.assign ("");
-		return (OsUtil::Result::Success);
+		return (OsUtil::Success);
 	}
 #if PLATFORM_LINUX || PLATFORM_MACOS
 	if (filename[0] != '/') {
@@ -144,7 +144,7 @@ OsUtil::Result Log::openLogFile (const char *filename) {
 			free (cwd);
 		}
 		if (! c) {
-			return (OsUtil::Result::FileOpenFailedError);
+			return (OsUtil::FileOpenFailedError);
 		}
 	}
 #endif
@@ -155,13 +155,13 @@ OsUtil::Result Log::openLogFile (const char *filename) {
 #endif
 	if (fd < 0) {
 		::printf ("Failed to open log file %s - %s\n", fname.c_str (), strerror (errno));
-		return (OsUtil::Result::FileOpenFailedError);
+		return (OsUtil::FileOpenFailedError);
 	}
 	close (fd);
 
 	isFileWriteEnabled = true;
 	writeFilename.assign (fname);
-	return (OsUtil::Result::Success);
+	return (OsUtil::Success);
 }
 
 OsUtil::Result Log::openLogFile (const StdString &filename) {
@@ -238,6 +238,7 @@ void Log::printf (const char *str, ...) {
 	text.vsprintf (str, ap);
 	va_end (ap);
 	::printf ("[%s] %s\n", OsUtil::getTimestampString (OsUtil::getTime (), true).c_str (), text.c_str ());
+	fflush (stdout);
 	App::instance->writeConsoleOutput (text);
 }
 

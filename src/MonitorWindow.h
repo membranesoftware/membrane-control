@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -27,7 +27,7 @@
 * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 * POSSIBILITY OF SUCH DAMAGE.
 */
-// Panel that contains elements representing a Membrane Monitor server on a card view
+// Panel that represents a Membrane Monitor server on a card view
 
 #ifndef MONITOR_WINDOW_H
 #define MONITOR_WINDOW_H
@@ -45,6 +45,8 @@
 
 class MonitorWindow : public Panel {
 public:
+	static const float ExpandedNameTruncateScale; // portion of total window width, from 0.0f to 1.0f
+	static const float UnexpandedNameTruncateScale; // portion of total window width, from 0.0f to 1.0f
 	static const float ScreenshotImageScale; // portion of total window width, from 0.0f to 1.0f
 
 	MonitorWindow (const StdString &agentId);
@@ -108,6 +110,9 @@ private:
 	static void selectToggleStateChanged (void *windowPtr, Widget *widgetPtr);
 	static void expandToggleStateChanged (void *windowPtr, Widget *widgetPtr);
 	static void actionButtonClicked (void *windowPtr, Widget *widgetPtr);
+
+	// Reset the text shown by the name label, truncating it as needed to fit in its available space
+	void resetNameLabel ();
 
 	Image *iconImage;
 	Label *nameLabel;

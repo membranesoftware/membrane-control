@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -32,7 +32,6 @@
 #include <math.h>
 #include "App.h"
 #include "ClassId.h"
-#include "Log.h"
 #include "StdString.h"
 #include "UiConfiguration.h"
 #include "UiText.h"
@@ -100,7 +99,7 @@ WebPlaylistWindow::WebPlaylistWindow (SpriteGroup *webKioskUiSpriteGroup)
 	dividerPanel->isVisible = false;
 
 	shuffleToggle = (ToggleWindow *) addWidget (new ToggleWindow (new Toggle ()));
-	shuffleToggle->setIcon (sprites->getSprite (WebKioskUi::ShuffleIconSprite));
+	shuffleToggle->setIcon (sprites ? sprites->getSprite (WebKioskUi::ShuffleIconSprite) : UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallErrorIconSprite));
 	shuffleToggle->setRightAligned (true);
 	shuffleToggle->setImageColor (UiConfiguration::instance->flatButtonTextColor);
 	shuffleToggle->setMouseHoverTooltip (UiText::instance->getText (UiTextString::ShuffleTooltip));
@@ -116,7 +115,7 @@ WebPlaylistWindow::WebPlaylistWindow (SpriteGroup *webKioskUiSpriteGroup)
 	itemDisplayDurationSlider->setPadding (UiConfiguration::instance->paddingSize, 0.0f);
 	itemDisplayDurationSlider->setTrackWidthScale (0.75f);
 	itemDisplayDurationSlider->setValueNameFunction (WebPlaylistWindow::itemDisplayDurationSliderValueName);
-	itemDisplayDurationSlider->setIcon (sprites->getSprite (WebKioskUi::SpeedIconSprite));
+	itemDisplayDurationSlider->setIcon (sprites ? sprites->getSprite (WebKioskUi::SpeedIconSprite) : UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallErrorIconSprite));
 	itemDisplayDurationSlider->setMouseHoverTooltip (UiText::instance->getText (UiTextString::PlaylistSpeedTooltip));
 	itemDisplayDurationSlider->zLevel = 1;
 	itemDisplayDurationSlider->isVisible = false;
@@ -147,7 +146,7 @@ WebPlaylistWindow::WebPlaylistWindow (SpriteGroup *webKioskUiSpriteGroup)
 	removeButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::DeletePlaylist).capitalized ());
 	removeButton->isVisible = false;
 
-	addItemButton = (Button *) addWidget (new Button (sprites->getSprite (WebKioskUi::AddUrlButtonSprite)));
+	addItemButton = (Button *) addWidget (new Button (sprites ? sprites->getSprite (WebKioskUi::AddUrlButtonSprite) : UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::OkButtonSprite)));
 	addItemButton->mouseClickCallback = Widget::EventCallbackContext (WebPlaylistWindow::addItemButtonClicked, this);
 	addItemButton->mouseEnterCallback = Widget::EventCallbackContext (WebPlaylistWindow::addItemButtonMouseEntered, this);
 	addItemButton->mouseExitCallback = Widget::EventCallbackContext (WebPlaylistWindow::addItemButtonMouseExited, this);
@@ -456,7 +455,7 @@ Json *WebPlaylistWindow::createState () {
 	state = new Json ();
 	urlListView->getItems (&urls);
 	state->set (WebPlaylistWindow::PlaylistNameKey, playlistName);
-	state->set (WebPlaylistWindow::UrlsKey, &urls);
+	state->set (WebPlaylistWindow::UrlsKey, urls);
 	state->set (WebPlaylistWindow::IsShuffleKey, shuffleToggle->isChecked);
 	state->set (WebPlaylistWindow::ItemDisplayDurationKey, getItemDisplayDuration ());
 	state->set (WebPlaylistWindow::IsSelectedKey, isSelected);
@@ -512,7 +511,7 @@ Json *WebPlaylistWindow::createCommand () {
 	obj->set ("displayName", playlistName);
 
 	urlListView->getItems (&urls);
-	obj->set ("urls", &urls);
+	obj->set ("urls", urls);
 
 	obj->set ("isShuffle", shuffleToggle->isChecked);
 	obj->set ("minItemDisplayDuration", getItemDisplayDuration ());

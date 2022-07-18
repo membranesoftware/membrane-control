@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -35,6 +35,7 @@
 #include <list>
 #include "SDL2/SDL.h"
 #include "StdString.h"
+#include "StringList.h"
 #include "Widget.h"
 #include "Panel.h"
 #include "Toolbar.h"
@@ -91,6 +92,9 @@ public:
 	// Show the specified message in the application's snackbar window, optionally including an action button
 	void showSnackbar (const StdString &messageText, const StdString &actionButtonText = StdString (""), Widget::EventCallbackContext actionButtonClickCallback = Widget::EventCallbackContext ());
 
+	// Toggle the visible state of the history window
+	void toggleHistoryWindow ();
+
 	// Toggle the visible state of the settings window
 	void toggleSettingsWindow ();
 
@@ -115,12 +119,34 @@ public:
 	// Deactivate the mouse hover widget and prevent reactivation until a new mouse hover widget is acquired
 	void suspendMouseHover ();
 
+	// Execute the named action from the main menu and return a boolean value indicating if the action was found
+	bool executeMainMenuAction (const char *actionName);
+
+	// Clear destList and add description text strings for each widget in the active Ui that holds a widgetName value
+	void getWidgetNames (StringList *destList);
+
+	// Execute an interface action to open the named widget from the active Ui and return a boolean value indicating if the widget was found
+	bool openWidget (const StdString &targetName);
+
+	// Execute an interface action to select the named widget from the active Ui and return a boolean value indicating if the widget was found
+	bool selectWidget (const StdString &targetName);
+
+	// Execute an interface action to unselect the named widget from the active Ui and return a boolean value indicating if the widget was found
+	bool unselectWidget (const StdString &targetName);
+
+	// Execute the mouse click action for the named widget and return a boolean value indicating if the widget was found
+	bool clickWidget (const StdString &targetName);
+
+	// Set the value of the named TextField or TextFieldWindow widget and return a boolean value indicating if the widget was found
+	bool setTextFieldValue (const StdString &targetName, const StdString &textValue);
+
 	// Callback functions
 	static void doSetUi (void *uiStackPtr);
 	static void doPushUi (void *uiStackPtr);
 	static void doPopUi (void *uiStackPtr);
 	static void mainMenuButtonClicked (void *uiStackPtr, Widget *widgetPtr);
 	static void backButtonClicked (void *uiStackPtr, Widget *widgetPtr);
+	static void historyActionClicked (void *uiStackPtr, Widget *widgetPtr);
 	static void settingsActionClicked (void *uiStackPtr, Widget *widgetPtr);
 	static void aboutActionClicked (void *uiStackPtr, Widget *widgetPtr);
 	static void updateActionClicked (void *uiStackPtr, Widget *widgetPtr);
@@ -129,6 +155,7 @@ public:
 	static void exitActionClicked (void *uiStackPtr, Widget *widgetPtr);
 	static void imageDialogClicked (void *uiStackPtr, Widget *widgetPtr);
 	static void imageDialogLoaded (void *uiStackPtr, Widget *widgetPtr);
+	static void historyExecuteClicked (void *uiStackPtr, Widget *widgetPtr);
 
 private:
 	// Stack command types
@@ -164,6 +191,7 @@ private:
 	WidgetHandle mouseHoverTarget;
 	WidgetHandle mainMenu;
 	WidgetHandle darkenPanel;
+	WidgetHandle historyWindow;
 	WidgetHandle settingsWindow;
 	WidgetHandle helpWindow;
 	WidgetHandle dialogWindow;

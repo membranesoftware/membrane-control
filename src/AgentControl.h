@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -111,8 +111,12 @@ public:
 	// Return a boolean value indicating if the specified agent has an established link connection
 	bool isLinkClientConnected (const StdString &agentId);
 
-	// Write a command to the specified link client. An empty agentId value causes the command to be written to all connected link clients. This method becomes responsible for deleting the command object when it's no longer needed.
-	void writeLinkCommand (Json *command, const StdString &agentId = StdString (""));
+	// Write a command to all connected link clients. This method becomes responsible for deleting the command object when it's no longer needed.
+	void writeLinkCommand (Json *command);
+
+	// Write a command to one or more link clients. This method becomes responsible for deleting the command object when it's no longer needed.
+	void writeLinkCommand (Json *command, const StdString &agentId);
+	void writeLinkCommand (Json *command, const StringList &agentIdList);
 
 	// Return a boolean value indicating if an agent has been contacted at the specified hostname and port
 	bool isHostContacted (const StdString &invokeHostname, int invokePort);
@@ -136,10 +140,10 @@ public:
 	int getAgentServerType (const StdString &agentId);
 
 	// Return a string containing the specified agent's invoke URL with an optional command parameter, or an empty string if no such agent was found. If command is not NULL, this method becomes responsible for freeing the object when it's no longer needed.
-	StdString getAgentInvokeUrl (const StdString &agentId, Json *command = NULL, const StdString &path = StdString ("/"));
+	StdString getAgentInvokeUrl (const StdString &agentId, const StdString &path = StdString ("/"), Json *command = NULL, bool encodeCommand = false);
 
 	// Return a string containing the specified agent's secondary URL with an optional command parameter, or an empty string if no such agent was found. If command is not NULL, this method becomes responsible for freeing the object when it's no longer needed.
-	StdString getAgentSecondaryUrl (const StdString &agentId, Json *command = NULL, const StdString &path = StdString ("/"));
+	StdString getAgentSecondaryUrl (const StdString &agentId, const StdString &path = StdString ("/"), Json *command = NULL, bool encodeCommand = false);
 
 	// Return a string containing the specified agent's link URL, or an empty string if no such agent was found
 	StdString getAgentLinkUrl (const StdString &agentId);
@@ -158,7 +162,7 @@ public:
 	void refreshAgentStatus (const StdString &invokeHostname, int invokeTcpPort, const StdString &queueId = StdString (""));
 
 	// Invoke the GetStatus command from agents with IDs in the provided list, and update their records if successful
-	void refreshAgentStatus (StringList *agentIdList, const StdString &queueId = StdString (""));
+	void refreshAgentStatus (const StringList &agentIdList, const StdString &queueId = StdString (""));
 
 	// Execute operations as needed to check if the specified agent has a newer application available
 	void checkAgentUpdates (const StdString &agentId);
@@ -170,11 +174,11 @@ public:
 	void removeAgent (const StdString &agentId);
 
 	// Invoke a command from a remote agent, gather response data, and execute the provided callback when complete. A non-empty queueId value indicates that the command should be executed serially with others of the same queueId. This class becomes responsible for freeing the submitted command object when it's no longer needed. Returns a result value indicating if the command was accepted.
-	int invokeCommand (const StdString &hostname, int tcpPort, Json *command, CommandList::InvokeCallback callback = NULL, void *callbackData = NULL, const StdString &queueId = StdString (""));
-	int invokeCommand (const StdString &agentId, Json *command, CommandList::InvokeCallback callback = NULL, void *callbackData = NULL, const StdString &queueId = StdString (""));
+	int invokeCommand (const StdString &hostname, int tcpPort, Json *command, CommandList::InvokeCallbackContext callback = CommandList::InvokeCallbackContext (), const StdString &queueId = StdString (""));
+	int invokeCommand (const StdString &agentId, Json *command, CommandList::InvokeCallbackContext callback = CommandList::InvokeCallbackContext (), const StdString &queueId = StdString (""));
 
 	// Invoke a command on all agents with IDs in the provided list, and execute the provided callback as each invocation completes. A non-empty queueId value indicates that the commands should be executed serially with others of the same queueId. This class becomes responsible for freeing the submitted command object when it's no longer needed. Returns the number of agent invocations that were successfully queued.
-	int invokeCommand (StringList *agentIdList, Json *command, CommandList::InvokeCallback callback = NULL, void *callbackData = NULL, const StdString &queueId = StdString (""));
+	int invokeCommand (const StringList &agentIdList, Json *command, CommandList::InvokeCallbackContext callback = CommandList::InvokeCallbackContext (), const StdString &queueId = StdString (""));
 
 	// Parse the provided message data as a command payload received from a remote agent
 	void receiveMessage (const char *messageData, int messageLength, const char *sourceAddress, int sourcePort);
@@ -216,7 +220,7 @@ public:
 	static void linkClientConnect (void *agentControlPtr, const StdString &agentId);
 	static void linkClientDisconnect (void *agentControlPtr, const StdString &agentId, const StdString &errorDescription);
 	static void linkClientCommand (void *agentControlPtr, const StdString &agentId, Json *command);
-	static void invokeGetStatusComplete (void *agentControlPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
+	static void invokeGetStatusComplete (void *agentControlPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand, const StdString &invokeId);
 	static void getApplicationNewsComplete (void *agentControlPtr, const StdString &targetUrl, int statusCode, SharedBuffer *responseData);
 	static void hashUpdate (void *contextPtr, unsigned char *data, int dataLength);
 	static StdString hashDigest (void *contextPtr);
@@ -246,11 +250,17 @@ private:
 	std::map<StdString, Agent>::iterator findAgent (const StdString &agentId, bool createNew = false);
 	std::map<StdString, Agent>::iterator findAgent (const StdString &invokeHostname, int invokePort);
 
+	// Return a string containing queryValue after encoding for use as an invoke URL query command, or an empty string if the encode operation failed
+	StdString getEncodedUrlQuery (const StdString &queryValue);
+
 	struct AdminSecret {
 		StdString name;
 		StdString authorizePath;
 		StdString authorizeSecret;
-		AdminSecret (): name (""), authorizePath (""), authorizeSecret ("") { }
+		AdminSecret ():
+			name (""),
+			authorizePath (""),
+			authorizeSecret ("") { }
 	};
 	// Update fields in entry by reading an item from the admin secrets prefs list and return a boolean value indicating if the read was successful
 	bool readAdminSecret (AgentControl::AdminSecret *entry, Json *prefsItem);

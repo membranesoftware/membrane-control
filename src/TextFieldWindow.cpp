@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,7 +30,6 @@
 #include "Config.h"
 #include <stdlib.h>
 #include "ClassId.h"
-#include "Log.h"
 #include "StdString.h"
 #include "App.h"
 #include "Widget.h"
@@ -76,7 +75,7 @@ TextFieldWindow::TextFieldWindow (float windowWidth, const StdString &promptText
 		image = new Image (iconSprite);
 		iconImage = (ImageWindow *) addWidget (new ImageWindow (image));
 		iconImage->setFillBg (true, UiConfiguration::instance->darkBackgroundColor);
-		iconImage->setWindowSize (image->width + UiConfiguration::instance->paddingSize, textField->height);
+		iconImage->setWindowSize (true, image->width + UiConfiguration::instance->paddingSize, textField->height);
 	}
 
 	enterButton = (Button *) addWidget (new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::EnterTextButtonSprite)));
@@ -100,7 +99,7 @@ TextFieldWindow::TextFieldWindow (float windowWidth, const StdString &promptText
 	pasteButton->isFocusDropShadowDisabled = true;
 	pasteButton->isVisible = false;
 
-	clearButton = (Button *) addWidget (new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ClearButtonSprite)));
+	clearButton = (Button *) addWidget (new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallClearButtonSprite)));
 	clearButton->zLevel = 1;
 	clearButton->mouseClickCallback = Widget::EventCallbackContext (TextFieldWindow::clearButtonClicked, this);
 	clearButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::TextFieldClearTooltip));
@@ -378,7 +377,7 @@ void TextFieldWindow::clearButtonClicked (void *windowPtr, Widget *widgetPtr) {
 	TextFieldWindow *window;
 
 	window = (TextFieldWindow *) windowPtr;
-	App::instance->uiStack.setKeyFocusTarget (window->textField);
+	window->cancelValue.assign ("");
 	window->textField->setValue (StdString (""), window->shouldSkipTextClearCallbacks, window->shouldSkipTextClearCallbacks);
 }
 

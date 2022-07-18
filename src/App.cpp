@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -57,8 +57,10 @@
 #include "SystemInterface.h"
 #include "AgentControl.h"
 #include "RecordStore.h"
+#include "CommandHistory.h"
 #include "CommandListener.h"
 #include "Input.h"
+#include "Resource.h"
 #include "Network.h"
 #include "Panel.h"
 #include "ConsoleWindow.h"
@@ -95,6 +97,7 @@ void App::createInstance (bool shouldSkipInit) {
 	}
 	App::instance = new App ();
 	Input::instance = &(App::instance->input);
+	Resource::instance = &(App::instance->resource);
 	Network::instance = &(App::instance->network);
 	UiConfiguration::instance = &(App::instance->uiConfig);
 	UiText::instance = &(App::instance->uiText);
@@ -102,6 +105,7 @@ void App::createInstance (bool shouldSkipInit) {
 	SystemInterface::instance = &(App::instance->systemInterface);
 	AgentControl::instance = &(App::instance->agentControl);
 	RecordStore::instance = &(App::instance->recordStore);
+	CommandHistory::instance = &(App::instance->commandHistory);
 	CommandListener::instance = &(App::instance->commandListener);
 
 	if (! shouldSkipInit) {
@@ -114,6 +118,7 @@ void App::freeInstance () {
 		delete (App::instance);
 		App::instance = NULL;
 		Input::instance = NULL;
+		Resource::instance = NULL;
 		Network::instance = NULL;
 		UiConfiguration::instance = NULL;
 		UiText::instance = NULL;
@@ -121,6 +126,7 @@ void App::freeInstance () {
 		SystemInterface::instance = NULL;
 		AgentControl::instance = NULL;
 		RecordStore::instance = NULL;
+		CommandHistory::instance = NULL;
 		CommandListener::instance = NULL;
 		IMG_Quit ();
 		SDL_Quit ();
@@ -128,14 +134,15 @@ void App::freeInstance () {
 }
 
 App::App ()
-: isConsole (false)
-, shouldRefreshUi (false)
-, shouldSyncRecordStore (false)
-, isInterfaceAnimationEnabled (false)
-, isMainToolbarClockEnabled (false)
-, nextFontScale (1.0f)
+: nextFontScale (1.0f)
 , nextWindowWidth (0)
 , nextWindowHeight (0)
+, isConsole (false)
+, shouldRefreshUi (false)
+, isInterfaceAnimationEnabled (false)
+, shouldSyncRecordStore (false)
+, isMainToolbarClockEnabled (false)
+, isNetworkActive (false)
 , isShuttingDown (false)
 , isShutdown (false)
 , startTime (0)
@@ -277,7 +284,7 @@ void App::init () {
 		path = OsUtil::getUserDataPath ();
 		if (! path.empty ()) {
 			result = OsUtil::createDirectory (path);
-			if (result != OsUtil::Result::Success) {
+			if (result != OsUtil::Success) {
 				Log::warning ("Application data cannot be saved (failed to create directory); path=\"%s\" err=%i", path.c_str (), result);
 			}
 		}
@@ -331,7 +338,7 @@ int App::run () {
 	}
 	else {
 		result = prefsMap.read (prefsPath, true);
-		if (result != OsUtil::Result::Success) {
+		if (result != OsUtil::Success) {
 			Log::debug ("Failed to read preferences file; prefsPath=\"%s\" err=%i", prefsPath.c_str (), result);
 			prefsMap.clear ();
 		}
@@ -339,12 +346,12 @@ int App::run () {
 	isHttpsEnabled = prefsMap.find (App::HttpsKey, true);
 
 	result = resource.open ();
-	if (result != OsUtil::Result::Success) {
+	if (result != OsUtil::Success) {
 		Log::err ("Failed to open application resources; err=%i", result);
 		return (result);
 	}
 	result = uiText.load (OsUtil::getEnvLanguage (UiText::DefaultLanguage));
-	if (result != OsUtil::Result::Success) {
+	if (result != OsUtil::Success) {
 		Log::err ("Failed to load text resources; err=%i", result);
 		return (result);
 	}
@@ -353,7 +360,7 @@ int App::run () {
 	network.datagramCallback = Network::DatagramCallbackContext (App::datagramReceived, NULL);
 	network.enableDatagramSocket = true;
 	result = network.start ();
-	if (result != OsUtil::Result::Success) {
+	if (result != OsUtil::Success) {
 		Log::err ("Failed to acquire application network resources; err=%i", result);
 		return (result);
 	}
@@ -363,10 +370,12 @@ int App::run () {
 		Log::warning ("Failed to determine local hostname, network services may not be available");
 	}
 	result = agentControl.start ();
-	if (result != OsUtil::Result::Success) {
+	if (result != OsUtil::Success) {
 		Log::err ("Failed to start agent control processes; err=%i", result);
 		return (result);
 	}
+
+	commandHistory.readPrefs ();
 
 	if (isConsole) {
 		result = runConsole ();
@@ -392,15 +401,15 @@ int App::runWindow () {
 
 	if (SDL_Init (SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
 		Log::err ("Failed to start SDL: %s", SDL_GetError ());
-		return (OsUtil::Result::SdlOperationFailedError);
+		return (OsUtil::SdlOperationFailedError);
 	}
 	if (IMG_Init (IMG_INIT_JPG | IMG_INIT_PNG) != (IMG_INIT_JPG | IMG_INIT_PNG)) {
 		Log::err ("Failed to start SDL_image: %s", IMG_GetError ());
-		return (OsUtil::Result::SdlOperationFailedError);
+		return (OsUtil::SdlOperationFailedError);
 	}
 
 	result = input.start ();
-	if (result != OsUtil::Result::Success) {
+	if (result != OsUtil::Success) {
 		Log::err ("Failed to acquire application input devices; err=%i", result);
 		return (result);
 	}
@@ -440,12 +449,12 @@ int App::runWindow () {
 	result = SDL_CreateWindowAndRenderer (windowWidth, windowHeight, 0, &window, &render);
 	if (result != 0) {
 		Log::err ("Failed to create application window: %s", SDL_GetError ());
-		return (OsUtil::Result::SdlOperationFailedError);
+		return (OsUtil::SdlOperationFailedError);
 	}
 	result = SDL_GetRendererInfo (render, &renderinfo);
 	if (result != 0) {
 		Log::err ("Failed to create application renderer: %s", SDL_GetError ());
-		return (OsUtil::Result::SdlOperationFailedError);
+		return (OsUtil::SdlOperationFailedError);
 	}
 	if ((renderinfo.flags & (SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE)) == (SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE)) {
 		isTextureRenderEnabled = true;
@@ -471,7 +480,7 @@ int App::runWindow () {
 	SDL_SetWindowTitle (window, APPLICATION_NAME);
 	uiConfig.resetScale ();
 	result = uiConfig.load (fontScale);
-	if (result != OsUtil::Result::Success) {
+	if (result != OsUtil::Success) {
 		Log::err ("Failed to load application resources; err=%i", result);
 		return (result);
 	}
@@ -582,7 +591,7 @@ int App::runWindow () {
 		t1 = OsUtil::getTime ();
 		input.pollEvents ();
 		if (! FLOAT_EQUALS (fontScale, nextFontScale)) {
-			if (uiConfig.reloadFonts (nextFontScale) != OsUtil::Result::Success) {
+			if (uiConfig.reloadFonts (nextFontScale) != OsUtil::Success) {
 				nextFontScale = fontScale;
 			}
 			else {
@@ -653,7 +662,7 @@ int App::runWindow () {
 	}
 	Log::info ("Application ended; updateCount=%lli drawCount=%lli runtime=%.3fs FPS=%f pid=%i", (long long) updateCount, (long long) drawCount, ((double) elapsed) / 1000.0f, fps, OsUtil::getProcessId ());
 
-	return (OsUtil::Result::Success);
+	return (OsUtil::Success);
 }
 
 int App::runConsole () {
@@ -664,7 +673,7 @@ int App::runConsole () {
 
 	if (SDL_Init (SDL_INIT_TIMER) != 0) {
 		Log::printf ("Failed to start SDL: %s", SDL_GetError ());
-		return (OsUtil::Result::SdlOperationFailedError);
+		return (OsUtil::SdlOperationFailedError);
 	}
 
 	updateThread = SDL_CreateThread (App::runConsoleUpdateThread, "runConsoleUpdateThread", (void *) this);
@@ -710,7 +719,7 @@ int App::runConsole () {
 	endtime = OsUtil::getTime ();
 	elapsed = endtime - startTime;
 	Log::info ("Application ended; runtime=%.3fs pid=%i", ((double) elapsed) / 1000.0f, OsUtil::getProcessId ());
-	return (OsUtil::Result::Success);
+	return (OsUtil::Success);
 }
 
 int App::runConsoleUpdateThread (void *appPtr) {
@@ -770,7 +779,6 @@ void App::populateRoundedCornerSprite () {
 		delete (roundedCornerSprite);
 	}
 	roundedCornerSprite = new Sprite ();
-
 #if SDL_BYTEORDER == SDL_BIG_ENDIAN
 	rmask = 0xFF000000;
 	gmask = 0x00FF0000;
@@ -795,7 +803,6 @@ void App::populateRoundedCornerSprite () {
 			roundedCornerSprite = NULL;
 			return;
 		}
-
 		dest = pixels;
 		y = 0;
 		while (y < h) {
@@ -822,7 +829,6 @@ void App::populateRoundedCornerSprite () {
 				++dest;
 				++x;
 			}
-
 			++y;
 		}
 
@@ -834,9 +840,8 @@ void App::populateRoundedCornerSprite () {
 			roundedCornerSprite = NULL;
 			return;
 		}
-
 		path.sprintf ("*_App::roundedCornerSprite_%llx", (long long int) App::instance->getUniqueId ());
-		texture = App::instance->resource.createTexture (path, surface);
+		texture = Resource::instance->createTexture (path, surface);
 		SDL_FreeSurface (surface);
 		free (pixels);
 		if (! texture) {
@@ -844,7 +849,6 @@ void App::populateRoundedCornerSprite () {
 			roundedCornerSprite = NULL;
 			return;
 		}
-
 		roundedCornerSprite->addTexture (texture, path);
 		++radius;
 	}
@@ -1095,6 +1099,10 @@ bool App::keyEvent (void *ptr, SDL_Keycode keycode, bool isShiftDown, bool isCon
 				Input::instance->windowClose ();
 				return (true);
 			}
+			case SDLK_l: {
+				App::instance->uiStack.toggleHistoryWindow ();
+				return (true);
+			}
 			case SDLK_s: {
 				App::instance->uiStack.toggleSettingsWindow ();
 				return (true);
@@ -1263,7 +1271,7 @@ void App::writePrefs () {
 	SDL_LockMutex (prefsMapMutex);
 	if (prefsMap.isWriteDirty) {
 		result = prefsMap.write (prefsPath);
-		if (result != OsUtil::Result::Success) {
+		if (result != OsUtil::Success) {
 			Log::err ("Failed to write prefs file; prefsPath=\"%s\" err=%i", prefsPath.c_str (), result);
 			isPrefsWriteDisabled = true;
 		}
@@ -1297,7 +1305,7 @@ void App::resizeWindow () {
 
 	uiConfig.coreSprites.resize ();
 	result = uiConfig.reloadFonts (fontScale);
-	if (result != OsUtil::Result::Success) {
+	if (result != OsUtil::Success) {
 		Log::err ("Failed to reload fonts; fontScale=%.2f err=%i", fontScale, result);
 	}
 	if (! backgroundTextureBasePath.empty ()) {
@@ -1356,7 +1364,7 @@ void App::hyperlinkOpened (void *ptr, Widget *widgetPtr) {
 	HyperlinkWindow *window;
 
 	window = (HyperlinkWindow *) widgetPtr;
-	if (window->linkOpenResult != OsUtil::Result::Success) {
+	if (window->linkOpenResult != OsUtil::Success) {
 		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::OpenHelpUrlError));
 	}
 	else {
@@ -1394,6 +1402,18 @@ Json *App::createCommand (const char *commandName, Json *commandParams) {
 	cmd = systemInterface.createCommand (prefix, commandName, commandParams);
 	if (! cmd) {
 		Log::err ("Failed to create SystemInterface command; commandName=\"%s\" err=\"%s\"", commandName, systemInterface.lastError.c_str ());
+	}
+	return (cmd);
+}
+
+Json *App::createCommand (int commandId, Json *commandParams) {
+	Json *cmd;
+	SystemInterface::Prefix prefix;
+
+	prefix = createCommandPrefix ();
+	cmd = systemInterface.createCommand (prefix, commandId, commandParams);
+	if (! cmd) {
+		Log::err ("Failed to create SystemInterface command; commandId=%i err=\"%s\"", commandId, systemInterface.lastError.c_str ());
 	}
 	return (cmd);
 }

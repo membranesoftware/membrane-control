@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -32,9 +32,8 @@
 #ifndef CAMERA_TIMELINE_WINDOW_H
 #define CAMERA_TIMELINE_WINDOW_H
 
-#include <list>
-#include <vector>
 #include "StdString.h"
+#include "Sprite.h"
 #include "LabelWindow.h"
 #include "Panel.h"
 
@@ -53,6 +52,7 @@ public:
 	int64_t endTime;
 	int64_t highlightTime;
 	int64_t selectTime;
+	int64_t timeRate; // Milliseconds per pixel of bar width
 	float hoverPosition; // A negative value indicates that the mouse is positioned outside the timeline bar
 	float clickPosition;
 
@@ -71,16 +71,42 @@ public:
 	// Set a time value that should be marked as selected by the window
 	void setSelectedTime (int64_t selectTimeValue, bool isSpanDescending);
 
+	// Clear timeline state data
+	void clearTimeline ();
+
+	// Store a point in timeline state, indicating an available capture image at that position
+	void addTimelinePoint (int64_t t);
+
+	// Mark a time range as covered within timeline state, indicating it has been scanned for capture images
+	void addTimelineCoverRange (int64_t rangeMin, int64_t rangeMax);
+
 protected:
 	// Reset the panel's widget layout as appropriate for its content and configuration
 	void refreshLayout ();
+
+	// Execute operations to update object state as appropriate for an elapsed millisecond time period
+	void doUpdate (int msElapsed);
+
+	// Add subclass-specific draw commands for execution by the App. If targetTexture is non-NULL, it has been set as the render target and draw commands should adjust coordinates as appropriate.
+	virtual void doDraw (SDL_Texture *targetTexture, float originX, float originY);
 
 	// Execute operations appropriate when the widget receives new mouse state and return a boolean value indicating if mouse wheel events were consumed and should no longer be processed
 	virtual bool doProcessMouseState (const Widget::MouseState &mouseState);
 
 private:
+	// Callback functions
+	static void createBarTexture (void *windowPtr);
+
+	// Allocate barPixels as a memory buffer holding bar state pixel data and return a boolean value indicating if the operation succeeded
+	bool createBarPixels ();
+
 	float barWidth;
 	float barHeight;
+	uint8_t *barState;
+	int barStateSize;
+	bool shouldRefreshBarTexture;
+	Uint32 *barPixels;
+	Sprite *barSprite;
 	LabelWindow *startTimeLabel;
 	LabelWindow *endTimeLabel;
 	LabelWindow *highlightTimeLabel;

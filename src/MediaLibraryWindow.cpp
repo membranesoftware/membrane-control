@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -49,11 +49,15 @@
 #include "Label.h"
 #include "Button.h"
 #include "Toggle.h"
+#include "ProgressBar.h"
 #include "IconLabelWindow.h"
 #include "AgentTaskWindow.h"
 #include "MediaLibraryWindow.h"
 
-const float MediaLibraryWindow::TextTruncateScale = 0.21f;
+const float MediaLibraryWindow::ExpandedNameTruncateScale = 0.47f;
+const float MediaLibraryWindow::UnexpandedNameTruncateScale = 0.24f;
+const float MediaLibraryWindow::LinkTruncateScale = 0.21f;
+const float MediaLibraryWindow::ProgressBarWidthScale = 0.12f;
 
 MediaLibraryWindow::MediaLibraryWindow (const StdString &agentId)
 : Panel ()
@@ -70,6 +74,7 @@ MediaLibraryWindow::MediaLibraryWindow (const StdString &agentId)
 , mediaCountIcon (NULL)
 , streamCountIcon (NULL)
 , menuButton (NULL)
+, progressBar (NULL)
 , expandToggle (NULL)
 , agentTaskWindow (NULL)
 {
@@ -126,6 +131,11 @@ MediaLibraryWindow::MediaLibraryWindow (const StdString &agentId)
 	menuButton->setMouseHoverTooltip (UiText::instance->getText (UiTextString::MoreActionsTooltip));
 	menuButton->isVisible = false;
 
+	progressBar = (ProgressBar *) addWidget (new ProgressBar (((float) App::instance->windowWidth) * MediaLibraryWindow::ProgressBarWidthScale, UiConfiguration::instance->progressBarHeight));
+	progressBar->zLevel = 1;
+	progressBar->setMouseHoverTooltip (UiText::instance->getText (UiTextString::TaskInProgress).capitalized ());
+	progressBar->isVisible = false;
+
 	expandToggle = (Toggle *) addWidget (new Toggle (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ExpandMoreButtonSprite), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::ExpandLessButtonSprite)));
 	expandToggle->stateChangeCallback = Widget::EventCallbackContext (MediaLibraryWindow::expandToggleStateChanged, this);
 	expandToggle->setImageColor (UiConfiguration::instance->flatButtonTextColor);
@@ -172,7 +182,6 @@ void MediaLibraryWindow::syncRecordStore () {
 	}
 
 	agentName.assign (Agent::getCommandAgentName (record));
-	nameLabel->setText (agentName);
 	agentTaskCount = SystemInterface::instance->getCommandNumberParam (record, "taskCount", (int) 0);
 	descriptionLabel->setText (SystemInterface::instance->getCommandStringParam (record, "applicationName", ""));
 
@@ -181,7 +190,7 @@ void MediaLibraryWindow::syncRecordStore () {
 		catalogLinkIcon->isVisible = false;
 	}
 	else {
-		catalogLinkIcon->setText (UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->truncatedText (AgentControl::instance->getAgentSecondaryUrl (agentId, NULL, htmlCatalogPath), ((float) App::instance->windowWidth) * MediaLibraryWindow::TextTruncateScale, Font::DotTruncateSuffix));
+		catalogLinkIcon->setText (UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->truncatedText (AgentControl::instance->getAgentSecondaryUrl (agentId, htmlCatalogPath), ((float) App::instance->windowWidth) * MediaLibraryWindow::LinkTruncateScale, Font::DotTruncateSuffix));
 		catalogLinkIcon->isVisible = isExpanded;
 	}
 
@@ -199,7 +208,10 @@ void MediaLibraryWindow::syncRecordStore () {
 	taskCountIcon->setMouseHoverTooltip (UiText::instance->getCountText (agentTaskCount, UiTextString::TaskInProgress, UiTextString::TasksInProgress));
 
 	agentTaskWindow->syncRecordStore ();
+	progressBar->setProgress (agentTaskWindow->percentComplete, 100.0f);
+	progressBar->setMouseHoverTooltip (StdString::createSprintf ("%s: %i%% %s", UiText::instance->getText (UiTextString::TaskInProgress).capitalized ().c_str (), (int) agentTaskWindow->percentComplete, UiText::instance->getText (UiTextString::Complete).c_str ()));
 	if ((agentTaskCount > 0) && isExpanded) {
+		progressBar->isVisible = false;
 		taskCountIcon->isVisible = true;
 		if (! agentTaskWindow->isTaskRunning) {
 			agentTaskWindow->isVisible = false;
@@ -211,6 +223,12 @@ void MediaLibraryWindow::syncRecordStore () {
 	else {
 		taskCountIcon->isVisible = false;
 		agentTaskWindow->isVisible = false;
+		if (! agentTaskWindow->isTaskRunning) {
+			progressBar->isVisible = false;
+		}
+		else {
+			progressBar->isVisible = true;
+		}
 	}
 
 	if (menuClickCallback.callback) {
@@ -218,6 +236,16 @@ void MediaLibraryWindow::syncRecordStore () {
 	}
 	refreshLayout ();
 	Panel::syncRecordStore ();
+	resetNameLabel ();
+}
+
+void MediaLibraryWindow::resetNameLabel () {
+	float w;
+
+	w = (float) App::instance->windowWidth;
+	w *= isExpanded ? MediaLibraryWindow::ExpandedNameTruncateScale : MediaLibraryWindow::UnexpandedNameTruncateScale;
+	nameLabel->setText (UiConfiguration::instance->fonts[nameLabel->textFontType]->truncatedText (agentName, w, Font::DotTruncateSuffix));
+	refreshLayout ();
 }
 
 void MediaLibraryWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallback) {
@@ -248,6 +276,7 @@ void MediaLibraryWindow::setExpanded (bool expanded, bool shouldSkipStateChangeC
 		mediaCountIcon->isVisible = true;
 		streamCountIcon->isVisible = true;
 		catalogLinkIcon->isVisible = (! htmlCatalogPath.empty ());
+		progressBar->isVisible = false;
 	}
 	else {
 		setPadding (UiConfiguration::instance->paddingSize / 2.0f, UiConfiguration::instance->paddingSize / 2.0f);
@@ -261,13 +290,20 @@ void MediaLibraryWindow::setExpanded (bool expanded, bool shouldSkipStateChangeC
 		streamCountIcon->isVisible = false;
 		catalogLinkIcon->isVisible = false;
 		agentTaskWindow->isVisible = false;
+		if (agentTaskWindow->isTaskRunning) {
+			progressBar->isVisible = true;
+		}
+		else {
+			progressBar->isVisible = false;
+		}
 	}
 
 	refreshLayout ();
+	resetNameLabel ();
 }
 
 void MediaLibraryWindow::refreshLayout () {
-	float x, y, x0, y0, x2, y2;
+	float x, y, x0, y0, x2, y2, w, maxw;
 
 	x = widthPadding;
 	y = heightPadding;
@@ -324,6 +360,18 @@ void MediaLibraryWindow::refreshLayout () {
 
 	resetSize ();
 
+	if (progressBar->isVisible) {
+		maxw = ((float) App::instance->windowWidth) * MediaLibraryWindow::ProgressBarWidthScale;
+		w = nameLabel->width * 0.8f;
+		if (w > maxw) {
+			w = maxw;
+		}
+		if (w < UiConfiguration::instance->marginSize) {
+			w = UiConfiguration::instance->marginSize;
+		}
+		progressBar->setSize (w, UiConfiguration::instance->progressBarHeight);
+		progressBar->position.assign (nameLabel->position.x, nameLabel->position.y + nameLabel->height + UiConfiguration::instance->marginSize);
+	}
 	if (dividerPanel->isVisible) {
 		dividerPanel->setFixedSize (true, width, UiConfiguration::instance->headlineDividerLineWidth);
 	}
@@ -356,6 +404,5 @@ void MediaLibraryWindow::catalogLinkClicked (void *windowPtr, Widget *widgetPtr)
 	if (window->htmlCatalogPath.empty ()) {
 		return;
 	}
-
-	OsUtil::openUrl (AgentControl::instance->getAgentSecondaryUrl (window->agentId, NULL, window->htmlCatalogPath));
+	OsUtil::openUrl (AgentControl::instance->getAgentSecondaryUrl (window->agentId, window->htmlCatalogPath));
 }

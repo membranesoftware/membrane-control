@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,8 +29,8 @@
 */
 #include "Config.h"
 #include <stdlib.h>
+#include "ClassId.h"
 #include "App.h"
-#include "Log.h"
 #include "StdString.h"
 #include "Ui.h"
 #include "Input.h"
@@ -57,6 +57,8 @@ TextField::TextField (float fieldWidth, const StdString &promptText)
 , isFocused (false)
 , cursorClock (0)
 {
+	classId = ClassId::TextField;
+
 	normalBgColor.assign (UiConfiguration::instance->lightBackgroundColor);
 	normalBorderColor.assign (UiConfiguration::instance->darkBackgroundColor);
 	focusBgColor.assign (UiConfiguration::instance->darkBackgroundColor);
@@ -93,6 +95,14 @@ TextField::TextField (float fieldWidth, const StdString &promptText)
 
 TextField::~TextField () {
 
+}
+
+bool TextField::isWidgetType (Widget *widget) {
+	return (widget && (widget->classId == ClassId::TextField));
+}
+
+TextField *TextField::castWidget (Widget *widget) {
+	return (TextField::isWidgetType (widget) ? (TextField *) widget : NULL);
 }
 
 void TextField::setDisabled (bool disabled) {
@@ -213,15 +223,20 @@ StdString TextField::getValue () {
 	return (valueLabel->text);
 }
 
-void TextField::setValue (const StdString &valueText, bool shouldSkipChangeCallback, bool shouldSkipEditCallback) {
+void TextField::setText (const StdString &valueText) {
 	if (valueText.equals (valueLabel->text)) {
 		refreshLayout ();
 		return;
 	}
-
 	valueLabel->setText (valueText);
 	clipCursorPosition ();
 	refreshLayout ();
+}
+
+void TextField::setValue (const StdString &valueText, bool shouldSkipChangeCallback, bool shouldSkipEditCallback) {
+	setText (valueText);
+	lastValue.assign (valueText);
+	cursorPosition = (int) valueText.length ();
 	if (! shouldSkipChangeCallback) {
 		eventCallback (valueChangeCallback);
 	}
@@ -242,7 +257,6 @@ void TextField::appendClipboardText () {
 	if (! text) {
 		return;
 	}
-
 	textlen = (int) StdString (text).length ();
 	clipCursorPosition ();
 	val.assign (valueLabel->text);
@@ -253,8 +267,13 @@ void TextField::appendClipboardText () {
 		val.insert ((size_t) cursorPosition, text);
 	}
 	SDL_free (text);
+
 	cursorPosition += textlen;
-	setValue (val, false, isKeyFocused);
+	setText (val);
+	eventCallback (valueChangeCallback);
+	if (! isKeyFocused) {
+		eventCallback (valueEditCallback);
+	}
 }
 
 void TextField::setFieldWidth (float widthValue) {
@@ -359,7 +378,8 @@ bool TextField::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool i
 
 	switch (keycode) {
 		case SDLK_ESCAPE: {
-			setValue (lastValue, false, true);
+			setText (lastValue);
+			eventCallback (valueChangeCallback);
 			setKeyFocus (false);
 			return (true);
 		}
@@ -414,7 +434,8 @@ bool TextField::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool i
 			if ((len > 0) && (cursorPosition > 0)) {
 				val.erase (cursorPosition - 1, 1);
 				--cursorPosition;
-				setValue (val, false, true);
+				setText (val);
+				eventCallback (valueChangeCallback);
 			}
 			return (true);
 		}
@@ -423,7 +444,8 @@ bool TextField::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool i
 			val.assign (valueLabel->text);
 			if (cursorPosition < (int) val.length ()) {
 				val.erase ((size_t) cursorPosition, 1);
-				setValue (val, false, true);
+				setText (val);
+				eventCallback (valueChangeCallback);
 			}
 			return (true);
 		}
@@ -445,7 +467,8 @@ bool TextField::doProcessKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool i
 				val.insert ((size_t) cursorPosition, 1, c);
 			}
 			++cursorPosition;
-			setValue (val, false, true);
+			setText (val);
+			eventCallback (valueChangeCallback);
 			return (true);
 		}
 	}
@@ -477,7 +500,6 @@ bool TextField::doProcessMouseState (const Widget::MouseState &mouseState) {
 	if (isDisabled) {
 		return (false);
 	}
-
 	if (mouseState.isEntered) {
 		setFocused (true);
 		if (mouseState.isLeftClickReleased && mouseState.isLeftClickEntered) {
@@ -487,7 +509,6 @@ bool TextField::doProcessMouseState (const Widget::MouseState &mouseState) {
 	else {
 		setFocused (false);
 	}
-
 	return (false);
 }
 

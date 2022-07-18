@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -48,8 +48,12 @@ public:
 	struct CommandCallbackContext {
 		CommandListener::CommandCallback callback;
 		void *callbackData;
-		CommandCallbackContext (): callback (NULL), callbackData (NULL) { }
-		CommandCallbackContext (CommandListener::CommandCallback callback, void *callbackData): callback (callback), callbackData (callbackData) { }
+		CommandCallbackContext ():
+			callback (NULL),
+			callbackData (NULL) { }
+		CommandCallbackContext (CommandListener::CommandCallback callback, void *callbackData):
+			callback (callback),
+			callbackData (callbackData) { }
 	};
 	// Add a callback that should be executed when a command with commandId is received
 	void subscribe (int commandId, const CommandListener::CommandCallbackContext &context);

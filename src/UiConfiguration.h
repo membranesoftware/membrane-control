@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -34,6 +34,7 @@
 
 #include "SDL2/SDL.h"
 #include "StdString.h"
+#include "OsUtil.h"
 #include "Color.h"
 #include "Font.h"
 #include "SpriteGroup.h"
@@ -72,7 +73,7 @@ public:
 		StarButtonSprite = 27,
 		StarOutlineButtonSprite = 28,
 		StarHalfButtonSprite = 29,
-		ClearButtonSprite = 30,
+		SmallClearButtonSprite = 30,
 		ReloadButtonSprite = 31,
 		RenameButtonSprite = 32,
 		LargeErrorIconSprite = 33,
@@ -117,8 +118,8 @@ public:
 		ConnectionFailedStateIconSprite = 72,
 		ConnectionWaitingStateIconSprite = 73,
 		ServerDisabledStateIconSprite = 74,
-		LargeProgramIconSprite = 75,
-		SmallProgramIconSprite = 76,
+		NetworkActivityIconSprite = 75,
+		HistoryIconSprite = 76,
 		SmallServerIconSprite = 77,
 		ExpandAllLessButtonSprite = 78,
 		ExpandAllMoreButtonSprite = 79,
@@ -131,7 +132,10 @@ public:
 		SmallWebKioskIconSprite = 86,
 		ClockIconSprite = 87,
 		SmallKeyIconSprite = 88,
-		ConsoleIconSprite = 89
+		ConsoleIconSprite = 89,
+		TagIconSprite = 90,
+		HistoryButtonSprite = 91,
+		LargeClearButtonSprite = 92
 	};
 
 	// Sprite frame indexes
@@ -161,7 +165,7 @@ public:
 	static UiConfiguration *instance;
 
 	// Load resources referenced by the UiConfiguration and return a result value
-	int load (float fontScale = 1.0f);
+	OsUtil::Result load (float fontScale = 1.0f);
 
 	// Free resources allocated by any previous load operation
 	void unload ();
@@ -182,6 +186,7 @@ public:
 	int mouseHoverThreshold;
 	int blinkDuration; // ms
 	int backgroundCrossFadeDuration; // ms
+	int activityIconLingerDuration; // ms
 	StdString fontNames[UiConfiguration::FontCount];
 	int fontBaseSizes[UiConfiguration::FontCount];
 	int fontSizes[UiConfiguration::FontCount];
@@ -205,10 +210,12 @@ public:
 	Color flatButtonTextColor;
 	Color linkTextColor;
 	Color errorTextColor;
+	Color warningTextColor;
 	Color statusOkTextColor;
 	Color raisedButtonTextColor;
 	Color raisedButtonInverseTextColor;
 	Color raisedButtonBackgroundColor;
+	Color raisedButtonInverseBackgroundColor;
 	Color dropShadowColor;
 	float dropShadowWidth;
 	Color dividerColor;

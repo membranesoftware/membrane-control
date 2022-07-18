@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -27,7 +27,7 @@
 * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 * POSSIBILITY OF SUCH DAMAGE.
 */
-// Panel that contains elements representing a media item on a card view
+// Panel that represents a media item on a card view
 
 #ifndef MEDIA_WINDOW_H
 #define MEDIA_WINDOW_H
@@ -57,6 +57,7 @@ public:
 	// Read-only data members
 	StdString mediaId;
 	StdString mediaName;
+	StdString mediaSortKey;
 	StdString agentId;
 	StdString mediaPath;
 	StdString thumbnailPath;

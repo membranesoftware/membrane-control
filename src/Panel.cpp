@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -32,10 +32,11 @@
 #include <math.h>
 #include <list>
 #include "SDL2/SDL.h"
-#include "Log.h"
 #include "StdString.h"
+#include "StringList.h"
 #include "App.h"
 #include "UiConfiguration.h"
+#include "Resource.h"
 #include "Input.h"
 #include "OsUtil.h"
 #include "Widget.h"
@@ -50,6 +51,7 @@ Panel::Panel ()
 , borderColor (0.0f, 0.0f, 0.0f)
 , dropShadowColor (0.0f, 0.0f, 0.0f, 0.8f)
 , shouldRefreshTexture (false)
+, layoutSpacing (-1.0f)
 , isTextureRenderEnabled (false)
 , maxWidgetX (0.0f)
 , maxWidgetY (0.0f)
@@ -74,7 +76,7 @@ Panel::Panel ()
 , dropShadowWidth (0.0f)
 , isFixedSize (false)
 , isWaiting (false)
-, layout (-1)
+, layout (Panel::NoLayout)
 , isAnimating (false)
 , drawTexture (NULL)
 , drawTextureWidth (0)
@@ -123,7 +125,7 @@ Panel::~Panel () {
 	clear ();
 
 	if (! drawTexturePath.empty ()) {
-		App::instance->resource.unloadTexture (drawTexturePath);
+		Resource::instance->unloadTexture (drawTexturePath);
 		drawTexturePath.assign ("");
 	}
 	drawTexture = NULL;
@@ -156,7 +158,7 @@ void Panel::resetDrawTexture (void *panelPtr) {
 	panel = (Panel *) panelPtr;
 	if (! panel->isTextureRenderEnabled) {
 		if (! panel->drawTexturePath.empty ()) {
-			App::instance->resource.unloadTexture (panel->drawTexturePath);
+			Resource::instance->unloadTexture (panel->drawTexturePath);
 			panel->drawTexturePath.assign ("");
 		}
 		panel->drawTexture = NULL;
@@ -174,14 +176,14 @@ void Panel::resetDrawTexture (void *panelPtr) {
 
 	if (! texture) {
 		if (! panel->drawTexturePath.empty ()) {
-			App::instance->resource.unloadTexture (panel->drawTexturePath);
+			Resource::instance->unloadTexture (panel->drawTexturePath);
 		}
 		panel->drawTexture = NULL;
 
 		panel->drawTexturePath.sprintf ("*_Panel_%llx_%llx", (long long int) panel->id, (long long int) App::instance->getUniqueId ());
 		panel->drawTextureWidth = (int) panel->width;
 		panel->drawTextureHeight = (int) panel->height;
-		texture = App::instance->resource.createTexture (panel->drawTexturePath, panel->drawTextureWidth, panel->drawTextureHeight);
+		texture = Resource::instance->createTexture (panel->drawTexturePath, panel->drawTextureWidth, panel->drawTextureHeight);
 	}
 	if (! texture) {
 		panel->drawTexturePath.assign ("");
@@ -338,6 +340,76 @@ Widget *Panel::findWidget (float screenPositionX, float screenPositionY, bool re
 	}
 
 	return (item);
+}
+
+Widget *Panel::findWidget (const StdString &widgetName) {
+	std::list<Widget *>::iterator i, end;
+	Widget *widget, *item;
+
+	item = NULL;
+	SDL_LockMutex (widgetListMutex);
+	i = widgetList.begin ();
+	end = widgetList.end ();
+	while (i != end) {
+		widget = *i;
+		++i;
+		if (widget->isDestroyed || (! widget->isVisible) || (! widget->hasScreenPosition)) {
+			continue;
+		}
+		if (widget->widgetName.equals (widgetName)) {
+			item = widget;
+			break;
+		}
+		item = widget->findWidget (widgetName);
+		if (item) {
+			break;
+		}
+	}
+	SDL_UnlockMutex (widgetListMutex);
+	return (item);
+}
+
+void Panel::processWidgets (Widget::EventCallback fn, void *fnData) {
+	std::list<Widget *>::const_iterator i, end;
+
+	SDL_LockMutex (widgetListMutex);
+	i = widgetList.cbegin ();
+	end = widgetList.cend ();
+	while (i != end) {
+		fn (fnData, *i);
+		++i;
+	}
+	SDL_UnlockMutex (widgetListMutex);
+
+	SDL_LockMutex (widgetAddListMutex);
+	i = widgetAddList.cbegin ();
+	end = widgetAddList.cend ();
+	while (i != end) {
+		fn (fnData, *i);
+		++i;
+	}
+	SDL_UnlockMutex (widgetAddListMutex);
+}
+
+void Panel::getWidgetNames (StringList *destList) {
+	std::list<Widget *>::iterator i, end;
+	Widget *widget;
+
+	SDL_LockMutex (widgetListMutex);
+	i = widgetList.begin ();
+	end = widgetList.end ();
+	while (i != end) {
+		widget = *i;
+		++i;
+		if (widget->isDestroyed || (! widget->isVisible) || (! widget->hasScreenPosition)) {
+			continue;
+		}
+		if (! widget->widgetName.empty ()) {
+			destList->push_back (widget->widgetName);
+		}
+		widget->getWidgetNames (destList);
+	}
+	SDL_UnlockMutex (widgetListMutex);
 }
 
 void Panel::doUpdate (int msElapsed) {
@@ -984,8 +1056,9 @@ void Panel::resetSize () {
 void Panel::refreshLayout () {
 	std::list<Widget *>::iterator i, end;
 	Widget *widget;
-	float x, y, maxw, maxh;
+	float x, y, maxw, maxh, margin;
 
+	margin = (layoutSpacing >= 0.0f) ? layoutSpacing : UiConfiguration::instance->marginSize;
 	switch (layout) {
 		case Panel::VerticalLayout: {
 			x = widthPadding;
@@ -1001,7 +1074,7 @@ void Panel::refreshLayout () {
 					continue;
 				}
 				widget->position.assign (x, y);
-				y += widget->height + UiConfiguration::instance->marginSize;
+				y += widget->height + margin;
 			}
 			SDL_UnlockMutex (widgetListMutex);
 
@@ -1015,7 +1088,7 @@ void Panel::refreshLayout () {
 					continue;
 				}
 				widget->position.assign (x, y);
-				y += widget->height + UiConfiguration::instance->marginSize;
+				y += widget->height + margin;
 			}
 			SDL_UnlockMutex (widgetAddListMutex);
 			break;
@@ -1035,7 +1108,7 @@ void Panel::refreshLayout () {
 					continue;
 				}
 				widget->position.assign (x, y);
-				y += widget->height + UiConfiguration::instance->marginSize;
+				y += widget->height + margin;
 				if (widget->width > maxw) {
 					maxw = widget->width;
 				}
@@ -1052,7 +1125,7 @@ void Panel::refreshLayout () {
 					continue;
 				}
 				widget->position.assign (x, y);
-				y += widget->height + UiConfiguration::instance->marginSize;
+				y += widget->height + margin;
 				if (widget->width > maxw) {
 					maxw = widget->width;
 				}
@@ -1100,7 +1173,7 @@ void Panel::refreshLayout () {
 					continue;
 				}
 				widget->position.assign (x, y);
-				x += widget->width + UiConfiguration::instance->marginSize;
+				x += widget->width + margin;
 			}
 			SDL_UnlockMutex (widgetListMutex);
 
@@ -1114,7 +1187,7 @@ void Panel::refreshLayout () {
 					continue;
 				}
 				widget->position.assign (x, y);
-				x += widget->width + UiConfiguration::instance->marginSize;
+				x += widget->width + margin;
 			}
 			SDL_UnlockMutex (widgetAddListMutex);
 			break;
@@ -1134,7 +1207,7 @@ void Panel::refreshLayout () {
 					continue;
 				}
 				widget->position.assign (x, y);
-				x += widget->width + UiConfiguration::instance->marginSize;
+				x += widget->width + margin;
 				if (widget->height > maxh) {
 					maxh = widget->height;
 				}
@@ -1151,7 +1224,7 @@ void Panel::refreshLayout () {
 					continue;
 				}
 				widget->position.assign (x, y);
-				x += widget->width + UiConfiguration::instance->marginSize;
+				x += widget->width + margin;
 				if (widget->height > maxh) {
 					maxh = widget->height;
 				}

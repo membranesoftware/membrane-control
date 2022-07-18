@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -74,7 +74,7 @@ public:
 	void setImageColor (const Color &imageColor);
 
 	// Set the button's raised state. If enabled, the button is drawn with a raised appearance.
-	void setRaised (bool raised, const Color &normalBgColor);
+	void setRaised (bool raised, const Color &normalBgColor = Color ());
 
 	// Set the button's inverse color state. If enabled, the button renders using an inverse color scheme.
 	void setInverseColor (bool inverse);

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -75,9 +75,9 @@ int AsyncCommand::execute () {
 
 	Log::debug ("Execute async command; thread=0x%lx agentId=%s cmdInv=%s", SDL_ThreadID (), agentId.c_str (), TOSTRING_STRING (cmdInv));
 	SDL_LockMutex (mutex);
-	result = AgentControl::instance->invokeCommand (agentId, cmdInv, AsyncCommand::invokeComplete, this);
+	result = AgentControl::instance->invokeCommand (agentId, cmdInv, CommandList::InvokeCallbackContext (AsyncCommand::invokeComplete, this));
 	cmdInv = NULL;
-	if (result != OsUtil::Result::Success) {
+	if (result != OsUtil::Success) {
 		SDL_UnlockMutex (mutex);
 		return (result);
 	}
@@ -85,10 +85,10 @@ int AsyncCommand::execute () {
 	SDL_CondWait (cond, mutex);
 	SDL_UnlockMutex (mutex);
 	Log::debug ("Async command complete; thread=0x%lx", SDL_ThreadID ());
-	return (OsUtil::Result::Success);
+	return (OsUtil::Success);
 }
 
-void AsyncCommand::invokeComplete (void *cmdPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand) {
+void AsyncCommand::invokeComplete (void *cmdPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand, const StdString &invokeId) {
 	AsyncCommand *cmd;
 
 	cmd = (AsyncCommand *) cmdPtr;

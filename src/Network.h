@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -63,14 +63,22 @@ public:
 	struct DatagramCallbackContext {
 		Network::DatagramCallback callback;
 		void *callbackData;
-		DatagramCallbackContext (): callback (NULL), callbackData (NULL) { }
-		DatagramCallbackContext (Network::DatagramCallback callback, void *callbackData): callback (callback), callbackData (callbackData) { }
+		DatagramCallbackContext ():
+			callback (NULL),
+			callbackData (NULL) { }
+		DatagramCallbackContext (Network::DatagramCallback callback, void *callbackData):
+			callback (callback),
+			callbackData (callbackData) { }
 	};
 	struct HttpRequestCallbackContext {
 		Network::HttpRequestCallback callback;
 		void *callbackData;
-		HttpRequestCallbackContext (): callback (NULL), callbackData (NULL) { }
-		HttpRequestCallbackContext (Network::HttpRequestCallback callback, void *callbackData): callback (callback), callbackData (callbackData) { }
+		HttpRequestCallbackContext ():
+			callback (NULL),
+			callbackData (NULL) { }
+		HttpRequestCallbackContext (Network::HttpRequestCallback callback, void *callbackData):
+			callback (callback),
+			callbackData (callbackData) { }
 	};
 
 	// Read-write data members
@@ -128,14 +136,24 @@ private:
 		bool isLoopback;
 		StdString address;
 		StdString broadcastAddress;
-		Interface (): id (0), isUp (false), isBroadcast (false), isLoopback (false), address (""), broadcastAddress ("") { }
+		Interface ():
+			id (0),
+			isUp (false),
+			isBroadcast (false),
+			isLoopback (false),
+			address (""),
+			broadcastAddress ("") { }
 	};
 	struct Datagram {
 		StdString targetHostname;
 		int targetPort;
 		Buffer *messageData;
 		bool isBroadcast;
-		Datagram (): targetHostname (""), targetPort (0), messageData (NULL), isBroadcast (false) { }
+		Datagram ():
+			targetHostname (""),
+			targetPort (0),
+			messageData (NULL),
+			isBroadcast (false) { }
 	};
 	struct HttpRequestContext {
 		StdString method;
@@ -143,7 +161,11 @@ private:
 		StdString postData;
 		StdString serverName;
 		Network::HttpRequestCallbackContext callback;
-		HttpRequestContext (): method ("GET"), url (""), postData (""), serverName ("") { }
+		HttpRequestContext ():
+			method ("GET"),
+			url (""),
+			postData (""),
+			serverName ("") { }
 	};
 
 	// Populate the interface map with data regarding available network interfaces. Returns a Result value.
@@ -179,6 +201,7 @@ private:
 	SDL_cond *datagramSendCond;
 	int datagramSocket;
 	std::queue<Network::HttpRequestContext> httpRequestQueue;
+	std::list<Network::HttpRequestContext> httpShutdownList;
 	SDL_mutex *httpRequestQueueMutex;
 	SDL_cond *httpRequestQueueCond;
 	std::list<SDL_Thread *> httpRequestThreadList;

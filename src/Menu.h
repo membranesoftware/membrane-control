@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -49,7 +49,7 @@ public:
 	bool isClickDestroyEnabled;
 
 	// Add a menu item containing the provided name and an optional sprite icon. If a selection group number of zero or greater is specified, selecting the item causes the menu to show a check mark next to it while clearing any check marks from other items in the same group.
-	void addItem (const StdString &name, Sprite *sprite = NULL, Widget::EventCallback callback = NULL, void *callbackData = NULL, int selectionGroup = -1, bool isSelected = false);
+	void addItem (const StdString &name, Sprite *sprite = NULL, const Widget::EventCallbackContext &callback = Widget::EventCallbackContext (), int selectionGroup = -1, bool isSelected = false);
 
 	// Add a divider line to the menu
 	void addDivider ();
@@ -79,9 +79,15 @@ private:
 		Panel *panel;
 		Label *label;
 		Image *image;
-		Widget::EventCallback callback;
-		void *callbackData;
-		Item (): isChoice (false), isDivider (false), isSelected (false), selectionGroup (-1), panel (NULL), label (NULL), image (NULL), callback (NULL), callbackData (NULL) { }
+		Widget::EventCallbackContext callback;
+		Item ():
+			isChoice (false),
+			isDivider (false),
+			isSelected (false),
+			selectionGroup (-1),
+			panel (NULL),
+			label (NULL),
+			image (NULL) { }
 	};
 	std::list<Menu::Item> itemList;
 

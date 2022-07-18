@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -32,7 +32,6 @@
 #include <math.h>
 #include "App.h"
 #include "ClassId.h"
-#include "Log.h"
 #include "StdString.h"
 #include "UiConfiguration.h"
 #include "SystemInterface.h"
@@ -86,6 +85,7 @@ MediaWindow::MediaWindow (Json *mediaItem, SpriteGroup *mediaUiSpriteGroup)
 	setFillBg (true, UiConfiguration::instance->mediumBackgroundColor);
 	mediaId = SystemInterface::instance->getCommandStringParam (mediaItem, "id", "");
 	mediaName = SystemInterface::instance->getCommandStringParam (mediaItem, "name", "");
+	mediaSortKey = SystemInterface::instance->getCommandStringParam (mediaItem, "sortKey", "");
 	agentId = SystemInterface::instance->getCommandAgentId (mediaItem);
 	mediaWidth = SystemInterface::instance->getCommandNumberParam (mediaItem, "width", (int) 0);
 	mediaHeight = SystemInterface::instance->getCommandNumberParam (mediaItem, "height", (int) 0);
@@ -94,7 +94,7 @@ MediaWindow::MediaWindow (Json *mediaItem, SpriteGroup *mediaUiSpriteGroup)
 	mediaImage->loadCallback = Widget::EventCallbackContext (MediaWindow::mediaImageLoaded, this);
 	mediaImage->mouseClickCallback = Widget::EventCallbackContext (MediaWindow::mediaImageClicked, this);
 	mediaImage->mouseLongPressCallback = Widget::EventCallbackContext (MediaWindow::mediaImageLongPressed, this);
-	mediaImage->setLoadSprite (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
+	mediaImage->setLoadingSprite (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
 
 	nameLabel = (Label *) addWidget (new Label (mediaName, UiConfiguration::BodyFont, UiConfiguration::instance->primaryTextColor));
 	nameLabel->isInputSuspended = true;
@@ -314,7 +314,7 @@ void MediaWindow::syncRecordStore () {
 		params = new Json ();
 		params->set ("id", mediaId);
 		params->set ("thumbnailIndex", (thumbnailCount / 4));
-		playThumbnailUrl = AgentControl::instance->getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetThumbnailImage, params), thumbnailPath);
+		playThumbnailUrl = AgentControl::instance->getAgentSecondaryUrl (agentId, thumbnailPath, App::instance->createCommand (SystemInterface::Command_GetThumbnailImage, params));
 		mediaImage->setImageUrl (playThumbnailUrl);
 	}
 
@@ -444,7 +444,9 @@ void MediaWindow::setLayout (int layoutType, float maxPanelWidth) {
 	h /= mediaWidth;
 	w = floorf (w);
 	h = floorf (h);
-	mediaImage->setWindowSize (w, h);
+	mediaImage->setLoadingSprite (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite), w, h);
+	mediaImage->setWindowSize (true, w, h);
+	mediaImage->onLoadScale (w, h);
 	mediaImage->reload ();
 
 	if (layout == CardView::HighDetail) {

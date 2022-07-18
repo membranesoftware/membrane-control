@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -64,6 +64,8 @@ public:
 	static const char *StartPositionKey;
 	static const char *PlayDurationKey;
 
+	static const float BottomPaddingHeightScale;
+
 	MonitorCacheUi (const StdString &agentId, const StdString &agentName);
 	~MonitorCacheUi ();
 
@@ -85,7 +87,7 @@ protected:
 	Widget *createBreadcrumbWidget ();
 
 	// Load subclass-specific resources and return a result value
-	int doLoad ();
+	OsUtil::Result doLoad ();
 
 	// Unload subclass-specific resources
 	void doUnload ();
@@ -134,12 +136,16 @@ private:
 	static void playButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void playAllButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void playAllActionClosed (void *uiPtr, Widget *widgetPtr);
-	static void removeStreamComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
+	static void removeStreamComplete (Ui *invokeUi, const StdString &agentId, Json *invokeCommand, Json *responseCommand, bool isResponseCommandSuccess);
 	static void receiveFindStreamItemsResult (void *uiPtr, const StdString &agentId, Json *command);
 	static void receiveStreamItem (void *uiPtr, const StdString &agentId, Json *command);
+	static void invokeMonitorCommandComplete (Ui *invokeUi, const StdString &agentId, Json *invokeCommand, Json *responseCommand, bool isResponseCommandSuccess);
 
 	// Set the interface's selected StreamWindow item
 	void setSelectedStream (StreamWindow *streamWindow);
+
+	// Set the time of the next record sync if it isn't already assigned
+	void resetNextRecordSyncTime ();
 
 	Button *stopButton;
 	Button *pauseButton;

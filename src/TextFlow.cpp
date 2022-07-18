@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,11 +30,10 @@
 #include "Config.h"
 #include <stdlib.h>
 #include <list>
-#include "App.h"
-#include "Log.h"
 #include "StdString.h"
 #include "Ui.h"
 #include "UiConfiguration.h"
+#include "Resource.h"
 #include "Widget.h"
 #include "Label.h"
 #include "Font.h"
@@ -56,7 +55,7 @@ TextFlow::TextFlow (float viewWidth, UiConfiguration::FontType fontType)
 
 TextFlow::~TextFlow () {
 	if (textFont) {
-		App::instance->resource.unloadFont (textFontName, textFontSize);
+		Resource::instance->unloadFont (textFontName, textFontSize);
 		textFont = NULL;
 	}
 }
@@ -90,17 +89,15 @@ void TextFlow::setTextColor (const Color &color) {
 
 void TextFlow::setText (const StdString &textContent, UiConfiguration::FontType fontType, bool forceFontReload) {
 	std::list<Label *>::iterator i, end;
-	Resource *resource;
 	Font *loadfont;
 
 	loadfont = NULL;
 	if (fontType >= 0) {
 		if (forceFontReload || (! textFont) || (textFontType != fontType)) {
-			resource = &(App::instance->resource);
-			loadfont = resource->loadFont (UiConfiguration::instance->fontNames[fontType], UiConfiguration::instance->fontSizes[fontType]);
+			loadfont = Resource::instance->loadFont (UiConfiguration::instance->fontNames[fontType], UiConfiguration::instance->fontSizes[fontType]);
 			if (loadfont) {
 				if (textFont) {
-					resource->unloadFont (textFontName, textFontSize);
+					Resource::instance->unloadFont (textFontName, textFontSize);
 				}
 				textFont = loadfont;
 				textFontType = fontType;

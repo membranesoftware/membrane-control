@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -45,7 +45,24 @@ public:
 	CommandList (const StdString &name);
 	~CommandList ();
 
-	typedef void (*InvokeCallback) (void *data, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand);
+	typedef void (*InvokeCallback) (void *data, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand, const StdString &invokeId);
+	struct InvokeCallbackContext {
+		CommandList::InvokeCallback callback;
+		void *callbackData;
+		StdString agentId;
+		StdString invokeId;
+		InvokeCallbackContext ():
+			callback (NULL),
+			callbackData (NULL) { }
+		InvokeCallbackContext (CommandList::InvokeCallback callback, void *callbackData):
+			callback (callback),
+			callbackData (callbackData) { }
+		InvokeCallbackContext (CommandList::InvokeCallback callback, void *callbackData, const StdString &agentId, const StdString &invokeId):
+			callback (callback),
+			callbackData (callbackData),
+			agentId (agentId),
+			invokeId (invokeId) { }
+	};
 
 	struct Context {
 		StdString hostname;
@@ -54,9 +71,13 @@ public:
 		bool isAuthorizing;
 		bool isAuthorizeComplete;
 		int authorizeSecretIndex;
-		CommandList::InvokeCallback callback;
-		void *callbackData;
-		Context (): tcpPort (0), command (NULL), isAuthorizing (false), isAuthorizeComplete (false), authorizeSecretIndex (0), callback (NULL), callbackData (NULL) { }
+		CommandList::InvokeCallbackContext callback;
+		Context ():
+			tcpPort (0),
+			command (NULL),
+			isAuthorizing (false),
+			isAuthorizeComplete (false),
+			authorizeSecretIndex (0) { }
 	};
 
 	// Read-only data members
@@ -70,7 +91,7 @@ public:
 	bool isIdle (int timeout = 60000);
 
 	// Add a command to the end of the list
-	void addCommand (const StdString &hostname, int tcpPort, Json *command, CommandList::InvokeCallback callback, void *callbackData);
+	void addCommand (const StdString &hostname, int tcpPort, Json *command, CommandList::InvokeCallbackContext callback = CommandList::InvokeCallbackContext ());
 
 	// Invoke an Authorize command against the target agent from the last executed command, using the next available secret that hasn't yet been tried. Returns a boolean value indicating if any new authorize attempt was made.
 	bool authorizeLastCommand ();
@@ -83,7 +104,8 @@ private:
 	struct Token {
 		StdString token;
 		int authorizeSecretIndex;
-		Token (): authorizeSecretIndex (0) { }
+		Token ():
+			authorizeSecretIndex (0) { }
 	};
 	// Remove all items from contextList
 	void clearContextList ();

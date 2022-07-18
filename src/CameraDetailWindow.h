@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -42,13 +42,14 @@
 
 class CameraDetailWindow : public Panel {
 public:
-	CameraDetailWindow (const StdString &agentId, SpriteGroup *cameraTimelineUiSpriteGroup);
+	CameraDetailWindow (const StdString &agentId, int sensor, SpriteGroup *cameraTimelineUiSpriteGroup);
 	virtual ~CameraDetailWindow ();
 
 	static const float NameTruncateScale;
 
 	// Read-only data members
 	StdString agentId;
+	int sensor;
 
 	// Update widget state as appropriate for records present in the application's RecordStore object, which has been locked prior to invocation
 	void syncRecordStore ();

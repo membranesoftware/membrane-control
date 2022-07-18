@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -34,6 +34,7 @@
 
 #include "StdString.h"
 #include "Image.h"
+#include "ImageWindow.h"
 #include "Label.h"
 #include "Panel.h"
 
@@ -57,6 +58,8 @@ protected:
 
 private:
 	Image *logoImage;
+	ImageWindow *networkActivityImage;
+	int64_t networkActivityImageHideTime;
 	Label *dateLabel;
 	Label *timeLabel;
 	int64_t lastDisplayTime;

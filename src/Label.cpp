@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -33,7 +33,6 @@
 #include <string.h>
 #include "SDL2/SDL.h"
 #include "App.h"
-#include "Log.h"
 #include "StdString.h"
 #include "Sprite.h"
 #include "Resource.h"
@@ -65,8 +64,6 @@ Label::Label (const StdString &text, UiConfiguration::FontType fontType, const C
 }
 
 Label::~Label () {
-	Resource *resource;
-
 	if (isObscured) {
 		text.wipe ();
 	}
@@ -78,8 +75,7 @@ Label::~Label () {
 		SDL_UnlockMutex (textMutex);
 	}
 	if (textFont) {
-		resource = &(App::instance->resource);
-		resource->unloadFont (textFontName, textFontSize);
+		Resource::instance->unloadFont (textFontName, textFontSize);
 		textFont = NULL;
 	}
 	if (textMutex) {
@@ -257,7 +253,6 @@ void Label::doUpdate (int msElapsed) {
 }
 
 void Label::setText (const StdString &textContent, UiConfiguration::FontType fontType, bool forceFontReload) {
-	Resource *resource;
 	Font *font;
 	Font::Glyph *glyph;
 	int i, maxbearing, textlen, kerning, maxh, h, descenderh;
@@ -267,11 +262,10 @@ void Label::setText (const StdString &textContent, UiConfiguration::FontType fon
 	font = NULL;
 	if (fontType >= 0) {
 		if (forceFontReload || (! textFont) || (textFontType != fontType)) {
-			resource = &(App::instance->resource);
-			font = resource->loadFont (UiConfiguration::instance->fontNames[fontType], UiConfiguration::instance->fontSizes[fontType]);
+			font = Resource::instance->loadFont (UiConfiguration::instance->fontNames[fontType], UiConfiguration::instance->fontSizes[fontType]);
 			if (font) {
 				if (textFont) {
-					resource->unloadFont (textFontName, textFontSize);
+					Resource::instance->unloadFont (textFontName, textFontSize);
 				}
 				textFont = font;
 				textFontType = fontType;

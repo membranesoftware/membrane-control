@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -69,7 +69,11 @@ private:
 		SDL_Texture *texture;
 		StdString loadPath;
 		int width, height;
-		TextureData (): texture (NULL), loadPath (""), width (0), height (0) { }
+		TextureData ():
+			texture (NULL),
+			loadPath (""),
+			width (0),
+			height (0) { }
 	};
 	std::vector<Sprite::TextureData> textureList;
 };

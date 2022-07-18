@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,7 +29,7 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include <list>
+#include <map>
 #include "Log.h"
 #include "App.h"
 #include "Input.h"
@@ -41,6 +41,7 @@
 #include "Resource.h"
 #include "UiConfiguration.h"
 #include "AgentControl.h"
+#include "CommandHistory.h"
 #include "Panel.h"
 #include "Button.h"
 #include "Toolbar.h"
@@ -56,12 +57,15 @@ Ui::Ui ()
 , isLoaded (false)
 , isFirstResumeComplete (false)
 , isLinkConnected (false)
+, invokeMapMutex (NULL)
 , cardView (NULL)
 , actionSource (NULL)
+, isLinkCommandActive (false)
 , refcount (0)
 , refcountMutex (NULL)
 , lastWindowCloseCount (0)
 {
+	invokeMapMutex = SDL_CreateMutex ();
 	refcountMutex = SDL_CreateMutex ();
 
 	rootPanel = new Panel ();
@@ -73,6 +77,10 @@ Ui::~Ui () {
 	if (rootPanel) {
 		rootPanel->release ();
 		rootPanel = NULL;
+	}
+	if (invokeMapMutex) {
+		SDL_DestroyMutex (invokeMapMutex);
+		invokeMapMutex = NULL;
 	}
 	if (refcountMutex) {
 		SDL_DestroyMutex (refcountMutex);
@@ -106,17 +114,17 @@ void Ui::release () {
 	}
 }
 
-int Ui::load () {
+OsUtil::Result Ui::load () {
 	StdString path;
-	int result;
+	OsUtil::Result result;
 
 	if (isLoaded) {
-		return (OsUtil::Result::Success);
+		return (OsUtil::Success);
 	}
 	path = getSpritePath ();
 	if (! path.empty ()) {
 		result = sprites.load (path);
-		if (result != OsUtil::Result::Success) {
+		if (result != OsUtil::Success) {
 			Log::err ("Failed to load sprite resources");
 			return (result);
 		}
@@ -128,13 +136,12 @@ int Ui::load () {
 	cardView->isExitedMouseWheelScrollEnabled = true;
 
 	result = doLoad ();
-	if (result != OsUtil::Result::Success) {
+	if (result != OsUtil::Success) {
 		return (result);
 	}
-
 	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
 	isLoaded = true;
-	return (OsUtil::Result::Success);
+	return (OsUtil::Success);
 }
 
 void Ui::unload () {
@@ -161,9 +168,9 @@ Widget *Ui::createBreadcrumbWidget () {
 	return (NULL);
 }
 
-int Ui::doLoad () {
+OsUtil::Result Ui::doLoad () {
 	// Default implementation does nothing
-	return (OsUtil::Result::Success);
+	return (OsUtil::Success);
 }
 
 void Ui::doUnload () {
@@ -232,8 +239,9 @@ void Ui::resume () {
 	rootPanel->resetInputState ();
 	rootPanel->isInputSuspended = false;
 	App::instance->rootPanel->addWidget (rootPanel);
-	lastWindowCloseCount = Input::instance->windowCloseCount;
 
+	lastWindowCloseCount = Input::instance->windowCloseCount;
+	isLinkCommandActive = false;
 	setLinkConnected (true);
 	cardView->setViewSize (App::instance->windowWidth - App::instance->uiStack.rightBarWidth, App::instance->windowHeight - App::instance->uiStack.topBarHeight - App::instance->uiStack.bottomBarHeight);
 	cardView->position.assign (0.0f, App::instance->uiStack.topBarHeight);
@@ -264,6 +272,13 @@ void Ui::update (int msElapsed) {
 	}
 	actionTarget.compact ();
 	breadcrumbWidget.compact ();
+
+	if (isLinkCommandActive || (CommandHistory::instance->activeCommandCount > 0)) {
+		App::instance->isNetworkActive = true;
+	}
+	else {
+		App::instance->isNetworkActive = false;
+	}
 
 	count = Input::instance->windowCloseCount;
 	if (lastWindowCloseCount != count) {
@@ -376,6 +391,21 @@ void Ui::handleLinkClientDisconnect (const StdString &agentId, const StdString &
 	// Default implementation does nothing
 }
 
+bool Ui::openWidget (const StdString &targetName) {
+	// Default implementation does nothing
+	return (false);
+}
+
+bool Ui::selectWidget (const StdString &targetName) {
+	// Default implementation does nothing
+	return (false);
+}
+
+bool Ui::unselectWidget (const StdString &targetName) {
+	// Default implementation does nothing
+	return (false);
+}
+
 void Ui::syncRecordStore () {
 	// Superclass method takes no action
 	doSyncRecordStore ();
@@ -391,7 +421,6 @@ void Ui::setLinkConnected (bool connected) {
 	if (connected == isLinkConnected) {
 		return;
 	}
-
 	isLinkConnected = connected;
 	i = linkAgentIds.begin ();
 	end = linkAgentIds.end ();
@@ -410,7 +439,6 @@ void Ui::addLinkAgent (const StdString &agentId) {
 	if (linkAgentIds.contains (agentId)) {
 		return;
 	}
-
 	linkAgentIds.push_back (agentId);
 	if (isLinkConnected) {
 		AgentControl::instance->connectLinkClient (agentId);
@@ -432,7 +460,6 @@ bool Ui::clearActionPopup (Widget *target, Widget::EventCallback sourceFn) {
 
 	match = actionWidget.widget && (actionTarget.widget == target) && (actionSource == sourceFn);
 	clearPopupWidgets ();
-
 	return (match);
 }
 
@@ -561,6 +588,204 @@ Panel *Ui::createLoadingIconWindow () {
 	icon = new IconLabelWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallLoadingIconSprite), UiText::instance->getText (UiTextString::Loading).capitalized (), UiConfiguration::CaptionFont);
 	icon->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
 	icon->setProgressBar (true);
-
 	return (icon);
+}
+
+void Ui::invokeCommand (const StdString &commandHistoryId, const StdString &agentId, Json *command, Ui::InvokeCallback callback) {
+	int result;
+
+	if (commandHistoryId.empty () || (! command)) {
+		if (callback) {
+			callback (this, agentId, command, NULL, false);
+		}
+		if (command) {
+			delete (command);
+		}
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
+		if (! commandHistoryId.empty ()) {
+			CommandHistory::instance->setCommandStatus (commandHistoryId, CommandHistory::Failed);
+		}
+		return;
+	}
+
+	SDL_LockMutex (invokeMapMutex);
+	invokeMap.insert (std::pair<StdString, Ui::InvokeCommandContext> (commandHistoryId, Ui::InvokeCommandContext (commandHistoryId, callback)));
+	SDL_UnlockMutex (invokeMapMutex);
+
+	retain ();
+	result = AgentControl::instance->invokeCommand (agentId, command, CommandList::InvokeCallbackContext (Ui::invokeCommandComplete, this, agentId, commandHistoryId));
+	if (result != OsUtil::Success) {
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
+		CommandHistory::instance->setCommandStatus (commandHistoryId, CommandHistory::Failed);
+
+		SDL_LockMutex (invokeMapMutex);
+		invokeMap.erase (commandHistoryId);
+		SDL_UnlockMutex (invokeMapMutex);
+
+		if (callback) {
+			callback (this, agentId, NULL, NULL, false);
+		}
+		release ();
+	}
+}
+
+void Ui::invokeCommand (const StdString &commandHistoryId, const StringList &agentIdList, Json *command, Ui::InvokeCallback callback) {
+	StringList::const_iterator i, end;
+	std::map<StdString, Ui::InvokeCommandContext>::iterator pos;
+	int result, invokecount;
+
+	if (commandHistoryId.empty () || agentIdList.empty () || (! command)) {
+		if (callback) {
+			callback (this, StdString (""), command, NULL, false);
+		}
+		if (command) {
+			delete (command);
+		}
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
+		if (! commandHistoryId.empty ()) {
+			CommandHistory::instance->setCommandStatus (commandHistoryId, CommandHistory::Failed);
+		}
+		return;
+	}
+
+	SDL_LockMutex (invokeMapMutex);
+	invokeMap.insert (std::pair<StdString, Ui::InvokeCommandContext> (commandHistoryId, Ui::InvokeCommandContext (commandHistoryId, callback)));
+	SDL_UnlockMutex (invokeMapMutex);
+
+	invokecount = 0;
+	i = agentIdList.cbegin ();
+	end = agentIdList.cend ();
+	while (i != end) {
+		retain ();
+		result = AgentControl::instance->invokeCommand (*i, command->copy (), CommandList::InvokeCallbackContext (Ui::invokeCommandComplete, this, *i, commandHistoryId));
+		if (result != OsUtil::Success) {
+			Log::debug ("Failed to invoke command; err=%i agentId=\"%s\"", result, (*i).c_str ());
+			CommandHistory::instance->addCommandInvokeResult (commandHistoryId, *i, false);
+			if (callback) {
+				callback (this, *i, command, NULL, false);
+			}
+			release ();
+		}
+		else {
+			++invokecount;
+		}
+		++i;
+	}
+	delete (command);
+
+	if (invokecount <= 0) {
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
+		CommandHistory::instance->setCommandStatus (commandHistoryId, CommandHistory::Failed);
+
+		SDL_LockMutex (invokeMapMutex);
+		invokeMap.erase (commandHistoryId);
+		SDL_UnlockMutex (invokeMapMutex);
+	}
+}
+
+void Ui::invokeCommand (const StdString &commandHistoryId, const StringList &agentIdList, JsonList *commandList, Ui::InvokeCallback callback) {
+	StringList::const_iterator i, end;
+	JsonList::iterator j;
+	std::map<StdString, Ui::InvokeCommandContext>::iterator pos;
+	int result, invokecount;
+
+	if (commandHistoryId.empty () || agentIdList.empty () || (! commandList) || (commandList->size () != agentIdList.size ())) {
+		if (callback) {
+			callback (this, StdString (""), NULL, NULL, false);
+		}
+		if (commandList) {
+			commandList->clear ();
+		}
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
+		if (! commandHistoryId.empty ()) {
+			CommandHistory::instance->setCommandStatus (commandHistoryId, CommandHistory::Failed);
+		}
+		return;
+	}
+
+	SDL_LockMutex (invokeMapMutex);
+	invokeMap.insert (std::pair<StdString, Ui::InvokeCommandContext> (commandHistoryId, Ui::InvokeCommandContext (commandHistoryId, callback)));
+	SDL_UnlockMutex (invokeMapMutex);
+
+	invokecount = 0;
+	j = commandList->begin ();
+	i = agentIdList.cbegin ();
+	end = agentIdList.cend ();
+	while (i != end) {
+		retain ();
+		if (!(*j)) {
+			result = OsUtil::InvalidParamError;
+		}
+		else {
+			result = AgentControl::instance->invokeCommand (*i, (*j)->copy (), CommandList::InvokeCallbackContext (Ui::invokeCommandComplete, this, *i, commandHistoryId));
+		}
+		if (result != OsUtil::Success) {
+			Log::debug ("Failed to invoke command; err=%i agentId=\"%s\"", result, (*i).c_str ());
+			CommandHistory::instance->addCommandInvokeResult (commandHistoryId, *i, false);
+			if (callback) {
+				callback (this, *i, *j, NULL, false);
+			}
+			release ();
+		}
+		else {
+			++invokecount;
+		}
+		++j;
+		++i;
+	}
+	commandList->clear ();
+
+	if (invokecount <= 0) {
+		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
+		CommandHistory::instance->setCommandStatus (commandHistoryId, CommandHistory::Failed);
+
+		SDL_LockMutex (invokeMapMutex);
+		invokeMap.erase (commandHistoryId);
+		SDL_UnlockMutex (invokeMapMutex);
+	}
+}
+
+void Ui::invokeCommandComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand, const StdString &invokeId) {
+	Ui *ui;
+	std::map<StdString, Ui::InvokeCommandContext>::iterator pos;
+	Ui::InvokeCommandContext ctx;
+	StdString cmdname;
+	CommandHistory::CommandStatus status;
+
+	ui = (Ui *) uiPtr;
+	CommandHistory::instance->addCommandInvokeResult (invokeId, agentId, (invokeResult == OsUtil::Success));
+	status = CommandHistory::instance->getCommandStatus (invokeId);
+
+	SDL_LockMutex (ui->invokeMapMutex);
+	pos = ui->invokeMap.find (invokeId);
+	if (pos != ui->invokeMap.end ()) {
+		ctx = pos->second;
+	}
+	SDL_UnlockMutex (ui->invokeMapMutex);
+	if (status != CommandHistory::InProgress) {
+		if (status == CommandHistory::Failed) {
+			App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::ServerContactError));
+		}
+		else if (status == CommandHistory::Complete) {
+			cmdname = CommandHistory::instance->getCommandName (invokeId);
+			if (! cmdname.empty ()) {
+				App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s: <%s>", UiText::instance->getText (UiTextString::CommandExecuted).capitalized ().c_str (), cmdname.c_str ()));
+			}
+		}
+		else if (status == CommandHistory::CompleteWithError) {
+			cmdname = CommandHistory::instance->getCommandName (invokeId);
+			if (! cmdname.empty ()) {
+				App::instance->uiStack.showSnackbar (StdString::createSprintf ("%s: <%s> %s", UiText::instance->getText (UiTextString::CommandExecuted).capitalized ().c_str (), cmdname.c_str (), UiText::instance->getText (UiTextString::CommandCompleteWithErrorMessage).c_str ()));
+			}
+		}
+
+		SDL_LockMutex (ui->invokeMapMutex);
+		ui->invokeMap.erase (invokeId);
+		SDL_UnlockMutex (ui->invokeMapMutex);
+	}
+
+	if (ctx.callback) {
+		ctx.callback (ui, agentId, invokeCommand, responseCommand, (invokeResult == OsUtil::Success) && responseCommand && (SystemInterface::instance->getCommandId (responseCommand) == SystemInterface::CommandId_CommandResult) && SystemInterface::instance->getCommandBooleanParam (responseCommand, "success", false));
+	}
+	ui->release ();
 }

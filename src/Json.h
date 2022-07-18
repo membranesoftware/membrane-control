@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -160,49 +160,49 @@ public:
 	bool getArrayObject (const StdString &key, int index, Json *destJson);
 	bool getArrayObject (const char *key, int index, Json *destJson);
 
-	// Set a key-value pair in the map
-	void set (const StdString &key, const char *value);
-	void set (const char *key, const char *value);
-	void set (const StdString &key, const StdString &value);
-	void set (const char *key, const StdString &value);
-	void set (const StdString &key, const int value);
-	void set (const char *key, const int value);
-	void set (const StdString &key, const int64_t value);
-	void set (const char *key, const int64_t value);
-	void set (const StdString &key, const float value);
-	void set (const char *key, const float value);
-	void set (const StdString &key, const double value);
-	void set (const char *key, const double value);
-	void set (const StdString &key, const bool value);
-	void set (const char *key, const bool value);
-	void set (const StdString &key, Json *value);
-	void set (const char *key, Json *value);
-	void set (const StdString &key, StringList *value);
-	void set (const char *key, StringList *value);
-	void set (const StdString &key, std::list<int> *value);
-	void set (const char *key, std::list<int> *value);
-	void set (const StdString &key, std::list<int64_t> *value);
-	void set (const char *key, std::list<int64_t> *value);
-	void set (const StdString &key, std::list<float> *value);
-	void set (const char *key, std::list<float> *value);
-	void set (const StdString &key, std::list<double> *value);
-	void set (const char *key, std::list<double> *value);
-	void set (const StdString &key, std::list<bool> *value);
-	void set (const char *key, std::list<bool> *value);
-	void set (const StdString &key, std::vector<Json *> *value);
-	void set (const char *key, std::vector<Json *> *value);
-	void set (const StdString &key, std::list<Json *> *value);
-	void set (const char *key, std::list<Json *> *value);
-	void set (const StdString &key, JsonList *value);
-	void set (const char *key, JsonList *value);
+	// Set a key-value pair in the map and return the this pointer
+	Json *set (const StdString &key, const char *value);
+	Json *set (const char *key, const char *value);
+	Json *set (const StdString &key, const StdString &value);
+	Json *set (const char *key, const StdString &value);
+	Json *set (const StdString &key, const int value);
+	Json *set (const char *key, const int value);
+	Json *set (const StdString &key, const int64_t value);
+	Json *set (const char *key, const int64_t value);
+	Json *set (const StdString &key, const float value);
+	Json *set (const char *key, const float value);
+	Json *set (const StdString &key, const double value);
+	Json *set (const char *key, const double value);
+	Json *set (const StdString &key, const bool value);
+	Json *set (const char *key, const bool value);
+	Json *set (const StdString &key, Json *value);
+	Json *set (const char *key, Json *value);
+	Json *set (const StdString &key, const StringList &value);
+	Json *set (const char *key, const StringList &value);
+	Json *set (const StdString &key, std::list<int> *value);
+	Json *set (const char *key, std::list<int> *value);
+	Json *set (const StdString &key, std::list<int64_t> *value);
+	Json *set (const char *key, std::list<int64_t> *value);
+	Json *set (const StdString &key, std::list<float> *value);
+	Json *set (const char *key, std::list<float> *value);
+	Json *set (const StdString &key, std::list<double> *value);
+	Json *set (const char *key, std::list<double> *value);
+	Json *set (const StdString &key, std::list<bool> *value);
+	Json *set (const char *key, std::list<bool> *value);
+	Json *set (const StdString &key, std::vector<Json *> *value);
+	Json *set (const char *key, std::vector<Json *> *value);
+	Json *set (const StdString &key, std::list<Json *> *value);
+	Json *set (const char *key, std::list<Json *> *value);
+	Json *set (const StdString &key, JsonList *value);
+	Json *set (const char *key, JsonList *value);
 
-	// Set a string value in the map using a format string
-	void setSprintf (const StdString &key, const char *str, ...) __attribute__((format(printf, 3, 4)));
-	void setSprintf (const char *key, const char *str, ...) __attribute__((format(printf, 3, 4)));
+	// Set a string value in the map using a format string and return the this pointer
+	Json *setSprintf (const StdString &key, const char *str, ...) __attribute__((format(printf, 3, 4)));
+	Json *setSprintf (const char *key, const char *str, ...) __attribute__((format(printf, 3, 4)));
 
-	// Set a key in the map to a null value
-	void setNull (const StdString &key);
-	void setNull (const char *key);
+	// Set a key in the map to a null value and return the this pointer
+	Json *setNull (const StdString &key);
+	Json *setNull (const char *key);
 
 private:
 	// Set the json value to a newly created builder object

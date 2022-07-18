@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -52,25 +52,23 @@ Sprite::~Sprite () {
 
 Sprite *Sprite::copy () {
 	Sprite *sprite;
-	Resource *resource;
 	SDL_Texture *texture;
 	std::vector<Sprite::TextureData>::iterator i, end;
 	int result;
 
-	resource = &(App::instance->resource);
 	sprite = new Sprite ();
 	i = textureList.begin ();
 	end = textureList.end ();
 	while (i != end) {
-		texture = resource->loadTexture (i->loadPath);
+		texture = Resource::instance->loadTexture (i->loadPath);
 		if (! texture) {
 			delete (sprite);
 			sprite = NULL;
 			break;
 		}
 		result = sprite->addTexture (texture, i->loadPath);
-		if (result != OsUtil::Result::Success) {
-			resource->unloadTexture (i->loadPath);
+		if (result != OsUtil::Success) {
+			Resource::instance->unloadTexture (i->loadPath);
 			delete (sprite);
 			sprite = NULL;
 			break;
@@ -81,15 +79,13 @@ Sprite *Sprite::copy () {
 }
 
 OsUtil::Result Sprite::load (const StdString &path, int imageScale) {
-	Resource *resource;
 	StdString loadpath;
 	SDL_Texture *texture;
 	OsUtil::Result result;
 	int i;
 	bool found;
 
-	result = OsUtil::Result::Success;
-	resource = &(App::instance->resource);
+	result = OsUtil::Success;
 	i = 0;
 	maxWidth = 0;
 	maxHeight = 0;
@@ -98,27 +94,27 @@ OsUtil::Result Sprite::load (const StdString &path, int imageScale) {
 
 		if (imageScale >= 0) {
 			loadpath.sprintf ("%s/%03i_%i.png", path.c_str (), i, imageScale);
-			if (resource->fileExists (loadpath)) {
+			if (Resource::instance->fileExists (loadpath)) {
 				found = true;
 			}
 		}
 		if (! found) {
 			loadpath.sprintf ("%s/%03i.png", path.c_str (), i);
-			if (resource->fileExists (loadpath)) {
+			if (Resource::instance->fileExists (loadpath)) {
 				found = true;
 			}
 		}
 		if (! found) {
 			break;
 		}
-		texture = resource->loadTexture (loadpath);
+		texture = Resource::instance->loadTexture (loadpath);
 		if (! texture) {
-			result = OsUtil::Result::SdlOperationFailedError;
+			result = OsUtil::SdlOperationFailedError;
 			break;
 		}
 		result = addTexture (texture, loadpath);
-		if (result != OsUtil::Result::Success) {
-			resource->unloadTexture (loadpath);
+		if (result != OsUtil::Success) {
+			Resource::instance->unloadTexture (loadpath);
 			break;
 		}
 		++i;
@@ -134,7 +130,7 @@ OsUtil::Result Sprite::addTexture (SDL_Texture *texture, const StdString &loadPa
 	item.loadPath.assign (loadPath);
 	if (SDL_QueryTexture (item.texture, NULL, NULL, &(item.width), &(item.height)) != 0) {
 		Log::err ("Failed to query sprite texture; path=\"%s\" err=\"%s\"", item.loadPath.c_str (), SDL_GetError ());
-		return (OsUtil::Result::SdlOperationFailedError);
+		return (OsUtil::SdlOperationFailedError);
 	}
 	textureList.push_back (item);
 	frameCount = (int) textureList.size ();
@@ -144,18 +140,16 @@ OsUtil::Result Sprite::addTexture (SDL_Texture *texture, const StdString &loadPa
 	if (item.height > maxHeight) {
 		maxHeight = item.height;
 	}
-	return (OsUtil::Result::Success);
+	return (OsUtil::Success);
 }
 
 void Sprite::unload () {
-	Resource *resource;
 	std::vector<Sprite::TextureData>::iterator i, end;
 
-	resource = &(App::instance->resource);
 	i = textureList.begin ();
 	end = textureList.end ();
 	while (i != end) {
-		resource->unloadTexture (i->loadPath);
+		Resource::instance->unloadTexture (i->loadPath);
 		i->texture = NULL;
 		++i;
 	}

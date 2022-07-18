@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -54,6 +54,7 @@
 #include "SystemInterface.h"
 #include "AgentControl.h"
 #include "RecordStore.h"
+#include "CommandHistory.h"
 #include "CommandListener.h"
 
 class App {
@@ -100,16 +101,18 @@ public:
 	SystemInterface systemInterface;
 	AgentControl agentControl;
 	RecordStore recordStore;
+	CommandHistory commandHistory;
 	CommandListener commandListener;
-	bool isConsole;
-	bool shouldRefreshUi;
-	bool shouldSyncRecordStore;
-	bool isInterfaceAnimationEnabled;
-	bool isMainToolbarClockEnabled;
+	StdString prefsPath;
 	float nextFontScale;
 	int nextWindowWidth;
 	int nextWindowHeight;
-	StdString prefsPath;
+	bool isConsole;
+	bool shouldRefreshUi;
+	bool isInterfaceAnimationEnabled;
+	bool shouldSyncRecordStore;
+	bool isMainToolbarClockEnabled;
+	bool isNetworkActive;
 
 	// Read-only data members
 	bool isShuttingDown;
@@ -178,7 +181,9 @@ public:
 	struct RenderTaskContext {
 		RenderTaskFunction fn;
 		void *fnData;
-		RenderTaskContext (): fn (NULL), fnData (NULL) { }
+		RenderTaskContext ():
+			fn (NULL),
+			fnData (NULL) { }
 	};
 	// Schedule a task function to execute at the top of the next render loop
 	void addRenderTask (RenderTaskFunction fn, void *fnData);
@@ -200,6 +205,7 @@ public:
 
 	// Return a newly created Json object containing the specified command and the default prefix, or NULL if the command could not be created. commandParams can be NULL if not needed, causing the returned command to use empty parameter fields. If a commandParams object is provided, this method becomes responsible for deleting it when it's no longer needed.
 	Json *createCommand (const char *commandName, Json *commandParams = NULL);
+	Json *createCommand (int commandId, Json *commandParams = NULL);
 
 	// Return a pseudorandom int value, chosen from within the specified inclusive range
 	int getRandomInt (int i1, int i2);

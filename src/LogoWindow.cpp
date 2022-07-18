@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -43,12 +43,26 @@
 LogoWindow::LogoWindow ()
 : Panel ()
 , logoImage (NULL)
+, networkActivityImage (NULL)
+, networkActivityImageHideTime (0)
 , dateLabel (NULL)
 , timeLabel (NULL)
 , lastDisplayTime (0)
 {
+	Image *image;
+
 	logoImage = (Image *) addWidget (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::AppLogoSprite)));
 	logoImage->setDrawColor (true, UiConfiguration::instance->mediumSecondaryColor);
+
+	image = new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::NetworkActivityIconSprite));
+	image->setDrawColor (true, UiConfiguration::instance->mediumSecondaryColor);
+	image->drawColor.animate (UiConfiguration::instance->mediumSecondaryColor, UiConfiguration::instance->darkBackgroundColor, UiConfiguration::instance->shortColorAnimateDuration);
+	networkActivityImage = (ImageWindow *) addWidget (new ImageWindow (image));
+	networkActivityImage->setFillBg (true, Color (0.0f, 0.0f, 0.0f, UiConfiguration::instance->overlayWindowAlpha));
+	networkActivityImage->setBorder (true, UiConfiguration::instance->lightInverseBackgroundColor);
+	networkActivityImage->setDropShadow (true, UiConfiguration::instance->dropShadowColor, UiConfiguration::instance->dropShadowWidth);
+	networkActivityImage->setWindowSize (true, logoImage->width, logoImage->height);
+	networkActivityImage->borderColor.animate (UiConfiguration::instance->lightInverseBackgroundColor, UiConfiguration::instance->darkBackgroundColor, UiConfiguration::instance->shortColorAnimateDuration);
 
 	dateLabel = (Label *) addWidget (new Label (OsUtil::getDateString (), UiConfiguration::CaptionFont, UiConfiguration::instance->inverseTextColor));
 	timeLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->inverseTextColor));
@@ -92,6 +106,10 @@ void LogoWindow::refreshLayout () {
 	logoImage->position.assign (x, y);
 	x += logoImage->width + UiConfiguration::instance->marginSize;
 
+	if (networkActivityImage->isVisible) {
+		networkActivityImage->position.assign (logoImage->position);
+	}
+
 	if (dateLabel->isVisible) {
 		y += (UiConfiguration::instance->textLineHeightMargin * 2.0f);
 		dateLabel->position.assign (x, dateLabel->getLinePosition (y));
@@ -105,12 +123,23 @@ void LogoWindow::refreshLayout () {
 }
 
 void LogoWindow::doUpdate (int msElapsed) {
-	int64_t t;
+	int64_t now, t;
 
 	Panel::doUpdate (msElapsed);
+	now = OsUtil::getTime ();
+
+	if (App::instance->isNetworkActive) {
+		networkActivityImage->isVisible = true;
+		networkActivityImageHideTime = now + UiConfiguration::instance->activityIconLingerDuration;
+	}
+	else {
+		if (networkActivityImage->isVisible && (now >= networkActivityImageHideTime)) {
+			networkActivityImage->isVisible = false;
+		}
+	}
+
 	if (dateLabel->isVisible || timeLabel->isVisible) {
-		t = OsUtil::getTime ();
-		t /= 1000;
+		t = now / 1000;
 		if (lastDisplayTime != t) {
 			lastDisplayTime = t;
 			dateLabel->setText (OsUtil::getDateString (t * 1000));

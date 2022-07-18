@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -56,17 +56,14 @@ public:
 	// Set the amount of size padding that should be applied to the window
 	void setPadding (float widthPadding, float heightPadding);
 
-	// Set the fixed size for the window. If the window's image does not fill the provided size, it is centered inside a larger background space.
-	void setWindowSize (float windowSizeWidth, float windowSizeHeight);
+	// Set window's fixed size option. If window size is enabled and the display image does not fill the provided size, it is centered inside a larger background space.
+	void setWindowSize (bool enable, float windowSizeWidth = 0.0f, float windowSizeHeight = 0.0f);
 
 	// Clear the window's content and replace it with the provided image
 	void setImage (Image *nextImage);
 
-	// Set a sprite that should be shown while image content loading is in progress
-	void setLoadSprite (Sprite *sprite);
-
-	// Set the window's load resize option. If enabled, the window resizes to the specified width while preserving source aspect ratio after loading image content from a URL.
-	void setLoadResize (bool enable, float loadWidthValue);
+	// Set a sprite that should be shown while image content loads from a URL, or disable any existing loading sprite if sprite is NULL. If loadingWidthValue and loadingHeightValue are provided, set window size to those values while the load sprite is displayed.
+	void setLoadingSprite (Sprite *sprite, float loadingWidthValue = 0.0f, float loadingHeightValue = 0.0f);
 
 	// Set a source URL that should be used to load the image window's content
 	void setImageUrl (const StdString &loadUrl);
@@ -86,11 +83,20 @@ public:
 	// Reload image content from the window's source URL
 	void reload ();
 
+	// Set the image content to the loading sprite if previously configured by setLoadingSprite
+	void showLoadingSprite ();
+
 	// Set the sprite frame for use in drawing the image
 	void setFrame (int frame);
 
 	// Set the draw scale factor for the window's image
 	void setScale (float scale);
+
+	// Set a scale size to apply after image content loads. If scaleWidth or scaleHeight are zero or less, choose a value that preserves the source aspect ratio.
+	void onLoadScale (float scaleWidth = 0.0f, float scaleHeight = 0.0f);
+
+	// Set a fit size to apply after image content loads, with the final image size computed as the largest width and height values that preserve the source aspect ratio while fitting inside targetWidth and targetHeight
+	void onLoadFit (float targetWidth, float targetHeight);
 
 protected:
 	// Return a string that should be included as part of the toString method's output
@@ -108,6 +114,12 @@ private:
 	static void createUrlDataTexture (void *windowPtr);
 	static void createFileTexture (void *windowPtr);
 
+	// onLoadResizeType values
+	enum {
+		Scale = 1,
+		Fit = 2
+	};
+
 	// Execute operations to load content using the value stored in imageUrl
 	void requestImage ();
 
@@ -120,13 +132,16 @@ private:
 	// Execute operations appropriate after an image load from resources completes, optionally clearing the image resource path
 	void endLoadImageResource (bool clearResourcePath = false);
 
+	// Assign destWidth and destHeight to target size values for configured onLoad settings and return a boolean value indicating if the operation succeeded
+	bool getOnLoadScaleSize (float *destWidth, float *destHeight);
+
 	Image *image;
 	bool isWindowSizeEnabled;
 	float windowWidth;
 	float windowHeight;
-	bool isLoadResizeEnabled;
-	float loadWidth;
-	Sprite *loadSprite;
+	Sprite *loadingSprite;
+	float loadingWidth;
+	float loadingHeight;
 	StdString imageFilePath;
 	bool isImageFileExternal;
 	bool isImageFileLoaded;
@@ -137,6 +152,9 @@ private:
 	bool isImageUrlLoadDisabled;
 	StdString nextImageUrl;
 	bool shouldInvokeLoadCallback;
+	int onLoadResizeType;
+	float onLoadWidth;
+	float onLoadHeight;
 };
 
 #endif

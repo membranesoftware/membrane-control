@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -32,7 +32,6 @@
 #include <math.h>
 #include "App.h"
 #include "ClassId.h"
-#include "Log.h"
 #include "StdString.h"
 #include "UiConfiguration.h"
 #include "AgentControl.h"
@@ -47,9 +46,10 @@
 #include "CardView.h"
 #include "CameraThumbnailWindow.h"
 
-CameraThumbnailWindow::CameraThumbnailWindow (const StdString &agentId, const StdString &captureImagePath, int64_t thumbnailTimestamp)
+CameraThumbnailWindow::CameraThumbnailWindow (const StdString &agentId, int sensor, const StdString &captureImagePath, int64_t thumbnailTimestamp)
 : Panel ()
 , agentId (agentId)
+, sensor (sensor)
 , captureImagePath (captureImagePath)
 , thumbnailTimestamp (thumbnailTimestamp)
 , isHighlighted (false)
@@ -64,7 +64,7 @@ CameraThumbnailWindow::CameraThumbnailWindow (const StdString &agentId, const St
 	thumbnailImage = (ImageWindow *) addWidget (new ImageWindow (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
 	thumbnailImage->loadCallback = Widget::EventCallbackContext (CameraThumbnailWindow::thumbnailImageLoaded, this);
 	thumbnailImage->mouseLongPressCallback = Widget::EventCallbackContext (CameraThumbnailWindow::thumbnailImageLongPressed, this);
-	thumbnailImage->setLoadSprite (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
+	thumbnailImage->setLoadingSprite (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
 
 	timestampLabel = (LabelWindow *) addWidget (new LabelWindow (new Label (StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->inverseTextColor)));
 	timestampLabel->zLevel = 1;
@@ -93,36 +93,28 @@ CameraThumbnailWindow *CameraThumbnailWindow::castWidget (Widget *widget) {
 }
 
 void CameraThumbnailWindow::setLayout (int layoutType, float maxPanelWidth) {
-	Json *params;
-
 	if (layoutType == layout) {
 		return;
 	}
 	layout = layoutType;
 	windowWidth = maxPanelWidth;
-
-	thumbnailImage->setLoadResize (true, maxPanelWidth);
-	params = new Json ();
-	params->set ("imageTime", thumbnailTimestamp);
-	thumbnailImage->setImageUrl (AgentControl::instance->getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetCaptureImage, params), captureImagePath));
+	thumbnailImage->setLoadingSprite (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite), maxPanelWidth, maxPanelWidth * 9.0f / 16.0f);
+	thumbnailImage->onLoadScale (maxPanelWidth);
+	thumbnailImage->setImageUrl (AgentControl::instance->getAgentSecondaryUrl (agentId, captureImagePath, App::instance->createCommand (SystemInterface::Command_GetCaptureImage, (new Json ())->set ("sensor", sensor)->set ("imageTime", thumbnailTimestamp))));
 	thumbnailImage->reload ();
 
 	refreshLayout ();
 }
 
 void CameraThumbnailWindow::setThumbnailTimestamp (int64_t timestamp) {
-	Json *params;
-
 	if ((timestamp <= 0) || (timestamp == thumbnailTimestamp)) {
 		return;
 	}
 	thumbnailTimestamp = timestamp;
 	timestampLabel->setText (OsUtil::getTimestampDisplayString (thumbnailTimestamp));
 
-	thumbnailImage->setLoadSprite (NULL);
-	params = new Json ();
-	params->set ("imageTime", thumbnailTimestamp);
-	thumbnailImage->setImageUrl (AgentControl::instance->getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetCaptureImage, params), captureImagePath));
+	thumbnailImage->setLoadingSprite (NULL);
+	thumbnailImage->setImageUrl (AgentControl::instance->getAgentSecondaryUrl (agentId, captureImagePath, App::instance->createCommand (SystemInterface::Command_GetCaptureImage, (new Json ())->set ("sensor", sensor)->set ("imageTime", thumbnailTimestamp))));
 }
 
 void CameraThumbnailWindow::refreshLayout () {
@@ -181,7 +173,6 @@ bool CameraThumbnailWindow::doProcessMouseState (const Widget::MouseState &mouse
 			timestampLabel->isVisible = false;
 		}
 	}
-
 	return (false);
 }
 
@@ -200,8 +191,5 @@ void CameraThumbnailWindow::thumbnailImageLoaded (void *windowPtr, Widget *widge
 }
 
 void CameraThumbnailWindow::thumbnailImageLongPressed (void *windowPtr, Widget *widgetPtr) {
-	ImageWindow *image;
-
-	image = (ImageWindow *) widgetPtr;
-	App::instance->uiStack.showImageDialog (image->imageUrl);
+	App::instance->uiStack.showImageDialog (((ImageWindow *) widgetPtr)->imageUrl);
 }

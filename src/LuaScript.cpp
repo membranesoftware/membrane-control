@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -38,13 +38,19 @@ extern "C" {
 #include "SDL2/SDL.h"
 #include "App.h"
 #include "Log.h"
+#include "StdString.h"
+#include "StringList.h"
 #include "OsUtil.h"
 #include "Agent.h"
 #include "AgentControl.h"
 #include "SystemInterface.h"
 #include "UiText.h"
 #include "AsyncCommand.h"
+#include "UiStack.h"
 #include "LuaScript.h"
+
+int LuaScript::scriptTimeout = 7000; // ms
+const int LuaScript::scriptWait = 100; // ms
 
 const LuaScript::Function LuaFunctions[] = {
 	{
@@ -112,6 +118,54 @@ const LuaScript::Function LuaFunctions[] = {
 		"unlist",
 		"(server)",
 		UiTextString::LuaScriptUnlistHelpText
+	},
+	{
+		LuaScript::printcontrols,
+		"printcontrols",
+		"()",
+		UiTextString::LuaScriptPrintcontrolsHelpText
+	},
+	{
+		LuaScript::click,
+		"click",
+		"(controlName)",
+		UiTextString::LuaScriptClickHelpText
+	},
+	{
+		LuaScript::open,
+		"open",
+		"(windowName)",
+		UiTextString::LuaScriptOpenHelpText
+	},
+	{
+		LuaScript::target,
+		"target",
+		"(windowName)",
+		UiTextString::LuaScriptTargetHelpText
+	},
+	{
+		LuaScript::untarget,
+		"untarget",
+		"(windowName)",
+		UiTextString::LuaScriptUntargetHelpText
+	},
+	{
+		LuaScript::timeout,
+		"timeout",
+		"(milliseconds)",
+		UiTextString::LuaScriptTimeoutHelpText
+	},
+	{
+		LuaScript::topmenu,
+		"topmenu",
+		"(actionName)",
+		UiTextString::LuaScriptTopmenuHelpText
+	},
+	{
+		LuaScript::textvalue,
+		"textvalue",
+		"(controlName, value)",
+		UiTextString::LuaScriptTextvalueHelpText
 	}
 };
 const int LuaFunctionCount = sizeof (LuaFunctions) / sizeof (LuaScript::Function);
@@ -143,22 +197,22 @@ void LuaScript::run (void *luaScriptPtr) {
 	lua = (LuaScript *) luaScriptPtr;
 	result = luaL_loadstring (lua->state, lua->script.c_str ());
 	if (result == LUA_ERRSYNTAX) {
-		lua->runResult = OsUtil::Result::MalformedDataError;
+		lua->runResult = OsUtil::MalformedDataError;
 		Log::printf ("%s", UiText::instance->getText (UiTextString::LuaSyntaxErrorText).c_str ());
 	}
 	else if (result != LUA_OK) {
-		lua->runResult = OsUtil::Result::LuaOperationFailedError;
+		lua->runResult = OsUtil::LuaOperationFailedError;
 		Log::printf ("%s", UiText::instance->getText (UiTextString::LuaParseErrorText).c_str ());
 	}
 	else {
 		result = lua_pcall (lua->state, 0, 0, 0);
 		if (result != 0) {
 			lua->runErrorText.assign (lua_tostring (lua->state, -1));
-			lua->runResult = OsUtil::Result::LuaOperationFailedError;
+			lua->runResult = OsUtil::LuaOperationFailedError;
 			Log::printf ("%s; %s", UiText::instance->getText (UiTextString::LuaScriptExecutionErrorText).c_str (), lua->runErrorText.c_str ());
 		}
 		else {
-			lua->runResult = OsUtil::Result::Success;
+			lua->runResult = OsUtil::Success;
 		}
 	}
 
@@ -191,6 +245,12 @@ int LuaScript::help (lua_State *L) {
 		++fi;
 	}
 	Log::printf (" ");
+	if (LuaScript::scriptTimeout > 0) {
+		Log::printf ("* %s: %ims", UiText::instance->getText (UiTextString::FunctionTimeout).capitalized ().c_str (), LuaScript::scriptTimeout);
+	}
+	else {
+		Log::printf ("* %s: %s", UiText::instance->getText (UiTextString::FunctionTimeout).capitalized ().c_str (), UiText::instance->getText (UiTextString::Disabled).c_str ());
+	}
 	Log::printf ("* %s", UiText::instance->getText (UiTextString::EnvironmentVariables).capitalized ().c_str ());
 	format.sprintf ("%%-%is%%s", maxw);
 	Log::printf (format.c_str (), "RUN_SCRIPT", UiText::instance->getText (UiTextString::LuaScriptRunScriptHelpText).c_str ());
@@ -309,7 +369,7 @@ int LuaScript::sleep (lua_State *L) {
 	if (ms <= 0) {
 		return (0);
 	}
-	if (App::instance->isShutdown) {
+	if (App::instance->isShutdown || App::instance->isShuttingDown) {
 		snprintf (buf, sizeof (buf), "%s", UiText::instance->getText (UiTextString::ShuttingDown).c_str ());
 		return (luaL_error (L, "%s", buf));
 	}
@@ -392,27 +452,27 @@ static int setAgentAttached (lua_State *L, bool isAttached) {
 	}
 	server = (char *) lua_tostring (L, 1);
 	if ((! server) || (server[0] == '\0')) {
-		snprintf (buf, sizeof (buf), "%s", UiText::instance->getText (UiTextString::LuaScriptEmptyServerArgumentErrorText).c_str ());
+		snprintf (buf, sizeof (buf), "server %s", UiText::instance->getText (UiTextString::LuaScriptEmptyArgumentErrorText).c_str ());
 		return (luaL_error (L, "%s", buf));
 	}
 
 	agent = new Agent ();
 	result = AgentControl::instance->findTargetAgent (StdString (server), agent);
-	if (result == OsUtil::Result::Success) {
+	if (result == OsUtil::Success) {
 		Log::debug ("lua %s; id=%s", isAttached ? "attach" : "detach", agent->id.c_str ());
 		AgentControl::instance->setAgentAttached (agent->id, isAttached);
 	}
 	delete (agent);
 
-	if (result == OsUtil::Result::KeyNotFoundError) {
+	if (result == OsUtil::KeyNotFoundError) {
 		snprintf (buf, sizeof (buf), "%s", UiText::instance->getText (UiTextString::LuaScriptTargetServerNotFoundErrorText).c_str ());
 		return (luaL_error (L, "%s", buf));
 	}
-	if (result == OsUtil::Result::DuplicateIdError) {
+	if (result == OsUtil::DuplicateIdError) {
 		snprintf (buf, sizeof (buf), "%s", UiText::instance->getText (UiTextString::LuaScriptMultipleServersFoundErrorText).c_str ());
 		return (luaL_error (L, "%s", buf));
 	}
-	if (result != OsUtil::Result::Success) {
+	if (result != OsUtil::Success) {
 		snprintf (buf, sizeof (buf), "%s", UiText::instance->getText (UiTextString::LuaScriptInternalErrorText).c_str ());
 		return (luaL_error (L, "%s", buf));
 	}
@@ -438,13 +498,13 @@ int LuaScript::info (lua_State *L) {
 	}
 	server = (char *) lua_tostring (L, 1);
 	if ((! server) || (server[0] == '\0')) {
-		snprintf (buf, sizeof (buf), "%s", UiText::instance->getText (UiTextString::LuaScriptEmptyServerArgumentErrorText).c_str ());
+		snprintf (buf, sizeof (buf), "server %s", UiText::instance->getText (UiTextString::LuaScriptEmptyArgumentErrorText).c_str ());
 		return (luaL_error (L, "%s", buf));
 	}
 
 	agent = new Agent ();
 	result = AgentControl::instance->findTargetAgent (StdString (server), agent);
-	if (result == OsUtil::Result::Success) {
+	if (result == OsUtil::Success) {
 		if (agent->isContacted ()) {
 			lastcontact.assign (OsUtil::getTimestampString (agent->lastStatusTime), true);
 		}
@@ -452,15 +512,15 @@ int LuaScript::info (lua_State *L) {
 	}
 	delete (agent);
 
-	if (result == OsUtil::Result::KeyNotFoundError) {
+	if (result == OsUtil::KeyNotFoundError) {
 		snprintf (buf, sizeof (buf), "%s", UiText::instance->getText (UiTextString::LuaScriptTargetServerNotFoundErrorText).c_str ());
 		return (luaL_error (L, "%s", buf));
 	}
-	if (result == OsUtil::Result::DuplicateIdError) {
+	if (result == OsUtil::DuplicateIdError) {
 		snprintf (buf, sizeof (buf), "%s", UiText::instance->getText (UiTextString::LuaScriptMultipleServersFoundErrorText).c_str ());
 		return (luaL_error (L, "%s", buf));
 	}
-	if (result != OsUtil::Result::Success) {
+	if (result != OsUtil::Success) {
 		snprintf (buf, sizeof (buf), "%s", UiText::instance->getText (UiTextString::LuaScriptInternalErrorText).c_str ());
 		return (luaL_error (L, "%s", buf));
 	}
@@ -517,29 +577,177 @@ int LuaScript::unlist (lua_State *L) {
 	}
 	server = (char *) lua_tostring (L, 1);
 	if ((! server) || (server[0] == '\0')) {
-		snprintf (buf, sizeof (buf), "%s", UiText::instance->getText (UiTextString::LuaScriptEmptyServerArgumentErrorText).c_str ());
+		snprintf (buf, sizeof (buf), "server %s", UiText::instance->getText (UiTextString::LuaScriptEmptyArgumentErrorText).c_str ());
 		return (luaL_error (L, "%s", buf));
 	}
 
 	agent = new Agent ();
 	result = AgentControl::instance->findTargetAgent (StdString (server), agent);
-	if (result == OsUtil::Result::Success) {
+	if (result == OsUtil::Success) {
 		Log::debug ("lua unlist; id=%s", agent->id.c_str ());
 		AgentControl::instance->removeAgent (agent->id);
 	}
 	delete (agent);
 
-	if (result == OsUtil::Result::KeyNotFoundError) {
+	if (result == OsUtil::KeyNotFoundError) {
 		snprintf (buf, sizeof (buf), "%s", UiText::instance->getText (UiTextString::LuaScriptTargetServerNotFoundErrorText).c_str ());
 		return (luaL_error (L, "%s", buf));
 	}
-	if (result == OsUtil::Result::DuplicateIdError) {
+	if (result == OsUtil::DuplicateIdError) {
 		snprintf (buf, sizeof (buf), "%s", UiText::instance->getText (UiTextString::LuaScriptMultipleServersFoundErrorText).c_str ());
 		return (luaL_error (L, "%s", buf));
 	}
-	if (result != OsUtil::Result::Success) {
+	if (result != OsUtil::Success) {
 		snprintf (buf, sizeof (buf), "%s", UiText::instance->getText (UiTextString::LuaScriptInternalErrorText).c_str ());
 		return (luaL_error (L, "%s", buf));
 	}
+	return (0);
+}
+
+int LuaScript::printcontrols (lua_State *L) {
+	StringList names;
+
+	App::instance->uiStack.getWidgetNames (&names);
+	if (names.empty ()) {
+		Log::printf ("---- No addressable controls found ----");
+	}
+	else {
+		Log::printf ("---- Control names (%i) ----\n%s", (int) names.size (), names.join (" ").c_str ());
+	}
+	return (0);
+}
+
+bool LuaScript::awaitResult (LuaScript::AwaitResultFn fn, void *fnData) {
+	int64_t tmax;
+	bool result;
+
+	result = false;
+	tmax = OsUtil::getTime () + LuaScript::scriptTimeout;
+	while (! result) {
+		result = fn (fnData);
+		if (result) {
+			return (true);
+		}
+		if (LuaScript::scriptTimeout <= 0) {
+			break;
+		}
+		SDL_Delay (LuaScript::scriptWait);
+		if (App::instance->isShutdown || App::instance->isShuttingDown || (OsUtil::getTime () >= tmax)) {
+			break;
+		}
+	}
+	return (false);
+}
+
+static bool awaitResult_click (void *data) {
+	return (App::instance->uiStack.clickWidget (StdString ((char *) data)));
+}
+int LuaScript::click (lua_State *L) {
+	char *name, buf[1024];
+	bool result;
+
+	LuaScript::argvString (L, 1, &name);
+	result = LuaScript::awaitResult (awaitResult_click, name);
+	if (! result) {
+		snprintf (buf, sizeof (buf), "click: control not found; controlName=\"%s\"", name);
+		return (luaL_error (L, "%s", buf));
+	}
+	return (0);
+}
+
+static bool awaitResult_open (void *data) {
+	return (App::instance->uiStack.openWidget (StdString ((char *) data)));
+}
+int LuaScript::open (lua_State *L) {
+	char *name, buf[1024];
+	bool result;
+
+	LuaScript::argvString (L, 1, &name);
+	result = LuaScript::awaitResult (awaitResult_open, name);
+	if (! result) {
+		snprintf (buf, sizeof (buf), "open: window not found; windowName=\"%s\"", name);
+		return (luaL_error (L, "%s", buf));
+	}
+	return (0);
+}
+
+static bool awaitResult_target (void *data) {
+	return (App::instance->uiStack.selectWidget (StdString ((char *) data)));
+}
+int LuaScript::target (lua_State *L) {
+	char *name, buf[1024];
+	bool result;
+
+	LuaScript::argvString (L, 1, &name);
+	result = LuaScript::awaitResult (awaitResult_target, name);
+	if (! result) {
+		snprintf (buf, sizeof (buf), "target: window not found; windowName=\"%s\"", name);
+		return (luaL_error (L, "%s", buf));
+	}
+	return (0);
+}
+
+static bool awaitResult_untarget (void *data) {
+	return (App::instance->uiStack.unselectWidget (StdString ((char *) data)));
+}
+int LuaScript::untarget (lua_State *L) {
+	char *name, buf[1024];
+	bool result;
+
+	LuaScript::argvString (L, 1, &name);
+	result = LuaScript::awaitResult (awaitResult_untarget, name);
+	if (! result) {
+		snprintf (buf, sizeof (buf), "untarget: window not found; windowName=\"%s\"", name);
+		return (luaL_error (L, "%s", buf));
+	}
+	return (0);
+}
+
+static bool awaitResult_topmenu (void *data) {
+	return (App::instance->uiStack.executeMainMenuAction ((char *) data));
+}
+int LuaScript::topmenu (lua_State *L) {
+	char *action, buf[1024];
+	bool result;
+
+	LuaScript::argvString (L, 1, &action);
+	result = LuaScript::awaitResult (awaitResult_topmenu, action);
+	if (! result) {
+		snprintf (buf, sizeof (buf), "topmenu: action not found; action=\"%s\"", action);
+		return (luaL_error (L, "%s", buf));
+	}
+	return (0);
+}
+
+static bool awaitResult_textvalue (void *data) {
+	char **args;
+
+	args = (char **) data;
+	return (App::instance->uiStack.setTextFieldValue (StdString (args[0]), StdString (args[1])));
+}
+int LuaScript::textvalue (lua_State *L) {
+	char *args[2], buf[1024];
+	bool result;
+
+	LuaScript::argvString (L, 1, &(args[0]));
+	LuaScript::argvString (L, 2, &(args[1]));
+	result = LuaScript::awaitResult (awaitResult_textvalue, args);
+	if (! result) {
+		snprintf (buf, sizeof (buf), "textvalue: textfield not found; controlName=\"%s\"", args[0]);
+		return (luaL_error (L, "%s", buf));
+	}
+	return (0);
+}
+
+int LuaScript::timeout (lua_State *L) {
+	char buf[1024];
+	int ms;
+
+	LuaScript::argvInteger (L, 1, &ms);
+	if (ms < 0) {
+		snprintf (buf, sizeof (buf), "milliseconds must be 0 or greater (0 disables timeout)");
+		return (luaL_error (L, "%s", buf));
+	}
+	LuaScript::scriptTimeout = ms;
 	return (0);
 }

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -52,9 +52,10 @@
 
 const float CameraDetailWindow::NameTruncateScale = 0.24f;
 
-CameraDetailWindow::CameraDetailWindow (const StdString &agentId, SpriteGroup *cameraTimelineUiSpriteGroup)
+CameraDetailWindow::CameraDetailWindow (const StdString &agentId, int sensor, SpriteGroup *cameraTimelineUiSpriteGroup)
 : Panel ()
 , agentId (agentId)
+, sensor (sensor)
 , sprites (cameraTimelineUiSpriteGroup)
 , iconImage (NULL)
 , nameLabel (NULL)
@@ -100,7 +101,7 @@ CameraDetailWindow *CameraDetailWindow::castWidget (Widget *widget) {
 }
 
 void CameraDetailWindow::syncRecordStore () {
-	Json *record, serverstatus;
+	Json *record, serverstatus, sensorstatus;
 	int64_t t1, t2;
 
 	record = RecordStore::instance->findRecord (agentId, SystemInterface::CommandId_AgentStatus);
@@ -110,10 +111,12 @@ void CameraDetailWindow::syncRecordStore () {
 	if (! SystemInterface::instance->getCommandObjectParam (record, "cameraServerStatus", &serverstatus)) {
 		return;
 	}
-
+	if (! serverstatus.getArrayObject ("sensors", sensor, &sensorstatus)) {
+		return;
+	}
 	nameLabel->setText (UiConfiguration::instance->fonts[UiConfiguration::TitleFont]->truncatedText (Agent::getCommandAgentName (record), (float) App::instance->windowWidth * CameraDetailWindow::NameTruncateScale, Font::DotTruncateSuffix));
-	t1 = serverstatus.getNumber ("minCaptureTime", (int64_t) 0);
-	t2 = serverstatus.getNumber ("lastCaptureTime", (int64_t) 0);
+	t1 = sensorstatus.getNumber ("minCaptureTime", (int64_t) 0);
+	t2 = sensorstatus.getNumber ("lastCaptureTime", (int64_t) 0);
 	if ((t1 <= 0) || (t2 <= 0)) {
 		captureTimespanIcon->isVisible = false;
 		selectedTimespanIcon->isVisible = false;

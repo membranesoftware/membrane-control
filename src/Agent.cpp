@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -319,7 +319,7 @@ Json *Agent::createState () {
 int Agent::readState (Json *state) {
 	id = state->getString (Agent::AgentIdKey, "");
 	if (id.empty ()) {
-		return (OsUtil::Result::MalformedDataError);
+		return (OsUtil::MalformedDataError);
 	}
 
 	isAttached = state->getBoolean (Agent::IsAttachedKey, false);
@@ -334,7 +334,7 @@ int Agent::readState (Json *state) {
 	tcpPort1 = state->getNumber (Agent::TcpPort1Key, (int) 0);
 	tcpPort2 = state->getNumber (Agent::TcpPort2Key, (int) 0);
 
-	return (OsUtil::Result::Success);
+	return (OsUtil::Success);
 }
 
 StdString Agent::getCommandAgentName (Json *command) {

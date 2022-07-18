@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -203,8 +203,8 @@ void AgentConfigurationWindow::loadConfiguration () {
 	}
 
 	retain ();
-	result = AgentControl::instance->invokeCommand (agentId, App::instance->createCommand (SystemInterface::Command_GetAgentConfiguration), AgentConfigurationWindow::invokeGetAgentConfigurationComplete, this);
-	if (result != OsUtil::Result::Success) {
+	result = AgentControl::instance->invokeCommand (agentId, App::instance->createCommand (SystemInterface::Command_GetAgentConfiguration), CommandList::InvokeCallbackContext (AgentConfigurationWindow::invokeGetAgentConfigurationComplete, this));
+	if (result != OsUtil::Success) {
 		release ();
 		Log::debug ("Failed to invoke GetAgentConfiguration command; err=%i agentId=\"%s\"", result, agentId.c_str ());
 		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
@@ -213,7 +213,7 @@ void AgentConfigurationWindow::loadConfiguration () {
 	setWaiting (true);
 }
 
-void AgentConfigurationWindow::invokeGetAgentConfigurationComplete (void *windowPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand) {
+void AgentConfigurationWindow::invokeGetAgentConfigurationComplete (void *windowPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand, const StdString &invokeId) {
 	AgentConfigurationWindow *window;
 	int result;
 
@@ -223,13 +223,13 @@ void AgentConfigurationWindow::invokeGetAgentConfigurationComplete (void *window
 		return;
 	}
 
-	if (invokeResult != OsUtil::Result::Success) {
+	if (invokeResult != OsUtil::Success) {
 		Log::debug ("Failed to invoke GetAgentConfiguration command; err=%i agentId=\"%s\"", invokeResult, agentId.c_str ());
 		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::GetAgentConfigurationServerContactError));
 	}
 	else {
 		result = window->populateConfiguration (responseCommand);
-		if (result != OsUtil::Result::Success) {
+		if (result != OsUtil::Success) {
 			Log::debug ("Failed to invoke GetAgentConfiguration command; err=%i agentId=\"%s\"", result, agentId.c_str ());
 			App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
 		}
@@ -249,7 +249,7 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 	int i, numperiods, period;
 
 	if ((! command) || (SystemInterface::instance->getCommandId (command) != SystemInterface::CommandId_AgentConfiguration)) {
-		return (OsUtil::Result::InvalidParamError);
+		return (OsUtil::InvalidParamError);
 	}
 
 	agentConfiguration.copyValue (command);
@@ -350,7 +350,7 @@ int AgentConfigurationWindow::populateConfiguration (Json *command) {
 	}
 
 	refreshLayout ();
-	return (OsUtil::Result::Success);
+	return (OsUtil::Success);
 }
 
 StdString AgentConfigurationWindow::mediaScanPeriodSliderValueName (float sliderValue) {
@@ -444,8 +444,8 @@ void AgentConfigurationWindow::applyButtonClicked (void *windowPtr, Widget *widg
 	params->set ("agentConfiguration", agentconfig);
 
 	window->retain ();
-	result = AgentControl::instance->invokeCommand (window->agentId, App::instance->createCommand (SystemInterface::Command_UpdateAgentConfiguration, params), AgentConfigurationWindow::invokeUpdateAgentConfigurationComplete, window);
-	if (result != OsUtil::Result::Success) {
+	result = AgentControl::instance->invokeCommand (window->agentId, App::instance->createCommand (SystemInterface::Command_UpdateAgentConfiguration, params), CommandList::InvokeCallbackContext (AgentConfigurationWindow::invokeUpdateAgentConfigurationComplete, window));
+	if (result != OsUtil::Success) {
 		window->release ();
 		Log::debug ("Failed to invoke UpdateAgentConfiguration command; err=%i agentId=\"%s\"", result, window->agentId.c_str ());
 		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
@@ -454,7 +454,7 @@ void AgentConfigurationWindow::applyButtonClicked (void *windowPtr, Widget *widg
 	window->setWaiting (true);
 }
 
-void AgentConfigurationWindow::invokeUpdateAgentConfigurationComplete (void *windowPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand) {
+void AgentConfigurationWindow::invokeUpdateAgentConfigurationComplete (void *windowPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand, const StdString &invokeId) {
 	AgentConfigurationWindow *window;
 
 	window = (AgentConfigurationWindow *) windowPtr;
@@ -463,7 +463,7 @@ void AgentConfigurationWindow::invokeUpdateAgentConfigurationComplete (void *win
 		return;
 	}
 
-	if (invokeResult != OsUtil::Result::Success) {
+	if (invokeResult != OsUtil::Success) {
 		Log::debug ("Failed to invoke UpdateAgentConfiguration command; err=%i agentId=\"%s\"", invokeResult, agentId.c_str ());
 		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::ServerContactError));
 	}

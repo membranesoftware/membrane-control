@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -32,7 +32,6 @@
 #include <vector>
 #include "App.h"
 #include "ClassId.h"
-#include "Log.h"
 #include "StdString.h"
 #include "UiText.h"
 #include "Sprite.h"
@@ -68,7 +67,7 @@ UiLaunchWindow::UiLaunchWindow (int uiType, SpriteGroup *mainUiSpriteGroup)
 {
 	Sprite *iconsprite;
 	IconLabelWindow *icon;
-	StdString name, text;
+	StdString text;
 
 	classId = ClassId::UiLaunchWindow;
 	setPadding (UiConfiguration::instance->paddingSize / 2.0f, UiConfiguration::instance->paddingSize / 2.0f);
@@ -95,7 +94,7 @@ UiLaunchWindow::UiLaunchWindow (int uiType, SpriteGroup *mainUiSpriteGroup)
 	iconsprite = NULL;
 	switch (uiType) {
 		case UiLaunchWindow::ServerUi: {
-			name.assign (UiText::instance->getText (UiTextString::Servers).capitalized ());
+			windowName.assign (UiText::instance->getText (UiTextString::Servers).capitalized ());
 			text.assign (UiText::instance->getText (UiTextString::ServerUiDescription));
 			iconsprite = UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeServerIconSprite);
 
@@ -110,7 +109,7 @@ UiLaunchWindow::UiLaunchWindow (int uiType, SpriteGroup *mainUiSpriteGroup)
 			break;
 		}
 		case UiLaunchWindow::MediaUi: {
-			name.assign (UiText::instance->getText (UiTextString::Media).capitalized ());
+			windowName.assign (UiText::instance->getText (UiTextString::Media).capitalized ());
 			text.assign (UiText::instance->getText (UiTextString::MediaUiDescription));
 			iconsprite = UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeMediaIconSprite);
 
@@ -131,7 +130,7 @@ UiLaunchWindow::UiLaunchWindow (int uiType, SpriteGroup *mainUiSpriteGroup)
 			break;
 		}
 		case UiLaunchWindow::WebKioskUi: {
-			name.assign (UiText::instance->getText (UiTextString::WebKiosk).capitalized ());
+			windowName.assign (UiText::instance->getText (UiTextString::WebKiosk).capitalized ());
 			text.assign (UiText::instance->getText (UiTextString::WebKioskUiDescription));
 			iconsprite = UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeWebKioskIconSprite);
 
@@ -146,7 +145,7 @@ UiLaunchWindow::UiLaunchWindow (int uiType, SpriteGroup *mainUiSpriteGroup)
 			break;
 		}
 		case UiLaunchWindow::CameraUi: {
-			name.assign (UiText::instance->getText (UiTextString::Cameras).capitalized ());
+			windowName.assign (UiText::instance->getText (UiTextString::Cameras).capitalized ());
 			text.assign (UiText::instance->getText (UiTextString::CameraUiDescription));
 			iconsprite = UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeCameraIconSprite);
 
@@ -166,7 +165,7 @@ UiLaunchWindow::UiLaunchWindow (int uiType, SpriteGroup *mainUiSpriteGroup)
 		iconsprite = sprites->getSprite (MainUi::UiIconSprite);
 	}
 	iconImage = (Image *) addWidget (new Image (iconsprite));
-	nameLabel = (Label *) addWidget (new Label (name, UiConfiguration::BodyFont, UiConfiguration::instance->primaryTextColor));
+	nameLabel = (Label *) addWidget (new Label (windowName, UiConfiguration::BodyFont, UiConfiguration::instance->primaryTextColor));
 
 	descriptionText = (TextFlow *) addWidget (new TextFlow (UiConfiguration::instance->textFieldMediumLineLength * UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, UiConfiguration::CaptionFont));
 	descriptionText->setTextColor (UiConfiguration::instance->lightPrimaryTextColor);
@@ -233,13 +232,9 @@ void UiLaunchWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallb
 }
 
 void UiLaunchWindow::syncRecordStore () {
-	HashMap *prefs;
 	IconLabelWindow *icon;
-	int count, shortcuttype;
+	int count;
 
-	prefs = App::instance->lockPrefs ();
-	shortcuttype = prefs->find (MainUi::ShortcutUiTypeKey, (int) -1);
-	App::instance->unlockPrefs ();
 	switch (uiType) {
 		case UiLaunchWindow::ServerUi: {
 			count = RecordStore::instance->countCommandRecords (SystemInterface::CommandId_AgentStatus);
@@ -293,9 +288,6 @@ void UiLaunchWindow::syncRecordStore () {
 			icon->setTextColor ((count > 0) ? UiConfiguration::instance->lightPrimaryTextColor : UiConfiguration::instance->errorTextColor);
 			break;
 		}
-	}
-	if (uiType == shortcuttype) {
-		openButton->shortcutKey = SDLK_SPACE;
 	}
 
 	Panel::syncRecordStore ();

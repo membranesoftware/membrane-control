@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -33,6 +33,9 @@
 #include <vector>
 #include <list>
 #include "SDL2/SDL.h"
+extern "C" {
+#include "zlib.h"
+}
 #include "openssl/evp.h"
 #include "App.h"
 #include "Log.h"
@@ -116,7 +119,7 @@ int AgentControl::start () {
 	StringList::iterator j, jend;
 
 	if (isStarted) {
-		return (OsUtil::Result::Success);
+		return (OsUtil::Success);
 	}
 	readPrefs ();
 	linkClient.start ();
@@ -144,7 +147,7 @@ int AgentControl::start () {
 		++j;
 	}
 
-	return (OsUtil::Result::Success);
+	return (OsUtil::Success);
 }
 
 void AgentControl::stop () {
@@ -204,7 +207,6 @@ void AgentControl::connectLinkClient (const StdString &agentId) {
 		Log::warning ("Failed to connect link client, URL not found; agentId=\"%s\"", agentId.c_str ());
 		return;
 	}
-
 	linkClient.connect (agentId, url);
 }
 
@@ -243,7 +245,7 @@ int AgentControl::findTargetAgent (const StdString &searchKey, Agent *destAgent)
 	StdString key;
 	int result;
 
-	result = OsUtil::Result::Success;
+	result = OsUtil::Success;
 	key.assign (searchKey.lowercased ());
 
 	SDL_LockMutex (agentMapMutex);
@@ -252,7 +254,7 @@ int AgentControl::findTargetAgent (const StdString &searchKey, Agent *destAgent)
 	if (key.isUuid ()) {
 		pos = agentMap.find (key);
 		if (pos == end) {
-			result = OsUtil::Result::KeyNotFoundError;
+			result = OsUtil::KeyNotFoundError;
 		}
 	}
 	else {
@@ -260,7 +262,7 @@ int AgentControl::findTargetAgent (const StdString &searchKey, Agent *destAgent)
 		while (i != end) {
 			if (key.equals (i->second.displayName.lowercased ())) {
 				if (pos != end) {
-					result = OsUtil::Result::DuplicateIdError;
+					result = OsUtil::DuplicateIdError;
 					break;
 				}
 				pos = i;
@@ -268,11 +270,11 @@ int AgentControl::findTargetAgent (const StdString &searchKey, Agent *destAgent)
 			++i;
 		}
 		if (pos == end) {
-			result = OsUtil::Result::KeyNotFoundError;
+			result = OsUtil::KeyNotFoundError;
 		}
 	}
 
-	if (result == OsUtil::Result::Success) {
+	if (result == OsUtil::Success) {
 		if ((pos != end) && destAgent) {
 			destAgent->copyDisplayData (pos->second);
 		}
@@ -339,7 +341,6 @@ bool AgentControl::isAgentContacting (const StdString &agentId) {
 	if (hostname.empty () || (port <= 0)) {
 		return (false);
 	}
-
 	return (isHostContacting (hostname, port));
 }
 
@@ -354,7 +355,6 @@ bool AgentControl::isAgentContacted (const StdString &agentId) {
 		result = pos->second.isContacted ();
 	}
 	SDL_UnlockMutex (agentMapMutex);
-
 	return (result);
 }
 
@@ -374,7 +374,6 @@ bool AgentControl::isAgentUnauthorized (const StdString &agentId) {
 	if (hostname.empty () || (port <= 0)) {
 		return (false);
 	}
-
 	return (isHostUnauthorized (hostname, port));
 }
 
@@ -391,7 +390,6 @@ bool AgentControl::isAgentAuthorized (const StdString &agentId) {
 		}
 	}
 	SDL_UnlockMutex (agentMapMutex);
-
 	return (result);
 }
 
@@ -425,8 +423,33 @@ void AgentControl::receiveTaskItem (void *agentControlPtr, const StdString &agen
 	App::instance->shouldSyncRecordStore = true;
 }
 
+void AgentControl::writeLinkCommand (Json *command) {
+	if (! command) {
+		return;
+	}
+	linkClient.writeCommand (command);
+}
+
 void AgentControl::writeLinkCommand (Json *command, const StdString &agentId) {
+	if (! command) {
+		return;
+	}
 	linkClient.writeCommand (command, agentId);
+}
+
+void AgentControl::writeLinkCommand (Json *command, const StringList &agentIdList) {
+	StringList::const_iterator i, end;
+
+	if (! command) {
+		return;
+	}
+	i = agentIdList.cbegin ();
+	end = agentIdList.cend ();
+	while (i != end) {
+		linkClient.writeCommand (command->copy (), *i);
+		++i;
+	}
+	delete (command);
 }
 
 bool AgentControl::isHostContacted (const StdString &invokeHostname, int invokePort) {
@@ -442,7 +465,6 @@ bool AgentControl::isHostContacted (const StdString &invokeHostname, int invokeP
 		}
 	}
 	SDL_UnlockMutex (agentMapMutex);
-
 	return (result);
 }
 
@@ -457,7 +479,6 @@ bool AgentControl::isHostContacting (const StdString &invokeHostname, int invoke
 		result = true;
 	}
 	SDL_UnlockMutex (commandMapMutex);
-
 	return (result);
 }
 
@@ -468,11 +489,10 @@ bool AgentControl::isHostUnauthorized (const StdString &invokeHostname, int invo
 	result = false;
 	SDL_LockMutex (commandMapMutex);
 	cmdlist = findCommandList (getMapKey (invokeHostname, invokePort));
-	if (cmdlist && (cmdlist->lastInvokeResult == OsUtil::Result::UnauthorizedError)) {
+	if (cmdlist && (cmdlist->lastInvokeResult == OsUtil::UnauthorizedError)) {
 		result = true;
 	}
 	SDL_UnlockMutex (commandMapMutex);
-
 	return (result);
 }
 
@@ -489,7 +509,6 @@ StdString AgentControl::getAgentHostAddress (const StdString &agentId) {
 		}
 	}
 	SDL_UnlockMutex (agentMapMutex);
-
 	return (s);
 }
 
@@ -508,7 +527,6 @@ StdString AgentControl::getAgentDisplayName (const StdString &agentId) {
 		}
 	}
 	SDL_UnlockMutex (agentMapMutex);
-
 	return (s);
 }
 
@@ -522,7 +540,6 @@ StdString AgentControl::getAgentApplicationName (const StdString &agentId) {
 		s.assign (pos->second.applicationName);
 	}
 	SDL_UnlockMutex (agentMapMutex);
-
 	return (s);
 }
 
@@ -537,13 +554,12 @@ int AgentControl::getAgentServerType (const StdString &agentId) {
 		type = pos->second.serverType;
 	}
 	SDL_UnlockMutex (agentMapMutex);
-
 	return (type);
 }
 
-StdString AgentControl::getAgentInvokeUrl (const StdString &agentId, Json *command, const StdString &path) {
+StdString AgentControl::getAgentInvokeUrl (const StdString &agentId, const StdString &path, Json *command, bool encodeCommand) {
 	std::map<StdString, Agent>::iterator pos;
-	StdString url;
+	StdString url, cmd, enc;
 
 	SDL_LockMutex (agentMapMutex);
 	pos = agentMap.find (agentId);
@@ -564,15 +580,22 @@ StdString AgentControl::getAgentInvokeUrl (const StdString &agentId, Json *comma
 	}
 	url.append (path);
 	if (command) {
-		url.appendSprintf ("?%s=%s", SystemInterface::Constant_UrlQueryParameter, command->toString ().urlEncoded ().c_str ());
+		cmd = command->toString ();
+		if (encodeCommand) {
+			enc = getEncodedUrlQuery (cmd);
+			if (! enc.empty ()) {
+				cmd.assign (enc);
+			}
+		}
+		url.appendSprintf ("?%s=%s", SystemInterface::Constant_UrlQueryParameter, cmd.urlEncoded ().c_str ());
 		delete (command);
 	}
 	return (url);
 }
 
-StdString AgentControl::getAgentSecondaryUrl (const StdString &agentId, Json *command, const StdString &path) {
+StdString AgentControl::getAgentSecondaryUrl (const StdString &agentId, const StdString &path, Json *command, bool encodeCommand) {
 	std::map<StdString, Agent>::iterator pos;
-	StdString url;
+	StdString url, cmd, enc;
 
 	SDL_LockMutex (agentMapMutex);
 	pos = agentMap.find (agentId);
@@ -590,10 +613,51 @@ StdString AgentControl::getAgentSecondaryUrl (const StdString &agentId, Json *co
 
 	url.append (path);
 	if (command) {
-		url.appendSprintf ("?%s=%s", SystemInterface::Constant_UrlQueryParameter, command->toString ().urlEncoded ().c_str ());
+		cmd = command->toString ();
+		if (encodeCommand) {
+			enc = getEncodedUrlQuery (cmd);
+			if (! enc.empty ()) {
+				cmd.assign (enc);
+			}
+		}
+		url.appendSprintf ("?%s=%s", SystemInterface::Constant_UrlQueryParameter, cmd.urlEncoded ().c_str ());
 		delete (command);
 	}
 	return (url);
+}
+
+StdString AgentControl::getEncodedUrlQuery (const StdString &queryValue) {
+	z_stream z;
+	int zresult, outlen;
+	unsigned char *out;
+	StdString result;
+
+	z.zalloc = NULL;
+	z.zfree = NULL;
+	z.opaque = NULL;
+	zresult = deflateInit (&z, Z_DEFAULT_COMPRESSION);
+	if (zresult != Z_OK) {
+		return (StdString (""));
+	}
+
+	out = NULL;
+	outlen = deflateBound (&z, queryValue.length ());
+	if (outlen > 0) {
+		out = (unsigned char *) malloc (outlen);
+	}
+	if (out) {
+		z.avail_in = queryValue.length ();
+		z.next_in = (z_const Bytef *) queryValue.c_str ();
+		z.avail_out = outlen;
+		z.next_out = out;
+		zresult = deflate (&z, Z_FINISH);
+		if (zresult == Z_STREAM_END) {
+			result.assignBase64 (out, (int) z.total_out);
+		}
+		free (out);
+	}
+	deflateEnd (&z);
+	return (result);
 }
 
 StdString AgentControl::getAgentLinkUrl (const StdString &agentId) {
@@ -606,7 +670,6 @@ StdString AgentControl::getAgentLinkUrl (const StdString &agentId) {
 		s.assign (pos->second.getLinkUrl ());
 	}
 	SDL_UnlockMutex (agentMapMutex);
-
 	return (s);
 }
 
@@ -652,7 +715,7 @@ StdString AgentControl::getStringHash (const StdString &sourceString) {
 }
 
 void AgentControl::contactAgent (const StdString &hostname, int tcpPort) {
-	invokeCommand (hostname, tcpPort, App::instance->createCommand (SystemInterface::Command_GetStatus), AgentControl::invokeGetStatusComplete, this);
+	invokeCommand (hostname, tcpPort, App::instance->createCommand (SystemInterface::Command_GetStatus), CommandList::InvokeCallbackContext (AgentControl::invokeGetStatusComplete, this));
 }
 
 bool AgentControl::isAgentInvoking (const StdString &agentId) {
@@ -682,12 +745,11 @@ bool AgentControl::isAgentInvoking (const StdString &agentId) {
 		result = true;
 	}
 	SDL_UnlockMutex (commandMapMutex);
-
 	return (result);
 }
 
 void AgentControl::refreshAgentStatus (const StdString &agentId, const StdString &queueId) {
-	invokeCommand (agentId, App::instance->createCommand (SystemInterface::Command_GetStatus), AgentControl::invokeGetStatusComplete, this, queueId);
+	invokeCommand (agentId, App::instance->createCommand (SystemInterface::Command_GetStatus), CommandList::InvokeCallbackContext (AgentControl::invokeGetStatusComplete, this), queueId);
 }
 
 void AgentControl::refreshAgentStatus (const StdString &invokeHostname, int invokeTcpPort, const StdString &queueId) {
@@ -703,14 +765,14 @@ void AgentControl::refreshAgentStatus (const StdString &invokeHostname, int invo
 	if (agentid.empty ()) {
 		return;
 	}
-	invokeCommand (agentid, App::instance->createCommand (SystemInterface::Command_GetStatus), AgentControl::invokeGetStatusComplete, this, queueId);
+	invokeCommand (agentid, App::instance->createCommand (SystemInterface::Command_GetStatus), CommandList::InvokeCallbackContext (AgentControl::invokeGetStatusComplete, this), queueId);
 }
 
-void AgentControl::refreshAgentStatus (StringList *agentIdList, const StdString &queueId) {
-	StringList::iterator i, end;
+void AgentControl::refreshAgentStatus (const StringList &agentIdList, const StdString &queueId) {
+	StringList::const_iterator i, end;
 
-	i = agentIdList->begin ();
-	end = agentIdList->end ();
+	i = agentIdList.cbegin ();
+	end = agentIdList.cend ();
 	while (i != end) {
 		refreshAgentStatus ((*i), queueId);
 		++i;
@@ -784,7 +846,6 @@ StdString AgentControl::getAgentUpdateUrl (const StdString &agentId) {
 		}
 	}
 	SDL_UnlockMutex (agentMapMutex);
-
 	return (updateurl);
 }
 
@@ -807,14 +868,13 @@ void AgentControl::removeAgent (const StdString &agentId) {
 	}
 }
 
-int AgentControl::invokeCommand (const StdString &hostname, int tcpPort, Json *command, CommandList::InvokeCallback callback, void *callbackData, const StdString &queueId) {
+int AgentControl::invokeCommand (const StdString &hostname, int tcpPort, Json *command, CommandList::InvokeCallbackContext callback, const StdString &queueId) {
 	CommandList *cmdlist;
 	StdString key;
 
 	if (! command) {
-		return (OsUtil::Result::InvalidParamError);
+		return (OsUtil::InvalidParamError);
 	}
-
 	if (! queueId.empty ()) {
 		key.assign (queueId);
 	}
@@ -823,20 +883,19 @@ int AgentControl::invokeCommand (const StdString &hostname, int tcpPort, Json *c
 	}
 	SDL_LockMutex (commandMapMutex);
 	cmdlist = findCommandList (key, true);
-	cmdlist->addCommand (hostname, tcpPort, command, callback, callbackData);
+	cmdlist->addCommand (hostname, tcpPort, command, callback);
 	SDL_UnlockMutex (commandMapMutex);
-
-	return (OsUtil::Result::Success);
+	return (OsUtil::Success);
 }
 
-int AgentControl::invokeCommand (const StdString &agentId, Json *command, CommandList::InvokeCallback callback, void *callbackData, const StdString &queueId) {
+int AgentControl::invokeCommand (const StdString &agentId, Json *command, CommandList::InvokeCallbackContext callback, const StdString &queueId) {
 	CommandList *cmdlist;
 	std::map<StdString, Agent>::iterator pos;
 	StdString key, hostname;
 	int port;
 
 	if (! command) {
-		return (OsUtil::Result::InvalidParamError);
+		return (OsUtil::InvalidParamError);
 	}
 
 	port = 0;
@@ -850,7 +909,7 @@ int AgentControl::invokeCommand (const StdString &agentId, Json *command, Comman
 
 	if (hostname.empty () || (port <= 0)) {
 		delete (command);
-		return (OsUtil::Result::KeyNotFoundError);
+		return (OsUtil::KeyNotFoundError);
 	}
 
 	if (! queueId.empty ()) {
@@ -861,32 +920,31 @@ int AgentControl::invokeCommand (const StdString &agentId, Json *command, Comman
 	}
 	SDL_LockMutex (commandMapMutex);
 	cmdlist = findCommandList (key, true);
-	cmdlist->addCommand (hostname, port, command, callback, callbackData);
+	cmdlist->addCommand (hostname, port, command, callback);
 	SDL_UnlockMutex (commandMapMutex);
-
-	return (OsUtil::Result::Success);
+	return (OsUtil::Success);
 }
 
-int AgentControl::invokeCommand (StringList *agentIdList, Json *command, CommandList::InvokeCallback callback, void *callbackData, const StdString &queueId) {
-	StringList::iterator i, end, last;
+int AgentControl::invokeCommand (const StringList &agentIdList, Json *command, CommandList::InvokeCallbackContext callback, const StdString &queueId) {
+	StringList::const_iterator i, end, last;
 	int count, result;
 
 	if (! command) {
 		return (0);
 	}
-	if (agentIdList->empty ()) {
+	if (agentIdList.empty ()) {
 		delete (command);
 		return (0);
 	}
 
 	count = 0;
-	i = agentIdList->begin ();
-	end = agentIdList->end ();
+	i = agentIdList.cbegin ();
+	end = agentIdList.cend ();
 	last = end;
 	--last;
 	while (i != end) {
-		result = invokeCommand (*i, (i != last) ? command->copy () : command, callback, callbackData, queueId);
-		if (result != OsUtil::Result::Success) {
+		result = invokeCommand (*i, (i != last) ? command->copy () : command, callback, queueId);
+		if (result != OsUtil::Success) {
 			Log::debug ("Failed to invoke command; err=%i agentId=\"%s\"", result, (*i).c_str ());
 		}
 		else {
@@ -894,7 +952,6 @@ int AgentControl::invokeCommand (StringList *agentIdList, Json *command, Command
 		}
 		++i;
 	}
-
 	return (count);
 }
 
@@ -920,7 +977,6 @@ void AgentControl::receiveMessage (const char *messageData, int messageLength, c
 	if (! SystemInterface::instance->parseCommand (StdString (messageData, messageLength), &command)) {
 		return;
 	}
-
 	commandid = SystemInterface::instance->getCommandId (command);
 	switch (commandid) {
 		case SystemInterface::CommandId_AgentStatus: {
@@ -954,7 +1010,7 @@ void AgentControl::receiveMessage (const char *messageData, int messageLength, c
 	delete (command);
 }
 
-void AgentControl::invokeGetStatusComplete (void *agentControlPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand) {
+void AgentControl::invokeGetStatusComplete (void *agentControlPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand, const StdString &invokeId) {
 	std::map<StdString, Agent>::iterator pos;
 
 	if (responseCommand && (SystemInterface::instance->getCommandId (responseCommand) == SystemInterface::CommandId_AgentStatus)) {
@@ -1271,7 +1327,6 @@ bool AgentControl::setCommandAuthorization (Json *command, int secretIndex, cons
 	}
 	result = SystemInterface::instance->setCommandAuthorization (command, entry.authorizeSecret, authorizeToken, AgentControl::hashUpdate, AgentControl::hashDigest, ctx);
 	EVP_MD_CTX_destroy (ctx);
-
 	return (result);
 }
 
@@ -1287,7 +1342,6 @@ StdString AgentControl::hashDigest (void *contextPtr) {
 	if (EVP_DigestFinal_ex ((EVP_MD_CTX *) contextPtr, digest, &len) == 1) {
 		s.assignHex (digest, len);
 	}
-
 	return (s);
 }
 
@@ -1336,7 +1390,7 @@ void AgentControl::readPrefs () {
 	end = items.end ();
 	while (i != end) {
 		result = agent.readState (*i);
-		if (result == OsUtil::Result::Success) {
+		if (result == OsUtil::Success) {
 			pos = agentMap.find (agent.id);
 			if (pos == agentMap.end ()) {
 				agentMap.insert (std::pair<StdString, Agent> (agent.id, agent));
@@ -1420,7 +1474,6 @@ std::map<StdString, Agent>::iterator AgentControl::findAgent (const StdString &i
 		}
 		++i;
 	}
-
 	return (end);
 }
 
@@ -1444,7 +1497,6 @@ bool AgentControl::readAdminSecret (AgentControl::AdminSecret *entry, Json *pref
 			result = true;
 		}
 	}
-
 	return (result);
 }
 

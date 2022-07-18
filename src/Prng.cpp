@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -31,7 +31,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include "Log.h"
 #include "Prng.h"
 
 // Return a uint32_t resulting from performing a left circular shift on the provided value
@@ -75,7 +74,6 @@ int Prng::getRandomValue (int i1, int i2) {
 	if (diff > 1) {
 		i += llabs (extract ()) % diff;
 	}
-
 	return ((int) i);
 }
 
@@ -89,7 +87,6 @@ float Prng::getRandomValue (float f1, float f2) {
 
 	fraction = (float) getRandomValue (0, RAND_MAX - 1);
 	fraction /= (float) (RAND_MAX - 1);
-
 	return (f1 + (diff * fraction));
 }
 

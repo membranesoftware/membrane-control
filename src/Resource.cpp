@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -46,6 +46,8 @@
 #include "Log.h"
 #include "StdString.h"
 #include "Resource.h"
+
+Resource *Resource::instance = NULL;
 
 Resource::Resource ()
 : dataPath ("")
@@ -146,54 +148,54 @@ OsUtil::Result Resource::open () {
 
 	if (FT_Init_FreeType (&(freetype))) {
 		Log::err ("Failed to initialize freetype library");
-		return (OsUtil::Result::FreetypeOperationFailedError);
+		return (OsUtil::FreetypeOperationFailedError);
 	}
 	if (dataPath.empty ()) {
-		return (OsUtil::Result::InvalidConfigurationError);
+		return (OsUtil::InvalidConfigurationError);
 	}
 	if (stat (dataPath.c_str (), &st) != 0) {
 		Log::err ("stat failed; path=\"%s\" err=\"%s\"", dataPath.c_str (), strerror (errno));
-		return (OsUtil::Result::FileOperationFailedError);
+		return (OsUtil::FileOperationFailedError);
 	}
 
 	if (! isBundleFile) {
 		if (! S_ISDIR (st.st_mode)) {
 			Log::err ("Failed to open resources; path=\"%s\" err=\"Invalid resource path\"", dataPath.c_str ());
-			return (OsUtil::Result::MismatchedTypeError);
+			return (OsUtil::MismatchedTypeError);
 		}
 		isOpen = true;
-		return (OsUtil::Result::Success);
+		return (OsUtil::Success);
 	}
 
 	rw = SDL_RWFromFile (dataPath.c_str (), "r");
 	if (! rw) {
 		Log::err ("Failed to open resource bundle file; path=\"%s\" error=\"%s\"", dataPath.c_str (), SDL_GetError ());
-		return (OsUtil::Result::FileOperationFailedError);
+		return (OsUtil::FileOperationFailedError);
 	}
 
-	result = OsUtil::Result::Success;
+	result = OsUtil::Success;
 	archiveEntryMap.clear ();
 	while (true) {
 		result = Resource::readUint64 (rw, &id);
-		if (result != OsUtil::Result::Success) {
+		if (result != OsUtil::Success) {
 			break;
 		}
 		if (id == 0) {
 			break;
 		}
 		result = Resource::readUint64 (rw, &(ae.position));
-		if (result != OsUtil::Result::Success) {
+		if (result != OsUtil::Success) {
 			break;
 		}
 		result = Resource::readUint64 (rw, &(ae.length));
-		if (result != OsUtil::Result::Success) {
+		if (result != OsUtil::Success) {
 			break;
 		}
 		archiveEntryMap.insert (std::pair<uint64_t, Resource::ArchiveEntry> (id, ae));
 	}
 
 	SDL_RWclose (rw);
-	if (result == OsUtil::Result::Success) {
+	if (result == OsUtil::Success) {
 		isOpen = true;
 	}
 	return (result);
@@ -753,7 +755,7 @@ Font *Resource::loadFont (const StdString &path, int pointSize) {
 
 	font = new Font (freetype, key);
 	result = font->load (buffer, pointSize);
-	if (result != OsUtil::Result::Success) {
+	if (result != OsUtil::Success) {
 		delete (font);
 		unloadFile (path);
 		Log::err ("Failed to load font resource; key=\"%s\" err=%i", key.c_str (), result);
@@ -821,7 +823,7 @@ OsUtil::Result Resource::readUint64 (SDL_RWops *src, Uint64 *value) {
 
 	rlen = SDL_RWread (src, buf, 8, 1);
 	if (rlen < 1) {
-		return (OsUtil::Result::FileOperationFailedError);
+		return (OsUtil::FileOperationFailedError);
 	}
 	val = 0;
 	val |= (buf[0] & 0xFF);
@@ -843,5 +845,5 @@ OsUtil::Result Resource::readUint64 (SDL_RWops *src, Uint64 *value) {
 	if (value) {
 		*value = val;
 	}
-	return (OsUtil::Result::Success);
+	return (OsUtil::Success);
 }

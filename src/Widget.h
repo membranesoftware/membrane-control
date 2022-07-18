@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -35,6 +35,7 @@
 #include <stdint.h>
 #include "SDL2/SDL.h"
 #include "StdString.h"
+#include "StringList.h"
 #include "Position.h"
 
 class Widget {
@@ -46,28 +47,48 @@ public:
 	struct UpdateCallbackContext {
 		Widget::UpdateCallback callback;
 		void *callbackData;
-		UpdateCallbackContext (): callback (NULL), callbackData (NULL) { }
-		UpdateCallbackContext (Widget::UpdateCallback callback, void *callbackData): callback (callback), callbackData (callbackData) { }
+		UpdateCallbackContext ():
+			callback (NULL),
+			callbackData (NULL) { }
+		UpdateCallbackContext (Widget::UpdateCallback callback, void *callbackData):
+			callback (callback),
+			callbackData (callbackData) { }
 	};
 	struct EventCallbackContext {
 		Widget::EventCallback callback;
 		void *callbackData;
-		EventCallbackContext (): callback (NULL), callbackData (NULL) { }
-		EventCallbackContext (Widget::EventCallback callback, void *callbackData): callback (callback), callbackData (callbackData) { }
+		EventCallbackContext ():
+			callback (NULL),
+			callbackData (NULL) { }
+		EventCallbackContext (Widget::EventCallback callback, void *callbackData):
+			callback (callback),
+			callbackData (callbackData) { }
 	};
 	struct KeyEventCallbackContext {
 		Widget::KeyEventCallback callback;
 		void *callbackData;
-		KeyEventCallbackContext (): callback (NULL), callbackData (NULL) { }
-		KeyEventCallbackContext (Widget::KeyEventCallback callback, void *callbackData): callback (callback), callbackData (callbackData) { }
+		KeyEventCallbackContext ():
+			callback (NULL),
+			callbackData (NULL) { }
+		KeyEventCallbackContext (Widget::KeyEventCallback callback, void *callbackData):
+			callback (callback),
+			callbackData (callbackData) { }
 	};
 	struct Rectangle {
 		float x;
 		float y;
 		float w;
 		float h;
-		Rectangle (): x (0.0f), y (0.0f), w (0.0f), h (0.0f) { }
-		Rectangle (float x, float y, float w, float h): x (x), y (y), w (w), h (h) { }
+		Rectangle ():
+			x (0.0f),
+			y (0.0f),
+			w (0.0f),
+			h (0.0f) { }
+		Rectangle (float x, float y, float w, float h):
+			x (x),
+			y (y),
+			w (w),
+			h (h) { }
 	};
 	enum Alignment {
 		TopAlignment = 0,
@@ -83,6 +104,7 @@ public:
 
 	// Read-write data members
 	uint64_t id;
+	StdString widgetName;
 	bool isDestroyed;
 	bool isVisible;
 	bool isTextureTargetDrawEnabled;
@@ -138,6 +160,12 @@ public:
 
 	// Return the topmost child widget at the specified screen position, or NULL if no such widget was found. If requireMouseHoverEnabled is true, return a widget only if it has enabled the isMouseHoverEnabled option.
 	virtual Widget *findWidget (float screenPositionX, float screenPositionY, bool requireMouseHoverEnabled = false);
+
+	// Return the child widget that holds a matching widgetName value, or NULL if no such widget was found
+	virtual Widget *findWidget (const StdString &widgetName);
+
+	// Find all child widgets with a non-empty widgetName value and append the names to destList
+	virtual void getWidgetNames (StringList *destList);
 
 	// Update the widget as appropriate for a received keypress event and return a boolean value indicating if the event was consumed and should no longer be processed
 	bool processKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown);

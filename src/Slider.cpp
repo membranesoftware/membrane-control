@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -35,6 +35,7 @@
 #include "Log.h"
 #include "StdString.h"
 #include "App.h"
+#include "Resource.h"
 #include "MathUtil.h"
 #include "Widget.h"
 #include "Color.h"
@@ -84,7 +85,6 @@ Slider::~Slider () {
 		delete (thumbSprite);
 		thumbSprite = NULL;
 	}
-
 	if (thumbSpritePixels) {
 		free (thumbSpritePixels);
 		thumbSpritePixels = NULL;
@@ -95,7 +95,6 @@ void Slider::setDisabled (bool disabled) {
 	if (disabled == isDisabled) {
 		return;
 	}
-
 	isDisabled = disabled;
 	refreshLayout ();
 }
@@ -104,7 +103,6 @@ void Slider::setInverseColor (bool inverse) {
 	if (isInverseColor == inverse) {
 		return;
 	}
-
 	isInverseColor = inverse;
 	refreshLayout ();
 }
@@ -225,7 +223,6 @@ void Slider::doDraw (SDL_Texture *targetTexture, float originX, float originY) {
 	if (! isThumbSpriteLoaded) {
 		return;
 	}
-
 	render = App::instance->render;
 	x0 = (int) (originX + position.x);
 	y0 = (int) (originY + position.y);
@@ -361,7 +358,6 @@ void Slider::loadThumbSprite () {
 	if ((w <= 0) || (h <= 0)) {
 		return;
 	}
-
 	isThumbSpriteLoading = true;
 	if (thumbSpritePixels) {
 		free (thumbSpritePixels);
@@ -438,7 +434,7 @@ void Slider::createThumbTexture (void *sliderPtr) {
 	}
 
 	path.sprintf ("*_Slider_%llx_%llx", (long long int) slider->id, (long long int) App::instance->getUniqueId ());
-	texture = App::instance->resource.createTexture (path, surface);
+	texture = Resource::instance->createTexture (path, surface);
 	SDL_FreeSurface (surface);
 	if (! texture) {
 		slider->endLoadThumbSprite ();

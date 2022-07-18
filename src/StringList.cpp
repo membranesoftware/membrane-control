@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -31,7 +31,6 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <list>
-#include "Log.h"
 #include "StdString.h"
 #include "StringList.h"
 
@@ -39,41 +38,51 @@ StringList::StringList ()
 : std::list<StdString> ()
 {
 
+}
 
+StringList::StringList (const StringList &copySource)
+: StringList ()
+{
+	insertStringList (copySource);
+}
+
+StringList::StringList (const StdString &item)
+: StringList ()
+{
+	push_back (item);
 }
 
 StringList::~StringList () {
 
 }
 
-StdString StringList::toString () {
+StdString StringList::toString () const {
 	StdString s;
-	StringList::iterator i1, i2;
+	StringList::const_iterator i1, i2;
 	char delim[2];
 
 	delim[0] = '\0';
 	delim[1] = '\0';
-	i1 = begin ();
-	i2 = end ();
+	i1 = cbegin ();
+	i2 = cend ();
 	while (i1 != i2) {
 		s.appendSprintf ("%s%s", delim, (*i1).c_str ());
 		delim[0] = ',';
 		++i1;
 	}
-
 	return (s);
 }
 
-StdString StringList::toJsonString () {
+StdString StringList::toJsonString () const {
 	StdString s, item;
-	StringList::iterator i1, i2;
+	StringList::const_iterator i1, i2;
 	char delim[2];
 
 	delim[0] = '\0';
 	delim[1] = '\0';
 	s.assign ("[");
-	i1 = begin ();
-	i2 = end ();
+	i1 = cbegin ();
+	i2 = cend ();
 	while (i1 != i2) {
 		item = *i1;
 		s.appendSprintf ("%s\"%s\"", delim, item.jsonEscaped ().c_str ());
@@ -81,16 +90,14 @@ StdString StringList::toJsonString () {
 		++i1;
 	}
 	s.append ("]");
-
 	return (s);
 }
 
-StringList *StringList::copy () {
+StringList *StringList::copy () const {
 	StringList *stringlist;
 
 	stringlist = new StringList ();
-	stringlist->insertStringList (this);
-
+	stringlist->insertStringList (*this);
 	return (stringlist);
 }
 
@@ -213,24 +220,24 @@ void StringList::insertInOrder (const StdString &item) {
 	}
 }
 
-void StringList::insertStringList (StringList *sourceList) {
-	StringList::iterator i1, i2;
+void StringList::insertStringList (const StringList &sourceList) {
+	StringList::const_iterator i1, i2;
 
-	i1 = sourceList->begin ();
-	i2 = sourceList->end ();
+	i1 = sourceList.cbegin ();
+	i2 = sourceList.cend ();
 	while (i1 != i2) {
 		push_back (*i1);
 		++i1;
 	}
 }
 
-bool StringList::contains (const StdString &item) {
-	StringList::iterator i1, i2;
+bool StringList::contains (const StdString &item) const {
+	StringList::const_iterator i1, i2;
 	bool found;
 
 	found = false;
-	i1 = begin ();
-	i2 = end ();
+	i1 = cbegin ();
+	i2 = cend ();
 	while (i1 != i2) {
 		if (item.equals (*i1)) {
 			found = true;
@@ -238,18 +245,17 @@ bool StringList::contains (const StdString &item) {
 		}
 		++i1;
 	}
-
 	return (found);
 }
 
-int StringList::indexOf (const StdString &item) {
-	StringList::iterator i1, i2;
+int StringList::indexOf (const StdString &item) const {
+	StringList::const_iterator i1, i2;
 	int result, count;
 
 	result = -1;
 	count = 0;
-	i1 = begin ();
-	i2 = end ();
+	i1 = cbegin ();
+	i2 = cend ();
 	while (i1 != i2) {
 		if (item.equals (*i1)) {
 			result = count;
@@ -258,25 +264,23 @@ int StringList::indexOf (const StdString &item) {
 		++count;
 		++i1;
 	}
-
 	return (result);
 }
 
-int StringList::indexOf (const char *item) {
+int StringList::indexOf (const char *item) const {
 	return (indexOf (StdString (item)));
 }
 
-bool StringList::equals (StringList *stringList) {
-	StringList::iterator i, iend, j, jend;
+bool StringList::equals (const StringList &stringList) const {
+	StringList::const_iterator i, iend, j, jend;
 
-	if (size () != stringList->size ()) {
+	if (size () != stringList.size ()) {
 		return (false);
 	}
-
-	i = begin ();
-	iend = end ();
-	j = stringList->begin ();
-	jend = stringList->end ();
+	i = cbegin ();
+	iend = cend ();
+	j = stringList.cbegin ();
+	jend = stringList.cend ();
 	while (i != iend) {
 		if (j == jend) {
 			return (false);
@@ -287,7 +291,6 @@ bool StringList::equals (StringList *stringList) {
 		++i;
 		++j;
 	}
-
 	return (true);
 }
 
@@ -311,14 +314,14 @@ bool StringList::compareCaseInsensitiveDescending (const StdString &a, const Std
 	return (a.lowercased ().compare (b.lowercased ()) > 0);
 }
 
-StdString StringList::join (const StdString &delimiter) {
+StdString StringList::join (const StdString &delimiter) const {
 	StdString s;
-	StringList::iterator i1, i2;
+	StringList::const_iterator i1, i2;
 	bool first;
 
 	first = true;
-	i1 = begin ();
-	i2 = end ();
+	i1 = cbegin ();
+	i2 = cend ();
 	while (i1 != i2) {
 		if (first) {
 			first = false;
@@ -329,10 +332,22 @@ StdString StringList::join (const StdString &delimiter) {
 		}
 		++i1;
 	}
-
 	return (s);
 }
 
-StdString StringList::join (const char *delimiter) {
+StdString StringList::join (const char *delimiter) const {
 	return (join (StdString (delimiter)));
+}
+
+StdString StringList::loopNext (StringList::const_iterator *pos) const {
+	StdString s;
+
+	if (*pos == cend ()) {
+		*pos = cbegin ();
+	}
+	if (*pos != cend ()) {
+		s.assign (**pos);
+		++(*pos);
+	}
+	return (s);
 }

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -134,6 +134,15 @@ public:
 
 	// URL encode the string's content and return the resulting value
 	StdString urlEncoded () const;
+
+	// Base64 encode the provided data and assign the string to the resulting value
+	void assignBase64 (const unsigned char *data, int dataLength);
+
+	// Base64 encode the string's content and assign it to the resulting value
+	void base64Encode ();
+
+	// Base64 encode the string's content and return the resulting value
+	StdString base64Encoded () const;
 
 	// Escape the string's content for use as a JSON string value and assign it to the resulting value
 	void jsonEscape ();

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,7 +29,6 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include "Log.h"
 #include "StdString.h"
 #include "App.h"
 #include "UiText.h"
@@ -42,7 +41,7 @@
 #include "HyperlinkWindow.h"
 #include "IconCardWindow.h"
 
-IconCardWindow::IconCardWindow (Sprite *iconSprite, const StdString &cardName, const StdString &cardSubtitle, const StdString &cardDetailText)
+IconCardWindow::IconCardWindow (Sprite *iconSprite)
 : Panel ()
 , iconImage (NULL)
 , nameLabel (NULL)
@@ -54,14 +53,8 @@ IconCardWindow::IconCardWindow (Sprite *iconSprite, const StdString &cardName, c
 	setFillBg (true, UiConfiguration::instance->mediumBackgroundColor);
 
 	iconImage = (Image *) addWidget (new Image (iconSprite));
-	nameLabel = (Label *) addWidget (new Label (cardName, UiConfiguration::HeadlineFont, UiConfiguration::instance->primaryTextColor));
-	if (! cardSubtitle.empty ()) {
-		subtitleLabel = (Label *) addWidget (new Label (cardSubtitle, UiConfiguration::CaptionFont, UiConfiguration::instance->primaryTextColor));
-	}
-	if (! cardDetailText.empty ()) {
-		detailText = (TextFlow *) addWidget (new TextFlow (UiConfiguration::instance->textFieldMediumLineLength * UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, UiConfiguration::CaptionFont));
-		detailText->setText (cardDetailText);
-	}
+	nameLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::HeadlineFont, UiConfiguration::instance->primaryTextColor));
+	subtitleLabel = (Label *) addWidget (new Label (StdString (""), UiConfiguration::CaptionFont, UiConfiguration::instance->primaryTextColor));
 
 	refreshLayout ();
 }
@@ -74,7 +67,28 @@ StdString IconCardWindow::toStringDetail () {
 	return (StdString (" IconCardWindow"));
 }
 
-void IconCardWindow::setDetailText (const StdString &text) {
+void IconCardWindow::setName (const StdString &text, UiConfiguration::FontType fontType) {
+	nameLabel->setText (text);
+	if (fontType != UiConfiguration::NoFont) {
+		nameLabel->setFont (fontType);
+	}
+	refreshLayout ();
+}
+
+void IconCardWindow::setSubtitle (const StdString &text, UiConfiguration::FontType fontType) {
+	subtitleLabel->setText (text);
+	if (fontType != UiConfiguration::NoFont) {
+		subtitleLabel->setFont (fontType);
+	}
+	subtitleLabel->isVisible = (! subtitleLabel->text.empty ());
+	refreshLayout ();
+}
+
+void IconCardWindow::setSubtitleColor (const Color &color) {
+	subtitleLabel->textColor.assign (color);
+}
+
+void IconCardWindow::setDetailText (const StdString &text, UiConfiguration::FontType fontType) {
 	if (text.empty ()) {
 		if (detailText) {
 			detailText->isDestroyed = true;
@@ -87,6 +101,9 @@ void IconCardWindow::setDetailText (const StdString &text) {
 			detailText = (TextFlow *) addWidget (new TextFlow (UiConfiguration::instance->textFieldMediumLineLength * UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->maxGlyphWidth, UiConfiguration::CaptionFont));
 		}
 		detailText->setText (text);
+		if (fontType != UiConfiguration::NoFont) {
+			detailText->setFont (fontType);
+		}
 		refreshLayout ();
 	}
 }
@@ -111,7 +128,7 @@ void IconCardWindow::refreshLayout () {
 	x += iconImage->width + UiConfiguration::instance->marginSize;
 	ymin = y + iconImage->height + UiConfiguration::instance->marginSize;
 
-	if (subtitleLabel) {
+	if (subtitleLabel->isVisible) {
 		nameLabel->position.assign (x, y);
 		y += nameLabel->maxLineHeight + UiConfiguration::instance->textLineHeightMargin;
 		subtitleLabel->position.assign (x, y);

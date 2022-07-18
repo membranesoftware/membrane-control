@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -37,7 +37,6 @@
 #include "WidgetHandle.h"
 #include "Button.h"
 #include "HelpWindow.h"
-#include "CapturePlaylistWindow.h"
 #include "Ui.h"
 
 class CameraUi : public Ui {
@@ -54,24 +53,20 @@ public:
 		TimelineRefreshOnButtonSprite = 7,
 		TimelineRefreshOffButtonSprite = 8,
 		TimelapseIconSprite = 9,
-		ShowCapturePlaylistButtonSprite = 10,
-		CreatePlaylistButtonSprite = 11,
+		ClearDisplayButtonSprite = 10,
+		FlipIconSprite = 11,
 		ShuffleIconSprite = 12,
-		SpeedIconSprite = 13,
-		AddPlaylistItemButtonSprite = 14,
-		FlipIconSprite = 15,
-		ClearDisplayButtonSprite = 16
+		SpeedIconSprite = 13
 	};
 
 	// Card view row numbers
 	enum {
-		AgentToggleRow = 0,
-		UnexpandedAgentRow = 1,
-		ExpandedAgentRow = 2,
-		PlaylistToggleRow = 3,
-		UnexpandedPlaylistRow = 4,
-		ExpandedPlaylistRow = 5,
-		CaptureRow = 6
+		CameraToggleRow = 0,
+		UnexpandedCameraRow = 1,
+		ExpandedCameraRow = 2,
+		MonitorToggleRow = 3,
+		UnexpandedMonitorRow = 5,
+		ExpandedMonitorRow = 6
 	};
 
 	// Toolbar modes
@@ -82,22 +77,25 @@ public:
 	};
 
 	// Prefs keys
-	static const char *SelectedAgentsKey;
-	static const char *ExpandedAgentsKey;
-	static const char *SelectedCapturesKey;
+	static const char *SelectedItemsKey;
+	static const char *ExpandedItemsKey;
 	static const char *ImageSizeKey;
 	static const char *AutoReloadKey;
 	static const char *ToolbarModeKey;
-	static const char *PlaylistsKey;
 
 	CameraUi ();
 	~CameraUi ();
+
+	bool isAutoReloading;
 
 	// Set fields in the provided HelpWindow widget as appropriate for the UI's help content
 	void setHelpWindowContent (HelpWindow *helpWindow);
 
 	// Execute operations appropriate when an agent control link client becomes connected
 	void handleLinkClientConnect (const StdString &agentId);
+
+	// Execute an interface action to open the named widget and return a boolean value indicating if the widget was found
+	bool openWidget (const StdString &targetName);
 
 	// Return the string description of the provided image quality constant
 	static StdString getImageQualityDescription (int imageQuality);
@@ -110,7 +108,7 @@ protected:
 	Widget *createBreadcrumbWidget ();
 
 	// Load subclass-specific resources and return a result value
-	int doLoad ();
+	OsUtil::Result doLoad ();
 
 	// Unload subclass-specific resources
 	void doUnload ();
@@ -153,23 +151,13 @@ private:
 	static void monitorScreenshotLoaded (void *uiPtr, Widget *widgetPtr);
 	static void imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void smallImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
+	static void mediumImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
 	static void largeImageSizeActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void expandAgentsToggleStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void expandPlaylistsToggleStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void expandCamerasToggleStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void expandMonitorsToggleStateChanged (void *uiPtr, Widget *widgetPtr);
 	static void reloadButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void reloadAgent (void *uiPtr, Widget *widgetPtr);
 	static void autoReloadToggleStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void playlistSelectStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void playlistExpandStateChanged (void *uiPtr, Widget *widgetPtr);
-	static void playlistNameClicked (void *uiPtr, Widget *widgetPtr);
-	static void playlistNameEdited (void *uiPtr, Widget *widgetPtr);
-	static void playlistNameEditEnterButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void playlistItemListChanged (void *uiPtr, Widget *widgetPtr);
-	static void playlistAddItemActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void playlistRemoveActionClicked (void *uiPtr, Widget *widgetPtr);
-	static void playlistRemoveActionClosed (void *uiPtr, Widget *widgetPtr);
-	static void playlistAddItemMouseEntered (void *uiPtr, Widget *widgetPtr);
-	static void playlistAddItemMouseExited (void *uiPtr, Widget *widgetPtr);
 	static void cameraTimelineThumbnailClicked (void *uiPtr, Widget *widgetPtr);
 	static void configureCameraButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void configureCameraActionOptionChanged (void *uiPtr, Widget *widgetPtr);
@@ -177,49 +165,28 @@ private:
 	static void clearTimelapseButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void clearTimelapseActionClosed (void *uiPtr, Widget *widgetPtr);
 	static void showCameraImageButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void showCapturePlaylistButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void showCameraImageActionClosed (void *uiPtr, Widget *widgetPtr);
 	static void playCameraStreamButtonClicked (void *uiPtr, Widget *widgetPtr);
+	static void playCameraStreamActionClosed (void *uiPtr, Widget *widgetPtr);
 	static void clearDisplayButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void createPlaylistButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static void commandButtonMouseEntered (void *uiPtr, Widget *widgetPtr);
 	static void commandButtonMouseExited (void *uiPtr, Widget *widgetPtr);
-	static void captureViewButtonClicked (void *uiPtr, Widget *widgetPtr);
-	static void captureSelectStateChanged (void *uiPtr, Widget *widgetPtr);
+	static void cameraOpenButtonClicked (void *uiPtr, Widget *widgetPtr);
 	static StdString capturePeriodValueName (float sliderValue);
+	static void invokeMonitorCommandComplete (Ui *invokeUi, const StdString &agentId, Json *invokeCommand, Json *responseCommand, bool isResponseCommandSuccess);
+	static void invokeCameraCommandComplete (Ui *invokeUi, const StdString &agentId, Json *invokeCommand, Json *responseCommand, bool isResponseCommandSuccess);
 
 	static const int CapturePeriods[];
 	static const int DefaultCapturePeriodIndex;
-	static const int MinAutoReloadDelay;
-
-	struct AutoReloadInfo {
-		int64_t lastSendTime;
-		int64_t lastReceiveTime;
-		int64_t lastStatusCreateTime;
-		bool isCapturing;
-		int capturePeriod;
-		AutoReloadInfo (): lastSendTime (0), lastReceiveTime (0), lastStatusCreateTime (0), isCapturing (false), capturePeriod (0) { }
-	};
-
-	// Return an autoReloadMap iterator positioned at the specified entry, creating it if it doesn't already exist
-	std::map<StdString, CameraUi::AutoReloadInfo>::iterator getAutoReloadInfo (const StdString &agentId);
 
 	// Set the control mode for the secondary toolbar, optionally forcing the reset even if the requested mode matches the mode already active
 	void setToolbarMode (int mode, bool forceReset = false);
-
-	// Return the provided base value, after appending suffixes as needed to generate an unused playlist name
-	StdString getAvailablePlaylistName (const StdString &baseName = StdString (""));
-
-	// Return a newly created CapturePlaylistWindow object that has been initialized for use with the UI
-	CapturePlaylistWindow *createCapturePlaylistWindow ();
 
 	// Return a string containing the set of selected camera agent names, appropriate for use in a command popup and truncated to fit within the specified maximum width, or an empty string if no camera agents are selected
 	StdString getSelectedCameraNames (float maxWidth);
 
 	// Return a string containing the set of selected monitor agent names, appropriate for use in a command popup and truncated to fit within the specified maximum width, or an empty string if no monitor agents are selected
 	StdString getSelectedMonitorNames (float maxWidth);
-
-	// Return a string containing the set of selected capture names, appropriate for use in a command popup and truncated to fit within the specified maximum width, or an empty string if no captures are selected
-	StdString getSelectedCaptureNames (float maxWidth);
 
 	// Reset checked states for row expand toggles, as appropriate for item expand state
 	void resetExpandToggles ();
@@ -228,24 +195,19 @@ private:
 	Button *configureCameraButton;
 	Button *clearTimelapseButton;
 	Button *showCameraImageButton;
-	Button *showCapturePlaylistButton;
 	Button *playCameraStreamButton;
 	Button *clearDisplayButton;
 	int cameraCount;
 	int cardDetail;
-	bool isAutoReloading;
 	WidgetHandle autoReloadToggle;
 	WidgetHandle emptyStateWindow;
 	WidgetHandle commandPopup;
 	WidgetHandle commandPopupSource;
-	WidgetHandle expandAgentsToggle;
-	WidgetHandle expandPlaylistsToggle;
-	WidgetHandle targetCapture;
+	WidgetHandle expandCamerasToggle;
+	WidgetHandle expandMonitorsToggle;
+	WidgetHandle targetCamera;
 	HashMap selectedCameraMap;
 	HashMap selectedMonitorMap;
-	HashMap selectedCaptureMap;
-	StdString selectedPlaylistId;
-	std::map<StdString, CameraUi::AutoReloadInfo> autoReloadMap;
 };
 
 #endif

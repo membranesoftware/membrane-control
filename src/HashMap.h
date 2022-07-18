@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -58,13 +58,29 @@ public:
 	void clear ();
 
 	// Return the number of items in the map
-	int size ();
+	int size () const;
 
 	// Return a boolean value indicating if the map is empty
-	bool empty ();
+	bool empty () const;
+
+	// Return a boolean value indicating if the map contains the same keys and values as another map
+	bool equals (const HashMap &other) const;
 
 	// Return a string representation of the map
-	StdString toString ();
+	StdString toString () const;
+
+	// Return a newly created Json object containing map values
+	Json *toJson () const;
+
+	// Clear map values and replace them with values from the provided Json object, as previously created by toJson
+	void readJson (Json *json);
+
+	// Read values from configuration file data and store the resulting items in the map, optionally clearing the map before doing so. Returns a Result value.
+	OsUtil::Result read (const StdString &filename, bool shouldClear = false);
+	OsUtil::Result read (Buffer *buffer, bool shouldClear = false);
+
+	// Write values from the map to the specified file. Returns a Result value.
+	OsUtil::Result write (const StdString &filename);
 
 	// Set the sort function that should be used to order items in generated map traversals
 	void sort (HashMap::SortFunction fn);
@@ -83,10 +99,14 @@ public:
 	void insert (const char *key, int value);
 	void insert (const StdString &key, int64_t value);
 	void insert (const char *key, int64_t value);
+	void insert (const StdString &key, float value);
+	void insert (const char *key, float value);
+	void insert (const StdString &key, double value);
+	void insert (const char *key, double value);
 
 	// Set a key-value pair in the map to store a StringList. If value is an empty list, instead remove the named key.
-	void insert (const StdString &key, StringList *value);
-	void insert (const char *key, StringList *value);
+	void insert (const StdString &key, const StringList &value);
+	void insert (const char *key, const StringList &value);
 
 	// Set key-value pairs in the map to store a JsonList, freeing all contained Json objects in the process. If value is an empty list, instead remove all key-value pairs for JsonList objects associated with the named base key.
 	void insert (const StdString &key, JsonList *value);
@@ -95,37 +115,34 @@ public:
 	// Remove the specified key or list of keys from the map
 	void remove (const StdString &key);
 	void remove (const char *key);
-	void remove (StringList *keys);
-
-	// Read values from configuration file data and store the resulting items in the map, optionally clearing the map before doing so. Returns a Result value.
-	OsUtil::Result read (const StdString &filename, bool shouldClear = false);
-	OsUtil::Result read (Buffer *buffer, bool shouldClear = false);
-
-	// Write values from the map to the specified file. Returns a Result value.
-	OsUtil::Result write (const StdString &filename);
+	void remove (const StringList &keys);
 
 	// Return a boolean value indicating if the provided key exists in the map
-	bool exists (const StdString &key);
-	bool exists (const char *key);
+	bool exists (const StdString &key) const;
+	bool exists (const char *key) const;
 
 	// Return a string containing a value from the map, or the specified default if no such value exists
-	StdString find (const StdString &key, const StdString &defaultValue);
-	StdString find (const StdString &key, const char *defaultValue);
-	StdString find (const char *key, const char *defaultValue);
-	int find (const StdString &key, int defaultValue);
-	int find (const char *key, int defaultValue);
-	int64_t find (const StdString &key, int64_t defaultValue);
-	int64_t find (const char *key, int64_t defaultValue);
-	bool find (const StdString &key, bool defaultValue);
-	bool find (const char *key, bool defaultValue);
+	StdString find (const StdString &key, const StdString &defaultValue) const;
+	StdString find (const StdString &key, const char *defaultValue) const;
+	StdString find (const char *key, const char *defaultValue) const;
+	int find (const StdString &key, int defaultValue) const;
+	int find (const char *key, int defaultValue) const;
+	int64_t find (const StdString &key, int64_t defaultValue) const;
+	int64_t find (const char *key, int64_t defaultValue) const;
+	bool find (const StdString &key, bool defaultValue) const;
+	bool find (const char *key, bool defaultValue) const;
+	float find (const StdString &key, float defaultValue) const;
+	float find (const char *key, float defaultValue) const;
+	double find (const StdString &key, double defaultValue) const;
+	double find (const char *key, double defaultValue) const;
 
 	// Clear the provided StringList and fill it with items from the specified string list key if found
-	void find (const StdString &key, StringList *destList);
-	void find (const char *key, StringList *destList);
+	void find (const StdString &key, StringList *destList) const;
+	void find (const char *key, StringList *destList) const;
 
 	// Clear the provided JsonList and free all contained Json objects, then fill it with items from the specified object list key if found
-	void find (const StdString &key, JsonList *destList);
-	void find (const char *key, JsonList *destList);
+	void find (const StdString &key, JsonList *destList) const;
+	void find (const char *key, JsonList *destList) const;
 
 	// Return an iterator positioned at the map's first element
 	HashMap::Iterator begin ();

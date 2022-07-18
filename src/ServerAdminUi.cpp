@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,7 +30,6 @@
 #include "Config.h"
 #include <stdlib.h>
 #include "App.h"
-#include "Log.h"
 #include "OsUtil.h"
 #include "StdString.h"
 #include "StringList.h"
@@ -89,7 +88,7 @@ void ServerAdminUi::setHelpWindowContent (HelpWindow *helpWindow) {
 	helpWindow->addTopicLink (UiText::instance->getText (UiTextString::SearchForHelp).capitalized (), App::getHelpUrl (""));
 }
 
-int ServerAdminUi::doLoad () {
+OsUtil::Result ServerAdminUi::doLoad () {
 	cardView->setRowHeader (ServerAdminUi::TaskRow, createRowHeaderPanel (UiText::instance->getText (UiTextString::Tasks).capitalized ()));
 
 	cardView->setRowHeader (ServerAdminUi::ServerPasswordsRow, createRowHeaderPanel (UiText::instance->getText (UiTextString::ServerPasswords).capitalized ()));
@@ -101,7 +100,7 @@ int ServerAdminUi::doLoad () {
 
 	App::instance->shouldSyncRecordStore = true;
 
-	return (OsUtil::Result::Success);
+	return (OsUtil::Success);
 }
 
 void ServerAdminUi::doUnload () {
@@ -160,7 +159,7 @@ void ServerAdminUi::doSyncRecordStore () {
 	RecordStore::instance->processCommandRecords (SystemInterface::CommandId_TaskItem, ServerAdminUi::processTaskItem, this);
 	if (! watchIdList.empty ()) {
 		params = new Json ();
-		params->set ("taskIds", &watchIdList);
+		params->set ("taskIds", watchIdList);
 		AgentControl::instance->writeLinkCommand (App::instance->createCommand (SystemInterface::Command_WatchTasks, params), agentId);
 	}
 
@@ -173,7 +172,9 @@ void ServerAdminUi::doSyncRecordStore () {
 	}
 	else {
 		if (! iconcardwindow) {
-			iconcardwindow = new IconCardWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::InfoIconSprite), UiText::instance->getText (UiTextString::ServerAdminUiEmptyTaskListTitle), StdString (""), UiText::instance->getText (UiTextString::ServerAdminUiEmptyTaskListText));
+			iconcardwindow = new IconCardWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::InfoIconSprite));
+			iconcardwindow->setName (UiText::instance->getText (UiTextString::ServerAdminUiEmptyTaskListTitle));
+			iconcardwindow->setDetailText (UiText::instance->getText (UiTextString::ServerAdminUiEmptyTaskListText));
 			emptyTaskWindow.assign (iconcardwindow);
 			iconcardwindow->itemId.assign (cardView->getAvailableItemId ());
 			cardView->addItem (iconcardwindow, iconcardwindow->itemId, ServerAdminUi::TaskRow);
@@ -297,14 +298,13 @@ void ServerAdminUi::setAdminPasswordActionClosed (void *uiPtr, Widget *widgetPtr
 	ActionWindow *action;
 	Json *params;
 	StdString adminsecret;
-	int result, secretindex;
+	int secretindex;
 
 	ui = (ServerAdminUi *) uiPtr;
 	action = (ActionWindow *) widgetPtr;
 	if (! action->isConfirmed) {
 		return;
 	}
-
 	ui->lastSecretIndex = action->getStringValue (UiText::instance->getText (UiTextString::Password).capitalized (), "");
 	if (ui->lastSecretIndex.empty ()) {
 		return;
@@ -316,31 +316,21 @@ void ServerAdminUi::setAdminPasswordActionClosed (void *uiPtr, Widget *widgetPtr
 	adminsecret = AgentControl::instance->getAdminSecretValue (secretindex);
 	params = new Json ();
 	params->set ("secret", adminsecret);
-	ui->retain ();
-	result = AgentControl::instance->invokeCommand (ui->agentId, App::instance->createCommand (SystemInterface::Command_SetAdminSecret, params), ServerAdminUi::setAdminSecretComplete, ui);
-	if (result != OsUtil::Result::Success) {
-		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
-		ui->release ();
-	}
+	ui->invokeCommand (CommandHistory::instance->setAdminSecret (StringList (ui->agentId)), ui->agentId, App::instance->createCommand (SystemInterface::Command_SetAdminSecret, params), ServerAdminUi::setAdminSecretComplete);
 }
 
-void ServerAdminUi::setAdminSecretComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand) {
+void ServerAdminUi::setAdminSecretComplete (Ui *invokeUi, const StdString &agentId, Json *invokeCommand, Json *responseCommand, bool isResponseCommandSuccess) {
 	ServerAdminUi *ui;
 	StdString val;
 	int secretindex;
 
-	ui = (ServerAdminUi *) uiPtr;
-	if (responseCommand && (SystemInterface::instance->getCommandId (responseCommand) == SystemInterface::CommandId_CommandResult) && SystemInterface::instance->getCommandBooleanParam (responseCommand, "success", false)) {
+	ui = (ServerAdminUi *) invokeUi;
+	if (isResponseCommandSuccess) {
 		val.assign (ui->lastSecretIndex);
 		ui->lastSecretIndex.assign ("");
 		if (! val.parseInt (&secretindex)) {
 			secretindex = -1;
 		}
 		AgentControl::instance->setAgentAuthorization (agentId, secretindex);
-		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::ServerAdminUiSetPasswordCompleteMessage));
 	}
-	else {
-		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::InternalError));
-	}
-	ui->release ();
 }

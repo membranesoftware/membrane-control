@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -39,7 +39,7 @@
 
 class CameraThumbnailWindow : public Panel {
 public:
-	CameraThumbnailWindow (const StdString &agentId, const StdString &captureImagePath, int64_t thumbnailTimestamp);
+	CameraThumbnailWindow (const StdString &agentId, int sensor, const StdString &captureImagePath, int64_t thumbnailTimestamp);
 	virtual ~CameraThumbnailWindow ();
 
 	// Read-write data members
@@ -47,6 +47,7 @@ public:
 
 	// Read-only data members
 	StdString agentId;
+	int sensor;
 	StdString captureImagePath;
 	int64_t thumbnailTimestamp;
 	bool isHighlighted;

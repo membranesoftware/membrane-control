@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,8 +29,6 @@
 */
 #include "Config.h"
 #include <stdlib.h>
-#include "App.h"
-#include "Log.h"
 #include "StdString.h"
 #include "OsUtil.h"
 #include "Resource.h"
@@ -53,15 +51,14 @@ OsUtil::Result UiText::load (const StdString &language) {
 	size_t curpos, pos1, pos2;
 
 	path.sprintf ("text/%s.txt", language.c_str ());
-	buffer = App::instance->resource.loadFile (path);
+	buffer = Resource::instance->loadFile (path);
 	if ((! buffer) && (! language.equals (UiText::DefaultLanguage))) {
 		path.sprintf ("text/%s.txt", UiText::DefaultLanguage.c_str ());
-		buffer = App::instance->resource.loadFile (path);
+		buffer = Resource::instance->loadFile (path);
 	}
 	if (! buffer) {
-		return (OsUtil::Result::FileOpenFailedError);
+		return (OsUtil::FileOpenFailedError);
 	}
-
 	text.assignBuffer (buffer);
 	textStrings.clear ();
 	curpos = 0;
@@ -78,8 +75,8 @@ OsUtil::Result UiText::load (const StdString &language) {
 		curpos = pos2 + 1;
 	}
 
-	App::instance->resource.unloadFile (path);
-	return (OsUtil::Result::Success);
+	Resource::instance->unloadFile (path);
+	return (OsUtil::Success);
 }
 
 StdString UiText::getText (int stringIndex) {

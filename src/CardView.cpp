@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -34,7 +34,6 @@
 #include <map>
 #include "SDL2/SDL.h"
 #include "App.h"
-#include "Log.h"
 #include "StdString.h"
 #include "Input.h"
 #include "Ui.h"
@@ -53,6 +52,7 @@ const int CardView::AnimateScaleDuration = 80; // ms
 CardView::CardView (float viewWidth, float viewHeight)
 : ScrollView ()
 , cardAreaWidth (viewWidth)
+, cardAreaBottomPadding (0.0f)
 , itemMarginSize (0.0f)
 , itemMutex (NULL)
 , isSorted (false)
@@ -67,6 +67,7 @@ CardView::CardView (float viewWidth, float viewHeight)
 
 	setViewSize (viewWidth, viewHeight);
 	cardAreaWidth = width - scrollBar->width - (UiConfiguration::instance->paddingSize * 2.0f) - (UiConfiguration::instance->marginSize * 0.25f);
+	cardAreaBottomPadding = UiConfiguration::instance->paddingSize * 2.0f;
 }
 
 CardView::~CardView () {
@@ -99,6 +100,14 @@ void CardView::setViewSize (float viewWidth, float viewHeight) {
 	ScrollView::setViewSize (viewWidth, viewHeight);
 	scrollBar->setMaxTrackLength (viewHeight - (UiConfiguration::instance->paddingSize * 2.0f));
 	cardAreaWidth = width - scrollBar->width - (UiConfiguration::instance->paddingSize * 2.0f) - (UiConfiguration::instance->marginSize * 0.25f);
+	refreshLayout ();
+}
+
+void CardView::setBottomPadding (float paddingSize) {
+	if (FLOAT_EQUALS (paddingSize, cardAreaBottomPadding)) {
+		return;
+	}
+	cardAreaBottomPadding = paddingSize;
 	refreshLayout ();
 }
 
@@ -357,7 +366,6 @@ bool CardView::doProcessMouseState (const Widget::MouseState &mouseState) {
 			++i;
 		}
 	}
-
 	return (consumed);
 }
 
@@ -426,7 +434,6 @@ StdString CardView::getAvailableItemId () {
 			break;
 		}
 	}
-
 	return (id);
 }
 
@@ -456,9 +463,7 @@ Widget *CardView::addItem (Panel *itemPanel, const StdString &itemId, int row, b
 	item.panel->retain ();
 	item.row = row;
 	rowpos = getRow (row);
-	if (rowpos->second.layout >= 0) {
-		item.panel->setLayout (rowpos->second.layout, rowpos->second.maxItemWidth);
-	}
+	item.panel->setLayout (rowpos->second.layout, rowpos->second.maxItemWidth);
 
 	SDL_LockMutex (itemMutex);
 	itemList.push_back (item);
@@ -516,7 +521,6 @@ void CardView::removeRowItems (int row) {
 			}
 			++i;
 		}
-
 		if (! found) {
 			break;
 		}
@@ -528,12 +532,15 @@ void CardView::removeRowItems (int row) {
 }
 
 void CardView::setItemRow (const StdString &itemId, int targetRow, bool shouldSkipRefreshLayout) {
+	std::map<int, CardView::Row>::iterator rowpos;
 	std::list<CardView::Item>::iterator pos;
 
+	rowpos = getRow (targetRow);
 	SDL_LockMutex (itemMutex);
 	pos = findItemPosition (itemId);
 	if ((pos != itemList.end ()) && (pos->row != targetRow)) {
 		pos->row = targetRow;
+		pos->panel->setLayout (rowpos->second.layout, rowpos->second.maxItemWidth);
 		isSorted = false;
 	}
 	SDL_UnlockMutex (itemMutex);
@@ -598,6 +605,18 @@ void CardView::processRowItems (int row, Widget::EventCallback fn, void *fnData,
 	}
 }
 
+void CardView::scrollToRow (int row, float positionDeltaY) {
+	std::map<int, CardView::Row>::iterator pos;
+
+	pos = rowMap.find (row);
+	if (pos == rowMap.end ()) {
+		return;
+	}
+	setViewOrigin (0.0f, pos->second.positionY + positionDeltaY);
+	scrollBar->setPosition (viewOriginY, true);
+	scrollBar->position.assignY (viewOriginY + UiConfiguration::instance->paddingSize);
+}
+
 void CardView::scrollToItem (const StdString &itemId) {
 	std::list<CardView::Item>::iterator pos;
 
@@ -648,6 +667,8 @@ void CardView::refreshLayout () {
 
 			if (row >= 0) {
 				rowpos = getRow (row);
+				rowpos->second.positionY = y;
+
 				headerpanel = rowpos->second.headerPanel;
 				if (headerpanel && headerpanel->isVisible) {
 					headerpanel->position.assign (x0, y);
@@ -687,7 +708,7 @@ void CardView::refreshLayout () {
 	SDL_UnlockMutex (itemMutex);
 
 	y += rowh;
-	y += (UiConfiguration::instance->paddingSize * 2.0f);
+	y += cardAreaBottomPadding;
 	scrollBar->setScrollBounds (height, y);
 	y -= height;
 	if (y < 0.0f) {
@@ -818,13 +839,11 @@ std::list<CardView::Item>::iterator CardView::findItemPosition (const StdString 
 	if ((index < 0) || (index >= (int) itemList.size ())) {
 		return (itemList.end ());
 	}
-
 	pos = itemList.begin ();
 	while (index > 0) {
 		++pos;
 		--index;
 	}
-
 	return (pos);
 }
 
@@ -837,7 +856,6 @@ std::map<int, CardView::Row>::iterator CardView::getRow (int rowNumber) {
 		rowMap.insert (std::pair<int, CardView::Row> (rowNumber, row));
 		pos = rowMap.find (rowNumber);
 	}
-
 	return (pos);
 }
 

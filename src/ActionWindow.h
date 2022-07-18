@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -87,6 +87,9 @@ public:
 	void addOption (const StdString &optionName, Toggle *toggle, const StdString &descriptionText = StdString (""));
 	void addOption (const StdString &optionName, SliderWindow *slider, const StdString &descriptionText = StdString (""));
 
+	// Set name label text for the named option
+	void setOptionNameText (const StdString &optionName, const StdString &nameText);
+
 	// Set description text for the named option
 	void setOptionDescriptionText (const StdString &optionName, const StdString &descriptionText);
 
@@ -149,7 +152,13 @@ private:
 		Widget *optionWidget;
 		bool isNotEmptyString;
 		bool isDisabled;
-		Item (): type (0), nameLabel (NULL), descriptionText (NULL), optionWidget (NULL), isNotEmptyString (false), isDisabled (false) { }
+		Item ():
+			type (0),
+			nameLabel (NULL),
+			descriptionText (NULL),
+			optionWidget (NULL),
+			isNotEmptyString (false),
+			isDisabled (false) { }
 	};
 
 	// Return an iterator positioned at the specified item in itemList, or the end of itemList if the item wasn't found

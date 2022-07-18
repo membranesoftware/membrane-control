@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -54,6 +54,7 @@ AgentTaskWindow::AgentTaskWindow (const StdString &agentId)
 : Panel ()
 , agentId (agentId)
 , isTaskRunning (false)
+, percentComplete (0.0f)
 , iconImage (NULL)
 , nameLabel (NULL)
 , descriptionLabel (NULL)
@@ -95,7 +96,6 @@ AgentTaskWindow *AgentTaskWindow::castWidget (Widget *widget) {
 
 void AgentTaskWindow::syncRecordStore () {
 	Json *record;
-	float pct;
 
 	record = RecordStore::instance->findRecord (agentId, SystemInterface::CommandId_AgentStatus);
 	if (! record) {
@@ -103,9 +103,9 @@ void AgentTaskWindow::syncRecordStore () {
 	}
 	nameLabel->setText (SystemInterface::instance->getCommandStringParam (record, "runTaskName", ""));
 	descriptionLabel->setText (UiConfiguration::instance->fonts[UiConfiguration::CaptionFont]->truncatedText (SystemInterface::instance->getCommandStringParam (record, "runTaskSubtitle", ""), ((float) App::instance->windowWidth) * AgentTaskWindow::TextTruncateScale, Font::DotTruncateSuffix));
-	pct = SystemInterface::instance->getCommandNumberParam (record, "runTaskPercentComplete", (float) 0.0f);
-	progressBar->setProgress (pct, 100.0f);
-	setMouseHoverTooltip (StdString::createSprintf ("%s: %i%% %s", UiText::instance->getText (UiTextString::TaskInProgress).capitalized ().c_str (), (int) pct, UiText::instance->getText (UiTextString::Complete).c_str ()));
+	percentComplete = SystemInterface::instance->getCommandNumberParam (record, "runTaskPercentComplete", (float) 0.0f);
+	progressBar->setProgress (percentComplete, 100.0f);
+	setMouseHoverTooltip (StdString::createSprintf ("%s: %i%% %s", UiText::instance->getText (UiTextString::TaskInProgress).capitalized ().c_str (), (int) percentComplete, UiText::instance->getText (UiTextString::Complete).c_str ()));
 
 	if (nameLabel->text.empty ()) {
 		isTaskRunning = false;

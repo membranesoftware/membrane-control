@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -53,8 +53,8 @@ public:
 	// Set the minimum and maximum extent of the view's vertical scroll position
 	void setVerticalScrollBounds (float minY, float maxY);
 
-	// Return a boolean value indicating if the view has scrolled to its bottom extent
-	bool isScrolledToBottom ();
+	// Return a boolean value indicating if the view has scrolled to the bottom extent, within an optional margin height
+	bool isScrolledToBottom (float marginHeight = 0.0f);
 
 protected:
 	// Execute operations appropriate when the widget receives new mouse state and return a boolean value indicating if mouse wheel events were consumed and should no longer be processed

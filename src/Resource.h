@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -46,6 +46,7 @@ class Resource {
 public:
 	Resource ();
 	~Resource ();
+	static Resource *instance;
 
 	// Set the source path that should be used for loading file assets. If the path ends in ".dat", it is opened as a bundle file; otherwise, the path is treated as a directory prefix for direct file access.
 	void setSource (const StdString &path);

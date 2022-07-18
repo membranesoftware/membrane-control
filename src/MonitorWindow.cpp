@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -31,7 +31,6 @@
 #include <stdlib.h>
 #include "App.h"
 #include "ClassId.h"
-#include "Log.h"
 #include "StdString.h"
 #include "UiText.h"
 #include "OsUtil.h"
@@ -53,6 +52,8 @@
 #include "IconLabelWindow.h"
 #include "MonitorWindow.h"
 
+const float MonitorWindow::ExpandedNameTruncateScale = 0.47f;
+const float MonitorWindow::UnexpandedNameTruncateScale = 0.24f;
 const float MonitorWindow::ScreenshotImageScale = 0.27f;
 
 MonitorWindow::MonitorWindow (const StdString &agentId)
@@ -100,7 +101,7 @@ MonitorWindow::MonitorWindow (const StdString &agentId)
 	screenshotImage = (ImageWindow *) addWidget (new ImageWindow (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
 	screenshotImage->loadCallback = Widget::EventCallbackContext (MonitorWindow::screenshotImageLoaded, this);
 	screenshotImage->mouseLongPressCallback = Widget::EventCallbackContext (MonitorWindow::screenshotImageLongPressed, this);
-	screenshotImage->setLoadResize (true, ((float) App::instance->windowWidth) * MonitorWindow::ScreenshotImageScale);
+	screenshotImage->onLoadScale (((float) App::instance->windowWidth) * MonitorWindow::ScreenshotImageScale);
 	screenshotImage->setFillBg (true, UiConfiguration::instance->darkBackgroundColor);
 	screenshotImage->isVisible = false;
 
@@ -173,7 +174,6 @@ void MonitorWindow::syncRecordStore () {
 	}
 
 	agentName.assign (Agent::getCommandAgentName (record));
-	nameLabel->setText (agentName);
 	agentTaskCount = SystemInterface::instance->getCommandNumberParam (record, "taskCount", (int) 0);
 	descriptionLabel->setText (SystemInterface::instance->getCommandStringParam (record, "applicationName", ""));
 
@@ -182,7 +182,7 @@ void MonitorWindow::syncRecordStore () {
 		screenshotImage->isVisible = false;
 	}
 	else {
-		screenshotImage->setImageUrl (AgentControl::instance->getAgentSecondaryUrl (agentId, NULL, path));
+		screenshotImage->setImageUrl (AgentControl::instance->getAgentSecondaryUrl (agentId, path));
 		screenshotImage->isVisible = isExpanded;
 		t = serverstatus.getNumber ("screenshotTime", (int64_t) -1);
 		if ((t > 0) && (t != screenshotTime)) {
@@ -220,7 +220,7 @@ void MonitorWindow::syncRecordStore () {
 					break;
 				}
 				case SystemInterface::Constant_PlayCameraStreamDisplayState: {
-					text.assign (UiText::instance->getText (UiTextString::PlayingLiveCamera).capitalized ());
+					text.assign (UiText::instance->getText (UiTextString::PlayingLiveVideo).capitalized ());
 					text.append (":");
 					break;
 				}
@@ -269,7 +269,17 @@ void MonitorWindow::syncRecordStore () {
 	streamCountIcon->setMouseHoverTooltip (UiText::instance->getCountText (count, UiTextString::CachedStream, UiTextString::CachedStreams));
 
 	refreshLayout ();
+	resetNameLabel ();
 	Panel::syncRecordStore ();
+}
+
+void MonitorWindow::resetNameLabel () {
+	float w;
+
+	w = (float) App::instance->windowWidth;
+	w *= isExpanded ? MonitorWindow::ExpandedNameTruncateScale : MonitorWindow::UnexpandedNameTruncateScale;
+	nameLabel->setText (UiConfiguration::instance->fonts[nameLabel->textFontType]->truncatedText (agentName, w, Font::DotTruncateSuffix));
+	refreshLayout ();
 }
 
 void MonitorWindow::setSelectEnabled (bool enable) {
@@ -403,6 +413,7 @@ void MonitorWindow::setExpanded (bool expanded, bool shouldSkipStateChangeCallba
 	}
 
 	refreshLayout ();
+	resetNameLabel ();
 }
 
 void MonitorWindow::refreshLayout () {

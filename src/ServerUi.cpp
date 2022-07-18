@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,7 +30,6 @@
 #include "Config.h"
 #include <stdlib.h>
 #include "App.h"
-#include "Log.h"
 #include "StdString.h"
 #include "Resource.h"
 #include "SpriteGroup.h"
@@ -94,7 +93,26 @@ void ServerUi::setHelpWindowContent (HelpWindow *helpWindow) {
 	helpWindow->addTopicLink (UiText::instance->getText (UiTextString::SearchForHelp).capitalized (), App::getHelpUrl (""));
 }
 
-int ServerUi::doLoad () {
+static bool findItem_matchServerName (void *data, Widget *widget) {
+	ServerWindow *server;
+
+	server = ServerWindow::castWidget (widget);
+	return (server && server->agentDisplayName.lowercased ().equals ((char *) data));
+}
+bool ServerUi::openWidget (const StdString &targetName) {
+	ServerWindow *server;
+	StdString name;
+
+	name.assign (targetName.lowercased ());
+	server = (ServerWindow *) cardView->findItem (findItem_matchServerName, (char *) name.c_str ());
+	if (server) {
+		server->eventCallback (server->adminClickCallback);
+		return (true);
+	}
+	return (false);
+}
+
+OsUtil::Result ServerUi::doLoad () {
 	Panel *panel;
 	Toggle *toggle;
 
@@ -118,7 +136,7 @@ int ServerUi::doLoad () {
 	adminSecretWindow->setExpanded (false);
 	cardView->addItem (adminSecretWindow, StdString (""), ServerUi::ServerPasswordsRow);
 
-	return (OsUtil::Result::Success);
+	return (OsUtil::Success);
 }
 
 void ServerUi::doUnload () {
@@ -188,7 +206,7 @@ void ServerUi::doPause () {
 	items.clear ();
 	cardView->processItems (doPause_appendUnexpandedAgentId, &items);
 	prefs = App::instance->lockPrefs ();
-	prefs->insert (ServerUi::UnexpandedAgentsKey, &items);
+	prefs->insert (ServerUi::UnexpandedAgentsKey, items);
 	App::instance->unlockPrefs ();
 }
 
@@ -292,7 +310,9 @@ void ServerUi::doUpdate (int msElapsed) {
 	emptycard = (IconCardWindow *) emptyServerWindow.widget;
 	if ((attachedServerCount <= 0) && (unattachedServerCount <= 0)) {
 		if (! emptycard) {
-			emptycard = new IconCardWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeErrorIconSprite), UiText::instance->getText (UiTextString::ServerUiEmptyAgentStatusTitle), StdString (""), UiText::instance->getText (UiTextString::ServerUiEmptyAgentStatusText1));
+			emptycard = new IconCardWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeErrorIconSprite));
+			emptycard->setName (UiText::instance->getText (UiTextString::ServerUiEmptyAgentStatusTitle));
+			emptycard->setDetailText (UiText::instance->getText (UiTextString::ServerUiEmptyAgentStatusText1));
 			emptycard->setLink (UiText::instance->getText (UiTextString::LearnMore).capitalized (), App::getHelpUrl ("servers"));
 			emptycard->itemId.assign (cardView->getAvailableItemId ());
 			cardView->addItem (emptycard, emptycard->itemId, ServerUi::UnexpandedAttachedServerRow);
@@ -301,7 +321,9 @@ void ServerUi::doUpdate (int msElapsed) {
 	}
 	else if (attachedServerCount <= 0) {
 		if (! emptycard) {
-			emptycard = new IconCardWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeErrorIconSprite), UiText::instance->getText (UiTextString::ServerUiEmptyAgentStatusTitle), StdString (""), UiText::instance->getText (UiTextString::ServerUiEmptyAgentStatusText2));
+			emptycard = new IconCardWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeErrorIconSprite));
+			emptycard->setName (UiText::instance->getText (UiTextString::ServerUiEmptyAgentStatusTitle));
+			emptycard->setDetailText (UiText::instance->getText (UiTextString::ServerUiEmptyAgentStatusText2));
 			emptycard->itemId.assign (cardView->getAvailableItemId ());
 			cardView->addItem (emptycard, emptycard->itemId, ServerUi::UnexpandedAttachedServerRow);
 			emptyServerWindow.assign (emptycard);
@@ -439,7 +461,7 @@ void ServerUi::addressSnackbarHelpClicked (void *uiPtr, Widget *widgetPtr) {
 
 	url.assign (App::getHelpUrl ("servers"));
 	result = OsUtil::openUrl (url);
-	if (result != OsUtil::Result::Success) {
+	if (result != OsUtil::Success) {
 		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::OpenHelpUrlError));
 	}
 	else {
@@ -549,7 +571,7 @@ void ServerUi::serverCheckForUpdatesActionClicked (void *uiPtr, Widget *widgetPt
 
 	ui->clearPopupWidgets ();
 	result = OsUtil::openUrl (server->updateUrl);
-	if (result != OsUtil::Result::Success) {
+	if (result != OsUtil::Success) {
 		App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::OpenUpdateUrlError));
 	}
 	else {

@@ -7,17 +7,26 @@ LuaScriptHelpHelpText Print a list of functions available for execution
 LuaScriptQuitHelpText Exit the application
 LuaScriptPrintHelpText Print any number of values to the console
 LuaScriptDofileHelpText Execute "filename" as a Lua script
-LuaScriptSleepHelpText Delay script execution
+LuaScriptSleepHelpText Delay script execution for "milliseconds"
 LuaScriptPrintserversHelpText Print status information of known servers
 LuaScriptAttachHelpText Maintain a connection to "server" (name or ID)
 LuaScriptDetachHelpText Remove attachment to "server" (name or ID)
 LuaScriptInfoHelpText Print information about "server" (name or ID)
 LuaScriptContactHelpText Contact a new server at "address"
 LuaScriptUnlistHelpText Disconnect and delete contact information from "server"
+LuaScriptPrintcontrolsHelpText Print names of addressable onscreen controls
+LuaScriptClickHelpText Execute the mouse click action for "controlName"
+LuaScriptOpenHelpText Open the interface item with title "windowName"
+LuaScriptTargetHelpText Select the interface item with title "windowName"
+LuaScriptUntargetHelpText Unselect the interface item with title "windowName"
+LuaScriptTimeoutHelpText Set function timeout to "milliseconds"
+LuaScriptTopmenuHelpText Execute the top bar menu action with "actionName"
+LuaScriptTextvalueHelpText Set the text in field "controlName" to "value"
 LuaSyntaxErrorText Lua script parse failed (check syntax)
 LuaParseErrorText Lua script parse failed (internal error)
 LuaScriptExecutionErrorText Lua script execution failed
 EnvironmentVariables environment variables
+FunctionTimeout function timeout
 LuaScriptRunScriptHelpText Lua script that should execute on application launch
 LuaScriptMissingFunctionArgumentErrorText missing function argument
 LuaScriptEmptyStringArgumentErrorText string argument cannot be empty
@@ -25,7 +34,7 @@ LuaScriptLoadScriptErrorText failed to load script (internal error)
 LuaScriptLoadScriptFileErrorText failed to load script (file not found)
 LuaScriptLoadScriptSyntaxErrorText invalid syntax in loaded script file
 LuaScriptLoadScriptExecutionErrorText script execution failed
-LuaScriptEmptyServerArgumentErrorText server must be a non-empty string
+LuaScriptEmptyArgumentErrorText must be a non-empty string
 LuaScriptTargetServerNotFoundErrorText target server not found
 LuaScriptMultipleServersFoundErrorText multiple name matches, use ID instead
 LuaScriptInternalErrorText internal error
@@ -57,6 +66,7 @@ Showing showing
 Exit exit
 Select select
 Clear clear
+Log log
 Settings settings
 About about
 CheckForUpdates check for updates
@@ -65,6 +75,8 @@ WindowSize window size
 TextSize text size
 ShowClock show clock
 ShowInterfaceAnimations show interface animations
+Error error
+Errors errors
 Media media
 MediaFile media file
 MediaFiles media files
@@ -85,7 +97,9 @@ Display display
 DisplayName display name
 Online online
 Offline offline
+InProgress in progress
 Complete complete
+Failed failed
 Contacting contacting
 Monitors monitors
 Server server
@@ -109,7 +123,6 @@ Slow slow
 Fast fast
 Fastest fastest
 Lowest lowest
-Highest highest
 Never never
 Play play
 Stop stop
@@ -121,20 +134,18 @@ None none
 And and
 LearnMore learn more
 SearchForHelp search for help
-StartedCreatingStream started creating stream
-RemovedStream removed stream
 Create create
 Open open
 OpenHelp open help
 Loading loading
 OpenAdminConsole open admin console
 MainMenu main menu
-Bitrate bitrate
 FileSize file size
 Duration duration
 PlayStreams play streams
 ManageStreams manage streams
 ConfigureStream configure stream
+ManageSearchKeys manage search keys
 Configure configure
 Configuration configuration
 Apply apply
@@ -209,7 +220,6 @@ MediaScanPeriod media scan period
 MediaScanPeriodDescription How often the server scans the source media path for new files.
 MediaScanPeriodNeverDescription Never - scan on request only
 ScanForMedia scan for media
-ScanForMediaStartedMessage Command sent: <Scan for media> (this may take some time)
 StreamDataPath stream data path
 StreamDataPathDescription The directory path where the server writes data required for streaming media functions.
 StreamDataPathPrompt (example: /stream_data)
@@ -246,8 +256,18 @@ MediaUiPauseTooltip <F2> Pause or resume playback on all selected monitors
 MediaUiBrowserPlayTooltip Launch a browser window playing this video
 MediaUiConfigureStreamTooltip Prepare playback streams for all selected videos
 MediaUiAddCacheStreamTooltip Transfer all selected streams to the cache of all selected monitors
-MediaUiDeleteStreamTooltip Delete playback streams for all selected videos
+MediaUiRemoveStreamTooltip Delete playback streams for all selected videos
 MediaUiSelectAllTooltip Select / unselect all videos
+MediaUiAddTagTooltip Assign a search key to all selected videos
+MediaUiRemoveTagTooltip Unassign a search key from all selected videos
+MediaUiAddTagPrompt Enter text to add as a search key for all selected videos.
+MediaUiRemoveTagPrompt Enter text to remove from search keys of all selected videos.
+SearchEmptyResultTooltip 0 search results
+SearchComplete search complete
+SearchInProgress search in progress
+SearchInProgressTooltip (scroll down to load more)
+Result result
+Results results
 MediaItemUiHelpTitle Media file
 MediaItemUiHelpText This interface shows thumbnail images from a media file's timeline.
 MediaItemUiHelpAction1Text Configure a stream for this video to prepare it for playback in a browser or on a Membrane Monitor screen.
@@ -255,7 +275,6 @@ MediaItemUiHelpAction2Text This video is no longer available from the media libr
 MediaItemUiConfigureStreamTooltip Prepare a playback stream for this video
 ThumbnailImageSizeTooltip Set the display size for thumbnail images
 UiBackTooltip Return to the previous screen
-ExitTooltip Close this application
 MoreHelpTopics more help topics
 ReloadTooltip Refresh server state
 MainUiHelpTitle Membrane Control
@@ -273,10 +292,6 @@ InvokeGetStatusAddressEmptyError Enter a server address in the bottom toolbar to
 InvokeGetStatusAddressParseError The provided server address doesn't use the correct format.
 InternalError An unexpected internal error prevented this operation from succeeding. Our apologies.
 ServerContactError Unable to contact the remote server. Check if network connections are available and try again.
-InvokeClearDisplayMessage Command sent: <Clear>
-InvokePauseMediaMessage Command sent: <Pause / resume>
-InvokeCreateWebPlaylistMessage Command sent: <Run website playlist>
-InvokeShowWebUrlMessage Command sent: <Show website>
 WebKioskUiHelpTitle Web kiosk
 WebKioskUiHelpText This interface commands Membrane Monitor applications to behave as web kiosks. Select servers or playlists using the star icons in their upper right corners, then use the bottom toolbar to execute commands.
 WebKioskUiHelpAction1Text No Membrane Monitor applications are connected. To find one, return to the main menu and open the "Servers" interface.
@@ -302,15 +317,15 @@ ServerAdminUiHelpAction2Text Click the lock button to secure the server using an
 ServerAdminUiLockTooltip Set the server's admin password
 ServerAdminUiEmptyAdminPasswordText (No password)
 ServerAdminUiAdminPasswordDescription If a password is set, the server will not accept commands unless the correct password is present in the server passwords list.
-ServerAdminUiSetPasswordCompleteMessage Admin password changed.
 EmptyStreamPlaylistText (Streams in this list are played on monitors)
-InvokeCreateCacheStreamMessage Command sent: <Transfer stream to cache>
-InvokeConfigureMediaStreamMessage Command sent: <Configure media stream>
+ConfigureMediaStreamCommandName Configure media stream
+RemoveMediaCommandName Delete media record
+RemoveStreamCommandName Delete stream
+CreateCacheStreamCommandName Transfer stream to cache
+PlayCacheStreamCommandName Play cache stream
+CreateStreamCacheDisplayIntentCommandName Play all cache
 AddedPlaylistItem Added playlist item
 AddedPlaylistItems Added playlist items
-InvokePlayMediaMessage Command sent: <Play video stream>
-InvokeCreateStreamPlaylistMessage Command sent: <Run playlist>
-InvokeRemoveStreamMessage Command sent: <Delete stream>
 StreamItemUiHelpTitle Video stream
 StreamItemUiHelpText This interface shows thumbnail images from a video stream's timeline.
 StreamItemUiHelpAction1Text Click the timeline bar to view thumbnails at that stream position.
@@ -330,7 +345,6 @@ MonitorCacheUiPlayTooltip <F4> Play the selected stream
 MonitorCacheUiPauseTooltip <F2> Pause or resume playback
 MonitorCacheUiWritePlaylistTooltip <F3> Play all cache streams on loop
 MonitorCacheUiStopTooltip <F1> Clear the monitor
-MonitorCacheUiWritePlaylistMessage Command sent: <Loop cache videos>
 ViewTimelineImagesTooltip View timeline images
 MonitorActivityIconTooltip Status of the monitor's screen
 StorageTooltip Available data storage
@@ -338,14 +352,13 @@ CachedStream cached stream
 CachedStreams cached streams
 TaskInProgress task in progress
 TasksInProgress tasks in progress
-RemoveMedia remove media
 RemoveStream remove stream
 DeleteStream delete stream
-DeleteStreamTitle Remove selected streams?
-DeleteStreamDescription Playback of these videos will no longer be available.
-DeleteStreamByteCountTooltip Total storage used by these streams
-DeleteStreamItemCountTooltip stream to remove
-DeleteStreamItemsCountTooltip streams to remove
+RemoveStreamTitle Remove selected streams?
+RemoveStreamDescription Playback of these videos will no longer be available.
+RemoveStreamByteCountTooltip Total storage used by these streams
+RemoveStreamItemCountTooltip stream to remove
+RemoveStreamItemsCountTooltip streams to remove
 CacheStream cache stream
 CacheStreams cache streams
 CacheStreamsDescription Copy streams to selected monitors, allowing them to be played when the media library is not available.
@@ -354,6 +367,8 @@ CacheStreamItemsCountTooltip streams to copy
 CacheStreamByteCountTooltip Total size of streams to copy
 CacheStreamDeleteDescription Delete video stream? Playback will no longer be available.
 CacheStreamDeleteByteCountTooltip Stream size
+MediaTagItemCountTooltip video to change
+MediaTagItemsCountTooltip videos to change
 MediaStreaming media streaming
 ServersHelpTitle Connecting to servers with Membrane Control
 MembraneSoftwareOverviewHelpTitle Membrane Software overview
@@ -397,15 +412,15 @@ CreateStreamUnavailableTooltip Stream creation not available
 RemoveMediaActionText This video is no longer available from the media library and can't be processed to create playback streams. Remove record?
 ViewMonitorCacheTooltip View the monitor's cache of stored videos
 NoCameraSelectedPrompt (Select a camera)
-NoCaptureSelectedPrompt (Select a timelapse image)
 Cameras cameras
-CameraUiAgentRowHeaderText Cameras, monitors
+CameraSelected camera selected
+CamerasSelected cameras selected
 CameraUiDescription Command cameras and view captured images.
-CameraUiAddPlaylistTooltip Create a new camera playlist
 CameraUiConfigureCameraTooltip Configure capture settings for all selected cameras
-CameraUiShowCameraImageTooltip <F4> Command selected monitors to show selected timelapse images
-CameraUiShowCapturePlaylistTooltip <F3> Command selected monitors to show latest images from the selected timelapse playlist
-CameraUiPlayCameraStreamTooltip <F2> Command selected monitors to show live video streams from selected cameras
+CameraUiShowCameraImageTooltip Command selected monitors to show images from selected cameras
+CameraUiPlayCameraStreamTooltip Command selected monitors to show live video streams from selected cameras
+CameraUiShowCameraImageAutoRefreshPrompt Refresh with latest available image
+CameraUiPlayCameraStreamAutoRefreshPrompt Restart video playback if lost
 CameraUiAutoReloadOffTooltip Timelapse images: refresh paused (click to enable)
 CameraUiAutoReloadOnTooltip Timelapse images: refresh active (click to disable)
 CameraUiClearTimelapseTooltip Stop timelapse capture and clear stored images for all selected cameras
@@ -419,7 +434,6 @@ CameraUiEmptyAgentStatusTitle No camera available
 CameraUiEmptyAgentStatusText Return to the main menu and open "Servers" to contact a computer running Membrane Camera.
 ConfigureCamera configure camera
 ClearTimelapse clear timelapse
-TimelapseImages timelapse images
 CameraConnected camera connected
 CamerasConnected cameras connected
 EnableTimelapse enable timelapse
@@ -436,11 +450,9 @@ Horizontal horizontal
 Vertical vertical
 HorizontalAbbreviation H
 VerticalAbbreviation V
-ConfigureCameraMessage Command sent: <Configure camera>
-ClearCameraTimelapseMessage Command sent: <Clear timelapse>
-ShowCameraImageMessage Command sent: <Show camera image>
-PlayCameraStreamMessage Command sent: <Play camera video>
-ShowCapturePlaylistMessage Command sent: <Show timelapse playlist>
+ShowCameraImageCommandName Show capture image
+CreateCameraImageDisplayIntentCommandName Show capture images
+PlayCameraStreamCommandName Play live video
 CameraActivityIconTooltip Camera status
 Before before
 After after
@@ -452,10 +464,16 @@ SortByNewest sort by newest
 Continuous continuous
 CameraTimelineUiHelpTitle Timelapse images
 CameraTimelineUiHelpText This interface shows timelapse images stored on Membrane Camera. Use the bottom toolbar to select a time range for images to display.
-CameraTimelineUiHelpAction1Text Click the play button to view a slideshow at the selected time position.
+CameraTimelineUiHelpAction1Text Use the filmstrip and movie buttons to select images and video sequences for download in a browser.
 CameraTimelineUiHelpAction2Text To select a time position and return to the previous screen, click the star button followed by a timelapse image.
-CameraTimelineUiSelectTooltip <Tab> Select target image and return to previous screen
-PlayCaptureTooltip Play timelapse images in sequence
+CameraTimelineUiEmptyStatusTitle No capture images available
+CameraTimelineUiEmptyStatusText Return to the previous interface and use the bottom toolbar "Configure camera" command to start timelapse image capture.
+CameraTimelineUiSelectTargetTooltip <Tab> Select target image and return to previous screen
+CameraTimelineUiOpenImageTooltip Select an image to open it in a browser
+CameraTimelineUiOpenVideoTooltip Select an image to open a video sequence in a browser
+CameraTimelineUiOpenImagePrompt Select image to download
+CameraTimelineUiOpenVideoPrompt Select end image for video sequence to download
+CameraTimelineUiOpenVideoSnackbarText Launched web browser (video generation and download may take some time)
 SelectTargetImage select target image
 MediaServerCatalogTooltip (Click the link to open the stream catalog in a browser)
 RemovePlaylistDescription Delete this playlist?
@@ -475,19 +493,38 @@ StreamPlaylistMediumPlayDurationDescription 5m-15m
 StreamPlaylistLongPlayDurationDescription 30m-60m
 StreamPlaylistVeryLongPlayDurationDescription 2h-4h
 StreamPlaylistFullPlayDurationDescription Until end
-ShowImage show image
-ShowLiveVideo show live video
-PlayingLiveCamera playing live camera
+PlayingLiveVideo playing live video
 ManageCameras manage cameras
 ViewCameraImages view camera images
 ClearTimelapseActionText Stored images will be deleted from all selected cameras.
-TimelapseList timelapse list
 CreatedPlaylist created playlist
-EmptyCaptureListPrompt (Monitors show latest images from timelapses in this list)
-CapturePlaylistItem timelapse in this playlist
-CapturePlaylistItems timelapses in this playlist
-AddTimelapses add timelapses
 CapturingImages capturing images
 ShowingLiveVideo showing live video
 ShowingImage showing image
 ImageDialogLoadError An error occurred in loading the image.
+AddMediaTagCommandName Add search key
+RemoveMediaTagCommandName Remove search key
+SearchKey search key
+SearchKeys search keys
+AddMediaTagPrompt Enter text to add as a search key for this video.
+RemoveMediaTagPrompt Remove this search key?
+ClearCommandLogTooltip Clear unsaved command log items
+CommandExecuted command executed
+CommandCompleteWithErrorMessage (with errors, see command log)
+ShowWebUrlCommandName Show website
+TimeOfExecution time of execution
+TargetServers target servers
+HistoryItemWindowSelectedToggleTooltip Saved (Click to discard)
+HistoryItemWindowUnselectedToggleTooltip Not saved (Click to save)
+ClearDisplayCommandName Clear monitor
+CreateWebDisplayIntentCommandName Run web playlist
+PlayMediaCommandName Play video stream
+PauseMediaCommandName Pause / resume video
+CreateMediaDisplayIntentCommandName Run stream playlist
+ServerError server error
+RepeatCommand repeat command
+PlaylistNotFoundError Playlist not found. Check if it was renamed or deleted.
+HistoryItemWindowCommandStatusTooltip Command execution status
+HistoryItemWindowAgentCommandStatusTooltip Command execution status for this server
+HistoryWindowEmptyStatusText Commands executed on servers report their status here. Some commands can be saved for repeat execution.
+CaptureTime capture time

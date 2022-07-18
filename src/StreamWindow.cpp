@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -32,7 +32,6 @@
 #include <math.h>
 #include "App.h"
 #include "ClassId.h"
-#include "Log.h"
 #include "StdString.h"
 #include "UiConfiguration.h"
 #include "UiText.h"
@@ -91,7 +90,7 @@ StreamWindow::StreamWindow (Json *streamItem)
 	streamImage->loadCallback = Widget::EventCallbackContext (StreamWindow::streamImageLoaded, this);
 	streamImage->mouseClickCallback = Widget::EventCallbackContext (StreamWindow::streamImageClicked, this);
 	streamImage->mouseLongPressCallback = Widget::EventCallbackContext (StreamWindow::streamImageLongPressed, this);
-	streamImage->setLoadSprite (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
+	streamImage->setLoadingSprite (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite));
 
 	nameLabel = (Label *) addWidget (new Label (streamName, UiConfiguration::CaptionFont, UiConfiguration::instance->primaryTextColor));
 	nameLabel->isInputSuspended = true;
@@ -170,7 +169,9 @@ void StreamWindow::setLayout (int layoutType, float maxPanelWidth) {
 	h /= frameWidth;
 	w = floorf (w);
 	h = floorf (h);
-	streamImage->setWindowSize (w, h);
+	streamImage->setLoadingSprite (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite), w, h);
+	streamImage->setWindowSize (true, w, h);
+	streamImage->onLoadScale (w, h);
 	streamImage->reload ();
 
 	switch (layout) {
@@ -213,7 +214,7 @@ void StreamWindow::setThumbnailIndex (int index) {
 		params = new Json ();
 		params->set ("id", streamId);
 		params->set ("thumbnailIndex", thumbnailIndex);
-		streamImage->setImageUrl (AgentControl::instance->getAgentSecondaryUrl (agentId, App::instance->createCommand (SystemInterface::Command_GetThumbnailImage, params), thumbnailPath));
+		streamImage->setImageUrl (AgentControl::instance->getAgentSecondaryUrl (agentId, thumbnailPath, App::instance->createCommand (SystemInterface::Command_GetThumbnailImage, params)));
 	}
 }
 

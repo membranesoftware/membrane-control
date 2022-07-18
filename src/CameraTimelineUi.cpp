@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -34,7 +34,6 @@
 #include "App.h"
 #include "StdString.h"
 #include "OsUtil.h"
-#include "Log.h"
 #include "UiConfiguration.h"
 #include "UiText.h"
 #include "Ui.h"
@@ -44,34 +43,40 @@
 #include "Toggle.h"
 #include "Menu.h"
 #include "CommandListener.h"
+#include "IconCardWindow.h"
 #include "CameraDetailWindow.h"
 #include "CameraThumbnailWindow.h"
 #include "CameraTimelineWindow.h"
 #include "CameraTimelineUi.h"
 
 const char *CameraTimelineUi::ImageSizeKey = "CameraTimeline_ImageSize";
-const float CameraTimelineUi::TimelineWindowScale = 0.68f;
-const int CameraTimelineUi::PageSize = 64;
+const float CameraTimelineUi::TimelineWindowScale = 0.65f;
+const int CameraTimelineUi::DisplayPageSize = 64;
+const int CameraTimelineUi::TimelinePageSize = 1024;
 const int CameraTimelineUi::CapturePlayPeriod = 250; // ms
+const float CameraTimelineUi::TimelinePopupWidthMultiplier = 0.12f;
 
-CameraTimelineUi::CameraTimelineUi (const StdString &agentId, const StdString &agentName)
+CameraTimelineUi::CameraTimelineUi (CameraWindow *cameraWindow)
 : Ui ()
-, agentId (agentId)
-, agentName (agentName)
+, sensor (0)
 , cardDetail (-1)
 , isSortDescending (true)
 , isFindingCaptureImages (false)
-, isPlayingCapture (false)
-, capturePlayClock (0)
+, isFindingDisplayCaptureImages (false)
+, findCaptureImagesTime (0)
 , captureStartTime (-1)
 , captureEndTime (-1)
-, lastTimelineHoverTime (-1)
+, timelineHoverPosition (-1)
+, timelinePopupPositionStartTime (0)
+, timelinePopupPosition (-1)
 , selectedTime (-1)
 , displayStartTime (-1)
 , displayEndTime (-1)
 , isSelectingCaptureImage (false)
 {
-
+	agentId.assign (cameraWindow->agentId);
+	agentName.assign (cameraWindow->agentName);
+	sensor = cameraWindow->sensor;
 }
 
 CameraTimelineUi::~CameraTimelineUi () {
@@ -93,7 +98,7 @@ void CameraTimelineUi::setHelpWindowContent (HelpWindow *helpWindow) {
 	helpWindow->addTopicLink (UiText::instance->getText (UiTextString::SearchForHelp).capitalized (), App::getHelpUrl (""));
 }
 
-int CameraTimelineUi::doLoad () {
+OsUtil::Result CameraTimelineUi::doLoad () {
 	HashMap *prefs;
 
 	prefs = App::instance->lockPrefs ();
@@ -101,10 +106,11 @@ int CameraTimelineUi::doLoad () {
 	App::instance->unlockPrefs ();
 	isSortDescending = true;
 	isFindingCaptureImages = false;
-	isPlayingCapture = false;
+	isFindingDisplayCaptureImages = false;
+	findCaptureImagesTime = 0;
 	captureStartTime = -1;
 	captureEndTime = -1;
-	lastTimelineHoverTime = -1;
+	timelineHoverPosition = -1;
 	selectedTime = -1;
 	displayStartTime = -1;
 	displayEndTime = -1;
@@ -112,16 +118,20 @@ int CameraTimelineUi::doLoad () {
 	cardView->setRowDetail (CameraTimelineUi::ImageRow, cardDetail);
 	cardView->setRowItemMarginSize (CameraTimelineUi::ImageRow, UiConfiguration::instance->marginSize / 2.0f);
 
-	return (OsUtil::Result::Success);
+	return (OsUtil::Success);
 }
 
 void CameraTimelineUi::doUnload () {
 	sortToggle.clear ();
-	selectToggle.clear ();
 	timelineWindow.clear ();
 	cameraDetailWindow.clear ();
-	capturePlayWindow.clear ();
+	emptyStateWindow.clear ();
+	timelinePopup.clear ();
 	commandCaption.destroyAndClear ();
+	openImageButton.clear ();
+	openVideoButton.clear ();
+	targetImageButton.clear ();
+	activeSelectButton.clear ();
 }
 
 void CameraTimelineUi::doAddMainToolbarItems (Toolbar *toolbar) {
@@ -137,6 +147,7 @@ void CameraTimelineUi::doAddMainToolbarItems (Toolbar *toolbar) {
 void CameraTimelineUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
 	CameraTimelineWindow *timeline;
 	Toggle *toggle;
+	Button *button;
 
 	timeline = new CameraTimelineWindow (App::instance->windowWidth * CameraTimelineUi::TimelineWindowScale);
 	timeline->positionHoverCallback = Widget::EventCallbackContext (CameraTimelineUi::timelineWindowPositionHovered, this);
@@ -154,95 +165,128 @@ void CameraTimelineUi::doAddSecondaryToolbarItems (Toolbar *toolbar) {
 	toolbar->addLeftItem (toggle);
 	sortToggle.assign (toggle);
 
-	toggle = new Toggle (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::StarOutlineButtonSprite), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::StarButtonSprite));
-	toggle->shortcutKey = SDLK_TAB;
-	toggle->stateChangeCallback = Widget::EventCallbackContext (CameraTimelineUi::selectToggleStateChanged, this);
-	toggle->setInverseColor (true);
-	toggle->setMouseHoverTooltip (UiText::instance->getText (UiTextString::CameraTimelineUiSelectTooltip), Widget::LeftAlignment);
-	toolbar->addRightItem (toggle);
-	selectToggle.assign (toggle);
+	button = new Button (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::StarButtonSprite));
+	button->shortcutKey = SDLK_TAB;
+	button->mouseClickCallback = Widget::EventCallbackContext (CameraTimelineUi::selectModeButtonClicked, this);
+	button->setMouseHoverTooltip (UiText::instance->getText (UiTextString::CameraTimelineUiSelectTargetTooltip));
+	button->setInverseColor (true);
+	toolbar->addRightItem (button);
+	targetImageButton.assign (button);
 
-	toggle = new Toggle (sprites.getSprite (CameraTimelineUi::PlayButtonSprite), sprites.getSprite (CameraTimelineUi::StopButtonSprite));
-	toggle->stateChangeCallback = Widget::EventCallbackContext (CameraTimelineUi::playToggleStateChanged, this);
-	toggle->setInverseColor (true);
-	toggle->setMouseHoverTooltip (UiText::instance->getText (UiTextString::PlayCaptureTooltip));
-	toolbar->addRightItem (toggle);
+	button = new Button (sprites.getSprite (CameraTimelineUi::OpenVideoButtonSprite));
+	button->mouseClickCallback = Widget::EventCallbackContext (CameraTimelineUi::selectModeButtonClicked, this);
+	button->setMouseHoverTooltip (UiText::instance->getText (UiTextString::CameraTimelineUiOpenVideoTooltip));
+	button->setInverseColor (true);
+	toolbar->addRightItem (button);
+	openVideoButton.assign (button);
+
+	button = new Button (sprites.getSprite (CameraTimelineUi::OpenImageButtonSprite));
+	button->mouseClickCallback = Widget::EventCallbackContext (CameraTimelineUi::selectModeButtonClicked, this);
+	button->setMouseHoverTooltip (UiText::instance->getText (UiTextString::CameraTimelineUiOpenImageTooltip));
+	button->setInverseColor (true);
+	toolbar->addRightItem (button);
+	openImageButton.assign (button);
+
+	activeSelectButton.clear ();
+}
+
+void CameraTimelineUi::doClearPopupWidgets () {
+	timelinePopup.destroyAndClear ();
 }
 
 void CameraTimelineUi::doResume () {
 	App::instance->setNextBackgroundTexturePath ("ui/CameraTimelineUi/bg");
-	CommandListener::instance->subscribe (SystemInterface::CommandId_FindCaptureImages, CommandListener::CommandCallbackContext (CameraTimelineUi::receiveFindCaptureImages, this));
+	CommandListener::instance->subscribe (SystemInterface::CommandId_FindCaptureImagesResult, CommandListener::CommandCallbackContext (CameraTimelineUi::receiveFindCaptureImagesResult, this));
 }
 
 void CameraTimelineUi::doUpdate (int msElapsed) {
-	Json *params;
-	CameraThumbnailWindow *thumbnail;
-	bool shouldfind;
+	CameraTimelineWindow *timeline;
+	ImageWindow *image;
+	float x, y, w, h;
 	int64_t t;
 
 	sortToggle.compact ();
-	selectToggle.compact ();
 	timelineWindow.compact ();
 	cameraDetailWindow.compact ();
-	capturePlayWindow.compact ();
+	emptyStateWindow.compact ();
+	timelinePopup.compact ();
 	commandCaption.compact ();
+	openImageButton.compact ();
+	openVideoButton.compact ();
+	targetImageButton.compact ();
+	activeSelectButton.compact ();
 
-	shouldfind = false;
-	if (! isFindingCaptureImages) {
+	if ((! isFindingCaptureImages) && (captureStartTime > 0) && (captureEndTime > 0) && AgentControl::instance->isLinkClientConnected (agentId)) {
 		if (isSortDescending) {
-			if ((captureStartTime > 0) && (displayStartTime > captureStartTime)) {
-				shouldfind = true;
+			if (displayEndTime < 0) {
+				displayEndTime = (selectedTime >= 0) ? selectedTime : captureEndTime;
+				findCaptureImages (displayEndTime, true);
 			}
-		}
-		else {
-			if ((captureEndTime > 0) && (displayEndTime < captureEndTime)) {
-				shouldfind = true;
-			}
-		}
-
-		if (shouldfind) {
-			if (isPlayingCapture) {
-				if (capturePlayTimes.size () > 8) {
-					shouldfind = false;
-				}
-			}
-			else {
-				if (! cardView->isScrolledToBottom ()) {
-					shouldfind = false;
+			else if (displayStartTime > captureStartTime) {
+				if (cardView->isScrolledToBottom ()) {
+					findCaptureImages (displayStartTime - 1, true);
 				}
 			}
 		}
-	}
-
-	if (shouldfind) {
-		params = new Json ();
-		params->set ("maxResults", CameraTimelineUi::PageSize);
-		params->set ("isDescending", isSortDescending);
-		if (isSortDescending) {
-			params->set ("maxTime", displayStartTime - 1);
-		}
 		else {
-			params->set ("minTime", displayEndTime + 1);
+			if (displayStartTime < 0) {
+				displayStartTime = (selectedTime >= 0) ? selectedTime : captureStartTime;
+				findCaptureImages (displayStartTime, false);
+			}
+			else if ((displayEndTime >= 0) && (displayEndTime < captureEndTime)) {
+				if (cardView->isScrolledToBottom ()) {
+					findCaptureImages (displayEndTime + 1, false);
+				}
+			}
 		}
-
-		isFindingCaptureImages = true;
-		AgentControl::instance->writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindCaptureImages, params), agentId);
+		if ((! isFindingCaptureImages) && (! captureTimes.isFullyCovered ())) {
+			findCaptureImages (captureTimes.getUncoveredMin (), false, false);
+		}
 	}
 
-	if (isPlayingCapture && (! capturePlayTimes.empty ()) && (capturePlayClock >= 0)) {
-		capturePlayClock -= msElapsed;
-		if (capturePlayClock < 0) {
-			t = capturePlayTimes.front ();
-			capturePlayTimes.pop ();
-			thumbnail = (CameraThumbnailWindow *) capturePlayWindow.widget;
-			if (! thumbnail) {
-				thumbnail = new CameraThumbnailWindow (agentId, captureImagePath, t);
-				thumbnail->loadCallback = Widget::EventCallbackContext (CameraTimelineUi::capturePlayThumbnailImageLoaded, this);
-				cardView->addItem (thumbnail, StdString (""), CameraTimelineUi::ImageRow);
-				capturePlayWindow.assign (thumbnail);
+	timeline = (CameraTimelineWindow *) timelineWindow.widget;
+	if ((! timeline) || (timelineHoverPosition < 0)) {
+		if (timelinePopup.widget) {
+			timelinePopup.destroyAndClear ();
+			timelinePopupPosition = -1;
+			timelinePopupPositionStartTime = 0;
+		}
+	}
+	else {
+		if (timelinePopupPosition != timelineHoverPosition) {
+			if (timelinePopupPositionStartTime <= 0) {
+				timelinePopupPositionStartTime = OsUtil::getTime ();
 			}
-			else {
-				thumbnail->setThumbnailTimestamp (t);
+			else if (OsUtil::getTime () >= (timelinePopupPositionStartTime + UiConfiguration::instance->mouseHoverThreshold)) {
+				t = captureTimes.findNearest (timelineHoverPosition, (UiConfiguration::instance->timelineMarkerWidth * timeline->timeRate) / 2);
+				timelinePopup.destroyAndClear ();
+				w = ((float) App::instance->windowWidth) * CameraTimelineUi::TimelinePopupWidthMultiplier;
+				h = w * 9.0f / 16.0f;
+				x = timeline->screenX + timeline->hoverPosition - (w / 2.0f);
+				y = timeline->screenY - h - (UiConfiguration::instance->marginSize / 2.0f);
+				image = (ImageWindow *) App::instance->rootPanel->addWidget (new ImageWindow (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite))));
+				image->loadCallback = Widget::EventCallbackContext (CameraTimelineUi::timelineHoverImageLoaded, this);
+				image->setFillBg (true, UiConfiguration::instance->lightBackgroundColor);
+				image->setDropShadow (true, UiConfiguration::instance->dropShadowColor, UiConfiguration::instance->dropShadowWidth);
+				if (t == 0) {
+					image->setWindowSize (true, w, h);
+					if (captureTimes.isCovered (timelineHoverPosition)) {
+						image->setImage (new Image (sprites.getSprite (CameraTimelineUi::NoTimelineImageIconSprite)));
+					}
+					else {
+						image->setImage (new Image (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite)));
+					}
+				}
+				else {
+					image->setLoadingSprite (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeLoadingIconSprite), w, h);
+					image->onLoadScale (w);
+					image->setImageUrl (AgentControl::instance->getAgentSecondaryUrl (agentId, captureImagePath, App::instance->createCommand (SystemInterface::Command_GetCaptureImage, (new Json ())->set ("sensor", sensor)->set ("imageTime", t))));
+				}
+				image->isInputSuspended = true;
+				image->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
+				image->position.assignBounded (x, y, 0.0f, y, ((float) App::instance->windowWidth) - w, y);
+				timelinePopup.assign (image);
+				timelinePopupPosition = timelineHoverPosition;
 			}
 		}
 	}
@@ -258,22 +302,32 @@ void CameraTimelineUi::doResize () {
 }
 
 void CameraTimelineUi::doSyncRecordStore () {
-	Json *record, serverstatus;
+	Json *record, serverstatus, sensorstatus;
 	CameraDetailWindow *camera;
 	CameraTimelineWindow *timeline;
+	IconCardWindow *emptystate;
 
 	record = RecordStore::instance->findRecord (agentId, SystemInterface::CommandId_AgentStatus);
 	if (! record) {
 		return;
 	}
-	if (SystemInterface::instance->getCommandObjectParam (record, "cameraServerStatus", &serverstatus)) {
-		captureImagePath = serverstatus.getString ("captureImagePath", "");
-		captureStartTime = serverstatus.getNumber ("minCaptureTime", (int64_t) 0);
-		captureEndTime = serverstatus.getNumber ("lastCaptureTime", (int64_t) 0);
+	if (! SystemInterface::instance->getCommandObjectParam (record, "cameraServerStatus", &serverstatus)) {
+		return;
+	}
+	if (! serverstatus.getArrayObject ("sensors", sensor, &sensorstatus)) {
+		return;
+	}
+	captureImagePath = serverstatus.getString ("captureImagePath", "");
+	captureVideoPath = serverstatus.getString ("captureVideoPath", "");
+	captureStartTime = sensorstatus.getNumber ("minCaptureTime", (int64_t) 0);
+	captureEndTime = sensorstatus.getNumber ("lastCaptureTime", (int64_t) 0);
+	captureTimes.setBounds (captureStartTime, captureEndTime);
+	if (selectedTime < 0) {
+		selectedTime = isSortDescending ? captureEndTime : captureStartTime;
 	}
 
 	if (! cardView->contains (agentId)) {
-		camera = new CameraDetailWindow (agentId, &sprites);
+		camera = new CameraDetailWindow (agentId, sensor, &sprites);
 		camera->setSelectedTimespan (captureEndTime, isSortDescending);
 		cardView->addItem (camera, agentId, CameraTimelineUi::InfoRow);
 		cameraDetailWindow.assign (camera);
@@ -285,62 +339,128 @@ void CameraTimelineUi::doSyncRecordStore () {
 		}
 	}
 
+	emptystate = (IconCardWindow *) emptyStateWindow.widget;
+	if ((captureStartTime <= 0) || (captureEndTime <= 0)) {
+		if (! emptystate) {
+			emptystate = new IconCardWindow (UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeErrorIconSprite));
+			emptystate->setName (UiText::instance->getText (UiTextString::CameraTimelineUiEmptyStatusTitle));
+			emptystate->setDetailText (UiText::instance->getText (UiTextString::CameraTimelineUiEmptyStatusText));
+			emptyStateWindow.assign (emptystate);
+
+			emptystate->itemId.assign (cardView->getAvailableItemId ());
+			cardView->addItem (emptystate, emptystate->itemId, CameraTimelineUi::ImageRow);
+		}
+	}
+	else {
+		if (emptystate) {
+			cardView->removeItem (emptystate->itemId);
+			emptyStateWindow.clear ();
+		}
+	}
+
 	cardView->syncRecordStore ();
 	cardView->refresh ();
 }
 
-void CameraTimelineUi::handleLinkClientConnect (const StdString &agentId) {
+void CameraTimelineUi::findCaptureImages (int64_t captureTime, bool isDescending, bool isDisplayFind) {
 	Json *params;
 
-	selectedTime = captureEndTime;
-	displayStartTime = -1;
-	displayEndTime = -1;
+	if (isFindingCaptureImages) {
+		return;
+	}
 	isFindingCaptureImages = true;
+	findCaptureImagesTime = captureTime;
+	isFindingDisplayCaptureImages = isDisplayFind;
 	params = new Json ();
-	params->set ("maxResults", CameraTimelineUi::PageSize);
-	params->set ("isDescending", true);
+	params->set ("sensor", sensor);
+	params->set ("maxResults", isDisplayFind ? CameraTimelineUi::DisplayPageSize : CameraTimelineUi::TimelinePageSize);
+	params->set ("isDescending", isDescending);
+	if (captureTime > 0) {
+		if (isDescending) {
+			params->set ("maxTime", captureTime);
+		}
+		else {
+			params->set ("minTime", captureTime);
+		}
+	}
 	AgentControl::instance->writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindCaptureImages, params), agentId);
 }
 
-void CameraTimelineUi::receiveFindCaptureImages (void *uiPtr, const StdString &agentId, Json *command) {
+void CameraTimelineUi::receiveFindCaptureImagesResult (void *uiPtr, const StdString &agentId, Json *command) {
 	CameraTimelineUi *ui;
-	std::vector<int64_t> capturetimes;
+	std::vector<int64_t> items;
 	std::vector<int64_t>::iterator i, end;
+	CameraTimelineWindow *timeline;
 	CameraThumbnailWindow *thumbnail;
 	StdString id;
+	int64_t t, mintime, maxtime;
 
 	ui = (CameraTimelineUi *) uiPtr;
-	if (SystemInterface::instance->getCommandNumberArrayParam (command, "captureTimes", &capturetimes, true)) {
-		i = capturetimes.begin ();
-		end = capturetimes.end ();
-		while (i != end) {
-			if ((ui->displayStartTime < 0) || (*i < ui->displayStartTime)) {
-				ui->displayStartTime = *i;
-			}
-			if ((ui->displayEndTime < 0) || (*i > ui->displayEndTime)) {
-				ui->displayEndTime = *i;
-			}
+	ui->isFindingCaptureImages = false;
+	if (! SystemInterface::instance->getCommandNumberArrayParam (command, "captureTimes", &items, true)) {
+		return;
+	}
 
-			if (ui->isPlayingCapture) {
-				ui->capturePlayTimes.push (*i);
+	mintime = -1;
+	maxtime = -1;
+	timeline = (CameraTimelineWindow *) ui->timelineWindow.widget;
+	i = items.begin ();
+	end = items.end ();
+	while (i != end) {
+		t = *i;
+		ui->captureTimes.insert (t);
+		if (timeline) {
+			timeline->addTimelinePoint (t);
+		}
+		if ((mintime < 0) || (t < mintime)) {
+			mintime = t;
+		}
+		if ((maxtime < 0) || (t > maxtime)) {
+			maxtime = t;
+		}
+		if (ui->isFindingDisplayCaptureImages) {
+			id.sprintf ("%016llx", (long long int) t);
+			if (! ui->cardView->contains (id)) {
+				thumbnail = new CameraThumbnailWindow (ui->agentId, ui->sensor, ui->captureImagePath, t);
+				thumbnail->loadCallback = Widget::EventCallbackContext (CameraTimelineUi::thumbnailImageLoaded, ui);
+				thumbnail->mouseClickCallback = Widget::EventCallbackContext (CameraTimelineUi::thumbnailImageClicked, ui);
+				thumbnail->mouseEnterCallback = Widget::EventCallbackContext (CameraTimelineUi::thumbnailImageMouseEntered, ui);
+				thumbnail->mouseExitCallback = Widget::EventCallbackContext (CameraTimelineUi::thumbnailImageMouseExited, ui);
+				ui->cardView->addItem (thumbnail, id, CameraTimelineUi::ImageRow, true);
 			}
-			else {
-				id.sprintf ("%016llx", (long long int) *i);
-				if (! ui->cardView->contains (id)) {
-					thumbnail = new CameraThumbnailWindow (ui->agentId, ui->captureImagePath, *i);
-					thumbnail->loadCallback = Widget::EventCallbackContext (CameraTimelineUi::thumbnailImageLoaded, ui);
-					thumbnail->mouseClickCallback = Widget::EventCallbackContext (CameraTimelineUi::thumbnailImageClicked, ui);
-					thumbnail->mouseEnterCallback = Widget::EventCallbackContext (CameraTimelineUi::thumbnailImageMouseEntered, ui);
-					thumbnail->mouseExitCallback = Widget::EventCallbackContext (CameraTimelineUi::thumbnailImageMouseExited, ui);
-					ui->cardView->addItem (thumbnail, id, CameraTimelineUi::ImageRow, true);
-				}
-			}
-			++i;
 		}
 
-		ui->cardView->refresh ();
+		++i;
 	}
-	ui->isFindingCaptureImages = false;
+
+	if ((mintime >= 0) && (maxtime >= 0)) {
+		if (ui->findCaptureImagesTime > 0) {
+			if (ui->findCaptureImagesTime < mintime) {
+				mintime = ui->findCaptureImagesTime;
+			}
+			if (ui->findCaptureImagesTime > maxtime) {
+				maxtime = ui->findCaptureImagesTime;
+			}
+		}
+
+		if (ui->isSortDescending) {
+			if ((ui->displayStartTime < 0) || (mintime < ui->displayStartTime)) {
+				ui->displayStartTime = mintime;
+			}
+		}
+		else {
+			if ((ui->displayEndTime < 0) || (maxtime > ui->displayEndTime)) {
+				ui->displayEndTime = maxtime;
+			}
+		}
+
+		ui->captureTimes.cover (mintime, maxtime);
+		if (timeline) {
+			timeline->addTimelineCoverRange (mintime, maxtime);
+		}
+	}
+
+	ui->cardView->refresh ();
 }
 
 void CameraTimelineUi::imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr) {
@@ -355,9 +475,9 @@ void CameraTimelineUi::imageSizeButtonClicked (void *uiPtr, Widget *widgetPtr) {
 
 	menu = new Menu ();
 	menu->isClickDestroyEnabled = true;
-	menu->addItem (UiText::instance->getText (UiTextString::Small).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallSizeButtonSprite), CameraTimelineUi::smallImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::LowDetail);
-	menu->addItem (UiText::instance->getText (UiTextString::Medium).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::MediumSizeButtonSprite), CameraTimelineUi::mediumImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::MediumDetail);
-	menu->addItem (UiText::instance->getText (UiTextString::Large).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeSizeButtonSprite), CameraTimelineUi::largeImageSizeActionClicked, ui, 0, ui->cardDetail == CardView::HighDetail);
+	menu->addItem (UiText::instance->getText (UiTextString::Small).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::SmallSizeButtonSprite), Widget::EventCallbackContext (CameraTimelineUi::smallImageSizeActionClicked, ui), 0, ui->cardDetail == CardView::LowDetail);
+	menu->addItem (UiText::instance->getText (UiTextString::Medium).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::MediumSizeButtonSprite), Widget::EventCallbackContext (CameraTimelineUi::mediumImageSizeActionClicked, ui), 0, ui->cardDetail == CardView::MediumDetail);
+	menu->addItem (UiText::instance->getText (UiTextString::Large).capitalized (), UiConfiguration::instance->coreSprites.getSprite (UiConfiguration::LargeSizeButtonSprite), Widget::EventCallbackContext (CameraTimelineUi::largeImageSizeActionClicked, ui), 0, ui->cardDetail == CardView::HighDetail);
 
 	ui->showActionPopup (menu, widgetPtr, CameraTimelineUi::imageSizeButtonClicked, widgetPtr->getScreenRect (), Ui::RightEdgeAlignment, Ui::BottomOfAlignment);
 }
@@ -413,6 +533,176 @@ void CameraTimelineUi::largeImageSizeActionClicked (void *uiPtr, Widget *widgetP
 	App::instance->unlockPrefs ();
 }
 
+void CameraTimelineUi::timelineWindowPositionHovered (void *uiPtr, Widget *widgetPtr) {
+	CameraTimelineUi *ui;
+	CameraTimelineWindow *timeline;
+	float pos;
+	int64_t t;
+
+	ui = (CameraTimelineUi *) uiPtr;
+	timeline = (CameraTimelineWindow *) widgetPtr;
+	if (timeline->width <= 0.0f) {
+		return;
+	}
+	pos = timeline->hoverPosition;
+	if (pos < 0.0f) {
+		t = -1;
+	}
+	else {
+		t = timeline->startTime + (timeline->timeRate * (int64_t) pos);
+	}
+	if (ui->timelineHoverPosition != t) {
+		timeline->setHighlightedTime (t);
+		ui->timelineHoverPosition = t;
+		ui->timelinePopup.destroyAndClear ();
+		ui->timelinePopupPosition = -1;
+		ui->timelinePopupPositionStartTime = 0;
+	}
+}
+
+void CameraTimelineUi::timelineWindowPositionClicked (void *uiPtr, Widget *widgetPtr) {
+	CameraTimelineUi *ui;
+	CameraTimelineWindow *timeline;
+	CameraDetailWindow *camera;
+	float pos;
+	int64_t t;
+
+	ui = (CameraTimelineUi *) uiPtr;
+	timeline = (CameraTimelineWindow *) widgetPtr;
+	if (timeline->width <= 0.0f) {
+		return;
+	}
+	pos = timeline->clickPosition;
+	if (pos < 0.0f) {
+		return;
+	}
+	t = timeline->startTime + (timeline->timeRate * (int64_t) pos);
+	if (t == ui->selectedTime) {
+		return;
+	}
+	ui->selectedTime = t;
+	timeline->setSelectedTime (ui->selectedTime, ui->isSortDescending);
+
+	camera = (CameraDetailWindow *) ui->cameraDetailWindow.widget;
+	if (camera) {
+		camera->setSelectedTimespan (ui->selectedTime, ui->isSortDescending);
+	}
+
+	ui->cardView->removeRowItems (CameraTimelineUi::ImageRow);
+	ui->displayStartTime = -1;
+	ui->displayEndTime = -1;
+}
+
+void CameraTimelineUi::timelineHoverImageLoaded (void *uiPtr, Widget *widgetPtr) {
+	CameraTimelineUi *ui;
+	ImageWindow *image;
+	CameraTimelineWindow *timeline;
+
+	ui = (CameraTimelineUi *) uiPtr;
+	image = (ImageWindow *) widgetPtr;
+	timeline = (CameraTimelineWindow *) ui->timelineWindow.widget;
+	if (timeline) {
+		image->position.assignY (timeline->screenY - image->height - (UiConfiguration::instance->marginSize / 2.0f));
+	}
+}
+
+void CameraTimelineUi::sortToggleStateChanged (void *uiPtr, Widget *widgetPtr) {
+	CameraTimelineUi *ui;
+	CameraDetailWindow *camera;
+	CameraTimelineWindow *timeline;
+	Toggle *toggle;
+
+	ui = (CameraTimelineUi *) uiPtr;
+	toggle = (Toggle *) widgetPtr;
+	ui->isSortDescending = toggle->isChecked;
+
+	timeline = (CameraTimelineWindow *) ui->timelineWindow.widget;
+	if (timeline) {
+		timeline->setSelectedTime (ui->selectedTime, ui->isSortDescending);
+	}
+
+	camera = (CameraDetailWindow *) ui->cameraDetailWindow.widget;
+	if (camera) {
+		camera->setSelectedTimespan (ui->selectedTime, ui->isSortDescending);
+	}
+
+	ui->cardView->removeRowItems (CameraTimelineUi::ImageRow);
+	ui->displayStartTime = -1;
+	ui->displayEndTime = -1;
+}
+
+void CameraTimelineUi::selectModeButtonClicked (void *uiPtr, Widget *widgetPtr) {
+	((CameraTimelineUi *) uiPtr)->setSelectMode ((Button *) widgetPtr);
+}
+
+static void setSelectMode_updateButton (const WidgetHandle &targetSelectButton, const WidgetHandle &activeSelectButton) {
+	Button *button;
+
+	button = (Button *) targetSelectButton.widget;
+	if (! button) {
+		return;
+	}
+	if (button == activeSelectButton.widget) {
+		button->setRaised (true, UiConfiguration::instance->raisedButtonInverseBackgroundColor);
+	}
+	else {
+		button->setRaised (false);
+	}
+}
+static void setSelectMode_processThumbnails (void *uiPtr, Widget *widgetPtr) {
+	CameraThumbnailWindow *thumbnail;
+
+	thumbnail = CameraThumbnailWindow::castWidget (widgetPtr);
+	if (thumbnail) {
+		thumbnail->setHighlighted (false);
+	}
+}
+void CameraTimelineUi::setSelectMode (Button *clickedButton) {
+	LabelWindow *caption;
+	StdString captiontext;
+
+	if (activeSelectButton.widget == clickedButton) {
+		activeSelectButton.clear ();
+	}
+	else {
+		activeSelectButton.assign (clickedButton);
+	}
+
+	setSelectMode_updateButton (openImageButton, activeSelectButton);
+	setSelectMode_updateButton (openVideoButton, activeSelectButton);
+	setSelectMode_updateButton (targetImageButton, activeSelectButton);
+
+	if (activeSelectButton.widget) {
+		if (activeSelectButton.widget == openImageButton.widget) {
+			captiontext.assign (UiText::instance->getText (UiTextString::CameraTimelineUiOpenImagePrompt).capitalized ());
+		}
+		else if (activeSelectButton.widget == openVideoButton.widget) {
+			captiontext.assign (UiText::instance->getText (UiTextString::CameraTimelineUiOpenVideoPrompt).capitalized ());
+		}
+		else if (activeSelectButton.widget == targetImageButton.widget) {
+			captiontext.assign (UiText::instance->getText (UiTextString::SelectTargetImage).capitalized ());
+		}
+	}
+
+	commandCaption.destroyAndClear ();
+	if (captiontext.empty ()) {
+		isSelectingCaptureImage = false;
+		cardView->processRowItems (CameraTimelineUi::ImageRow, setSelectMode_processThumbnails, this);
+	}
+	else {
+		isSelectingCaptureImage = true;
+		App::instance->uiStack.suspendMouseHover ();
+
+		caption = (LabelWindow *) App::instance->rootPanel->addWidget (new LabelWindow (new Label (captiontext, UiConfiguration::BodyFont, UiConfiguration::instance->mediumSecondaryColor)));
+		commandCaption.assign (caption);
+		caption->setFillBg (true, Color (0.0f, 0.0f, 0.0f, UiConfiguration::instance->overlayWindowAlpha));
+		caption->setBorder (true, Color (UiConfiguration::instance->darkBackgroundColor.r, UiConfiguration::instance->darkBackgroundColor.g, UiConfiguration::instance->darkBackgroundColor.b, UiConfiguration::instance->overlayWindowAlpha));
+		caption->setLayout (Panel::VerticalRightJustifiedLayout);
+		caption->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
+		caption->position.assign (App::instance->windowWidth - caption->width - UiConfiguration::instance->paddingSize, App::instance->windowHeight - App::instance->uiStack.bottomBarHeight - caption->height - UiConfiguration::instance->marginSize);
+	}
+}
+
 void CameraTimelineUi::thumbnailImageLoaded (void *uiPtr, Widget *widgetPtr) {
 	CameraTimelineUi *ui;
 
@@ -442,221 +732,50 @@ void CameraTimelineUi::thumbnailImageMouseExited (void *uiPtr, Widget *widgetPtr
 void CameraTimelineUi::thumbnailImageClicked (void *uiPtr, Widget *widgetPtr) {
 	CameraTimelineUi *ui;
 	CameraThumbnailWindow *thumbnail;
+	Button *button;
+	Json *params;
+	OsUtil::Result result;
 
 	ui = (CameraTimelineUi *) uiPtr;
 	thumbnail = (CameraThumbnailWindow *) widgetPtr;
 	if (! ui->isSelectingCaptureImage) {
 		return;
 	}
-
-	if (ui->thumbnailClickCallback.callback) {
-		ui->thumbnailClickCallback.callback (ui->thumbnailClickCallback.callbackData, thumbnail);
-	}
-}
-
-void CameraTimelineUi::timelineWindowPositionHovered (void *uiPtr, Widget *widgetPtr) {
-	CameraTimelineUi *ui;
-	CameraTimelineWindow *timeline;
-	float pos;
-	int64_t t;
-
-	ui = (CameraTimelineUi *) uiPtr;
-	timeline = (CameraTimelineWindow *) widgetPtr;
-	if (timeline->width <= 0.0f) {
-		return;
-	}
-
-	pos = timeline->hoverPosition;
-	if (pos < 0.0f) {
-		t = -1;
-	}
-	else {
-		pos *= (float) (timeline->endTime - timeline->startTime);
-		pos /= timeline->width;
-		t = timeline->startTime + (int64_t) pos;
-	}
-	if (ui->lastTimelineHoverTime != t) {
-		timeline->setHighlightedTime (t);
-		ui->lastTimelineHoverTime = t;
-	}
-}
-
-void CameraTimelineUi::timelineWindowPositionClicked (void *uiPtr, Widget *widgetPtr) {
-	CameraTimelineUi *ui;
-	CameraTimelineWindow *timeline;
-	CameraDetailWindow *camera;
-	Json *params;
-	float pos;
-	int64_t t;
-
-	ui = (CameraTimelineUi *) uiPtr;
-	timeline = (CameraTimelineWindow *) widgetPtr;
-	if (timeline->width <= 0.0f) {
-		return;
-	}
-
-	pos = timeline->clickPosition;
-	if (pos < 0.0f) {
-		return;
-	}
-	pos *= (float) (timeline->endTime - timeline->startTime);
-	pos /= timeline->width;
-	t = timeline->startTime + (int64_t) pos;
-	if (t == ui->selectedTime) {
-		return;
-	}
-	ui->selectedTime = t;
-	timeline->setSelectedTime (ui->selectedTime, ui->isSortDescending);
-	params = new Json ();
-	params->set ("maxResults", CameraTimelineUi::PageSize);
-	params->set ("isDescending", ui->isSortDescending);
-	if (ui->isSortDescending) {
-		params->set ("maxTime", ui->selectedTime);
-	}
-	else {
-		params->set ("minTime", ui->selectedTime);
-	}
-
-	ui->isFindingCaptureImages = true;
-	ui->displayStartTime = -1;
-	ui->displayEndTime = -1;
-	ui->cardView->removeRowItems (CameraTimelineUi::ImageRow);
-	AgentControl::instance->writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindCaptureImages, params), ui->agentId);
-
-	camera = (CameraDetailWindow *) ui->cameraDetailWindow.widget;
-	if (camera) {
-		camera->setSelectedTimespan (ui->selectedTime, ui->isSortDescending);
-	}
-}
-
-void CameraTimelineUi::sortToggleStateChanged (void *uiPtr, Widget *widgetPtr) {
-	CameraTimelineUi *ui;
-	CameraDetailWindow *camera;
-	CameraTimelineWindow *timeline;
-	Toggle *toggle;
-	Json *params;
-
-	ui = (CameraTimelineUi *) uiPtr;
-	toggle = (Toggle *) widgetPtr;
-	ui->isSortDescending = toggle->isChecked;
-
-	params = new Json ();
-	params->set ("maxResults", CameraTimelineUi::PageSize);
-	params->set ("isDescending", ui->isSortDescending);
-	if (ui->isSortDescending) {
-		params->set ("maxTime", ui->selectedTime);
-	}
-	else {
-		params->set ("minTime", ui->selectedTime);
-	}
-
-	ui->isFindingCaptureImages = true;
-	ui->displayStartTime = -1;
-	ui->displayEndTime = -1;
-	ui->cardView->removeRowItems (CameraTimelineUi::ImageRow);
-	AgentControl::instance->writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindCaptureImages, params), ui->agentId);
-
-	camera = (CameraDetailWindow *) ui->cameraDetailWindow.widget;
-	if (camera) {
-		camera->setSelectedTimespan (ui->selectedTime, ui->isSortDescending);
-	}
-
-	timeline = (CameraTimelineWindow *) ui->timelineWindow.widget;
-	if (timeline) {
-		timeline->setSelectedTime (ui->selectedTime, ui->isSortDescending);
-	}
-}
-
-void CameraTimelineUi::playToggleStateChanged (void *uiPtr, Widget *widgetPtr) {
-	CameraTimelineUi *ui;
-	Toggle *toggle;
-	CameraTimelineWindow *timeline;
-	Json *params;
-
-	ui = (CameraTimelineUi *) uiPtr;
-	toggle = (Toggle *) widgetPtr;
-	if (toggle->isChecked) {
-		while (! ui->capturePlayTimes.empty ()) {
-			ui->capturePlayTimes.pop ();
+	button = (Button *) ui->activeSelectButton.widget;
+	if (button == ui->openImageButton.widget) {
+		result = OsUtil::openUrl (AgentControl::instance->getAgentSecondaryUrl (ui->agentId, ui->captureImagePath, App::instance->createCommand (SystemInterface::Command_GetCaptureImage, (new Json ())->set ("sensor", ui->sensor)->set ("imageTime", thumbnail->thumbnailTimestamp)), true));
+		if (result != OsUtil::Success) {
+			App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::LaunchWebBrowserError));
 		}
-		ui->capturePlayClock = 0;
-		ui->isPlayingCapture = true;
+		else {
+			App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::LaunchedWebBrowser).capitalized ());
+		}
 	}
-	else {
-		ui->isPlayingCapture = false;
+	else if (button == ui->openVideoButton.widget) {
+		if (! ui->captureVideoPath.empty ()) {
+			params = new Json ();
+			params->set ("sensor", ui->sensor);
+			if (ui->isSortDescending) {
+				params->set ("minTime", thumbnail->thumbnailTimestamp);
+				params->set ("maxTime", ui->displayEndTime);
+			}
+			else {
+				params->set ("minTime", ui->displayStartTime);
+				params->set ("maxTime", thumbnail->thumbnailTimestamp);
+			}
+			params->set ("isDescending", ui->isSortDescending);
+			result = OsUtil::openUrl (AgentControl::instance->getAgentSecondaryUrl (ui->agentId, ui->captureVideoPath, App::instance->createCommand (SystemInterface::Command_GetCaptureVideo, params), true));
+			if (result != OsUtil::Success) {
+				App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::LaunchWebBrowserError));
+			}
+			else {
+				App::instance->uiStack.showSnackbar (UiText::instance->getText (UiTextString::CameraTimelineUiOpenVideoSnackbarText));
+			}
+		}
 	}
-
-	toggle = (Toggle *) ui->sortToggle.widget;
-	if (toggle) {
-		toggle->setDisabled (ui->isPlayingCapture);
+	else if (button == ui->targetImageButton.widget) {
+		if (ui->thumbnailClickCallback.callback) {
+			ui->thumbnailClickCallback.callback (ui->thumbnailClickCallback.callbackData, thumbnail);
+		}
 	}
-
-	toggle = (Toggle *) ui->selectToggle.widget;
-	if (toggle) {
-		toggle->setChecked (false, true);
-		toggle->setDisabled (ui->isPlayingCapture);
-	}
-	ui->commandCaption.destroyAndClear ();
-	ui->isSelectingCaptureImage = false;
-
-	timeline = (CameraTimelineWindow *) ui->timelineWindow.widget;
-	if (timeline) {
-		timeline->setDisabled (ui->isPlayingCapture);
-	}
-
-	params = new Json ();
-	params->set ("maxResults", CameraTimelineUi::PageSize);
-	params->set ("isDescending", ui->isSortDescending);
-	if (ui->isSortDescending) {
-		params->set ("maxTime", ui->selectedTime);
-	}
-	else {
-		params->set ("minTime", ui->selectedTime);
-	}
-
-	ui->cardView->removeRowItems (CameraTimelineUi::ImageRow);
-	ui->isFindingCaptureImages = true;
-	ui->displayStartTime = -1;
-	ui->displayEndTime = -1;
-	AgentControl::instance->writeLinkCommand (App::instance->createCommand (SystemInterface::Command_FindCaptureImages, params), ui->agentId);
-}
-
-void CameraTimelineUi::capturePlayThumbnailImageLoaded (void *uiPtr, Widget *widgetPtr) {
-	CameraTimelineUi *ui;
-
-	ui = (CameraTimelineUi *) uiPtr;
-	ui->capturePlayClock = CameraTimelineUi::CapturePlayPeriod;
-	ui->cardView->refresh ();
-}
-
-static void selectToggleStateChanged_processThumbnails (void *uiPtr, Widget *widgetPtr) {
-	CameraThumbnailWindow *thumbnail;
-
-	thumbnail = CameraThumbnailWindow::castWidget (widgetPtr);
-	if (thumbnail) {
-		thumbnail->setHighlighted (false);
-	}
-}
-void CameraTimelineUi::selectToggleStateChanged (void *uiPtr, Widget *widgetPtr) {
-	CameraTimelineUi *ui;
-	Toggle *toggle;
-	LabelWindow *caption;
-
-	ui = (CameraTimelineUi *) uiPtr;
-	toggle = (Toggle *) widgetPtr;
-	ui->isSelectingCaptureImage = toggle->isChecked;
-	if (! ui->isSelectingCaptureImage) {
-		ui->commandCaption.destroyAndClear ();
-		ui->cardView->processRowItems (CameraTimelineUi::ImageRow, selectToggleStateChanged_processThumbnails, ui);
-		return;
-	}
-
-	caption = (LabelWindow *) App::instance->rootPanel->addWidget (new LabelWindow (new Label (UiText::instance->getText (UiTextString::SelectTargetImage).capitalized (), UiConfiguration::BodyFont, UiConfiguration::instance->mediumSecondaryColor)));
-	ui->commandCaption.assign (caption);
-	caption->setFillBg (true, Color (0.0f, 0.0f, 0.0f, UiConfiguration::instance->overlayWindowAlpha));
-	caption->setBorder (true, Color (UiConfiguration::instance->darkBackgroundColor.r, UiConfiguration::instance->darkBackgroundColor.g, UiConfiguration::instance->darkBackgroundColor.b, UiConfiguration::instance->overlayWindowAlpha));
-
-	caption->setLayout (Panel::VerticalRightJustifiedLayout);
-	caption->zLevel = App::instance->rootPanel->maxWidgetZLevel + 1;
-	caption->position.assign (App::instance->windowWidth - caption->width - UiConfiguration::instance->paddingSize, App::instance->windowHeight - App::instance->uiStack.bottomBarHeight - caption->height - UiConfiguration::instance->marginSize);
 }

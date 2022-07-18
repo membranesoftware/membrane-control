@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2021 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
+* Copyright 2018-2022 Membrane Software <author@membranesoftware.com> https://membranesoftware.com
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -32,8 +32,11 @@
 #ifndef UI_H
 #define UI_H
 
+#include <map>
 #include "SDL2/SDL.h"
 #include "StdString.h"
+#include "OsUtil.h"
+#include "StringList.h"
 #include "Json.h"
 #include "Widget.h"
 #include "WidgetHandle.h"
@@ -62,7 +65,7 @@ public:
 	void release ();
 
 	// Load resources as needed to prepare the UI and return a result value
-	int load ();
+	OsUtil::Result load ();
 
 	// Free resources allocated by any previous load operation
 	void unload ();
@@ -109,8 +112,24 @@ public:
 	// Execute actions appropriate when an agent control link client becomes disconnected
 	virtual void handleLinkClientDisconnect (const StdString &agentId, const StdString &errorDescription);
 
+	// Execute an interface action to open the named widget and return a boolean value indicating if the widget was found
+	virtual bool openWidget (const StdString &targetName);
+
+	// Execute an interface action to select the named widget and return a boolean value indicating if the widget was found
+	virtual bool selectWidget (const StdString &targetName);
+
+	// Execute an interface action to unselect the named widget and return a boolean value indicating if the widget was found
+	virtual bool unselectWidget (const StdString &targetName);
+
 	// Execute actions to sync state with records present in the application's RecordStore object, which has been locked prior to invocation
 	void syncRecordStore ();
+
+	typedef void (*InvokeCallback) (Ui *invokeUi, const StdString &agentId, Json *invokeCommand, Json *responseCommand, bool isResponseCommandSuccess);
+	// Invoke a command from one or more remote agents, maintain a CommandHistory record for the operation, and execute the provided callback as each invoke operation completes. This class becomes responsible for freeing the submitted command object when it's no longer needed.
+	void invokeCommand (const StdString &commandHistoryId, const StdString &agentId, Json *command, Ui::InvokeCallback callback = NULL);
+	void invokeCommand (const StdString &commandHistoryId, const StringList &agentIdList, Json *command, Ui::InvokeCallback callback = NULL);
+	// Invoke all commands in commandList targeting agent IDs in agentIdList, maintain a CommandHistory record for the operation, and execute the provided callback as each invoke operation completes
+	void invokeCommand (const StdString &commandHistoryId, const StringList &agentIdList, JsonList *commandList, Ui::InvokeCallback callback = NULL);
 
 	// Execute actions appropriate for a received keypress event and return a boolean value indicating if the event was consumed and should no longer be processed
 	bool processKeyEvent (SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
@@ -123,7 +142,7 @@ protected:
 	virtual Widget *createBreadcrumbWidget ();
 
 	// Load subclass-specific resources and return a result value
-	virtual int doLoad ();
+	virtual OsUtil::Result doLoad ();
 
 	// Unload subclass-specific resources
 	virtual void doUnload ();
@@ -197,6 +216,18 @@ protected:
 	// Return a newly created Panel containing elements appropriate for use as a loading icon window
 	Panel *createLoadingIconWindow ();
 
+	struct InvokeCommandContext {
+		StdString commandHistoryId;
+		Ui::InvokeCallback callback;
+		InvokeCommandContext ():
+			callback (NULL) { }
+		InvokeCommandContext (const StdString &commandHistoryId, Ui::InvokeCallback callback):
+			commandHistoryId (commandHistoryId),
+			callback (callback) { }
+	};
+	std::map<StdString, Ui::InvokeCommandContext> invokeMap;
+	SDL_mutex *invokeMapMutex;
+
 	SpriteGroup sprites;
 	CardView *cardView;
 	WidgetHandle actionWidget;
@@ -204,10 +235,12 @@ protected:
 	Widget::EventCallback actionSource;
 	WidgetHandle breadcrumbWidget;
 	StringList linkAgentIds;
+	bool isLinkCommandActive;
 
 private:
 	// Callback functions
 	static bool keyEvent (void *uiPtr, SDL_Keycode keycode, bool isShiftDown, bool isControlDown);
+	static void invokeCommandComplete (void *uiPtr, int invokeResult, const StdString &invokeHostname, int invokeTcpPort, const StdString &agentId, Json *invokeCommand, Json *responseCommand, const StdString &invokeId);
 
 	int refcount;
 	SDL_mutex *refcountMutex;
